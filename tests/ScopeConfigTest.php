@@ -18,18 +18,18 @@ final class ScopeConfigTest extends TestCase {
     }
 
     function testGlobalConfigAlone(): void {
-        $global = ['LocalBusiness' => ['name' => 'Steuerkanzlei Hader', 'url' => 'https://steuerkanzlei-hader.de']];
+        $global = ['LocalBusiness' => ['name' => 'Muster GmbH', 'url' => 'https://example.com']];
 
         $this->assertSame($global, $this->merge($global));
     }
 
     function testCategoryOverridesGlobal(): void {
-        $global = ['LocalBusiness' => ['name' => 'Steuerkanzlei Hader', 'priceRange' => '€€']];
-        $category = ['LocalBusiness' => ['name' => 'Steuerkanzlei Hader - Filiale Nord']];
+        $global = ['LocalBusiness' => ['name' => 'Muster GmbH', 'priceRange' => '€€']];
+        $category = ['LocalBusiness' => ['name' => 'Muster GmbH - Filiale Nord']];
 
         $result = $this->merge($global, $category);
 
-        $this->assertSame('Steuerkanzlei Hader - Filiale Nord', $result['LocalBusiness']['name']);
+        $this->assertSame('Muster GmbH - Filiale Nord', $result['LocalBusiness']['name']);
         $this->assertSame('€€', $result['LocalBusiness']['priceRange']);
     }
 
@@ -46,7 +46,7 @@ final class ScopeConfigTest extends TestCase {
     }
 
     function testEmptyScopesAreSkipped(): void {
-        $global = ['LocalBusiness' => ['name' => 'Steuerkanzlei Hader']];
+        $global = ['LocalBusiness' => ['name' => 'Muster GmbH']];
 
         $result = $this->merge($global, [], []);
 

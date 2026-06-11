@@ -24,7 +24,7 @@ final class CollisionDetectorTest extends TestCase {
     }
 
     function testHtmlWithoutJsonLdReturnsFalse(): void {
-        $html = '<head><title>Steuerkanzlei Hader</title></head>';
+        $html = '<head><title>Muster GmbH</title></head>';
 
         $this->assertFalse($this->detect($html));
     }

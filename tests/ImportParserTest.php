@@ -23,16 +23,16 @@ final class ImportParserTest extends TestCase {
         $json = json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
-            'name' => 'Steuerkanzlei Hader',
-            'url' => 'https://steuerkanzlei-hader.de',
+            'name' => 'Muster GmbH',
+            'url' => 'https://example.com',
         ]);
 
         $result = $this->import($json);
 
         $this->assertTrue($result['success']);
         $this->assertSame('LocalBusiness', $result['type']);
-        $this->assertSame('Steuerkanzlei Hader', $result['formData']['name']);
-        $this->assertSame('https://steuerkanzlei-hader.de', $result['formData']['url']);
+        $this->assertSame('Muster GmbH', $result['formData']['name']);
+        $this->assertSame('https://example.com', $result['formData']['url']);
         $this->assertArrayNotHasKey('@context', $result['formData']);
         $this->assertArrayNotHasKey('@type', $result['formData']);
     }
@@ -41,15 +41,15 @@ final class ImportParserTest extends TestCase {
         $json = json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
-            'name' => 'Steuerkanzlei Hader',
-            'url' => 'https://steuerkanzlei-hader.de',
-            'hasMap' => 'https://maps.example.com/steuerkanzlei-hader',
+            'name' => 'Muster GmbH',
+            'url' => 'https://example.com',
+            'hasMap' => 'https://maps.example.com/muster-gmbh',
         ]);
 
         $result = $this->import($json);
 
         $this->assertSame(
-            ['hasMap' => 'https://maps.example.com/steuerkanzlei-hader'],
+            ['hasMap' => 'https://maps.example.com/muster-gmbh'],
             $result['extensionData']
         );
         $this->assertArrayNotHasKey('hasMap', $result['formData']);

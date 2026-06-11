@@ -21,15 +21,15 @@ final class SchemaValidatorTest extends TestCase {
     }
 
     function testMissingRequiredFieldIsReported(): void {
-        $result = $this->validate(['name' => 'Steuerkanzlei Hader']);
+        $result = $this->validate(['name' => 'Muster GmbH']);
 
         $this->assertContains('url', $result['errors']);
     }
 
     function testCompleteRequiredFieldsProduceNoErrors(): void {
         $result = $this->validate([
-            'name' => 'Steuerkanzlei Hader',
-            'url' => 'https://steuerkanzlei-hader.de',
+            'name' => 'Muster GmbH',
+            'url' => 'https://example.com',
         ]);
 
         $this->assertSame([], $result['errors']);
@@ -37,8 +37,8 @@ final class SchemaValidatorTest extends TestCase {
 
     function testKnownPropertiesProduceNoWarnings(): void {
         $result = $this->validate([
-            'name' => 'Steuerkanzlei Hader',
-            'url' => 'https://steuerkanzlei-hader.de',
+            'name' => 'Muster GmbH',
+            'url' => 'https://example.com',
             'telephone' => '+49 89 12345678',
         ]);
 
@@ -47,8 +47,8 @@ final class SchemaValidatorTest extends TestCase {
 
     function testUnknownPropertyProducesWarning(): void {
         $result = $this->validate([
-            'name' => 'Steuerkanzlei Hader',
-            'url' => 'https://steuerkanzlei-hader.de',
+            'name' => 'Muster GmbH',
+            'url' => 'https://example.com',
             'unbekanntesFeld' => 'wert',
         ]);
 
