@@ -4,3 +4,4 @@ vendor/
 .phpunit.result.cache
 CLAUDE.md
 conf/
+tests/SMOKE-TESTS.md
