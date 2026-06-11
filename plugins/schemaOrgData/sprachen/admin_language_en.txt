@@ -1,0 +1,65 @@
+plugin_description = Writes Schema.org-compliant JSON-LD (LocalBusiness, Organization, FAQPage, etc.) into the page's &lt;head&gt;.<br />Scopes: Global, Category, Page.
+plugin_placeholder = Outputs this page's Schema.org JSON-LD data (insert into &lt;head&gt;)
+
+scope_global = Global
+scope_category = Category
+scope_page = Page
+
+label_schema_type = Schema Type
+schema_type_none = – none –
+schema_type_localbusiness = Local Business
+schema_type_professionalservice = Professional Service
+schema_type_organization = Organization
+schema_type_person = Person
+schema_type_website = Website
+schema_type_faqpage = FAQ Page
+
+label_name = Name
+label_description = Description
+label_url = Website URL
+label_telephone = Phone
+label_email = Email
+label_image = Image URL
+label_logo = Logo URL
+label_legal_name = Legal Name
+label_job_title = Job Title
+label_in_language = Language (e.g. en-US)
+label_price_range = Price Range
+
+label_address = Address
+label_street_address = Street Address
+label_postal_code = Postal Code
+label_address_locality = City
+label_address_region = Region / State
+label_address_country = Country
+
+label_opening_hours = Opening Hours
+label_opening_hours_from = From
+label_opening_hours_to = To
+label_opening_hours_closed = closed
+
+label_faq_entries = Questions &amp; Answers
+label_faq_question = Question
+label_faq_answer = Answer
+label_faq_add_entry = Add question
+label_faq_remove_entry = Remove
+
+label_extension_field = Additional Properties (JSON)
+description_extension_field = Additional schema.org properties as a JSON object. Merged with the form fields on save, form fields take precedence.
+
+error_json_invalid = The entered JSON is invalid: {PARAM1}
+error_json_syntax = JSON syntax error at line {PARAM1}, column {PARAM2}
+warning_unknown_property = Unknown property "{PARAM1}" will be saved but is not defined in the schema.
+error_required_field = Required field "{PARAM1}" is missing.
+error_invalid_format = Field "{PARAM1}" has an invalid format.
+
+notice_existing_jsonld_title = A JSON-LD block was already found on this page.
+notice_existing_jsonld_text = Please choose how the plugin should proceed.
+option_keep_existing_jsonld = Keep existing
+option_override_existing_jsonld = Overwrite with plugin configuration
+
+label_import_jsonld = Import existing JSON-LD
+description_import_jsonld = Insert an existing JSON-LD block. Known fields are filled in automatically, unknown properties are moved to the extension field. This overwrites the current configuration.
+button_import = Import
+
+button_save = Save

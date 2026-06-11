@@ -1,0 +1,65 @@
+plugin_description = Schreibt Schema.org-konformes JSON-LD (LocalBusiness, Organization, FAQPage u.a.) in den &lt;head&gt;-Bereich der Seite.<br />Geltungsbereiche: Global, Kategorie, Seite.
+plugin_placeholder = Gibt die Schema.org JSON-LD-Daten dieser Seite aus (im &lt;head&gt; einfügen)
+
+scope_global = Global
+scope_category = Kategorie
+scope_page = Seite
+
+label_schema_type = Schema-Type
+schema_type_none = – kein Schema –
+schema_type_localbusiness = Lokales Unternehmen
+schema_type_professionalservice = Dienstleister
+schema_type_organization = Organisation
+schema_type_person = Person
+schema_type_website = Website
+schema_type_faqpage = Häufig gestellte Fragen (FAQ)
+
+label_name = Name
+label_description = Beschreibung
+label_url = Website-URL
+label_telephone = Telefon
+label_email = E-Mail
+label_image = Bild-URL
+label_logo = Logo-URL
+label_legal_name = Rechtlicher Name
+label_job_title = Position / Berufsbezeichnung
+label_in_language = Sprache (z. B. de-DE)
+label_price_range = Preisklasse
+
+label_address = Adresse
+label_street_address = Straße und Hausnummer
+label_postal_code = Postleitzahl
+label_address_locality = Ort
+label_address_region = Region / Bundesland
+label_address_country = Land
+
+label_opening_hours = Öffnungszeiten
+label_opening_hours_from = Von
+label_opening_hours_to = Bis
+label_opening_hours_closed = geschlossen
+
+label_faq_entries = Fragen &amp; Antworten
+label_faq_question = Frage
+label_faq_answer = Antwort
+label_faq_add_entry = Frage hinzufügen
+label_faq_remove_entry = Entfernen
+
+label_extension_field = Erweiterte Properties (JSON)
+description_extension_field = Zusätzliche schema.org-Properties als JSON-Objekt. Werden beim Speichern mit den Formularfeldern zusammengeführt, das Formular hat Vorrang.
+
+error_json_invalid = Das eingegebene JSON ist ungültig: {PARAM1}
+error_json_syntax = JSON-Syntaxfehler in Zeile {PARAM1}, Spalte {PARAM2}
+warning_unknown_property = Unbekannte Property "{PARAM1}" wird übernommen, ist aber im Schema nicht definiert.
+error_required_field = Pflichtfeld "{PARAM1}" fehlt.
+error_invalid_format = Feld "{PARAM1}" hat ein ungültiges Format.
+
+notice_existing_jsonld_title = Auf dieser Seite wurde bereits ein JSON-LD-Block gefunden.
+notice_existing_jsonld_text = Bitte wähle, wie das Plugin vorgehen soll.
+option_keep_existing_jsonld = Vorhandenes beibehalten
+option_override_existing_jsonld = Mit Plugin-Konfiguration überschreiben
+
+label_import_jsonld = Vorhandenes JSON-LD importieren
+description_import_jsonld = Fügt einen bestehenden JSON-LD-Block ein. Bekannte Felder werden automatisch übernommen, unbekannte Properties wandern ins Erweiterungsfeld. Überschreibt die aktuelle Konfiguration.
+button_import = Importieren
+
+button_save = Speichern

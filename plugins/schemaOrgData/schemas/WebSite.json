@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.org/WebSite",
+  "title": "WebSite",
+  "type": "object",
+  "ui:typeLabel": "schema_type_website",
+  "ui:scopes": ["global"],
+  "required": ["name", "url"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "ui:widget": "text",
+      "ui:label": "label_name",
+      "ui:required": true
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "ui:widget": "text",
+      "ui:label": "label_url",
+      "ui:placeholder": "https://www.beispiel.de",
+      "ui:required": true
+    },
+    "description": {
+      "type": "string",
+      "ui:widget": "textarea",
+      "ui:label": "label_description",
+      "ui:required": false
+    },
+    "inLanguage": {
+      "type": "string",
+      "ui:widget": "text",
+      "ui:label": "label_in_language",
+      "ui:placeholder": "de-DE",
+      "ui:required": false
+    }
+  }
+}

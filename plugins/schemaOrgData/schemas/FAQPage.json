@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.org/FAQPage",
+  "title": "FAQPage",
+  "type": "object",
+  "ui:typeLabel": "schema_type_faqpage",
+  "ui:scopes": ["category", "page"],
+  "required": ["mainEntity"],
+  "properties": {
+    "mainEntity": {
+      "type": "array",
+      "minItems": 1,
+      "ui:widget": "faq_list",
+      "ui:label": "label_faq_entries",
+      "ui:required": true,
+      "items": {
+        "type": "object",
+        "required": ["name", "acceptedAnswer"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "ui:widget": "text",
+            "ui:label": "label_faq_question",
+            "ui:required": true
+          },
+          "acceptedAnswer": {
+            "type": "object",
+            "required": ["text"],
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "ui:widget": "textarea",
+                "ui:label": "label_faq_answer",
+                "ui:required": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

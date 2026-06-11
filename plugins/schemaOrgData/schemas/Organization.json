@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.org/Organization",
+  "title": "Organization",
+  "type": "object",
+  "ui:typeLabel": "schema_type_organization",
+  "ui:scopes": ["global"],
+  "required": ["name", "url"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "ui:widget": "text",
+      "ui:label": "label_name",
+      "ui:required": true
+    },
+    "legalName": {
+      "type": "string",
+      "ui:widget": "text",
+      "ui:label": "label_legal_name",
+      "ui:required": false
+    },
+    "description": {
+      "type": "string",
+      "ui:widget": "textarea",
+      "ui:label": "label_description",
+      "ui:required": false
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "ui:widget": "text",
+      "ui:label": "label_url",
+      "ui:placeholder": "https://www.beispiel.de",
+      "ui:required": true
+    },
+    "logo": {
+      "type": "string",
+      "format": "uri",
+      "ui:widget": "text",
+      "ui:label": "label_logo",
+      "ui:placeholder": "https://www.beispiel.de/logo.png",
+      "ui:required": false
+    },
+    "telephone": {
+      "type": "string",
+      "ui:widget": "text",
+      "ui:label": "label_telephone",
+      "ui:placeholder": "+49 89 12345678",
+      "ui:required": false
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "ui:widget": "text",
+      "ui:label": "label_email",
+      "ui:placeholder": "info@beispiel.de",
+      "ui:required": false
+    }
+  }
+}

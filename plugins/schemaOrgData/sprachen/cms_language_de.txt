@@ -1,0 +1,7 @@
+weekday_monday = Montag
+weekday_tuesday = Dienstag
+weekday_wednesday = Mittwoch
+weekday_thursday = Donnerstag
+weekday_friday = Freitag
+weekday_saturday = Samstag
+weekday_sunday = Sonntag

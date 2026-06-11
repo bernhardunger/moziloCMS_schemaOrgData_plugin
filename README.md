@@ -216,6 +216,34 @@ Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global + Kateg
 
 ---
 
+## Verhalten bei vorhandenem JSON-LD
+
+Erkennt das Plugin beim Seitenaufbau ein bereits vorhandenes `<script type="application/ld+json">` im Template oder Seiteninhalt, wird dem Benutzer im Admin-Bereich ein Hinweis angezeigt:
+
+> ⚠️ **Auf dieser Seite wurde bereits ein JSON-LD-Block gefunden.**
+> Bitte wähle wie das Plugin vorgehen soll:
+>
+> - **Vorhandenes beibehalten** — das Plugin gibt kein eigenes JSON-LD aus, solange ein externer Block erkannt wird
+> - **Mit Plugin-Konfiguration überschreiben** — das Plugin gibt sein eigenes JSON-LD aus; der vorhandene Block bleibt im Template/Inhalt und muss manuell entfernt werden
+>
+> ⚠️ Es erfolgt **kein automatischer Merge** beider Strukturen.
+
+Die Einstellung wird pro Geltungsbereich (Global / Kategorie / Seite) gespeichert und kann jederzeit geändert werden.
+
+**Empfohlene Vorgehensweise bei Migration:**
+1. Vorhandenes JSON-LD in das Import-Feld kopieren (siehe unten)
+2. Felder im Plugin-Formular prüfen und anpassen
+3. Manuell den alten JSON-LD-Block aus Template / Seiteninhalt entfernen
+4. Auf „Mit Plugin-Konfiguration überschreiben" umstellen
+
+### Import vorhandener JSON-LD-Daten
+
+Im Admin-Bereich steht ein **Import-Feld** zur Verfügung. Ein bestehender JSON-LD-Block kann dort eingefügt werden — das Plugin parst den Block und befüllt automatisch die bekannten Formularfelder. Properties die das Formular nicht abbildet, werden automatisch ins Erweiterungsfeld übernommen.
+
+> ⚠️ Der Import überschreibt die aktuelle Formularkonfiguration. Es erfolgt kein Merge.
+
+---
+
 ## Installation
 
 1. Ordner `schemaOrgData` in `plugins/` hochladen
