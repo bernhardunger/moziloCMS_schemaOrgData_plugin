@@ -7,6 +7,7 @@ scope_page = Seite
 
 label_schema_type = Schema-Type
 schema_type_none = – kein Schema –
+schema_type_accountingservice = Steuerberatung / Buchhaltung
 schema_type_localbusiness = Lokales Unternehmen
 schema_type_professionalservice = Dienstleister
 schema_type_organization = Organisation

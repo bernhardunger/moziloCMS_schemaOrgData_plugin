@@ -7,6 +7,7 @@ scope_page = Page
 
 label_schema_type = Schema Type
 schema_type_none = – none –
+schema_type_accountingservice = Accounting Service
 schema_type_localbusiness = Local Business
 schema_type_professionalservice = Professional Service
 schema_type_organization = Organization

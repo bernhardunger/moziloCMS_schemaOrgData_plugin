@@ -77,6 +77,28 @@ class schemaOrgData extends Plugin {
         //  - Types die nur global sinnvoll sind (ui:scopes = ["global"])
         //    nur einmal ausgeben, auch wenn mehrfach konfiguriert
 
+        // Kollisionserkennung: vorhandenes JSON-LD im gerenderten HTML
+        // erkennen und das Ergebnis je Geltungsebene in der jeweiligen
+        // conf-Datei persistieren (siehe loadScopeMeta/saveScopeMeta).
+        // TODO: $value enthält im aktuellen Aufrufkontext nur den
+        //       Platzhalter-Inhalt. Für eine zuverlässige Erkennung sollte
+        //       zusätzlich der Rohinhalt von Template und Seite (vor der
+        //       Ausgabe dieses Plugins) geprüft werden.
+        $hasExistingJsonLd = $this->detectExistingJsonLd((string) $value);
+
+        foreach($scopeConfigs as $scope => $config) {
+            $scopeArgs = match($scope) {
+                'category' => [CAT_REQUEST],
+                'page'     => [CAT_REQUEST, PAGE_REQUEST],
+                default    => [],
+            };
+
+            $meta = $this->loadScopeMeta($scope, ...$scopeArgs);
+            if($meta['existing_jsonld'] !== $hasExistingJsonLd) {
+                $this->saveScopeMeta($scope, ['existing_jsonld' => $hasExistingJsonLd], ...$scopeArgs);
+            }
+        }
+
         return $output;
     }
 
@@ -194,6 +216,213 @@ class schemaOrgData extends Plugin {
             }
         }
         return self::DEFAULT_LANGUAGE;
+    }
+
+    /***************************************************************
+    *
+    * Prüft, ob im gerenderten HTML der Seite bereits ein
+    * <script type="application/ld+json">-Block vorhanden ist.
+    *
+    * Hinweis: Wendet man diese Methode auf die vom Plugin selbst
+    * erzeugte Ausgabe an, erkennt sie auch dessen eigene
+    * <script>-Blöcke. Für eine zuverlässige Kollisionserkennung sollte
+    * die Prüfung daher auf den Rohinhalt von Template/Seiteninhalt vor
+    * der Ausgabe dieses Plugins erfolgen.
+    *
+    * @param string $html zu prüfendes HTML
+    * @return bool true, wenn mindestens ein JSON-LD-Block gefunden wurde
+    *
+    ***************************************************************/
+    private function detectExistingJsonLd(string $html): bool {
+        return (bool) preg_match('#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i', $html);
+    }
+
+    /***************************************************************
+    *
+    * Ermittelt den Dateipfad der conf-Datei einer Geltungsebene
+    * (siehe auch loadScopeConfig).
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @return string|null Dateipfad oder null bei unbekanntem $scope
+    *
+    ***************************************************************/
+    private function getScopeConfFile(string $scope, ?string $cat = null, ?string $page = null): ?string {
+        return match($scope) {
+            'global'   => $this->PLUGIN_SELF_DIR.'conf/_global.conf.php',
+            'category' => $this->PLUGIN_SELF_DIR.'conf/cat_'.$cat.'.conf.php',
+            'page'     => $this->PLUGIN_SELF_DIR.'conf/page_'.$cat.'_'.$page.'.conf.php',
+            default    => null,
+        };
+    }
+
+    /***************************************************************
+    *
+    * Lädt die Kollisions-Metadaten einer Geltungsebene
+    * (existing_jsonld-Flag und gewählter jsonld_mode).
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @return array{existing_jsonld: bool, jsonld_mode: string}
+    *
+    ***************************************************************/
+    private function loadScopeMeta(string $scope, ?string $cat = null, ?string $page = null): array {
+        $defaults = ['existing_jsonld' => false, 'jsonld_mode' => 'keep'];
+
+        $file = $this->getScopeConfFile($scope, $cat, $page);
+        if($file === null or !file_exists($file)) {
+            return $defaults;
+        }
+
+        $config = new Properties($file);
+        $data = $config->toArray();
+
+        return array_merge($defaults, $data['_meta'] ?? []);
+    }
+
+    /***************************************************************
+    *
+    * Speichert die Kollisions-Metadaten einer Geltungsebene
+    * (existing_jsonld-Flag, jsonld_mode), ohne die bereits
+    * konfigurierten Schema-Type-Properties zu verändern.
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @param array $meta z. B. ['existing_jsonld' => true, 'jsonld_mode' => 'override']
+    *
+    ***************************************************************/
+    private function saveScopeMeta(string $scope, array $meta, ?string $cat = null, ?string $page = null): void {
+        $file = $this->getScopeConfFile($scope, $cat, $page);
+        if($file === null) {
+            return;
+        }
+
+        $config = file_exists($file) ? (new Properties($file))->toArray() : [];
+        $config['_meta'] = array_merge(
+            $config['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep'],
+            $meta
+        );
+
+        file_put_contents($file, '<?php die(); ?>'."\n".serialize($config));
+    }
+
+    /***************************************************************
+    *
+    * Importiert einen vorhandenen JSON-LD-Block.
+    *
+    * Zerlegt die Properties anhand des aktiven Schemas in bekannte
+    * Formularfelder und unbekannte Properties (Erweiterungsfeld).
+    * Es erfolgt kein Merge mit der aktuellen Konfiguration - der
+    * Aufrufer (Admin-Formular) ersetzt die Konfiguration vollständig
+    * mit dem Ergebnis dieser Methode.
+    *
+    * @param string $jsonLdText Inhalt des Import-Textarea-Felds
+    * @param array|null $schema aktives JSON-Schema (schemas/{Type}.json)
+    * @return array{
+    *   success: bool,
+    *   error: string|null,
+    *   type: string|null,
+    *   formData: array,
+    *   extensionData: array
+    * }
+    *
+    ***************************************************************/
+    private function importJsonLd(string $jsonLdText, ?array $schema): array {
+        $data = json_decode($jsonLdText, true);
+
+        if(json_last_error() !== JSON_ERROR_NONE or !is_array($data)) {
+            return [
+                'success' => false,
+                'error' => json_last_error_msg(),
+                'type' => null,
+                'formData' => [],
+                'extensionData' => [],
+            ];
+        }
+
+        $type = $data['@type'] ?? null;
+        unset($data['@context'], $data['@type']);
+
+        $knownProperties = $schema['properties'] ?? [];
+        $formData = [];
+        $extensionData = [];
+
+        foreach($data as $property => $value) {
+            if(array_key_exists($property, $knownProperties)) {
+                $formData[$property] = $value;
+            } else {
+                $extensionData[$property] = $value;
+            }
+        }
+
+        return [
+            'success' => true,
+            'error' => null,
+            'type' => $type,
+            'formData' => $formData,
+            'extensionData' => $extensionData,
+        ];
+    }
+
+    /***************************************************************
+    *
+    * Lädt (sofern noch nicht geschehen) das Sprachobjekt für die
+    * Admin-UI.
+    *
+    ***************************************************************/
+    private function loadAdminLanguage(): Language {
+        if($this->admin_lang === null) {
+            global $ADMIN_CONF;
+            $lang = $this->resolvePluginLanguage($ADMIN_CONF->get('language') ?? self::DEFAULT_LANGUAGE);
+            $this->admin_lang = new Language($this->PLUGIN_SELF_DIR.'sprachen/admin_language_'.$lang.'.txt');
+        }
+        return $this->admin_lang;
+    }
+
+    /***************************************************************
+    *
+    * Rendert den Hinweis- und Auswahl-Block für bereits vorhandenes
+    * JSON-LD sowie das Import-Feld einer Geltungsebene.
+    *
+    * Vorgesehen zur Einbindung in das schema-getriebene Admin-Formular
+    * (siehe render-form) innerhalb des jeweiligen Geltungsbereich-Tabs.
+    * Gibt einen leeren String zurück, wenn für diese Ebene kein
+    * vorhandenes JSON-LD erkannt wurde (existing_jsonld = false).
+    *
+    * Wichtig: kein automatischer Merge - "Vorhandenes beibehalten"
+    * unterdrückt lediglich die eigene Ausgabe dieser Ebene,
+    * "Überschreiben" gibt das eigene JSON-LD zusätzlich zum
+    * vorhandenen Block aus.
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @return string HTML-Snippet (Hinweis, Radio-Buttons, Import-Textarea)
+    *                 oder '' wenn kein vorhandenes JSON-LD erkannt wurde
+    *
+    ***************************************************************/
+    private function renderExistingJsonLdNotice(string $scope, ?string $cat = null, ?string $page = null): string {
+        $meta = $this->loadScopeMeta($scope, $cat, $page);
+
+        if(!$meta['existing_jsonld']) {
+            return '';
+        }
+
+        $lang = $this->loadAdminLanguage();
+        $fieldName = 'schemaOrgData_jsonld_mode_'.$scope;
+        $options = ['keep' => 'option_keep_existing_jsonld', 'override' => 'option_override_existing_jsonld'];
+
+        $html  = '<div class="schemaOrgData-jsonld-notice">'."\n";
+        $html .= '<p class="schemaOrgData-jsonld-notice__title"><strong>'.$lang->getLanguageHtml('notice_existing_jsonld_title').'</strong></p>'."\n";
+        $html .= '<p>'.$lang->getLanguageHtml('notice_existing_jsonld_text').'</p>'."\n";
+
+        foreach($options as $value => $labelKey) {
+            $checked = ($meta['jsonld_mode'] === $value) ? ' checked="checked"' : '';
+            $html .= '<label><input type="radio" name="'.$fieldName.'" value="'.$value.'"'.$checked.' /> '
+                  .$lang->getLanguageHtml($labelKey).'</label><br />'."\n";
+        }
+
+        $html .= '<p><label for="schemaOrgData_import_'.$scope.'">'.$lang->getLanguageHtml('label_import_jsonld').'</label><br />'."\n";
+        $html .= '<textarea id="schemaOrgData_import_'.$scope.'" name="schemaOrgData_import_'.$scope.'" rows="6"></textarea></p>'."\n";
+        $html .= '<p class="schemaOrgData-jsonld-notice__hint">'.$lang->getLanguageHtml('description_import_jsonld').'</p>'."\n";
+        $html .= '</div>'."\n";
+
+        return $html;
     }
 
     /***************************************************************

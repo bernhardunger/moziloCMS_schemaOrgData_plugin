@@ -216,6 +216,48 @@ Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global + Kateg
 
 ---
 
+## Testing
+
+Das Plugin verwendet **PHPUnit 11.x** für Unit-Tests. Da moziloCMS kein eigenes Test-Framework mitbringt, werden CMS-Abhängigkeiten (Konstanten, Basisklassen) im Bootstrap gemockt.
+
+### Voraussetzungen
+
+```bash
+composer install
+```
+
+### Tests ausführen
+
+```bash
+./vendor/bin/phpunit
+```
+
+### Teststruktur
+
+```
+tests/
+├── bootstrap.php              # moziloCMS-Konstanten und Basisklassen mocken
+├── JsonLdBuilderTest.php      # buildJsonLdScript() — korrektes JSON-LD Output
+├── ScopeConfigTest.php        # loadScopeConfig() / mergeConfigs() — Vererbungslogik
+├── SchemaValidatorTest.php    # PHP-seitige Schema-Validierung
+├── ImportParserTest.php       # JSON-LD Import-Parser
+└── CollisionDetectorTest.php  # Kollisionserkennung existing_jsonld-Flag
+```
+
+### Abgedeckte Testfälle
+
+| Test | Was wird geprüft |
+|---|---|
+| `ScopeConfigTest` | Vererbungslogik Global → Kategorie → Seite |
+| `JsonLdBuilderTest` | Korrektes JSON-LD Output inkl. `@context`, `@type`, `PostalAddress` |
+| `SchemaValidatorTest` | Pflichtfelder, bekannte/unbekannte Properties |
+| `ImportParserTest` | Bekannte Properties → Formular, unbekannte → Erweiterungsfeld |
+| `CollisionDetectorTest` | Erkennung vorhandener `<script type="application/ld+json">`-Blöcke |
+
+> **Hinweis:** `vendor/` ist in `.gitignore` — PHPUnit wird nicht ins Repository eingecheckt.
+
+---
+
 ## Verhalten bei vorhandenem JSON-LD
 
 Erkennt das Plugin beim Seitenaufbau ein bereits vorhandenes `<script type="application/ld+json">` im Template oder Seiteninhalt, wird dem Benutzer im Admin-Bereich ein Hinweis angezeigt:
