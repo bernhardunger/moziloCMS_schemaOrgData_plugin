@@ -1,3 +1,4 @@
 .claude/
 _reference/
 vendor/
+.phpunit.result.cache

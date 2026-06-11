@@ -363,6 +363,46 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Validiert Formulardaten serverseitig gegen ein JSON-Schema.
+    *
+    * Prüft, ob alle in "required" gelisteten Properties vorhanden
+    * und nicht leer sind, sowie ob alle Properties in "properties"
+    * bekannt sind. Dient als serverseitige Ergänzung zur
+    * clientseitigen AJV-Validierung; unbekannte Properties führen
+    * nur zu einer Warnung, kein Speichern wird dadurch verhindert.
+    *
+    * @param array $data   zu prüfende Properties (Formularfeld-Werte)
+    * @param array|null $schema aktives JSON-Schema (schemas/{Type}.json)
+    * @return array{errors: string[], warnings: string[]}
+    *
+    ***************************************************************/
+    private function validateAgainstSchema(array $data, ?array $schema): array {
+        $errors = [];
+        $warnings = [];
+
+        if($schema === null) {
+            return ['errors' => $errors, 'warnings' => $warnings];
+        }
+
+        foreach($schema['required'] ?? [] as $requiredProperty) {
+            $value = $data[$requiredProperty] ?? null;
+            if($value === null or $value === '' or $value === []) {
+                $errors[] = $requiredProperty;
+            }
+        }
+
+        $knownProperties = array_keys($schema['properties'] ?? []);
+        foreach(array_keys($data) as $property) {
+            if(!in_array($property, $knownProperties, true)) {
+                $warnings[] = $property;
+            }
+        }
+
+        return ['errors' => $errors, 'warnings' => $warnings];
+    }
+
+    /***************************************************************
+    *
     * Lädt (sofern noch nicht geschehen) das Sprachobjekt für die
     * Admin-UI.
     *
