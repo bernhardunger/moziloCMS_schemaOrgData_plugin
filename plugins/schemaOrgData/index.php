@@ -25,6 +25,9 @@
 ***************************************************************/
 class schemaOrgData extends Plugin {
 
+    /** Plugin-Version, siehe getInfo() */
+    private const PLUGIN_VERSION = '1.0.0';
+
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
 
@@ -1593,10 +1596,11 @@ class schemaOrgData extends Plugin {
         $this->admin_lang = new Language($this->PLUGIN_SELF_DIR.'sprachen/admin_language_'.$lang.'.txt');
 
         return [
-            // Plugin-Name + Version
-            'schemaOrgData 1.0.0',
-            // kompatible moziloCMS-Version
-            '3.0.4',
+            // Plugin-Name + Version — Konvention der Core-Plugins: "Version X.Y.Z"
+            'Version ' . self::PLUGIN_VERSION,
+            // moziloCMS-Version — konsistent mit Core-Plugins (Breadcrumb, Contact)
+            // TODO: auf '3.0' aktualisieren sobald der CMS-Kern den Versionsstring korrigiert
+            '2.0 / 3.0',
             // Kurzbeschreibung, nur <span> und <br /> sind erlaubt
             $this->admin_lang->getLanguageValue('plugin_description'),
             // Name des Autors
