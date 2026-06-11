@@ -5,6 +5,10 @@
   <testsuites>
     <testsuite name="schemaOrgData">
       <directory>tests</directory>
+      <exclude>tests/Validation</exclude>
+    </testsuite>
+    <testsuite name="schemaOrgData-Validation">
+      <directory>tests/Validation</directory>
     </testsuite>
   </testsuites>
 </phpunit>
