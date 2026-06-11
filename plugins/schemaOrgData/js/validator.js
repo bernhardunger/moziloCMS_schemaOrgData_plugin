@@ -6,7 +6,7 @@
  *
  * Nutzt AJV (js/ajv.min.js, Draft-07, globaler Export "ajv7").
  *
- * Ablauf (siehe CLAUDE.md, Abschnitt "Erweiterungsfeld"):
+ * Ablauf (siehe README.md, Abschnitt "Erweiterungsfeld"):
  *   1. JSON-Syntaxprüfung   - Fehler mit Position sofort anzeigen
  *   2. Property-Whitelist   - unbekannte Properties als Warnung (gelb),
  *                              nicht blockierend

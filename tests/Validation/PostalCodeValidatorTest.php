@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 * Tests für validatePostalCode() - Prüfung der Postleitzahl.
 *
 * Die Prüfung greift ausschließlich für addressCountry = "DE"
-* (siehe CLAUDE.md, Abschnitt "Formularvalidierung"): die
+* (siehe README.md, Abschnitt "Formularvalidierung"): die
 * deutsche PLZ besteht aus genau 5 Ziffern. Für alle anderen
 * Länder wird die Prüfung übersprungen (status === null).
 *

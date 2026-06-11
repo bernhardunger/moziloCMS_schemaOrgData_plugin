@@ -3,3 +3,4 @@ _reference/
 vendor/
 .phpunit.result.cache
 CLAUDE.md
+conf/

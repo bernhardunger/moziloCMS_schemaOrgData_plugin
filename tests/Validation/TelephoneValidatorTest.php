@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 * (preg_replace('/[^0-9+]/', '', $input)) und anschließend gegen
 * /^(\+|00)[1-9][0-9]{6,14}$/ geprüft. E.164 ist ein
 * internationaler Standard - die Prüfung gilt unabhängig vom
-* hinterlegten addressCountry für alle Länder (siehe CLAUDE.md,
+* hinterlegten addressCountry für alle Länder (siehe README.md,
 * Abschnitt "Telefon").
 *
 ***************************************************************/

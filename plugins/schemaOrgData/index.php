@@ -19,14 +19,16 @@
 *
 * Neue Schema-Types werden unterstützt, indem einfach eine
 * weitere .json-Datei in schemas/ abgelegt wird (kein PHP nötig).
-* Die JSON-Schema-Dateien definieren sowohl die Validierungsregeln
-* als auch die Formularfelder (über "ui:"-Properties).
+* Die JSON-Schema-Dateien definieren die Struktur der Formularfelder
+* (über "ui:"-Properties) sowie die AJV-client-seitige Validierung.
+* Die server-seitige Feldvalidierung (E-Mail, Telefon, URL, PLZ usw.)
+* ist in dedizierten Validator-Methoden implementiert.
 *
 ***************************************************************/
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '1.0.0';
+    private const PLUGIN_VERSION = '1.0.0-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -76,7 +78,7 @@ class schemaOrgData extends Plugin {
 
         // Ausschlussliste prüfen (nur global): die globale Ausgabe wird
         // unterdrückt, wenn die aktive Kategorie in excluded_cats steht
-        // (siehe CLAUDE.md, Abschnitt "Ausschlussliste").
+        // (siehe README.md, Abschnitt "Ausschlussliste").
         $excludedCats = !empty($scopeConfigs['global']['excluded_cats'])
             ? explode(',', (string) $scopeConfigs['global']['excluded_cats'])
             : [];
@@ -95,7 +97,7 @@ class schemaOrgData extends Plugin {
         // und für diese Ebene "Vorhandenes beibehalten" gewählt (Standard,
         // solange der Admin keine Wahl getroffen hat), wird die eigene
         // Ausgabe komplett unterdrückt (siehe loadScopeMeta/
-        // renderExistingJsonLdNotice sowie CLAUDE.md, Abschnitt
+        // renderExistingJsonLdNotice sowie README.md, Abschnitt
         // "Verhalten bei vorhandenem JSON-LD").
         foreach($scopeConfigs as $scope => $config) {
             $scopeArgs = match($scope) {
@@ -383,7 +385,7 @@ class schemaOrgData extends Plugin {
     * Entfernt aus einem Bezeichner (CAT_REQUEST/PAGE_REQUEST) alle
     * Zeichen, die in conf-Dateinamen nicht erlaubt sind, bevor er
     * in getScopeConfFile() verwendet wird (Schutz vor Path-Traversal,
-    * siehe CLAUDE.md, Abschnitt "Sicherheit").
+    * siehe README.md, Abschnitt "Sicherheit").
     *
     * @return string bereinigter Bezeichner
     *
@@ -801,7 +803,7 @@ class schemaOrgData extends Plugin {
     /***************************************************************
     *
     * Validiert eine Postleitzahl. Nur für addressCountry = "DE"
-    * relevant (siehe CLAUDE.md, Abschnitt "Formularvalidierung").
+    * relevant (siehe README.md, Abschnitt "Formularvalidierung").
     *
     * @return array{status: string|null, message: string|null}
     *   status: null (nicht geprüft), 'ok', 'error'
@@ -956,7 +958,7 @@ class schemaOrgData extends Plugin {
     * Validiert geo.latitude/geo.longitude im Erweiterungsfeld
     * (siehe validateGeoLatitude/validateGeoLongitude). Andere
     * Properties des Erweiterungsfelds werden serverseitig nicht
-    * geprüft (siehe CLAUDE.md, Abschnitt "Erweiterungsfeld").
+    * geprüft (siehe README.md, Abschnitt "Erweiterungsfeld").
     *
     * @param array $extensionData dekodierte Erweiterungsfeld-Daten
     * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
@@ -1515,7 +1517,7 @@ class schemaOrgData extends Plugin {
     * Prüft, ob für $selectedType bereits auf einer allgemeineren
     * Ebene (Global bzw. Global+Kategorie) eine Konfiguration
     * existiert. Ist dies der Fall, unterdrückt die allgemeinere
-    * Ebene ihre Ausgabe für diesen Type (siehe CLAUDE.md,
+    * Ebene ihre Ausgabe für diesen Type (siehe README.md,
     * Abschnitt "Type-Kollision").
     *
     * @param string $scope 'category' | 'page' (für 'global' immer [])
@@ -1573,7 +1575,7 @@ class schemaOrgData extends Plugin {
     * Rendert die Ausschlussliste für die globale Ausgabe (nur
     * Geltungsbereich "global"): eine Checkbox je vorhandener
     * Kategorie. Angehakte Kategorien erhalten keine globale
-    * JSON-LD-Ausgabe (siehe CLAUDE.md, "excluded_cats").
+    * JSON-LD-Ausgabe (siehe README.md, "excluded_cats").
     *
     * @param string[] $excludedCats aktuell ausgeschlossene Kategorien
     * @return string HTML-Snippet oder '' falls $CatPage nicht verfügbar ist
@@ -1954,7 +1956,7 @@ class schemaOrgData extends Plugin {
     * validateExtensionGeo). Bei Validierungsfehlern wird nicht
     * gespeichert. Andernfalls werden die Formularfelder bereinigt
     * (sanitizePostData) und mit dem Erweiterungsfeld zusammengeführt
-    * (Formular hat Vorrang, siehe CLAUDE.md "Erweiterungsfeld"),
+    * (Formular hat Vorrang, siehe README.md "Erweiterungsfeld"),
     * zusätzlich excluded_cats (nur global) und jsonld_mode
     * übernommen und die conf-Datei geschrieben. Wurde kein Type
     * gewählt ("- kein Schema -"), wird die bisherige
