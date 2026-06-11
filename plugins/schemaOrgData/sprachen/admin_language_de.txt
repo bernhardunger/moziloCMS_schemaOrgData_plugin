@@ -5,6 +5,16 @@ scope_global = Global
 scope_category = Kategorie
 scope_page = Seite
 
+info_text_global = Diese Konfiguration wird standardmäßig auf jeder Seite ausgegeben. Über die Ausschlussliste unten können einzelne Kategorien von der globalen Ausgabe ausgenommen werden. Ist für eine Kategorie oder Seite derselbe Schema-Type konfiguriert, wird die globale Ausgabe für diesen Type automatisch unterdrückt.
+info_text_category = Diese Konfiguration wird zusätzlich zur globalen Konfiguration auf allen Seiten dieser Kategorie ausgegeben. Ist für diese Kategorie derselbe Schema-Type wie global konfiguriert, überschreibt diese Konfiguration die globale Ausgabe für diesen Type.
+info_text_page = Diese Konfiguration wird zusätzlich zur globalen und zur Kategorie-Konfiguration nur auf dieser einzelnen Seite ausgegeben. Ist für diese Seite derselbe Schema-Type wie auf einer allgemeineren Ebene konfiguriert, überschreibt diese Konfiguration deren Ausgabe für diesen Type.
+info_text_general = Das erzeugte JSON-LD wird unsichtbar im &lt;head&gt;-Bereich der Seite ausgegeben und erscheint nicht im sichtbaren Seiteninhalt. Es kann mit dem offiziellen Schema.org-Validator unter https://validator.schema.org geprüft werden.
+
+notice_type_collision = Für den Type "{PARAM1}" ist auch auf Ebene {PARAM2} eine Konfiguration vorhanden. Da diese Ebene spezifischer ist, wird nur ihre eigene Ausgabe verwendet - die Ausgabe von {PARAM2} für diesen Type wird hier automatisch unterdrückt.
+
+label_excluded_cats = Ausnahmen (Kategorien ohne globale Ausgabe)
+description_excluded_cats = Auf den hier angehakten Kategorien (und deren Seiten) wird die globale Konfiguration nicht ausgegeben, z. B. Impressum, Datenschutz, Sitemap.
+
 label_schema_type = Schema-Type
 schema_type_none = – kein Schema –
 schema_type_accountingservice = Steuerberatung / Buchhaltung
@@ -38,6 +48,7 @@ label_opening_hours = Öffnungszeiten
 label_opening_hours_from = Von
 label_opening_hours_to = Bis
 label_opening_hours_closed = geschlossen
+hint_opening_hours = Bitte im 24-Stunden-Format eingeben (z. B. 09:00, 18:00). Leere Felder bedeuten
 
 label_faq_entries = Fragen &amp; Antworten
 label_faq_question = Frage
@@ -48,11 +59,25 @@ label_faq_remove_entry = Entfernen
 label_extension_field = Erweiterte Properties (JSON)
 description_extension_field = Zusätzliche schema.org-Properties als JSON-Objekt. Werden beim Speichern mit den Formularfeldern zusammengeführt, das Formular hat Vorrang.
 
+label_optional = (optional)
+label_required_field = Pflichtfeld
+label_select_placeholder = – bitte wählen –
+
 error_json_invalid = Das eingegebene JSON ist ungültig: {PARAM1}
 error_json_syntax = JSON-Syntaxfehler in Zeile {PARAM1}, Spalte {PARAM2}
 warning_unknown_property = Unbekannte Property "{PARAM1}" wird übernommen, ist aber im Schema nicht definiert.
 error_required_field = Pflichtfeld "{PARAM1}" fehlt.
 error_invalid_format = Feld "{PARAM1}" hat ein ungültiges Format.
+
+error_postal_code_format = Die Postleitzahl muss aus 5 Ziffern bestehen.
+error_telephone_format = Die Telefonnummer entspricht nicht dem erwarteten Format (z. B. +49 89 12345678).
+error_url_invalid = Die eingegebene URL ist ungültig.
+warning_url_http = Für Produktivseiten wird HTTPS empfohlen.
+error_email_invalid = Die eingegebene E-Mail-Adresse ist ungültig.
+error_opening_hours_format = Bitte im 24-Stunden-Format eingeben (z. B. 09:00, 18:00).
+error_opening_hours_order = Die Von-Zeit muss vor der Bis-Zeit liegen.
+error_geo_latitude = Der Breitengrad (latitude) muss zwischen -90 und 90 liegen.
+error_geo_longitude = Der Längengrad (longitude) muss zwischen -180 und 180 liegen.
 
 notice_existing_jsonld_title = Auf dieser Seite wurde bereits ein JSON-LD-Block gefunden.
 notice_existing_jsonld_text = Bitte wähle, wie das Plugin vorgehen soll.

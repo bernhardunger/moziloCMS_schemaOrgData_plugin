@@ -146,12 +146,340 @@
         };
     }
 
+    /**
+     * Liefert die lokalisierten Texte für die Feldvalidierung.
+     * Werden von getConfig() als window.schemaOrgDataMessages
+     * eingebettet (admin_language_{lang}.txt). Fallback: leere
+     * Strings, falls das Skript ohne diese Variable geladen wird.
+     *
+     * @returns {object}
+     */
+    function getMessages() {
+        return window.schemaOrgDataMessages || {};
+    }
+
+    /**
+     * Validiert eine Postleitzahl. Nur für countryCode === "DE"
+     * relevant (siehe index.php, validatePostalCode()).
+     *
+     * @param {string} value
+     * @param {string} countryCode
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function validatePostalCode(value, countryCode) {
+        if (countryCode !== 'DE' || value.trim() === '') {
+            return { status: null, message: null };
+        }
+
+        if (/^[0-9]{5}$/.test(value)) {
+            return { status: 'ok', message: null };
+        }
+
+        return { status: 'error', message: getMessages().postalCode || null };
+    }
+
+    /**
+     * Validiert eine Telefonnummer. Nur für countryCode === "DE"
+     * relevant (siehe index.php, validateTelephone()).
+     *
+     * @param {string} value
+     * @param {string} countryCode
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function validateTelephone(value, countryCode) {
+        if (countryCode !== 'DE' || value.trim() === '') {
+            return { status: null, message: null };
+        }
+
+        var normalized = value.replace(/[^0-9+]/g, '');
+
+        if (/^(\+|00)[1-9][0-9]{6,14}$/.test(normalized)) {
+            return { status: 'ok', message: null };
+        }
+
+        return { status: 'error', message: getMessages().telephone || null };
+    }
+
+    /**
+     * Validiert eine URL. "http://" ergibt eine Warnung (HTTPS
+     * empfohlen), "https://" ist OK, eine ungültige URL ist ein
+     * Fehler (siehe index.php, validateUrl()).
+     *
+     * @param {string} value
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function validateUrl(value) {
+        if (value.trim() === '') {
+            return { status: null, message: null };
+        }
+
+        try {
+            new URL(value);
+        } catch (e) {
+            return { status: 'error', message: getMessages().urlInvalid || null };
+        }
+
+        if (value.indexOf('http://') === 0) {
+            return { status: 'warning', message: getMessages().urlHttpWarning || null };
+        }
+
+        return { status: 'ok', message: null };
+    }
+
+    /**
+     * Validiert eine E-Mail-Adresse (siehe index.php, validateEmail()).
+     *
+     * @param {string} value
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function validateEmail(value) {
+        if (value.trim() === '') {
+            return { status: null, message: null };
+        }
+
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            return { status: 'ok', message: null };
+        }
+
+        return { status: 'error', message: getMessages().emailInvalid || null };
+    }
+
+    /**
+     * Validiert ein Von/Bis-Zeitpaar des Öffnungszeiten-Widgets
+     * (siehe index.php, validateOpeningHoursTime()).
+     *
+     * @param {string} from
+     * @param {string} to
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function validateOpeningHoursTime(from, to) {
+        from = (from || '').trim();
+        to = (to || '').trim();
+
+        if (from === '' && to === '') {
+            return { status: null, message: null };
+        }
+
+        var pattern = /^[0-9]{2}:[0-9]{2}$/;
+
+        if (!pattern.test(from) || !pattern.test(to)) {
+            return { status: 'error', message: getMessages().openingHoursFormat || null };
+        }
+
+        if (from >= to) {
+            return { status: 'error', message: getMessages().openingHoursOrder || null };
+        }
+
+        return { status: 'ok', message: null };
+    }
+
+    /**
+     * Zeigt das Validierungsergebnis eines Feldes in dem dazugehörigen
+     * "<id>_feedback"-Element an (wird bei Bedarf direkt nach dem
+     * Eingabefeld erzeugt).
+     *
+     * @param {HTMLElement} input
+     * @param {{status: string|null, message: string|null}} result
+     */
+    function showFieldFeedback(input, result) {
+        var feedback = document.getElementById(input.id + '_feedback');
+
+        if (!feedback) {
+            feedback = document.createElement('span');
+            feedback.id = input.id + '_feedback';
+            input.insertAdjacentElement('afterend', feedback);
+        }
+
+        if (!result.status) {
+            feedback.textContent = '';
+            feedback.className = '';
+            return;
+        }
+
+        var icons = { ok: '✅', warning: '⚠️', error: '❌' };
+        feedback.textContent = (icons[result.status] || '') + (result.message ? ' ' + result.message : '');
+        feedback.className = 'schemaOrgData-feedback schemaOrgData-feedback--' + result.status;
+    }
+
+    /**
+     * Liest den aktuellen addressCountry-Wert für ein Feld mit
+     * data-country-field, Standard "DE" falls nicht vorhanden.
+     *
+     * @param {HTMLElement} input
+     * @returns {string}
+     */
+    function getCountryCode(input) {
+        var countryFieldId = input.getAttribute('data-country-field');
+        var countryField = countryFieldId ? document.getElementById(countryFieldId) : null;
+        return countryField ? countryField.value : 'DE';
+    }
+
+    /**
+     * Führt die zu input.dataset.validate passende Live-Validierung
+     * aus und zeigt das Ergebnis an. Bei "opening_hours" wird das
+     * über data-pair verknüpfte Gegenstück (Von/Bis) mit einbezogen.
+     *
+     * @param {HTMLElement} input
+     */
+    function runFieldValidation(input) {
+        var type = input.getAttribute('data-validate');
+        var result = { status: null, message: null };
+
+        switch (type) {
+            case 'url':
+                result = validateUrl(input.value);
+                break;
+            case 'email':
+                result = validateEmail(input.value);
+                break;
+            case 'postal_code':
+                result = validatePostalCode(input.value, getCountryCode(input));
+                break;
+            case 'telephone':
+                result = validateTelephone(input.value, getCountryCode(input));
+                break;
+            case 'opening_hours':
+                var pairInput = document.getElementById(input.getAttribute('data-pair'));
+                var isFrom = input.id.endsWith('_from');
+                var from = isFrom ? input.value : (pairInput ? pairInput.value : '');
+                var to = isFrom ? (pairInput ? pairInput.value : '') : input.value;
+                result = validateOpeningHoursTime(from, to);
+                break;
+            default:
+                return;
+        }
+
+        showFieldFeedback(input, result);
+    }
+
+    /**
+     * Aktiviert die Live-Validierung (bei "blur") für alle Felder mit
+     * data-validate innerhalb des Admin-Formulars.
+     */
+    function initFieldValidation() {
+        var inputs = document.querySelectorAll('[data-validate]');
+
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].addEventListener('blur', function (event) {
+                runFieldValidation(event.target);
+            });
+        }
+    }
+
+    /**
+     * Aktiviert die Type-Auswahl je Geltungsbereich: blendet die
+     * Formularfelder des gewählten Schema-Types ein und alle anderen
+     * aus (siehe index.php, renderScopeSection()).
+     */
+    function initTypeSwitcher() {
+        var selects = document.querySelectorAll('.schemaOrgData-type-select');
+
+        for (var i = 0; i < selects.length; i++) {
+            (function (select) {
+                var scope = select.closest('.schemaOrgData-scope');
+                if (!scope) {
+                    return;
+                }
+
+                select.addEventListener('change', function () {
+                    var groups = scope.querySelectorAll('.schemaOrgData-type-fields');
+                    for (var j = 0; j < groups.length; j++) {
+                        var visible = groups[j].getAttribute('data-schema-type') === select.value;
+                        groups[j].style.display = visible ? '' : 'none';
+                    }
+                });
+            })(selects[i]);
+        }
+    }
+
+    /**
+     * Rendert das Ergebnis von validateExtensionField() in das
+     * "<id>_feedback"-Element des Erweiterungsfelds.
+     *
+     * @param {HTMLElement} feedback
+     * @param {object} result Rückgabe von validateExtensionField()
+     */
+    function showExtensionFeedback(feedback, result) {
+        var html = '';
+
+        if (result.syntaxError) {
+            html = '<span class="schemaOrgData-feedback schemaOrgData-feedback--error">❌ ' + result.syntaxError + '</span>';
+        } else {
+            result.unknownProperties.forEach(function (property) {
+                html += '<span class="schemaOrgData-feedback schemaOrgData-feedback--warning">⚠️ '
+                    + (getMessages().unknownProperty || property).replace('{PARAM1}', property) + '</span>';
+            });
+
+            result.formatErrors.forEach(function (error) {
+                html += '<span class="schemaOrgData-feedback schemaOrgData-feedback--error">❌ '
+                    + (error.instancePath || '') + ' ' + error.message + '</span>';
+            });
+
+            if (html === '') {
+                html = '<span class="schemaOrgData-feedback schemaOrgData-feedback--ok">✅</span>';
+            }
+        }
+
+        feedback.innerHTML = html;
+    }
+
+    /**
+     * Aktiviert die Live-Validierung der Erweiterungsfelder
+     * (.schemaOrgData-extension-field): lädt das zugehörige Schema
+     * über data-schema-url und validiert bei "blur" mit
+     * validateExtensionField().
+     */
+    function initExtensionFieldValidation() {
+        var textareas = document.querySelectorAll('.schemaOrgData-extension-field');
+
+        for (var i = 0; i < textareas.length; i++) {
+            (function (textarea) {
+                var schema = null;
+                var schemaUrl = textarea.getAttribute('data-schema-url');
+
+                var validate = function () {
+                    var feedback = document.getElementById(textarea.id + '_feedback');
+                    if (feedback) {
+                        showExtensionFeedback(feedback, validateExtensionField(textarea.value, schema));
+                    }
+                };
+
+                if (schemaUrl) {
+                    fetch(schemaUrl)
+                        .then(function (response) { return response.json(); })
+                        .then(function (data) { schema = data; })
+                        .catch(function () { schema = null; });
+                }
+
+                textarea.addEventListener('blur', validate);
+            })(textareas[i]);
+        }
+    }
+
+    /**
+     * Initialisiert das gesamte Admin-Formular: Type-Umschaltung,
+     * Live-Validierung der Formularfelder sowie der
+     * Erweiterungsfelder. Wird von getConfig() nach DOMContentLoaded
+     * aufgerufen.
+     */
+    function initAdminForm() {
+        initTypeSwitcher();
+        initFieldValidation();
+        initExtensionFieldValidation();
+    }
+
     // Öffentliche API
     window.schemaOrgDataValidator = {
         validateExtensionField: validateExtensionField,
         checkSyntax: checkSyntax,
         checkUnknownProperties: checkUnknownProperties,
-        checkFormats: checkFormats
+        checkFormats: checkFormats,
+        validatePostalCode: validatePostalCode,
+        validateTelephone: validateTelephone,
+        validateUrl: validateUrl,
+        validateEmail: validateEmail,
+        validateOpeningHoursTime: validateOpeningHoursTime,
+        initAdminForm: initAdminForm
     };
 
 })(window);

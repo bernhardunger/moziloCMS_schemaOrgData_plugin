@@ -5,6 +5,16 @@ scope_global = Global
 scope_category = Category
 scope_page = Page
 
+info_text_global = This configuration is output on every page by default. Use the exclusion list below to exempt individual categories from the global output. If a category or page has the same schema type configured, the global output for that type is automatically suppressed.
+info_text_category = This configuration is output on all pages of this category, in addition to the global configuration. If this category has the same schema type configured as global, this configuration overrides the global output for that type.
+info_text_page = This configuration is output only on this single page, in addition to the global and category configuration. If this page has the same schema type configured as a more general level, this configuration overrides that level's output for that type.
+info_text_general = The generated JSON-LD is output invisibly in the page's &lt;head&gt; and does not appear in the visible page content. It can be checked with the official Schema.org validator at https://validator.schema.org.
+
+notice_type_collision = A configuration for type "{PARAM1}" also exists at the {PARAM2} level. Since this level is more specific, only its own output is used - the output of {PARAM2} for this type is automatically suppressed here.
+
+label_excluded_cats = Exceptions (categories without global output)
+description_excluded_cats = The global configuration is not output on the categories checked here (and their pages), e.g. imprint, privacy policy, sitemap.
+
 label_schema_type = Schema Type
 schema_type_none = – none –
 schema_type_accountingservice = Accounting Service
@@ -38,6 +48,7 @@ label_opening_hours = Opening Hours
 label_opening_hours_from = From
 label_opening_hours_to = To
 label_opening_hours_closed = closed
+hint_opening_hours = Please use 24-hour format (e.g. 09:00, 18:00). Empty fields mean
 
 label_faq_entries = Questions &amp; Answers
 label_faq_question = Question
@@ -48,11 +59,25 @@ label_faq_remove_entry = Remove
 label_extension_field = Additional Properties (JSON)
 description_extension_field = Additional schema.org properties as a JSON object. Merged with the form fields on save, form fields take precedence.
 
+label_optional = (optional)
+label_required_field = Required field
+label_select_placeholder = – please select –
+
 error_json_invalid = The entered JSON is invalid: {PARAM1}
 error_json_syntax = JSON syntax error at line {PARAM1}, column {PARAM2}
 warning_unknown_property = Unknown property "{PARAM1}" will be saved but is not defined in the schema.
 error_required_field = Required field "{PARAM1}" is missing.
 error_invalid_format = Field "{PARAM1}" has an invalid format.
+
+error_postal_code_format = The postal code must consist of 5 digits.
+error_telephone_format = The phone number does not match the expected format (e.g. +49 89 12345678).
+error_url_invalid = The entered URL is invalid.
+warning_url_http = HTTPS is recommended for production sites.
+error_email_invalid = The entered email address is invalid.
+error_opening_hours_format = Please use 24-hour format (e.g. 09:00, 18:00).
+error_opening_hours_order = The start time must be earlier than the end time.
+error_geo_latitude = Latitude must be between -90 and 90.
+error_geo_longitude = Longitude must be between -180 and 180.
 
 notice_existing_jsonld_title = A JSON-LD block was already found on this page.
 notice_existing_jsonld_text = Please choose how the plugin should proceed.
