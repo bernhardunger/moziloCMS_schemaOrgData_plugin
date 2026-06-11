@@ -7,18 +7,14 @@ use PHPUnit\Framework\TestCase;
 /***************************************************************
 *
 * Tests für validateTelephone() - Prüfung der Telefonnummer
-* (Normalisierung + vereinfachtes E.164-Format).
+* (Normalisierung + E.164-Format, länderunabhängig).
 *
 * Die Eingabe wird vor der Prüfung normalisiert
 * (preg_replace('/[^0-9+]/', '', $input)) und anschließend gegen
-* /^(\+|00)[1-9][0-9]{6,14}$/ geprüft - das E.164-Format selbst
-* ist länderunabhängig (siehe CLAUDE.md, Abschnitt "Telefon").
-*
-* Hinweis: validateTelephone() prüft - analog zu
-* validatePostalCode() - nur dann, wenn $countryCode === "DE" ist
-* (status === null = "nicht geprüft" für andere Länder bzw. ein
-* leeres, optionales Feld). Die Format-Tests rufen die Methode
-* daher mit "DE" auf, um die Prüfung zu aktivieren.
+* /^(\+|00)[1-9][0-9]{6,14}$/ geprüft. E.164 ist ein
+* internationaler Standard - die Prüfung gilt unabhängig vom
+* hinterlegten addressCountry für alle Länder (siehe CLAUDE.md,
+* Abschnitt "Telefon").
 *
 ***************************************************************/
 final class TelephoneValidatorTest extends TestCase {
@@ -79,5 +75,17 @@ final class TelephoneValidatorTest extends TestCase {
         // Leeres Feld ist optional - kein Fehler, sondern "nicht geprüft"
         $this->assertNull($result['status']);
         $this->assertNull($result['message']);
+    }
+
+    function testValidNumberOfOtherCountryIsOk(): void {
+        $result = $this->validate('+33 1 23 45 67 89', 'FR');
+
+        $this->assertSame('ok', $result['status']);
+    }
+
+    function testInvalidNumberIsErrorRegardlessOfCountry(): void {
+        $result = $this->validate('keine-nummer', 'FR');
+
+        $this->assertSame('error', $result['status']);
     }
 }

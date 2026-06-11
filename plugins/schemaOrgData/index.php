@@ -670,8 +670,8 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
-    * Validiert eine Telefonnummer. Nur für addressCountry = "DE"
-    * relevant. Die Eingabe wird zunächst normalisiert
+    * Validiert eine Telefonnummer (E.164, alle Länder). Die
+    * Eingabe wird zunächst normalisiert
     * (preg_replace('/[^0-9+]/', '', $input)) und dann gegen ein
     * vereinfachtes E.164-Format geprüft.
     *
@@ -679,7 +679,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validateTelephone(string $value, string $countryCode): array {
-        if($countryCode !== 'DE' or trim($value) === '') {
+        if(trim($value) === '') {
             return ['status' => null, 'message' => null];
         }
 

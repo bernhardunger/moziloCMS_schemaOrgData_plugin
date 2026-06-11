@@ -179,15 +179,15 @@
     }
 
     /**
-     * Validiert eine Telefonnummer. Nur für countryCode === "DE"
-     * relevant (siehe index.php, validateTelephone()).
+     * Validiert eine Telefonnummer (E.164, alle Länder). Siehe
+     * index.php, validateTelephone().
      *
      * @param {string} value
      * @param {string} countryCode
      * @returns {{status: string|null, message: string|null}}
      */
     function validateTelephone(value, countryCode) {
-        if (countryCode !== 'DE' || value.trim() === '') {
+        if (value.trim() === '') {
             return { status: null, message: null };
         }
 
