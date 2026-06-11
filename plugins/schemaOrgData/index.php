@@ -74,17 +74,65 @@ class schemaOrgData extends Plugin {
             $scopeConfigs['page'] = $this->loadScopeConfig('page', CAT_REQUEST, PAGE_REQUEST);
         }
 
-        // TODO: für jeden in $scopeConfigs vorkommenden Schema-Type:
-        //  - zugehöriges Schema aus schemas/{Type}.json laden (loadSchema)
-        //  - anhand "ui:scopes" prüfen, in welchen Ebenen der Type erlaubt ist
-        //  - Properties der zutreffenden Ebenen zusammenführen (mergeConfigs),
-        //    spezifischere Ebene überschreibt allgemeinere
-        //  - Erweiterungsfeld (zusätzliche Properties) einmischen,
-        //    Formular-Properties haben Vorrang
-        //  - mit buildJsonLdScript() einen <script>-Block erzeugen
-        //    und an $output anhängen
-        //  - Types die nur global sinnvoll sind (ui:scopes = ["global"])
-        //    nur einmal ausgeben, auch wenn mehrfach konfiguriert
+        // Ausschlussliste prüfen (nur global): die globale Ausgabe wird
+        // unterdrückt, wenn die aktive Kategorie in excluded_cats steht
+        // (siehe CLAUDE.md, Abschnitt "Ausschlussliste").
+        $excludedCats = !empty($scopeConfigs['global']['excluded_cats'])
+            ? explode(',', (string) $scopeConfigs['global']['excluded_cats'])
+            : [];
+
+        if(defined('CAT_REQUEST') and CAT_REQUEST and in_array(CAT_REQUEST, $excludedCats, true)) {
+            unset($scopeConfigs['global']);
+        }
+
+        // Verwaltungsdaten (_meta, excluded_cats) entfernen - übrig bleiben
+        // je Ebene nur noch die Schema-Type-Konfigurationen.
+        foreach($scopeConfigs as $scope => $config) {
+            unset($scopeConfigs[$scope]['_meta'], $scopeConfigs[$scope]['excluded_cats']);
+        }
+
+        // jsonld_mode prüfen: wurde bereits vorhandenes JSON-LD erkannt
+        // und für diese Ebene "Vorhandenes beibehalten" gewählt (Standard,
+        // solange der Admin keine Wahl getroffen hat), wird die eigene
+        // Ausgabe komplett unterdrückt (siehe loadScopeMeta/
+        // renderExistingJsonLdNotice sowie CLAUDE.md, Abschnitt
+        // "Verhalten bei vorhandenem JSON-LD").
+        foreach($scopeConfigs as $scope => $config) {
+            $scopeArgs = match($scope) {
+                'category' => [CAT_REQUEST],
+                'page'     => [CAT_REQUEST, PAGE_REQUEST],
+                default    => [],
+            };
+
+            $meta = $this->loadScopeMeta($scope, ...$scopeArgs);
+            if($meta['existing_jsonld'] and ($meta['jsonld_mode'] ?? 'override') === 'keep') {
+                unset($scopeConfigs[$scope]);
+            }
+        }
+
+        // Type-Kollision auflösen: ist derselbe Schema-Type auf mehreren
+        // Ebenen konfiguriert, gibt nur die spezifischere Ebene aus
+        // (Priorität Seite > Kategorie > Global).
+        $usedTypes = [];
+        foreach(['page', 'category', 'global'] as $scope) {
+            if(!isset($scopeConfigs[$scope])) {
+                continue;
+            }
+            foreach($scopeConfigs[$scope] as $type => $data) {
+                if(in_array($type, $usedTypes, true)) {
+                    unset($scopeConfigs[$scope][$type]);
+                } else {
+                    $usedTypes[] = $type;
+                }
+            }
+        }
+
+        // JSON-LD-Blöcke der verbleibenden Types ausgeben
+        foreach($scopeConfigs as $scope => $config) {
+            foreach($config as $type => $data) {
+                $output .= $this->buildJsonLdScript($type, $data);
+            }
+        }
 
         // Kollisionserkennung: vorhandenes JSON-LD im gerenderten HTML
         // erkennen und das Ergebnis je Geltungsebene in der jeweiligen
@@ -202,12 +250,78 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function buildJsonLdScript(string $type, array $data): string {
+        // Werte wurden beim Speichern mit htmlspecialchars() gesichert -
+        // vor dem JSON-Encode wieder in Klartext umwandeln.
+        $data = $this->decodeJsonLdValues($data);
+
+        // Leere Properties (null, '', []) entfernen, auch verschachtelt
+        // (z. B. unvollständige PostalAddress/GeoCoordinates-Angaben).
+        $data = $this->removeEmptyJsonLdProperties($data);
+
+        // Adresse, Geokoordinaten und Mitarbeiter als verschachtelte,
+        // typisierte schema.org-Objekte ausgeben.
+        foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person'] as $property => $nestedType) {
+            if(isset($data[$property]) and is_array($data[$property])) {
+                $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
+            }
+        }
+
         $jsonLd = array_merge(
             ['@context' => 'https://schema.org', '@type' => $type],
             $data
         );
+
         $json = json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        if($json === false) {
+            return '';
+        }
+
         return '<script type="application/ld+json">'."\n".$json."\n".'</script>'."\n";
+    }
+
+    /***************************************************************
+    *
+    * Wandelt HTML-Entities in allen String-Werten eines (verschachtelten)
+    * Arrays zurück in Klartext (Gegenstück zu htmlspecialchars(), siehe
+    * sanitizePostData()), bevor das Array als JSON-LD ausgegeben wird.
+    *
+    * @param array $data Properties eines Schema-Types
+    * @return array Properties mit dekodierten String-Werten
+    *
+    ***************************************************************/
+    private function decodeJsonLdValues(array $data): array {
+        foreach($data as $key => $value) {
+            if(is_array($value)) {
+                $data[$key] = $this->decodeJsonLdValues($value);
+            } elseif(is_string($value)) {
+                $data[$key] = htmlspecialchars_decode($value, ENT_QUOTES);
+            }
+        }
+        return $data;
+    }
+
+    /***************************************************************
+    *
+    * Entfernt rekursiv Properties mit leerem Wert (null, '' oder [])
+    * aus einem (verschachtelten) Array, damit sie nicht im JSON-LD
+    * ausgegeben werden.
+    *
+    * @param array $data Properties eines Schema-Types
+    * @return array Properties ohne leere Werte
+    *
+    ***************************************************************/
+    private function removeEmptyJsonLdProperties(array $data): array {
+        foreach($data as $key => $value) {
+            if(is_array($value)) {
+                $value = $this->removeEmptyJsonLdProperties($value);
+            }
+            if($value === null or $value === '' or $value === []) {
+                unset($data[$key]);
+            } else {
+                $data[$key] = $value;
+            }
+        }
+        return $data;
     }
 
     /***************************************************************
