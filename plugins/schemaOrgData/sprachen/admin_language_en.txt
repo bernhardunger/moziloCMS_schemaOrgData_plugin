@@ -78,6 +78,10 @@ error_opening_hours_format = Please use 24-hour format (e.g. 09:00, 18:00).
 error_opening_hours_order = The start time must be earlier than the end time.
 error_geo_latitude = Latitude must be between -90 and 90.
 error_geo_longitude = Longitude must be between -180 and 180.
+error_invalid_schema_type = The schema type "{PARAM1}" is not valid for this scope.
+
+notice_config_saved = The configuration has been saved.
+notice_config_save_error = The configuration could not be saved:
 
 notice_existing_jsonld_title = A JSON-LD block was already found on this page.
 notice_existing_jsonld_text = Please choose how the plugin should proceed.

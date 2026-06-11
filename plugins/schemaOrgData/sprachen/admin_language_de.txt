@@ -78,6 +78,10 @@ error_opening_hours_format = Bitte im 24-Stunden-Format eingeben (z. B. 09:00, 1
 error_opening_hours_order = Die Von-Zeit muss vor der Bis-Zeit liegen.
 error_geo_latitude = Der Breitengrad (latitude) muss zwischen -90 und 90 liegen.
 error_geo_longitude = Der Längengrad (longitude) muss zwischen -180 und 180 liegen.
+error_invalid_schema_type = Der Schema-Type "{PARAM1}" ist für diesen Geltungsbereich nicht gültig.
+
+notice_config_saved = Die Konfiguration wurde gespeichert.
+notice_config_save_error = Die Konfiguration konnte nicht gespeichert werden:
 
 notice_existing_jsonld_title = Auf dieser Seite wurde bereits ein JSON-LD-Block gefunden.
 notice_existing_jsonld_text = Bitte wähle, wie das Plugin vorgehen soll.

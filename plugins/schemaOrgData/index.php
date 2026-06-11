@@ -266,6 +266,40 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Entfernt aus einem Bezeichner (CAT_REQUEST/PAGE_REQUEST) alle
+    * Zeichen, die in conf-Dateinamen nicht erlaubt sind, bevor er
+    * in getScopeConfFile() verwendet wird (Schutz vor Path-Traversal,
+    * siehe CLAUDE.md, Abschnitt "Sicherheit").
+    *
+    * @return string bereinigter Bezeichner
+    *
+    ***************************************************************/
+    private function sanitizeScopeIdentifier(string $value): string {
+        return preg_replace('/[^a-zA-Z0-9_\-]/', '', $value);
+    }
+
+    /***************************************************************
+    *
+    * Liefert die (sanitierten) CAT_REQUEST/PAGE_REQUEST-Werte einer
+    * Geltungsebene, passend für getScopeConfFile().
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @return array{0: string|null, 1: string|null} [cat, page]
+    *
+    ***************************************************************/
+    private function resolveScopeIdentifiers(string $scope): array {
+        $cat = (defined('CAT_REQUEST') and CAT_REQUEST) ? $this->sanitizeScopeIdentifier((string) CAT_REQUEST) : null;
+        $page = (defined('PAGE_REQUEST') and PAGE_REQUEST) ? $this->sanitizeScopeIdentifier((string) PAGE_REQUEST) : null;
+
+        return match($scope) {
+            'category' => [$cat, null],
+            'page'     => [$cat, $page],
+            default    => [null, null],
+        };
+    }
+
+    /***************************************************************
+    *
     * Lädt die Kollisions-Metadaten einer Geltungsebene
     * (existing_jsonld-Flag und gewählter jsonld_mode).
     *
@@ -801,6 +835,42 @@ class schemaOrgData extends Plugin {
     /** Validiert geo.longitude (-180 .. 180), siehe validateGeoCoordinate(). */
     private function validateGeoLongitude(string $value): array {
         return $this->validateGeoCoordinate($value, -180, 180, 'error_geo_longitude');
+    }
+
+    /***************************************************************
+    *
+    * Validiert geo.latitude/geo.longitude im Erweiterungsfeld
+    * (siehe validateGeoLatitude/validateGeoLongitude). Andere
+    * Properties des Erweiterungsfelds werden serverseitig nicht
+    * geprüft (siehe CLAUDE.md, Abschnitt "Erweiterungsfeld").
+    *
+    * @param array $extensionData dekodierte Erweiterungsfeld-Daten
+    * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
+    *
+    ***************************************************************/
+    private function validateExtensionGeo(array $extensionData): array {
+        $errors = [];
+        $geo = $extensionData['geo'] ?? null;
+
+        if(!is_array($geo)) {
+            return $errors;
+        }
+
+        if(isset($geo['latitude'])) {
+            $result = $this->validateGeoLatitude((string) $geo['latitude']);
+            if($result['status'] === 'error') {
+                $errors[] = $result['message'];
+            }
+        }
+
+        if(isset($geo['longitude'])) {
+            $result = $this->validateGeoLongitude((string) $geo['longitude']);
+            if($result['status'] === 'error') {
+                $errors[] = $result['message'];
+            }
+        }
+
+        return $errors;
     }
 
     /***************************************************************
@@ -1496,6 +1566,463 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Validiert die Formularfelder eines Schema-Types serverseitig
+    * (Ergänzung zur clientseitigen Live-Validierung): prüft
+    * Pflichtfelder ("ui:required", inkl. PostalAddress und
+    * mainEntity) sowie die Feldvalidatoren validatePostalCode,
+    * validateTelephone, validateUrl, validateEmail und
+    * validateOpeningHoursTime.
+    *
+    * @param array $formData Formularfeld-Werte (schemaOrgData[scope][data])
+    * @param array $schema   aktives JSON-Schema (schemas/{Type}.json)
+    * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
+    *
+    ***************************************************************/
+    private function validateFormData(array $formData, array $schema): array {
+        $lang = $this->loadAdminLanguage();
+        $errors = [];
+
+        foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
+            $fieldSchema = $this->resolveSchemaRef($fieldSchema, $schema);
+            $widget = $fieldSchema['ui:widget'] ?? 'text';
+            $required = (bool) ($fieldSchema['ui:required'] ?? false);
+            $label = $lang->getLanguageValue($fieldSchema['ui:label'] ?? $name);
+            $value = $formData[$name] ?? null;
+
+            if($widget === 'postal_address') {
+                $errors = array_merge($errors, $this->validatePostalAddressData(
+                    is_array($value) ? $value : [], $fieldSchema, $required
+                ));
+                continue;
+            }
+
+            if($widget === 'opening_hours') {
+                $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+                $perDay = is_array($value) ? $value : [];
+                foreach($days as $day) {
+                    $result = $this->validateOpeningHoursTime(
+                        (string) ($perDay[$day]['from'] ?? ''),
+                        (string) ($perDay[$day]['to'] ?? '')
+                    );
+                    if($result['status'] === 'error') {
+                        $errors[] = $result['message'];
+                    }
+                }
+                continue;
+            }
+
+            if($widget === 'faq_list') {
+                if($required and !$this->hasFaqEntry(is_array($value) ? $value : [])) {
+                    $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                }
+                continue;
+            }
+
+            $stringValue = trim((string) ($value ?? ''));
+
+            if($stringValue === '') {
+                if($required) {
+                    $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                }
+                continue;
+            }
+
+            $format = $fieldSchema['format'] ?? null;
+            $result = match(true) {
+                $format === 'uri'     => $this->validateUrl($stringValue),
+                $format === 'email'   => $this->validateEmail($stringValue),
+                $name === 'telephone' => $this->validateTelephone($stringValue, (string) ($formData['address']['addressCountry'] ?? 'DE')),
+                default               => ['status' => null, 'message' => null],
+            };
+
+            if($result['status'] === 'error') {
+                $errors[] = $result['message'];
+            }
+        }
+
+        return $errors;
+    }
+
+    /***************************************************************
+    *
+    * Prüft, ob für eine PostalAddress Werte übermittelt wurden:
+    * mindestens ein Feld ohne "default" (also nicht addressCountry,
+    * das standardmäßig "DE" enthält) ist nicht leer.
+    *
+    ***************************************************************/
+    private function isAddressProvided(array $address, array $subProperties): bool {
+        foreach($subProperties as $subName => $subSchema) {
+            $subValue = trim((string) ($address[$subName] ?? ''));
+            if($subValue !== '' and !array_key_exists('default', $subSchema)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /***************************************************************
+    *
+    * Validiert die Pflichtfelder und das Format einer PostalAddress
+    * (siehe resolveSchemaRef/renderPostalAddressWidget).
+    * addressLocality/addressCountry sind nur dann Pflicht, wenn die
+    * Adresse insgesamt Pflicht ist oder mindestens ein anderes
+    * Adressfeld ausgefüllt wurde (siehe isAddressProvided).
+    *
+    * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
+    *
+    ***************************************************************/
+    private function validatePostalAddressData(array $address, array $fieldSchema, bool $addressRequired): array {
+        $lang = $this->loadAdminLanguage();
+        $errors = [];
+        $subProperties = $fieldSchema['properties'] ?? [];
+
+        if($addressRequired or $this->isAddressProvided($address, $subProperties)) {
+            foreach($subProperties as $subName => $subSchema) {
+                $subRequired = (bool) ($subSchema['ui:required'] ?? false);
+                $subValue = trim((string) ($address[$subName] ?? ''));
+
+                if($subRequired and $subValue === '') {
+                    $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
+                    $errors[] = $lang->getLanguageValue('error_required_field', $subLabel);
+                }
+            }
+        }
+
+        $postalCode = trim((string) ($address['postalCode'] ?? ''));
+        if($postalCode !== '') {
+            $countryCode = (string) ($address['addressCountry'] ?? 'DE');
+            $result = $this->validatePostalCode($postalCode, $countryCode);
+            if($result['status'] === 'error') {
+                $errors[] = $result['message'];
+            }
+        }
+
+        return $errors;
+    }
+
+    /***************************************************************
+    *
+    * Prüft, ob mindestens ein FAQ-Eintrag mit Frage UND Antwort
+    * vorhanden ist. Einträge ohne beides werden von
+    * sanitizePostData() verworfen (siehe renderFaqListWidget, das
+    * stets eine zusätzliche leere Zeile zum Anlegen anzeigt).
+    *
+    ***************************************************************/
+    private function hasFaqEntry(array $entries): bool {
+        foreach($entries as $entry) {
+            $question = trim((string) ($entry['name'] ?? ''));
+            $answer = trim((string) ($entry['acceptedAnswer']['text'] ?? ''));
+
+            if($question !== '' and $answer !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /***************************************************************
+    *
+    * Bereinigt die Formularfeld-Werte eines Schema-Types vor dem
+    * Speichern: nur im Schema bekannte Properties, Strings
+    * getrimmt und ohne HTML-Tags (strip_tags), Telefonnummern
+    * normalisiert (preg_replace('/[^0-9+]/', '', ...)),
+    * Öffnungszeiten als schema.org-Array (buildOpeningHoursArray)
+    * und FAQ-Einträge ohne vollständige Frage/Antwort entfernt.
+    *
+    * @param array $formData Formularfeld-Werte (schemaOrgData[scope][data])
+    * @param array $schema   aktives JSON-Schema (schemas/{Type}.json)
+    * @return array bereinigte Properties, bereit für serialize()
+    *
+    ***************************************************************/
+    private function sanitizePostData(array $formData, array $schema): array {
+        $result = [];
+
+        foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
+            if(!array_key_exists($name, $formData)) {
+                continue;
+            }
+
+            $fieldSchema = $this->resolveSchemaRef($fieldSchema, $schema);
+            $widget = $fieldSchema['ui:widget'] ?? 'text';
+            $value = $formData[$name];
+
+            if($widget === 'postal_address') {
+                $address = $this->sanitizeAddressData(is_array($value) ? $value : [], $fieldSchema);
+                if($address !== []) {
+                    $result[$name] = $address;
+                }
+                continue;
+            }
+
+            if($widget === 'opening_hours') {
+                $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+                $openingHours = $this->buildOpeningHoursArray(is_array($value) ? $value : [], $days);
+                if($openingHours !== []) {
+                    $result[$name] = $openingHours;
+                }
+                continue;
+            }
+
+            if($widget === 'faq_list') {
+                $entries = [];
+                foreach((is_array($value) ? $value : []) as $entry) {
+                    $question = trim(strip_tags((string) ($entry['name'] ?? '')));
+                    $answer = trim(strip_tags((string) ($entry['acceptedAnswer']['text'] ?? '')));
+
+                    if($question === '' or $answer === '') {
+                        continue;
+                    }
+
+                    $entries[] = ['name' => $question, 'acceptedAnswer' => ['text' => $answer]];
+                }
+                if($entries !== []) {
+                    $result[$name] = $entries;
+                }
+                continue;
+            }
+
+            if(!is_scalar($value)) {
+                continue;
+            }
+
+            $stringValue = trim(strip_tags((string) $value));
+            if($stringValue === '') {
+                continue;
+            }
+
+            if($name === 'telephone') {
+                $stringValue = preg_replace('/[^0-9+]/', '', $stringValue);
+            }
+
+            $result[$name] = $stringValue;
+        }
+
+        return $result;
+    }
+
+    /***************************************************************
+    *
+    * Bereinigt die Werte einer PostalAddress (siehe sanitizePostData).
+    * Wurde keine Adresse ausgefüllt (siehe isAddressProvided), wird
+    * ein leeres Array zurückgegeben - es wird also kein
+    * unvollständiges "address"-Property gespeichert, das nur den
+    * Default-Wert von addressCountry enthält.
+    *
+    * @return array bereinigte Adress-Properties, ggf. leer
+    *
+    ***************************************************************/
+    private function sanitizeAddressData(array $address, array $fieldSchema): array {
+        $subProperties = $fieldSchema['properties'] ?? [];
+
+        if(!$this->isAddressProvided($address, $subProperties)) {
+            return [];
+        }
+
+        $result = [];
+        foreach($subProperties as $subName => $subSchema) {
+            $subValue = trim(strip_tags((string) ($address[$subName] ?? '')));
+            if($subValue !== '') {
+                $result[$subName] = $subValue;
+            }
+        }
+
+        return $result;
+    }
+
+    /***************************************************************
+    *
+    * Validiert und speichert die Konfiguration einer Geltungsebene.
+    *
+    * Ablauf: Schema des gewählten Types laden, Formularfelder und
+    * Erweiterungsfeld validieren (validateFormData/json_decode/
+    * validateExtensionGeo). Bei Validierungsfehlern wird nicht
+    * gespeichert. Andernfalls werden die Formularfelder bereinigt
+    * (sanitizePostData) und mit dem Erweiterungsfeld zusammengeführt
+    * (Formular hat Vorrang, siehe CLAUDE.md "Erweiterungsfeld"),
+    * zusätzlich excluded_cats (nur global) und jsonld_mode
+    * übernommen und die conf-Datei geschrieben. Wurde kein Type
+    * gewählt ("- kein Schema -"), wird die bisherige
+    * Type-Konfiguration dieser Ebene entfernt, _meta und
+    * excluded_cats bleiben erhalten.
+    *
+    * @param string $scope    'global' | 'category' | 'page'
+    * @param array $postData  schemaOrgData[scope] aus $_POST
+    * @return array{success: bool, errors: string[]}
+    *
+    ***************************************************************/
+    private function saveConfig(string $scope, array $postData): array {
+        $lang = $this->loadAdminLanguage();
+        [$cat, $page] = $this->resolveScopeIdentifiers($scope);
+        $file = $this->getScopeConfFile($scope, $cat, $page);
+
+        if($file === null) {
+            return ['success' => false, 'errors' => []];
+        }
+
+        $existing = file_exists($file) ? (new Properties($file))->toArray() : [];
+        $config = ['_meta' => $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep']];
+
+        if($scope === 'global') {
+            $config['excluded_cats'] = $existing['excluded_cats'] ?? '';
+        }
+
+        $type = (string) ($postData['type'] ?? '');
+        $errors = [];
+
+        if($type !== '') {
+            $schema = $this->loadSchema($type);
+
+            if($schema === null or !in_array($scope, $schema['ui:scopes'] ?? [], true)) {
+                $errors[] = $lang->getLanguageValue('error_invalid_schema_type', $type);
+            } else {
+                $formData = is_array($postData['data'] ?? null) ? $postData['data'] : [];
+                $extensionRaw = trim((string) ($postData['extension'][$type] ?? ''));
+                $extensionData = [];
+
+                $errors = $this->validateFormData($formData, $schema);
+
+                if($extensionRaw !== '') {
+                    $decoded = json_decode($extensionRaw, true);
+
+                    if(json_last_error() !== JSON_ERROR_NONE or !is_array($decoded)) {
+                        $errors[] = $lang->getLanguageValue('error_json_invalid', json_last_error_msg());
+                    } else {
+                        $extensionData = $decoded;
+                        $errors = array_merge($errors, $this->validateExtensionGeo($extensionData));
+                    }
+                }
+
+                if($errors === []) {
+                    $config[$type] = array_merge($extensionData, $this->sanitizePostData($formData, $schema));
+                }
+            }
+        }
+
+        if($errors !== []) {
+            return ['success' => false, 'errors' => $errors];
+        }
+
+        if($scope === 'global') {
+            $excludedCats = [];
+            foreach((array) ($postData['excluded_cats'] ?? []) as $excludedCat) {
+                $excludedCat = $this->sanitizeScopeIdentifier(trim((string) $excludedCat));
+                if($excludedCat !== '') {
+                    $excludedCats[] = $excludedCat;
+                }
+            }
+            $config['excluded_cats'] = implode(',', $excludedCats);
+        }
+
+        $jsonldMode = $_POST['schemaOrgData_jsonld_mode_'.$scope] ?? null;
+        if(in_array($jsonldMode, ['keep', 'override'], true)) {
+            $config['_meta']['jsonld_mode'] = $jsonldMode;
+        }
+
+        file_put_contents($file, '<?php die(); ?>'."\n".serialize($config));
+
+        return ['success' => true, 'errors' => []];
+    }
+
+    /***************************************************************
+    *
+    * Löscht die conf-Datei einer Geltungsebene vollständig - damit
+    * entfallen sowohl die Schema-Type-Konfiguration als auch die
+    * Meta-Daten (_meta, existing_jsonld/jsonld_mode) dieser Ebene.
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @return array{success: bool, errors: string[]}
+    *
+    ***************************************************************/
+    private function deleteConfig(string $scope): array {
+        [$cat, $page] = $this->resolveScopeIdentifiers($scope);
+        $file = $this->getScopeConfFile($scope, $cat, $page);
+
+        if($file === null) {
+            return ['success' => false, 'errors' => []];
+        }
+
+        if(file_exists($file)) {
+            unlink($file);
+        }
+
+        return ['success' => true, 'errors' => []];
+    }
+
+    /***************************************************************
+    *
+    * Verarbeitet die $_POST-Daten des Admin-Formulars. Für jede
+    * übermittelte Geltungsebene (schemaOrgData[global|category|page],
+    * siehe renderScopeSection) wird je nach Flag
+    * "schemaOrgData_delete_{scope}" deleteConfig() oder saveConfig()
+    * aufgerufen.
+    *
+    * Wird von getConfig() aufgerufen, bevor das Formular gerendert
+    * wird, sofern $_POST nicht leer ist.
+    *
+    * @return array{success: bool, errors: string[]}
+    *
+    ***************************************************************/
+    private function handlePostRequest(): array {
+        $scopes = $_POST['schemaOrgData'] ?? null;
+
+        if(!is_array($scopes)) {
+            return ['success' => true, 'errors' => []];
+        }
+
+        $success = true;
+        $errors = [];
+
+        foreach(['global', 'category', 'page'] as $scope) {
+            if(!isset($scopes[$scope]) or !is_array($scopes[$scope])) {
+                continue;
+            }
+
+            $result = !empty($_POST['schemaOrgData_delete_'.$scope])
+                ? $this->deleteConfig($scope)
+                : $this->saveConfig($scope, $scopes[$scope]);
+
+            $success = $success and $result['success'];
+            $errors = array_merge($errors, $result['errors']);
+        }
+
+        return ['success' => $success, 'errors' => $errors];
+    }
+
+    /***************************************************************
+    *
+    * Rendert das Ergebnis von handlePostRequest() als Hinweisblock
+    * (Erfolg oder Fehlerliste) oberhalb der Geltungsebenen.
+    *
+    * @param array{success: bool, errors: string[]} $result
+    * @return string HTML-Snippet
+    *
+    ***************************************************************/
+    private function renderSaveResultNotice(array $result): string {
+        $lang = $this->loadAdminLanguage();
+
+        if($result['success']) {
+            return '<div class="schemaOrgData-notice schemaOrgData-notice--success">'
+                .$lang->getLanguageHtml('notice_config_saved')
+                .'</div>'."\n";
+        }
+
+        $html = '<div class="schemaOrgData-notice schemaOrgData-notice--error">'."\n";
+        $html .= '<p>'.$lang->getLanguageHtml('notice_config_save_error').'</p>'."\n";
+        $html .= '<ul>'."\n";
+
+        foreach($result['errors'] as $error) {
+            $html .= '<li>'.htmlspecialchars($error, ENT_QUOTES, CHARSET).'</li>'."\n";
+        }
+
+        $html .= '</ul></div>'."\n";
+
+        return $html;
+    }
+
+    /***************************************************************
+    *
     * Liefert das CSS für das Admin-Formular (Feedback-Farben,
     * Pflichtfeld-Kennzeichnung, Öffnungszeiten-Tabelle, FAQ-Liste
     * usw.). Wird in getConfig() in einen <style>-Block eingebettet,
@@ -1507,6 +2034,9 @@ class schemaOrgData extends Plugin {
         return '
 .schemaOrgData-admin .schemaOrgData-info { background: #eef6ff; border: 1px solid #b6d4f5; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--info { background: #fff8e1; border: 1px solid #ffe082; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
+.schemaOrgData-admin .schemaOrgData-notice--success { background: #e8f5e9; border: 1px solid #a5d6a7; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
+.schemaOrgData-admin .schemaOrgData-notice--error { background: #fdecea; border: 1px solid #f5c6c2; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
+.schemaOrgData-admin .schemaOrgData-notice--error ul { margin: .25em 0 0; padding-left: 1.5em; }
 .schemaOrgData-admin .schemaOrgData-required { color: #c0392b; font-weight: bold; }
 .schemaOrgData-admin .schemaOrgData-optional { color: #888; font-size: .85em; }
 .schemaOrgData-admin .schemaOrgData-fieldset { border: 1px solid #ddd; border-radius: 4px; padding: 1em; margin-bottom: 1em; }
@@ -1532,16 +2062,24 @@ class schemaOrgData extends Plugin {
     *
     * Rendert das vollständige, schema-getriebene Konfigurations-
     * formular (Geltungsbereiche Global / Kategorie / Seite) als
-    * eigenständiges HTML über "--template~~". Die Persistenz
-    * (Auswertung von $_POST und Speichern in conf/*.conf.php) ist
-    * nicht Teil dieser Methode und wird gesondert implementiert.
+    * eigenständiges HTML über "--template~~". Enthält $_POST-Daten
+    * (Formular wurde abgeschickt), werden diese zuerst über
+    * handlePostRequest() validiert und gespeichert; das Ergebnis
+    * wird als Hinweisblock (renderSaveResultNotice()) oberhalb der
+    * Geltungsbereiche ausgegeben.
     *
     ***************************************************************/
     function getConfig(): array {
         $lang = $this->loadAdminLanguage();
 
+        $saveResult = ($_POST !== []) ? $this->handlePostRequest() : null;
+
         $html = '<style>'.$this->getAdminCss().'</style>'."\n";
         $html .= '<div class="schemaOrgData-admin">'."\n";
+
+        if($saveResult !== null) {
+            $html .= $this->renderSaveResultNotice($saveResult);
+        }
 
         $html .= $this->renderScopeSection('global', null, null);
 
