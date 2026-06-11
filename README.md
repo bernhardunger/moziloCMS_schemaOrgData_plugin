@@ -25,7 +25,7 @@ Das Plugin ist **vollständig eigenständig** und setzt kein anderes Plugin (z. 
 - Generisches `PostalAddress`-Schema nach schema.org (international)
 - Öffnungszeiten-Widget
 - **Erweiterungsfeld** (JSON-Textarea) für zusätzliche Properties mit Live-Validierung
-- Validierung via **AJV.js** gegen eigene JSON-Schema-Dateien (client-side)
+- Validierung via **AJV.js** gegen eigene JSON-Schema-Dateien (client-side) — [AJV.js](https://ajv.js.org) (Another JSON Validator) ist eine weit verbreitete JavaScript-Bibliothek zur Validierung von JSON-Daten gegen JSON-Schema-Definitionen; wird lokal ausgeliefert, kein CDN
 - Serverside-Absicherung via `json_decode()` vor dem Speichern
 - Mehrsprachige Labels via `$language->getLanguageValue()` und `$admin_lang->getLanguageValue()`
 - Neuen Schema-Type hinzufügen = neue `.json`-Datei in `schemas/`, kein PHP nötig
@@ -37,7 +37,7 @@ Das Plugin ist **vollständig eigenständig** und setzt kein anderes Plugin (z. 
 | Type | Beschreibung | Geltungsbereich |
 |---|---|---|
 | `LocalBusiness` | Lokales Unternehmen | Global / Kategorie |
-| `ProfessionalService` | Dienstleister (z. B. Steuerkanzlei) | Global / Kategorie |
+| `ProfessionalService` | Dienstleister (z. B. Anwaltskanzlei, Arztpraxis) | Global / Kategorie |
 | `Organization` | Organisation / Firma | Global |
 | `Person` | Einzelperson | Global / Kategorie |
 | `WebSite` | Website-Metadaten | Global |
@@ -195,13 +195,13 @@ Das Plugin gibt das JSON-LD als `<script>`-Tag im `<head>` aus:
 {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
-  "name": "Steuerkanzlei Hader",
-  "url": "https://steuerkanzlei-hader.de",
+  "name": "Muster GmbH",
+  "url": "https://www.example.com",
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "Musterstraße 12",
-    "postalCode": "80331",
-    "addressLocality": "München",
+    "postalCode": "12345",
+    "addressLocality": "Musterstadt",
     "addressCountry": "DE"
   },
   "openingHours": ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
@@ -216,45 +216,54 @@ Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global + Kateg
 
 ---
 
-## Testing
+## Tests
 
-Das Plugin verwendet **PHPUnit 11.x** für Unit-Tests. Da moziloCMS kein eigenes Test-Framework mitbringt, werden CMS-Abhängigkeiten (Konstanten, Basisklassen) im Bootstrap gemockt.
-
-### Voraussetzungen
+Das Plugin verwendet PHPUnit 11.x für Unit-Tests.
 
 ```bash
 composer install
-```
-
-### Tests ausführen
-
-```bash
 ./vendor/bin/phpunit
 ```
 
-### Teststruktur
+> `vendor/` ist in `.gitignore` — PHPUnit wird nicht ins Repository eingecheckt.
+
+---
+
+## Steuerung der globalen Ausgabe
+
+Die globale Konfiguration (`_global.conf.php`) wird standardmäßig auf jeder Seite ausgegeben. Dieses Verhalten kann gezielt eingeschränkt werden.
+
+### Ausschlussliste
+
+Im Admin-Bereich kann der Nutzer Kategorien definieren, auf denen die globale Ausgabe **nicht** erfolgt — z. B. Impressum, Datenschutz, Sitemap:
 
 ```
-tests/
-├── bootstrap.php              # moziloCMS-Konstanten und Basisklassen mocken
-├── JsonLdBuilderTest.php      # buildJsonLdScript() — korrektes JSON-LD Output
-├── ScopeConfigTest.php        # loadScopeConfig() / mergeConfigs() — Vererbungslogik
-├── SchemaValidatorTest.php    # PHP-seitige Schema-Validierung
-├── ImportParserTest.php       # JSON-LD Import-Parser
-└── CollisionDetectorTest.php  # Kollisionserkennung existing_jsonld-Flag
+Globale Ausgabe deaktivieren für:
+[ ] impressum
+[ ] datenschutz
+[ ] sitemap
 ```
 
-### Abgedeckte Testfälle
+### Type-Kollision
 
-| Test | Was wird geprüft |
-|---|---|
-| `ScopeConfigTest` | Vererbungslogik Global → Kategorie → Seite |
-| `JsonLdBuilderTest` | Korrektes JSON-LD Output inkl. `@context`, `@type`, `PostalAddress` |
-| `SchemaValidatorTest` | Pflichtfelder, bekannte/unbekannte Properties |
-| `ImportParserTest` | Bekannte Properties → Formular, unbekannte → Erweiterungsfeld |
-| `CollisionDetectorTest` | Erkennung vorhandener `<script type="application/ld+json">`-Blöcke |
+Ist für eine Kategorie oder Seite derselbe Schema-Type wie in der globalen Konfiguration hinterlegt, gibt **nur die spezifischere Ebene** aus. Die globale Ausgabe wird in diesem Fall automatisch unterdrückt.
 
-> **Hinweis:** `vendor/` ist in `.gitignore` — PHPUnit wird nicht ins Repository eingecheckt.
+Beispiel: `LocalBusiness` global + `LocalBusiness` auf Kategorie `kontakt` → auf der Kontakt-Seite wird nur der Kategorie-Block ausgegeben.
+
+### Info-Block im Admin
+
+Der Admin-Bereich zeigt oberhalb der Konfigurationsfelder einen allgemein verständlichen Info-Block der das Ausgabeverhalten für den aktuellen Geltungsbereich erklärt — ohne dass der Nutzer die Dokumentation lesen muss:
+
+> **ℹ️ Wie funktioniert die Ausgabe?**
+>
+> Strukturierte Daten werden als unsichtbarer JSON-LD-Block im Seitenkopf (`<head>`) ausgegeben — für Besucher nicht sichtbar, aber von Suchmaschinen wie Google ausgewertet.
+>
+> Es gelten folgende Prioritäten:
+> - **Global** — wird auf allen Seiten ausgegeben, sofern nicht ausgeschlossen
+> - **Kategorie** — gilt für alle Seiten dieser Kategorie; bei gleichem Type überschreibt sie die globale Ausgabe
+> - **Seite** — gilt nur für diese Seite; bei gleichem Type überschreibt sie Kategorie und Global
+>
+> Tipp: Das erzeugte JSON-LD kann unter [https://validator.schema.org](https://validator.schema.org) geprüft werden.
 
 ---
 
