@@ -503,7 +503,11 @@ class schemaOrgData extends Plugin {
             mkdir($confDir, 0755, true);
         }
 
-        file_put_contents($file, '<?php die(); ?>'."\n".serialize($config));
+        // Schreibfehler protokollieren — saveScopeMeta hat kein Rückgabe-Array,
+        // daher error_log als stilles Fallback
+        if (file_put_contents($file, '<?php die(); ?>'."\n".serialize($config)) === false) {
+            error_log('schemaOrgData: Konnte Metadaten nicht schreiben: ' . $file);
+        }
     }
 
     /***************************************************************
@@ -1674,15 +1678,16 @@ class schemaOrgData extends Plugin {
         global $CatPage;
         $lang = $this->loadAdminLanguage();
 
-        if (!isset($CatPage) || !is_object($CatPage)
-            || !defined('PLUGINADMIN') || !defined('ACTION')) {
+        if (!isset($CatPage) || !is_object($CatPage)) {
             return '';
         }
 
-        // Basis-URL für alle Navigations-Links (wie MetaKeywordsDescription)
+        // Basis-URL: aktuelle GET-Parameter übernehmen, Plugin-eigene entfernen
+        $baseParams = $_GET;
+        unset($baseParams['schemaOrgData_cat'], $baseParams['schemaOrgData_page']);
         $adminBase = URL_BASE . ADMIN_DIR_NAME . '/index.php'
-            . '?pluginadmin=' . urlencode(PLUGINADMIN)
-            . '&action='      . urlencode(ACTION);
+            . (empty($baseParams) ? '' : '?' . http_build_query($baseParams));
+        $sep = empty($baseParams) ? '?' : '&';
 
         $cats = $CatPage->get_CatArray(false, false, [EXT_PAGE, EXT_HIDDEN]);
 
@@ -1699,7 +1704,7 @@ class schemaOrgData extends Plugin {
 
         // Link je Kategorie
         foreach ($cats as $cat) {
-            $catUrl    = $adminBase . '&schemaOrgData_cat=' . urlencode($cat);
+            $catUrl    = $adminBase . $sep . 'schemaOrgData_cat=' . urlencode($cat);
             $activeCat = ($cat === $selectedCat && $selectedPage === null)
                 ? ' schemaOrgData-scope-selector__link--active' : '';
             $catLabel  = htmlspecialchars(
@@ -2165,7 +2170,13 @@ class schemaOrgData extends Plugin {
             mkdir($confDir, 0755, true);
         }
 
-        file_put_contents($file, '<?php die(); ?>'."\n".serialize($config));
+        $written = file_put_contents($file, '<?php die(); ?>'."\n".serialize($config));
+
+        if ($written === false) {
+            return ['success' => false, 'errors' => [
+                $lang->getLanguageValue('error_config_write_failed')
+            ]];
+        }
 
         return ['success' => true, 'errors' => []];
     }

@@ -84,6 +84,7 @@ error_invalid_schema_type = The schema type "{PARAM1}" is not valid for this sco
 
 notice_config_saved = The configuration has been saved.
 notice_config_save_error = The configuration could not be saved:
+error_config_write_failed = The configuration file could not be written. Please check write permissions on the conf/ directory.
 
 notice_existing_jsonld_title = A JSON-LD block was already found on this page.
 notice_existing_jsonld_text = Please choose how the plugin should proceed.
