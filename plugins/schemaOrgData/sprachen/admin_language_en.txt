@@ -19,13 +19,17 @@ description_excluded_cats = The global configuration is not output on the catego
 
 label_schema_type = Schema Type
 schema_type_none = – none –
-schema_type_accountingservice = Accounting Service
-schema_type_localbusiness = Local Business
-schema_type_professionalservice = Professional Service
-schema_type_organization = Organization
-schema_type_person = Person
-schema_type_website = Website
-schema_type_faqpage = FAQ Page
+schema_type_localbusiness = 📍 Local Business (LocalBusiness)
+schema_type_organization = 🏢 Organization / Brand (Organization)
+schema_type_professionalservice = 🛠️ Professional Service (ProfessionalService)
+schema_type_accountingservice = 🧾 Accounting Service (AccountingService)
+schema_type_person = 👤 Person / Portfolio (Person)
+schema_type_website = 🌐 Website (WebSite)
+schema_type_faqpage = ❓ FAQ Page (FAQPage)
+schema_type_legalservice = ⚖️ Law Firm / Legal Service (LegalService)
+schema_type_medicalbusiness = 🩺 Medical Practice / Health (MedicalBusiness)
+schema_type_article = 📰 Article / Blog Post (Article)
+schema_type_jobposting = 💼 Job Posting (JobPosting)
 
 label_name = Name
 label_description = Description
@@ -38,6 +42,15 @@ label_legal_name = Legal Name
 label_job_title = Job Title
 label_in_language = Language (e.g. en-US)
 label_price_range = Price Range
+
+label_headline = Headline
+label_author = Author
+label_date_published = Date Published
+label_date_modified = Date Modified
+label_title = Job Title
+label_date_posted = Date Posted
+label_valid_through = Application Deadline
+label_employment_type = Employment Type
 
 label_address = Address
 label_street_address = Street Address

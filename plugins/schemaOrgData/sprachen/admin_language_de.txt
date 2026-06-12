@@ -19,13 +19,17 @@ description_excluded_cats = Auf den hier angehakten Kategorien (und deren Seiten
 
 label_schema_type = Schema-Type
 schema_type_none = – kein Schema –
-schema_type_accountingservice = Steuerberatung / Buchhaltung
-schema_type_localbusiness = Lokales Unternehmen
-schema_type_professionalservice = Dienstleister
-schema_type_organization = Organisation
-schema_type_person = Person
-schema_type_website = Website
-schema_type_faqpage = Häufig gestellte Fragen (FAQ)
+schema_type_localbusiness = 📍 Lokales Geschäft / Betrieb (LocalBusiness)
+schema_type_organization = 🏢 Unternehmen / Marke (Organization)
+schema_type_professionalservice = 🛠️ Dienstleister / Mobiles Gewerbe (ProfessionalService)
+schema_type_accountingservice = 🧾 Steuerberatung / Buchhaltung (AccountingService)
+schema_type_person = 👤 Einzelperson / Portfolio (Person)
+schema_type_website = 🌐 Website (WebSite)
+schema_type_faqpage = ❓ FAQ-Seite (FAQPage)
+schema_type_legalservice = ⚖️ Kanzlei / Rechtliche Beratung (LegalService)
+schema_type_medicalbusiness = 🩺 Arztpraxis / Gesundheit (MedicalBusiness)
+schema_type_article = 📰 Artikel / Blogbeitrag (Article)
+schema_type_jobposting = 💼 Stellenanzeige (JobPosting)
 
 label_name = Name
 label_description = Beschreibung
@@ -38,6 +42,15 @@ label_legal_name = Rechtlicher Name
 label_job_title = Position / Berufsbezeichnung
 label_in_language = Sprache (z. B. de-DE)
 label_price_range = Preisklasse
+
+label_headline = Überschrift
+label_author = Autor
+label_date_published = Veröffentlichungsdatum
+label_date_modified = Änderungsdatum
+label_title = Stellentitel
+label_date_posted = Ausgeschrieben am
+label_valid_through = Bewerbungsfrist
+label_employment_type = Beschäftigungsart
 
 label_address = Adresse
 label_street_address = Straße und Hausnummer

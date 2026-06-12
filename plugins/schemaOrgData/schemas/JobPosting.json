@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.org/JobPosting",
+  "title": "JobPosting",
+  "type": "object",
+  "ui:typeLabel": "schema_type_jobposting",
+  "ui:scopes": ["page"],
+  "required": ["title", "description"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "ui:widget": "text",
+      "ui:label": "label_title",
+      "ui:required": true
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "ui:widget": "textarea",
+      "ui:label": "label_description",
+      "ui:required": true
+    },
+    "datePosted": {
+      "type": "string",
+      "ui:widget": "text",
+      "ui:label": "label_date_posted",
+      "ui:placeholder": "YYYY-MM-DD",
+      "ui:required": false
+    },
+    "validThrough": {
+      "type": "string",
+      "ui:widget": "text",
+      "ui:label": "label_valid_through",
+      "ui:placeholder": "YYYY-MM-DD",
+      "ui:required": false
+    },
+    "employmentType": {
+      "type": "string",
+      "ui:widget": "select",
+      "ui:label": "label_employment_type",
+      "ui:required": false,
+      "ui:options": ["FULL_TIME", "PART_TIME", "CONTRACTOR", "TEMPORARY", "INTERN", "VOLUNTEER", "OTHER"]
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "ui:widget": "text",
+      "ui:label": "label_url",
+      "ui:placeholder": "https://www.beispiel.de/jobs/stelle",
+      "ui:required": false
+    }
+  }
+}

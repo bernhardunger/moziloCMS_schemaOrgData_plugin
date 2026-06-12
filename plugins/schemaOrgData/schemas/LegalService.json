@@ -1,0 +1,172 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.org/LegalService",
+  "title": "LegalService",
+  "type": "object",
+  "ui:typeLabel": "schema_type_legalservice",
+  "ui:scopes": ["global", "category"],
+  "required": ["name", "url"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "ui:widget": "text",
+      "ui:label": "label_name",
+      "ui:required": true
+    },
+    "description": {
+      "type": "string",
+      "ui:widget": "textarea",
+      "ui:label": "label_description",
+      "ui:required": false
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "ui:widget": "text",
+      "ui:label": "label_url",
+      "ui:placeholder": "https://www.beispiel.de",
+      "ui:required": true
+    },
+    "telephone": {
+      "type": "string",
+      "ui:widget": "text",
+      "ui:label": "label_telephone",
+      "ui:placeholder": "+49 89 12345678",
+      "ui:required": false
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "ui:widget": "text",
+      "ui:label": "label_email",
+      "ui:placeholder": "info@beispiel.de",
+      "ui:required": false
+    },
+    "image": {
+      "type": "string",
+      "format": "uri",
+      "ui:widget": "text",
+      "ui:label": "label_image",
+      "ui:placeholder": "https://www.beispiel.de/bild.jpg",
+      "ui:required": false
+    },
+    "address": {
+      "$ref": "#/definitions/PostalAddress"
+    },
+    "openingHours": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "ui:widget": "opening_hours",
+      "ui:label": "label_opening_hours",
+      "ui:required": false,
+      "ui:days": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+      "ui:dayLabelKeys": {
+        "Mo": "weekday_monday",
+        "Tu": "weekday_tuesday",
+        "We": "weekday_wednesday",
+        "Th": "weekday_thursday",
+        "Fr": "weekday_friday",
+        "Sa": "weekday_saturday",
+        "Su": "weekday_sunday"
+      }
+    }
+  },
+  "definitions": {
+    "PostalAddress": {
+      "$id": "https://schema.org/PostalAddress",
+      "title": "PostalAddress",
+      "type": "object",
+      "ui:widget": "postal_address",
+      "ui:label": "label_address",
+      "ui:required": false,
+      "required": ["addressLocality", "addressCountry"],
+      "properties": {
+        "streetAddress": {
+          "type": "string",
+          "ui:widget": "text",
+          "ui:label": "label_street_address",
+          "ui:required": false
+        },
+        "postalCode": {
+          "type": "string",
+          "ui:widget": "text",
+          "ui:label": "label_postal_code",
+          "ui:required": false
+        },
+        "addressLocality": {
+          "type": "string",
+          "ui:widget": "text",
+          "ui:label": "label_address_locality",
+          "ui:required": true
+        },
+        "addressRegion": {
+          "type": "string",
+          "ui:widget": "text",
+          "ui:label": "label_address_region",
+          "ui:required": false
+        },
+        "addressCountry": {
+          "type": "string",
+          "ui:widget": "select",
+          "ui:label": "label_address_country",
+          "ui:required": true,
+          "default": "DE",
+          "enum": [
+            "DE", "AT", "CH", "LI", "FR", "IT", "ES", "PT",
+            "NL", "BE", "LU", "PL", "CZ", "DK", "SE", "NO",
+            "FI", "GB", "IE", "US"
+          ],
+          "ui:enumLabels": {
+            "de": {
+              "DE": "Deutschland",
+              "AT": "Österreich",
+              "CH": "Schweiz",
+              "LI": "Liechtenstein",
+              "FR": "Frankreich",
+              "IT": "Italien",
+              "ES": "Spanien",
+              "PT": "Portugal",
+              "NL": "Niederlande",
+              "BE": "Belgien",
+              "LU": "Luxemburg",
+              "PL": "Polen",
+              "CZ": "Tschechien",
+              "DK": "Dänemark",
+              "SE": "Schweden",
+              "NO": "Norwegen",
+              "FI": "Finnland",
+              "GB": "Vereinigtes Königreich",
+              "IE": "Irland",
+              "US": "Vereinigte Staaten"
+            },
+            "en": {
+              "DE": "Germany",
+              "AT": "Austria",
+              "CH": "Switzerland",
+              "LI": "Liechtenstein",
+              "FR": "France",
+              "IT": "Italy",
+              "ES": "Spain",
+              "PT": "Portugal",
+              "NL": "Netherlands",
+              "BE": "Belgium",
+              "LU": "Luxembourg",
+              "PL": "Poland",
+              "CZ": "Czechia",
+              "DK": "Denmark",
+              "SE": "Sweden",
+              "NO": "Norway",
+              "FI": "Finland",
+              "GB": "United Kingdom",
+              "IE": "Ireland",
+              "US": "United States"
+            }
+          }
+        }
+      }
+    }
+  }
+}

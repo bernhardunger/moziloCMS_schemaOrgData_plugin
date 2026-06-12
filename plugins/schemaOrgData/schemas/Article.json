@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.org/Article",
+  "title": "Article",
+  "type": "object",
+  "ui:typeLabel": "schema_type_article",
+  "ui:scopes": ["category", "page"],
+  "required": ["headline"],
+  "properties": {
+    "headline": {
+      "type": "string",
+      "minLength": 1,
+      "ui:widget": "text",
+      "ui:label": "label_headline",
+      "ui:required": true
+    },
+    "description": {
+      "type": "string",
+      "ui:widget": "textarea",
+      "ui:label": "label_description",
+      "ui:required": false
+    },
+    "image": {
+      "type": "string",
+      "format": "uri",
+      "ui:widget": "text",
+      "ui:label": "label_image",
+      "ui:placeholder": "https://www.beispiel.de/bild.jpg",
+      "ui:required": false
+    },
+    "author": {
+      "type": "string",
+      "ui:widget": "text",
+      "ui:label": "label_author",
+      "ui:placeholder": "Max Mustermann",
+      "ui:required": false
+    },
+    "datePublished": {
+      "type": "string",
+      "ui:widget": "text",
+      "ui:label": "label_date_published",
+      "ui:placeholder": "YYYY-MM-DD",
+      "ui:required": false
+    },
+    "dateModified": {
+      "type": "string",
+      "ui:widget": "text",
+      "ui:label": "label_date_modified",
+      "ui:placeholder": "YYYY-MM-DD",
+      "ui:required": false
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "ui:widget": "text",
+      "ui:label": "label_url",
+      "ui:placeholder": "https://www.beispiel.de/artikel",
+      "ui:required": false
+    }
+  }
+}
