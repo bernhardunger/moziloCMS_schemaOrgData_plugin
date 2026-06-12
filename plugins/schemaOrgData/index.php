@@ -359,7 +359,34 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function detectExistingJsonLd(string $html): bool {
-        return (bool) preg_match('#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i', $html);
+        // Bestehend: Prüfung im Content-Bereich (unveränderter Regex-Block)
+        if((bool) preg_match('#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i', $html)) {
+            return true;
+        }
+        // Neu: Prüfung im aktiven Website-Template
+        return $this->detectExistingJsonLdInTemplate();
+    }
+
+    /***************************************************************
+    *
+    * Prüft, ob das aktiv geladene Website-Template einen
+    * <script type="application/ld+json">-Block enthält.
+    *
+    * Liest die Template-Datei direkt vom Dateisystem. Die globale
+    * Variable $TEMPLATE_FILE zeigt zu getContent()-Zeit bereits auf
+    * die korrekte Datei (template.html oder gallerytemplate.html).
+    *
+    * @return bool true, wenn mindestens ein JSON-LD-Block gefunden wurde
+    *
+    ***************************************************************/
+    private function detectExistingJsonLdInTemplate(): bool {
+        global $TEMPLATE_FILE;
+        if(empty($TEMPLATE_FILE) or !file_exists($TEMPLATE_FILE)) {
+            return false;
+        }
+        $content = file_get_contents($TEMPLATE_FILE);
+        return $content !== false
+            && (bool) preg_match('#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i', $content);
     }
 
     /***************************************************************

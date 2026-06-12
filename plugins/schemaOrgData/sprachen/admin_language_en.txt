@@ -85,6 +85,7 @@ notice_config_save_error = The configuration could not be saved:
 
 notice_existing_jsonld_title = A JSON-LD block was already found on this page.
 notice_existing_jsonld_text = Please choose how the plugin should proceed.
+notice_existing_jsonld_template = A JSON-LD block was found in the website template. To switch to the plugin configuration, the block must be removed manually from template.html. No automatic merge will be performed.
 option_keep_existing_jsonld = Keep existing
 option_override_existing_jsonld = Overwrite with plugin configuration
 
