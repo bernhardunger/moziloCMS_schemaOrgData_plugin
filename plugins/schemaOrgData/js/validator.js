@@ -343,7 +343,13 @@
                 var isFrom = input.id.endsWith('_from');
                 var from = isFrom ? input.value : (pairInput ? pairInput.value : '');
                 var to = isFrom ? (pairInput ? pairInput.value : '') : input.value;
-                result = validateOpeningHoursTime(from, to);
+                // Kein Feedback wenn Von ausgefüllt, Bis aber noch leer (Benutzer
+                // tabbte gerade von Von nach Bis und hat Bis noch nicht eingegeben)
+                if (isFrom && to.trim() === '') {
+                    result = { status: null, message: null };
+                } else {
+                    result = validateOpeningHoursTime(from, to);
+                }
                 break;
             default:
                 return;

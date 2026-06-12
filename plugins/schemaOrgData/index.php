@@ -28,7 +28,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.0.3-beta';
+    private const PLUGIN_VERSION = '0.0.4-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1649,10 +1649,14 @@ class schemaOrgData extends Plugin {
         foreach($cats as $cat) {
             $checked = in_array($cat, $excludedCats, true) ? ' checked="checked"' : '';
             $catLabel = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
+            // rawurldecode() dekodiert den moziloCMS-Bezeichner nur für die
+            // Anzeige - der value-Attributwert bleibt roh (% erhalten),
+            // damit excluded_cats weiterhin zu CAT_REQUEST passt.
+            $catDisplayLabel = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
             $fieldId = 'schemaOrgData_global_excluded_cats_'.md5($cat);
             $html .= '<label class="schemaOrgData-checkbox" for="'.$fieldId.'">'
                 .'<input type="checkbox" id="'.$fieldId.'" name="schemaOrgData[global][excluded_cats][]" value="'.$catLabel.'"'.$checked.' /> '
-                .$catLabel.'</label>'."\n";
+                .$catDisplayLabel.'</label>'."\n";
         }
 
         $html .= '</fieldset>'."\n";
