@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.1.5-beta';
+    private const PLUGIN_VERSION = '0.1.6-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2322,7 +2322,7 @@ class schemaOrgData extends Plugin {
                 ? $this->deleteConfig('global')
                 : $this->saveConfig('global', $globalData);
 
-            $success = $success and $result['success'];
+            $success = $success && $result['success'];
             $errors = array_merge($errors, $result['errors']);
         }
 
