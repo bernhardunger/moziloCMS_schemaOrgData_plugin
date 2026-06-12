@@ -22,17 +22,18 @@ use PHPUnit\Framework\TestCase;
 * daher als markTestSkipped() mit Begründung dokumentiert.
 *
 * Jeder Test arbeitet auf einem temporären Plugin-Verzeichnis
-* (Kopie von schemas/ und sprachen/, leeres conf/-Verzeichnis),
-* damit das echte plugins/schemaOrgData/conf/ unangetastet bleibt.
+* (Kopie von schemas/ und sprachen/) und einem isolierten
+* InMemorySettings-Stub als $this->settings, damit die echte
+* plugin.conf.php des Plugins unangetastet bleibt.
 *
 ***************************************************************/
 final class JsonLdOutputTest extends TestCase {
 
     private string $pluginDir;
+    private \InMemorySettings $settings;
 
     protected function setUp(): void {
         $this->pluginDir = sys_get_temp_dir().'/schemaOrgData_test_'.uniqid().'/';
-        mkdir($this->pluginDir.'conf', 0777, true);
         $this->copyDirectory(\BASE_DIR.'plugins/schemaOrgData/schemas', $this->pluginDir.'schemas');
         $this->copyDirectory(\BASE_DIR.'plugins/schemaOrgData/sprachen', $this->pluginDir.'sprachen');
 
@@ -72,28 +73,34 @@ final class JsonLdOutputTest extends TestCase {
     /***************************************************************
     *
     * Erzeugt eine Plugin-Instanz, deren PLUGIN_SELF_DIR auf das
-    * temporäre Testverzeichnis zeigt.
+    * temporäre Testverzeichnis zeigt und deren $this->settings durch
+    * einen isolierten InMemorySettings-Stub ersetzt wurde, damit
+    * saveConfig()/saveScopeMeta() nicht die echte plugin.conf.php
+    * verändern.
     *
     ***************************************************************/
     private function createPlugin(): \schemaOrgData {
         $plugin = new \schemaOrgData();
         $plugin->PLUGIN_SELF_DIR = $this->pluginDir;
+
+        $this->settings = new \InMemorySettings();
+        $ref = new \ReflectionProperty(\schemaOrgData::class, 'settings');
+        $ref->setAccessible(true);
+        $ref->setValue($plugin, $this->settings);
+
         return $plugin;
     }
 
     /***************************************************************
     *
-    * Schreibt die globale conf-Datei direkt im Format
-    * "<?php die(); ?>" + serialize() - für Testfälle, die eine
-    * bestimmte Rohstruktur (mehrere Types, leere Properties)
+    * Setzt die globale Konfiguration direkt über den
+    * InMemorySettings-Stub (config_global) - für Testfälle, die
+    * eine bestimmte Rohstruktur (mehrere Types, leere Properties)
     * unabhängig von saveConfig() benötigen.
     *
     ***************************************************************/
     private function writeGlobalConf(array $data): void {
-        file_put_contents(
-            $this->pluginDir.'conf/_global.conf.php',
-            '<?php die(); ?>'."\n".serialize($data)
-        );
+        $this->settings->set('config_global', $data);
     }
 
     /***************************************************************
@@ -287,7 +294,9 @@ final class JsonLdOutputTest extends TestCase {
             'CAT_REQUEST ist in tests/bootstrap.php fest auf "false" gesetzt '
             .'(keine aktive Kategorie) und kann daher nie in excluded_cats '
             .'enthalten sein - dieser Fall ist im Testkontext nicht '
-            .'auslösbar, ohne tests/bootstrap.php zu ändern.'
+            .'auslösbar, ohne tests/bootstrap.php zu ändern. Vom '
+            .'Storage-Layer-Refactor (settings statt conf/-Dateien) '
+            .'unabhängig.'
         );
     }
 
@@ -325,7 +334,9 @@ final class JsonLdOutputTest extends TestCase {
             'CAT_REQUEST ist in tests/bootstrap.php fest auf "false" gesetzt, '
             .'getContent() lädt daher nie eine Kategorie-Konfiguration - eine '
             .'Type-Kollision Global/Kategorie ist im Testkontext nicht '
-            .'auslösbar, ohne tests/bootstrap.php zu ändern.'
+            .'auslösbar, ohne tests/bootstrap.php zu ändern. Vom '
+            .'Storage-Layer-Refactor (settings statt conf/-Dateien) '
+            .'unabhängig.'
         );
     }
 
@@ -335,7 +346,8 @@ final class JsonLdOutputTest extends TestCase {
             .'"false" gesetzt, getContent() lädt daher nie eine Kategorie- '
             .'oder Seiten-Konfiguration - eine Type-Kollision Kategorie/'
             .'Seite ist im Testkontext nicht auslösbar, ohne '
-            .'tests/bootstrap.php zu ändern.'
+            .'tests/bootstrap.php zu ändern. Vom Storage-Layer-Refactor '
+            .'(settings statt conf/-Dateien) unabhängig.'
         );
     }
 

@@ -64,8 +64,49 @@ class Properties {
         return $this->data[$key] ?? null;
     }
 
+    function keyExists(string $key): bool {
+        return array_key_exists($key, $this->data);
+    }
+
+    function set(string $key, mixed $value): void {
+        $this->data[$key] = $value;
+    }
+
+    function delete(string $key): void {
+        unset($this->data[$key]);
+    }
+
     function toArray(): array {
         return $this->data;
+    }
+}
+
+/***************************************************************
+*
+* In-Memory-Ersatz für $this->settings (moziloCMS-Properties-API)
+* in Tests, die saveConfig()/deleteConfig() o. ä. isoliert von der
+* echten plugin.conf.php ausführen wollen (siehe PersistenceTest,
+* JsonLdOutputTest).
+*
+***************************************************************/
+class InMemorySettings {
+
+    private array $data = [];
+
+    function set(string $key, mixed $value): void {
+        $this->data[$key] = $value;
+    }
+
+    function get(string $key): mixed {
+        return $this->data[$key] ?? null;
+    }
+
+    function keyExists(string $key): bool {
+        return array_key_exists($key, $this->data);
+    }
+
+    function delete(string $key): void {
+        unset($this->data[$key]);
     }
 }
 

@@ -9,24 +9,26 @@ use PHPUnit\Framework\TestCase;
 * Tests für die Persistenz-Logik: handlePostRequest(),
 * saveConfig(), deleteConfig() und sanitizePostData().
 *
-* Geprüft werden Speicherformat ("<?php die(); ?>" + serialize(),
-* siehe loadScopeMeta()/loadScopeConfig()), Dateinamen-Konvention
-* (getScopeConfFile()), Validierung (Pflichtfelder, Erweiterungs-
-* feld), Spezialfelder (excluded_cats, jsonld_mode), Löschen sowie
-* die Sanitierung von CAT_REQUEST/PAGE_REQUEST-Bezeichnern.
+* Geprüft werden das Speicherformat (Array unter einem
+* settings-Key, siehe loadScopeMeta()/loadScopeConfig()), die
+* Key-Konvention (getScopeSettingsKey()), Validierung
+* (Pflichtfelder, Erweiterungsfeld), Spezialfelder
+* (excluded_cats, jsonld_mode), Löschen sowie die Sanitierung
+* von CAT_REQUEST/PAGE_REQUEST-Bezeichnern.
 *
 * Jeder Test arbeitet auf einem temporären Plugin-Verzeichnis
-* (Kopie von schemas/ und sprachen/, leeres conf/-Verzeichnis),
-* damit das echte plugins/schemaOrgData/conf/ unangetastet bleibt.
+* (Kopie von schemas/ und sprachen/) und einem isolierten
+* InMemorySettings-Stub als $this->settings, damit die echte
+* plugin.conf.php des Plugins unangetastet bleibt.
 *
 ***************************************************************/
 final class PersistenceTest extends TestCase {
 
     private string $pluginDir;
+    private \InMemorySettings $settings;
 
     protected function setUp(): void {
         $this->pluginDir = sys_get_temp_dir().'/schemaOrgData_test_'.uniqid().'/';
-        mkdir($this->pluginDir.'conf', 0777, true);
         $this->copyDirectory(\BASE_DIR.'plugins/schemaOrgData/schemas', $this->pluginDir.'schemas');
         $this->copyDirectory(\BASE_DIR.'plugins/schemaOrgData/sprachen', $this->pluginDir.'sprachen');
 
@@ -66,24 +68,22 @@ final class PersistenceTest extends TestCase {
     /***************************************************************
     *
     * Erzeugt eine Plugin-Instanz, deren PLUGIN_SELF_DIR auf das
-    * temporäre Testverzeichnis zeigt (eigenes conf/, Kopien von
-    * schemas/ und sprachen/), damit saveConfig()/deleteConfig()
-    * nicht das echte conf/-Verzeichnis des Plugins verändern.
+    * temporäre Testverzeichnis zeigt (Kopien von schemas/ und
+    * sprachen/) und deren $this->settings durch einen isolierten
+    * InMemorySettings-Stub ersetzt wurde, damit saveConfig()/
+    * deleteConfig() nicht die echte plugin.conf.php verändern.
     *
     ***************************************************************/
     private function createPlugin(): \schemaOrgData {
         $plugin = new \schemaOrgData();
         $plugin->PLUGIN_SELF_DIR = $this->pluginDir;
-        return $plugin;
-    }
 
-    /***************************************************************
-    *
-    * Liest eine conf-Datei ("<?php die(); ?>" + serialize()) ein.
-    *
-    ***************************************************************/
-    private function readConf(string $file): array {
-        return (new \Properties($file))->toArray();
+        $this->settings = new \InMemorySettings();
+        $ref = new \ReflectionProperty(\schemaOrgData::class, 'settings');
+        $ref->setAccessible(true);
+        $ref->setValue($plugin, $this->settings);
+
+        return $plugin;
     }
 
     /***************************************************************
@@ -141,48 +141,47 @@ final class PersistenceTest extends TestCase {
     // Speichern
     // -----------------------------------------------------------
 
-    function testGlobalConfigIsSavedToGlobalConfFile(): void {
+    function testGlobalConfigIsSavedUnderGlobalSettingsKey(): void {
         $plugin = $this->createPlugin();
 
         $result = callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
 
         $this->assertTrue($result['success']);
         $this->assertSame([], $result['errors']);
-        $this->assertFileExists($this->pluginDir.'conf/_global.conf.php');
+        $this->assertTrue($this->settings->keyExists('config_global'));
 
-        $config = $this->readConf($this->pluginDir.'conf/_global.conf.php');
+        $config = $this->settings->get('config_global');
         $this->assertSame('Muster GmbH', $config['LocalBusiness']['name']);
         $this->assertSame('https://www.example.com', $config['LocalBusiness']['url']);
     }
 
-    function testCategoryConfigIsSavedToOwnConfFile(): void {
+    function testCategoryConfigIsSavedUnderOwnSettingsKey(): void {
         $plugin = $this->createPlugin();
+        $_POST['schemaOrgData_cat'] = 'ueber-uns';
 
         $result = callPluginMethod($plugin, 'saveConfig', ['category', $this->validLocalBusinessData('Filiale Nord')]);
         $this->assertTrue($result['success']);
 
-        // CAT_REQUEST ist im Test-Bootstrap "false" (siehe tests/bootstrap.php),
-        // resolveScopeIdentifiers() liefert daher [null, null]. Die Datei wird
-        // dennoch über die Konvention von getScopeConfFile() ermittelt und ist
-        // eine eigenständige, von _global.conf.php getrennte Datei.
-        $expectedFile = callPluginMethod($plugin, 'getScopeConfFile', ['category', null, null]);
-        $this->assertFileExists($expectedFile);
-        $this->assertNotSame($this->pluginDir.'conf/_global.conf.php', $expectedFile);
+        // Eigenständiger, von config_global getrennter settings-Key
+        // gemäß getScopeSettingsKey()-Konvention.
+        $this->assertTrue($this->settings->keyExists('config_cat_ueber-uns'));
+        $this->assertFalse($this->settings->keyExists('config_global'));
 
-        $config = $this->readConf($expectedFile);
+        $config = $this->settings->get('config_cat_ueber-uns');
         $this->assertSame('Filiale Nord', $config['LocalBusiness']['name']);
     }
 
-    function testPageConfigIsSavedToOwnConfFile(): void {
+    function testPageConfigIsSavedUnderOwnSettingsKey(): void {
         $plugin = $this->createPlugin();
+        $_POST['schemaOrgData_cat'] = 'ueber-uns';
+        $_POST['schemaOrgData_page'] = 'team';
 
         $result = callPluginMethod($plugin, 'saveConfig', ['page', $this->validFaqPageData()]);
         $this->assertTrue($result['success']);
 
-        $expectedFile = callPluginMethod($plugin, 'getScopeConfFile', ['page', null, null]);
-        $this->assertFileExists($expectedFile);
+        $this->assertTrue($this->settings->keyExists('config_page_ueber-uns_team'));
 
-        $config = $this->readConf($expectedFile);
+        $config = $this->settings->get('config_page_ueber-uns_team');
         $this->assertSame('Wie erreiche ich euch?', $config['FAQPage']['mainEntity'][0]['name']);
     }
 
@@ -194,36 +193,22 @@ final class PersistenceTest extends TestCase {
 
         $this->assertTrue($result['success']);
 
-        $config = $this->readConf($this->pluginDir.'conf/_global.conf.php');
+        $config = $this->settings->get('config_global');
         $this->assertSame('Zweite Version', $config['LocalBusiness']['name']);
     }
 
     // -----------------------------------------------------------
-    // Dateiformat
+    // Speicherformat
     // -----------------------------------------------------------
 
-    function testSavedFileStartsWithPhpDieStatement(): void {
+    function testSavedConfigIsStoredAsArrayUnderSettingsKey(): void {
         $plugin = $this->createPlugin();
         callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
 
-        $content = file_get_contents($this->pluginDir.'conf/_global.conf.php');
+        $config = $this->settings->get('config_global');
 
-        $this->assertStringStartsWith('<?php die(); ?>', $content);
-    }
-
-    function testSavedDataIsSerialized(): void {
-        $plugin = $this->createPlugin();
-        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
-
-        $content = file_get_contents($this->pluginDir.'conf/_global.conf.php');
-        $serialized = trim((string) preg_replace('/^<\?php[^\n]*\n/', '', $content, 1));
-
-        // serialize() eines Arrays beginnt stets mit "a:"
-        $this->assertStringStartsWith('a:', $serialized);
-
-        $data = unserialize($serialized);
-        $this->assertIsArray($data);
-        $this->assertSame('Muster GmbH', $data['LocalBusiness']['name']);
+        $this->assertIsArray($config);
+        $this->assertSame('Muster GmbH', $config['LocalBusiness']['name']);
     }
 
     function testRoundTripViaLoadScopeConfig(): void {
@@ -252,7 +237,7 @@ final class PersistenceTest extends TestCase {
 
         $this->assertFalse($result['success']);
         $this->assertNotEmpty($result['errors']);
-        $this->assertFileDoesNotExist($this->pluginDir.'conf/_global.conf.php');
+        $this->assertFalse($this->settings->keyExists('config_global'));
     }
 
     function testMissingRequiredNameIsNotSaved(): void {
@@ -264,7 +249,7 @@ final class PersistenceTest extends TestCase {
 
         $this->assertFalse($result['success']);
         $this->assertNotEmpty($result['errors']);
-        $this->assertFileDoesNotExist($this->pluginDir.'conf/_global.conf.php');
+        $this->assertFalse($this->settings->keyExists('config_global'));
     }
 
     function testValidDataIsSavedSuccessfully(): void {
@@ -288,7 +273,7 @@ final class PersistenceTest extends TestCase {
         $result = callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
         $this->assertTrue($result['success']);
 
-        $config = $this->readConf($this->pluginDir.'conf/_global.conf.php');
+        $config = $this->settings->get('config_global');
         $this->assertSame(['impressum', 'datenschutz'], explode(',', $config['excluded_cats']));
     }
 
@@ -307,18 +292,18 @@ final class PersistenceTest extends TestCase {
     // Löschen
     // -----------------------------------------------------------
 
-    function testDeleteConfigRemovesConfFile(): void {
+    function testDeleteConfigRemovesSettingsKey(): void {
         $plugin = $this->createPlugin();
         callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
-        $this->assertFileExists($this->pluginDir.'conf/_global.conf.php');
+        $this->assertTrue($this->settings->keyExists('config_global'));
 
         $result = callPluginMethod($plugin, 'deleteConfig', ['global']);
 
         $this->assertTrue($result['success']);
-        $this->assertFileDoesNotExist($this->pluginDir.'conf/_global.conf.php');
+        $this->assertFalse($this->settings->keyExists('config_global'));
     }
 
-    function testDeleteConfigOnNonexistentFileReturnsSuccess(): void {
+    function testDeleteConfigOnNonexistentKeyReturnsSuccess(): void {
         $plugin = $this->createPlugin();
 
         $result = callPluginMethod($plugin, 'deleteConfig', ['global']);
@@ -331,21 +316,25 @@ final class PersistenceTest extends TestCase {
     // Sicherheit
     // -----------------------------------------------------------
 
-    function testGetScopeConfFileFollowsNamingConvention(): void {
+    function testGetScopeSettingsKeyFollowsNamingConvention(): void {
         $plugin = $this->createPlugin();
 
         $this->assertSame(
-            $this->pluginDir.'conf/_global.conf.php',
-            callPluginMethod($plugin, 'getScopeConfFile', ['global', null, null])
+            'config_global',
+            callPluginMethod($plugin, 'getScopeSettingsKey', ['global', null, null])
         );
         $this->assertSame(
-            $this->pluginDir.'conf/cat_ueber-uns.conf.php',
-            callPluginMethod($plugin, 'getScopeConfFile', ['category', 'ueber-uns', null])
+            'config_cat_ueber-uns',
+            callPluginMethod($plugin, 'getScopeSettingsKey', ['category', 'ueber-uns', null])
         );
         $this->assertSame(
-            $this->pluginDir.'conf/page_ueber-uns_team.conf.php',
-            callPluginMethod($plugin, 'getScopeConfFile', ['page', 'ueber-uns', 'team'])
+            'config_page_ueber-uns_team',
+            callPluginMethod($plugin, 'getScopeSettingsKey', ['page', 'ueber-uns', 'team'])
         );
+
+        // Ohne Kategorie/Seite ist kein eindeutiger Key bestimmbar.
+        $this->assertNull(callPluginMethod($plugin, 'getScopeSettingsKey', ['category', null, null]));
+        $this->assertNull(callPluginMethod($plugin, 'getScopeSettingsKey', ['page', 'ueber-uns', null]));
     }
 
     function testSpecialCharactersInIdentifierAreSanitized(): void {
@@ -365,8 +354,7 @@ final class PersistenceTest extends TestCase {
 
         $this->assertSame('etcpasswd', $sanitized);
 
-        $file = callPluginMethod($plugin, 'getScopeConfFile', ['category', $sanitized, null]);
-        $this->assertSame($this->pluginDir.'conf/cat_etcpasswd.conf.php', $file);
-        $this->assertStringStartsWith($this->pluginDir.'conf', $file);
+        $key = callPluginMethod($plugin, 'getScopeSettingsKey', ['category', $sanitized, null]);
+        $this->assertSame('config_cat_etcpasswd', $key);
     }
 }

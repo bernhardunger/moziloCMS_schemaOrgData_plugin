@@ -9,12 +9,13 @@
 * Microdata-Implementierungen (Article, ImageObject,
 * BreadcrumbList, Contact) um maschinenlesbare JSON-LD-Blöcke.
 *
-* Geltungsbereiche und Vererbung (allgemein -> spezifisch):
-*   conf/_global.conf.php              -> jede Seite
-*   conf/cat_{kategorie}.conf.php      -> alle Seiten der Kategorie
-*   conf/page_{kategorie}_{seite}.conf.php -> nur diese Seite
+* Geltungsbereiche und Vererbung (allgemein -> spezifisch), gespeichert
+* über $this->settings (moziloCMS-Properties-API, siehe getScopeSettingsKey()):
+*   config_global              -> jede Seite
+*   config_cat_{kategorie}     -> alle Seiten der Kategorie
+*   config_page_{kategorie}_{seite} -> nur diese Seite
 *
-* Jede conf-Datei enthält ein serialisiertes Array der Form
+* Jeder settings-Key enthält ein Array der Form
 *   array('LocalBusiness' => array('name' => '...', ...), ...)
 *
 * Neue Schema-Types werden unterstützt, indem einfach eine
@@ -28,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.0.8-beta';
+    private const PLUGIN_VERSION = '0.0.9-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -137,8 +138,8 @@ class schemaOrgData extends Plugin {
         }
 
         // Kollisionserkennung: vorhandenes JSON-LD im gerenderten HTML
-        // erkennen und das Ergebnis je Geltungsebene in der jeweiligen
-        // conf-Datei persistieren (siehe loadScopeMeta/saveScopeMeta).
+        // erkennen und das Ergebnis je Geltungsebene im jeweiligen
+        // settings-Key persistieren (siehe loadScopeMeta/saveScopeMeta).
         // TODO: $value enthält im aktuellen Aufrufkontext nur den
         //       Platzhalter-Inhalt. Für eine zuverlässige Erkennung sollte
         //       zusätzlich der Rohinhalt von Template und Seite (vor der
@@ -171,20 +172,17 @@ class schemaOrgData extends Plugin {
     * @return array array('TypeName' => array('property' => 'wert', ...), ...)
     *
     ***************************************************************/
-    private function loadScopeConfig(string $scope, ?string $cat = null, ?string $page = null): array {
-        $file = match($scope) {
-            'global'   => $this->PLUGIN_SELF_DIR.'conf/_global.conf.php',
-            'category' => $this->PLUGIN_SELF_DIR.'conf/cat_'.$cat.'.conf.php',
-            'page'     => $this->PLUGIN_SELF_DIR.'conf/page_'.$cat.'_'.$page.'.conf.php',
-            default    => null,
-        };
-
-        if($file === null or !file_exists($file)) {
+    private function loadScopeConfig(
+        string $scope,
+        ?string $cat  = null,
+        ?string $page = null
+    ): array {
+        $key = $this->getScopeSettingsKey($scope, $cat, $page);
+        if ($key === null || !$this->settings->keyExists($key)) {
             return [];
         }
-
-        $config = new Properties($file);
-        return $config->toArray();
+        $data = $this->settings->get($key);
+        return is_array($data) ? $data : [];
     }
 
     /***************************************************************
@@ -391,18 +389,27 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
-    * Ermittelt den Dateipfad der conf-Datei einer Geltungsebene
-    * (siehe auch loadScopeConfig).
+    * Liefert den settings-Schlüssel für eine Geltungsebene.
+    * Ersetzt getScopeConfFile() — die Konfiguration wird über
+    * $this->settings statt über conf/-Dateien gespeichert.
     *
     * @param string $scope 'global' | 'category' | 'page'
-    * @return string|null Dateipfad oder null bei unbekanntem $scope
+    * @return string|null Settings-Key oder null bei ungültigem $scope
     *
     ***************************************************************/
-    private function getScopeConfFile(string $scope, ?string $cat = null, ?string $page = null): ?string {
+    private function getScopeSettingsKey(
+        string $scope,
+        ?string $cat  = null,
+        ?string $page = null
+    ): ?string {
         return match($scope) {
-            'global'   => $this->PLUGIN_SELF_DIR.'conf/_global.conf.php',
-            'category' => $this->PLUGIN_SELF_DIR.'conf/cat_'.$cat.'.conf.php',
-            'page'     => $this->PLUGIN_SELF_DIR.'conf/page_'.$cat.'_'.$page.'.conf.php',
+            'global'   => 'config_global',
+            'category' => $cat !== null
+                ? 'config_cat_' . $cat
+                : null,
+            'page'     => ($cat !== null && $page !== null)
+                ? 'config_page_' . $cat . '_' . $page
+                : null,
             default    => null,
         };
     }
@@ -410,9 +417,9 @@ class schemaOrgData extends Plugin {
     /***************************************************************
     *
     * Entfernt aus einem Bezeichner (CAT_REQUEST/PAGE_REQUEST) alle
-    * Zeichen, die in conf-Dateinamen nicht erlaubt sind, bevor er
-    * in getScopeConfFile() verwendet wird (Schutz vor Path-Traversal,
-    * siehe README.md, Abschnitt "Sicherheit").
+    * Zeichen, die in settings-Keys nicht erlaubt bzw. unerwünscht
+    * sind, bevor er in getScopeSettingsKey() verwendet wird (Schutz
+    * vor Path-Traversal, siehe README.md, Abschnitt "Sicherheit").
     *
     * @return string bereinigter Bezeichner
     *
@@ -427,7 +434,7 @@ class schemaOrgData extends Plugin {
     /***************************************************************
     *
     * Liefert die (sanitierten) CAT_REQUEST/PAGE_REQUEST-Werte einer
-    * Geltungsebene, passend für getScopeConfFile().
+    * Geltungsebene, passend für getScopeSettingsKey().
     *
     * @param string $scope 'global' | 'category' | 'page'
     * @return array{0: string|null, 1: string|null} [cat, page]
@@ -475,18 +482,18 @@ class schemaOrgData extends Plugin {
     * @return array{existing_jsonld: bool, jsonld_mode: string}
     *
     ***************************************************************/
-    private function loadScopeMeta(string $scope, ?string $cat = null, ?string $page = null): array {
+    private function loadScopeMeta(
+        string $scope,
+        ?string $cat  = null,
+        ?string $page = null
+    ): array {
         $defaults = ['existing_jsonld' => false, 'jsonld_mode' => 'keep'];
-
-        $file = $this->getScopeConfFile($scope, $cat, $page);
-        if($file === null or !file_exists($file)) {
+        $key = $this->getScopeSettingsKey($scope, $cat, $page);
+        if ($key === null || !$this->settings->keyExists($key)) {
             return $defaults;
         }
-
-        $config = new Properties($file);
-        $data = $config->toArray();
-
-        return array_merge($defaults, $data['_meta'] ?? []);
+        $data = $this->settings->get($key);
+        return array_merge($defaults, is_array($data) ? ($data['_meta'] ?? []) : []);
     }
 
     /***************************************************************
@@ -499,28 +506,31 @@ class schemaOrgData extends Plugin {
     * @param array $meta z. B. ['existing_jsonld' => true, 'jsonld_mode' => 'override']
     *
     ***************************************************************/
-    private function saveScopeMeta(string $scope, array $meta, ?string $cat = null, ?string $page = null): void {
-        $file = $this->getScopeConfFile($scope, $cat, $page);
-        if($file === null) {
+    private function saveScopeMeta(
+        string $scope,
+        array  $meta,
+        ?string $cat  = null,
+        ?string $page = null
+    ): void {
+        $key = $this->getScopeSettingsKey($scope, $cat, $page);
+        if ($key === null) {
             return;
         }
-
-        $config = file_exists($file) ? (new Properties($file))->toArray() : [];
-        $config['_meta'] = array_merge(
-            $config['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep'],
+        $existing = $this->settings->keyExists($key)
+            ? $this->settings->get($key) : [];
+        if (!is_array($existing)) {
+            $existing = [];
+        }
+        $existing['_meta'] = array_merge(
+            $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep'],
             $meta
         );
-
-        // Conf-Verzeichnis anlegen, falls noch nicht vorhanden
-        $confDir = dirname($file);
-        if (!is_dir($confDir)) {
-            mkdir($confDir, 0755, true);
-        }
-
         // Schreibfehler protokollieren — saveScopeMeta hat kein Rückgabe-Array,
         // daher error_log als stilles Fallback
-        if (file_put_contents($file, '<?php die(); ?>'."\n".serialize($config)) === false) {
-            error_log('schemaOrgData: Konnte Metadaten nicht schreiben: ' . $file);
+        try {
+            $this->settings->set($key, $existing);
+        } catch (\Throwable $e) {
+            error_log('schemaOrgData: saveScopeMeta fehlgeschlagen: ' . $e->getMessage());
         }
     }
 
@@ -2139,7 +2149,7 @@ class schemaOrgData extends Plugin {
     * (sanitizePostData) und mit dem Erweiterungsfeld zusammengeführt
     * (Formular hat Vorrang, siehe README.md "Erweiterungsfeld"),
     * zusätzlich excluded_cats (nur global) und jsonld_mode
-    * übernommen und die conf-Datei geschrieben. Wurde kein Type
+    * übernommen und über $this->settings gespeichert. Wurde kein Type
     * gewählt ("- kein Schema -"), wird die bisherige
     * Type-Konfiguration dieser Ebene entfernt, _meta und
     * excluded_cats bleiben erhalten.
@@ -2152,13 +2162,17 @@ class schemaOrgData extends Plugin {
     private function saveConfig(string $scope, array $postData): array {
         $lang = $this->loadAdminLanguage();
         [$cat, $page] = $this->resolveScopeIdentifiers($scope);
-        $file = $this->getScopeConfFile($scope, $cat, $page);
+        $key = $this->getScopeSettingsKey($scope, $cat, $page);
 
-        if($file === null) {
+        if ($key === null) {
             return ['success' => false, 'errors' => []];
         }
 
-        $existing = file_exists($file) ? (new Properties($file))->toArray() : [];
+        $existing = $this->settings->keyExists($key)
+            ? $this->settings->get($key) : [];
+        if (!is_array($existing)) {
+            $existing = [];
+        }
         $config = ['_meta' => $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep']];
 
         if($scope === 'global') {
@@ -2217,15 +2231,11 @@ class schemaOrgData extends Plugin {
             $config['_meta']['jsonld_mode'] = $jsonldMode;
         }
 
-        // Conf-Verzeichnis anlegen, falls noch nicht vorhanden
-        $confDir = dirname($file);
-        if (!is_dir($confDir)) {
-            mkdir($confDir, 0755, true);
-        }
-
-        $written = file_put_contents($file, '<?php die(); ?>'."\n".serialize($config));
-
-        if ($written === false) {
+        // Konfiguration über moziloCMS-settings-API speichern
+        try {
+            $this->settings->set($key, $config);
+        } catch (\Throwable $e) {
+            error_log('schemaOrgData: saveConfig fehlgeschlagen: ' . $e->getMessage());
             return ['success' => false, 'errors' => [
                 $lang->getLanguageValue('error_config_write_failed')
             ]];
@@ -2236,7 +2246,7 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
-    * Löscht die conf-Datei einer Geltungsebene vollständig - damit
+    * Löscht den settings-Key einer Geltungsebene vollständig - damit
     * entfallen sowohl die Schema-Type-Konfiguration als auch die
     * Meta-Daten (_meta, existing_jsonld/jsonld_mode) dieser Ebene.
     *
@@ -2246,14 +2256,14 @@ class schemaOrgData extends Plugin {
     ***************************************************************/
     private function deleteConfig(string $scope): array {
         [$cat, $page] = $this->resolveScopeIdentifiers($scope);
-        $file = $this->getScopeConfFile($scope, $cat, $page);
+        $key = $this->getScopeSettingsKey($scope, $cat, $page);
 
-        if($file === null) {
+        if ($key === null) {
             return ['success' => false, 'errors' => []];
         }
 
-        if(file_exists($file)) {
-            unlink($file);
+        if ($this->settings->keyExists($key)) {
+            $this->settings->delete($key);
         }
 
         return ['success' => true, 'errors' => []];
@@ -2391,9 +2401,10 @@ class schemaOrgData extends Plugin {
     * eigenen <form id="js-plugin-manage">; ein verschachteltes
     * <form> würde vom Browser ignoriert und nie abgeschickt. Das
     * moziloCMS-eigene Disketten-Icon (.js-save-plugin) speichert
-    * über eine Settings-API, die getConfig() nicht aufruft und die
-    * conf/-Dateien dieses Plugins ignoriert. Gespeichert wird daher
-    * über den eigenen Button (.schemaOrgData-save-btn):
+    * über eine eigene Settings-API, die getConfig() nicht aufruft
+    * und damit weder Validierung noch saveConfig() dieses Plugins
+    * durchläuft. Gespeichert wird daher über den eigenen Button
+    * (.schemaOrgData-save-btn):
     * initSaveButton() (validator.js) erstellt dafür eine eigene,
     * versteckte <form> außerhalb des moziloCMS-Formulars und sendet
     * sie per POST an die aktuelle Seite.
