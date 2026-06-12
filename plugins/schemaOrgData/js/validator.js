@@ -453,16 +453,23 @@
         });
 
         // Einmalig beim Init: Hidden-Felder auf den serverseitig aktiven
-        // Geltungsbereich setzen (Button mit --active-Klasse, von PHP
-        // anhand $selectedCat/$selectedPage gerendert) - ohne diesen
-        // Schritt enthalten die Hidden-Felder nach einem Scope-Wechsel
-        // per Klick zwar den richtigen Wert, beim allerersten Laden der
-        // Seite (inkl. direkt nach dem Speichern) aber immer "".
-        var activeButton = document.querySelector(
-            '.schemaOrgData-scope-selector__link--active'
-        );
-        var activeCat  = activeButton ? (activeButton.getAttribute('data-scope-cat')  || '') : '';
-        var activePage = activeButton ? (activeButton.getAttribute('data-scope-page') || '') : '';
+        // Geltungsbereich setzen. Quelle ist die sichtbare
+        // .schemaOrgData-scope-Sektion (renderScopeSection() rendert genau
+        // eine Sektion ohne style="display:none" und versieht jede Sektion
+        // zuverlässig mit data-scope-cat/data-scope-page - auch für
+        // "Seite", anders als der Scope-Selektor-Button mit --active-Klasse,
+        // dessen data-scope-page bei gleichnamigen Seiten verschiedener
+        // Kategorien mehrdeutig sein kann). Ohne diesen Schritt enthalten
+        // die Hidden-Felder beim ersten Laden der Seite (inkl. direkt nach
+        // dem Speichern) immer "".
+        var activeSection = null;
+        document.querySelectorAll('.schemaOrgData-scope').forEach(function (section) {
+            if (activeSection === null && section.style.display !== 'none') {
+                activeSection = section;
+            }
+        });
+        var activeCat  = activeSection ? (activeSection.getAttribute('data-scope-cat')  || '') : '';
+        var activePage = activeSection ? (activeSection.getAttribute('data-scope-page') || '') : '';
         updateScopeHiddenFields(activeCat, activePage);
     }
 

@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.1.2-beta';
+    private const PLUGIN_VERSION = '0.1.3-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2301,9 +2301,24 @@ class schemaOrgData extends Plugin {
         $success = true;
         $errors = [];
 
+        // Globaler Geltungsbereich: schemaOrgData_cat und schemaOrgData_page
+        // sind beide leer, wenn "Global" der aktive Scope ist (siehe
+        // renderAdminPage()). saveConfig('global', ...) muss in diesem Fall
+        // ausgeführt werden, auch wenn $scopes['global'] aus dem POST nicht
+        // als Array vorliegt.
+        $catParam  = $this->sanitizeScopeIdentifier((string) ($_POST['schemaOrgData_cat']  ?? ''));
+        $pageParam = $this->sanitizeScopeIdentifier((string) ($_POST['schemaOrgData_page'] ?? ''));
+        $isGlobalScope = ($catParam === '' && $pageParam === '');
+
         foreach(['global', 'category', 'page'] as $scope) {
-            if(!isset($scopes[$scope]) or !is_array($scopes[$scope])) {
-                continue;
+            $hasData = isset($scopes[$scope]) and is_array($scopes[$scope]);
+
+            if(!$hasData) {
+                if($scope === 'global' && $isGlobalScope) {
+                    $scopes['global'] = [];
+                } else {
+                    continue;
+                }
             }
 
             $result = !empty($_POST['schemaOrgData_delete_'.$scope])
