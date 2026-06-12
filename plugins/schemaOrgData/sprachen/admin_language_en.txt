@@ -112,3 +112,6 @@ button_import = Import
 button_save = Save
 
 label_save = Save configuration
+
+admin_button = Settings
+plugin_description_short = Schema.org JSON-LD for all pages

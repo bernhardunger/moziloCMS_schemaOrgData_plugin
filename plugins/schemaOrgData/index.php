@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.0.9-beta';
+    private const PLUGIN_VERSION = '0.1.0-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -58,6 +58,12 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     function getContent($value): string {
+        // Admin-UI im PLUGINADMIN-Kontext (Iframe-Dialog, moziloCMS speichert
+        // $this->settings nach Rückgabe dieser Methode explizit)
+        if (defined('PLUGINADMIN')) {
+            return $this->renderAdminPage();
+        }
+
         global $CMS_CONF;
 
         $this->cms_lang = new Language(
@@ -2385,29 +2391,26 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
-    * Gibt die Konfigurationsoptionen für die moziloCMS-Plugin-
-    * Verwaltung zurück.
+    * Rendert die vollständige Admin-UI (schema-getriebenes
+    * Konfigurationsformular, Geltungsbereiche Global / Kategorie /
+    * Seite) im PLUGINADMIN-Kontext (Iframe-Dialog der Plugin-
+    * Verwaltung). Wird von getContent() zurückgegeben, sobald
+    * PLUGINADMIN definiert ist.
     *
-    * Rendert das vollständige, schema-getriebene Konfigurations-
-    * formular (Geltungsbereiche Global / Kategorie / Seite) als
-    * eigenständiges HTML über "--template~~". Enthält $_POST-Daten
-    * (Formular wurde abgeschickt), werden diese zuerst über
-    * handlePostRequest() validiert und gespeichert; das Ergebnis
-    * wird als Hinweisblock (renderSaveResultNotice()) oberhalb der
-    * Geltungsbereiche ausgegeben.
+    * Enthält $_POST-Daten (Formular wurde abgeschickt), werden diese
+    * zuerst über handlePostRequest() validiert und gespeichert; das
+    * Ergebnis wird als Hinweisblock (renderSaveResultNotice())
+    * oberhalb der Geltungsbereiche ausgegeben.
     *
-    * Das Formular wird OHNE eigenes <form>-Element ausgegeben:
-    * moziloCMS umschließt den Plugin-Inhalt bereits mit einem
-    * eigenen <form id="js-plugin-manage">; ein verschachteltes
-    * <form> würde vom Browser ignoriert und nie abgeschickt. Das
-    * moziloCMS-eigene Disketten-Icon (.js-save-plugin) speichert
-    * über eine eigene Settings-API, die getConfig() nicht aufruft
-    * und damit weder Validierung noch saveConfig() dieses Plugins
-    * durchläuft. Gespeichert wird daher über den eigenen Button
-    * (.schemaOrgData-save-btn):
-    * initSaveButton() (validator.js) erstellt dafür eine eigene,
-    * versteckte <form> außerhalb des moziloCMS-Formulars und sendet
-    * sie per POST an die aktuelle Seite.
+    * Das Formular wird mit einem echten <form>-Element ausgegeben
+    * (analog MetaKeywordsDescription - PLUGINADMIN und ACTION sind
+    * im Iframe-Kontext definiert): die moziloCMS-Pflichtfelder
+    * "pluginadmin" und "action" werden als hidden inputs mitgesendet,
+    * der Speichern-Button ist ein echter <button type="submit">.
+    * moziloCMS speichert $this->settings nach Rückgabe dieser Methode
+    * automatisch - saveConfig() (aufgerufen über handlePostRequest())
+    * persistiert daher zuverlässig über $this->settings->set(), ohne
+    * eigenen JS-Workaround.
     *
     * Damit der Scope-Wechsel ohne Page-Reload funktioniert, werden
     * alle Geltungsbereiche (Global + alle Kategorien + alle Seiten
@@ -2418,31 +2421,37 @@ class schemaOrgData extends Plugin {
     * beim Speichern nur die aktive Sektion übertragen wird.
     *
     ***************************************************************/
-    function getConfig(): array {
+    private function renderAdminPage(): string {
         global $CatPage;
         $lang = $this->loadAdminLanguage();
 
         $saveResult = ($_POST !== []) ? $this->handlePostRequest() : null;
 
+        // Aktiven Scope ermitteln: $_POST (Formular wurde abgeschickt) hat
+        // Vorrang vor $_GET (initialer Aufruf der Admin-Seite)
+        $selectedCat = null;
+        $selectedPage = null;
+        if (isset($_POST['schemaOrgData_cat'])) {
+            $selectedCat = $this->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_cat']) ?: null;
+        } elseif (isset($_GET['schemaOrgData_cat'])) {
+            $selectedCat = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_cat']) ?: null;
+        }
+        if (isset($_POST['schemaOrgData_page'])) {
+            $selectedPage = $this->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_page']) ?: null;
+        } elseif (isset($_GET['schemaOrgData_page'])) {
+            $selectedPage = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_page']) ?: null;
+        }
+
+        $formAction = URL_BASE . ADMIN_DIR_NAME . '/index.php';
+
         $html = '<style>'.$this->getAdminCss().'</style>'."\n";
+        $html .= '<form method="POST" action="'.htmlspecialchars($formAction, ENT_QUOTES, CHARSET).'">'."\n";
+        $html .= '<input type="hidden" name="pluginadmin" value="'.PLUGINADMIN.'" />'."\n";
+        $html .= '<input type="hidden" name="action" value="'.ACTION.'" />'."\n";
         $html .= '<div class="schemaOrgData-admin">'."\n";
 
         if($saveResult !== null) {
             $html .= $this->renderSaveResultNotice($saveResult);
-        }
-
-        // Aktiven Scope ermitteln: CMS-Konstanten haben Vorrang vor GET-Params
-        $selectedCat = null;
-        $selectedPage = null;
-        if (defined('CAT_REQUEST') && CAT_REQUEST) {
-            $selectedCat = $this->sanitizeScopeIdentifier((string) CAT_REQUEST);
-        } elseif (isset($_GET['schemaOrgData_cat'])) {
-            $selectedCat = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_cat']) ?: null;
-        }
-        if (defined('PAGE_REQUEST') && PAGE_REQUEST) {
-            $selectedPage = $this->sanitizeScopeIdentifier((string) PAGE_REQUEST);
-        } elseif (isset($_GET['schemaOrgData_page'])) {
-            $selectedPage = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_page']) ?: null;
         }
 
         // Scope-Selektor rendern
@@ -2495,15 +2504,16 @@ class schemaOrgData extends Plugin {
                . ' name="schemaOrgData_page"'
                . ' value="'.htmlspecialchars($selectedPage ?? '', ENT_QUOTES, CHARSET).'" />'."\n";
 
-        // Speichern-Button: sendet die aktive Sektion per eigener,
-        // versteckter Form außerhalb des moziloCMS-Formulars (siehe
-        // initSaveButton() in validator.js)
+        // Speichern-Button: echter Submit-Button innerhalb des
+        // umgebenden <form> - kein verschachteltes Formular und kein
+        // JS-Workaround mehr nötig
         $html .= '<div class="schemaOrgData-save-bar">'."\n";
-        $html .= '<button type="button" class="schemaOrgData-save-btn mo-btn mo-btn--primary">'
+        $html .= '<button type="submit" class="mo-btn mo-btn--primary">'
                . $lang->getLanguageHtml('label_save').'</button>'."\n";
         $html .= '</div>'."\n";
 
         $html .= '</div>'."\n";
+        $html .= '</form>'."\n";
 
         // Lokalisierte Texte für die clientseitige Validierung (validator.js)
         $messages = [
@@ -2525,7 +2535,26 @@ class schemaOrgData extends Plugin {
             .' if(window.schemaOrgDataValidator) { window.schemaOrgDataValidator.initAdminForm(); }'
             .' });</script>'."\n";
 
-        return ['--template~~' => $html];
+        return $html;
+    }
+
+    /***************************************************************
+    *
+    * Gibt die Button-Konfiguration für die moziloCMS-Plugin-
+    * Verwaltung zurück ("--admin~~"). Die eigentliche Admin-UI wird
+    * über getContent() im PLUGINADMIN-Kontext gerendert (siehe
+    * renderAdminPage()).
+    *
+    ***************************************************************/
+    function getConfig(): array {
+        $lang = $this->loadAdminLanguage();
+        return [
+            '--admin~~' => [
+                'buttontext'  => $lang->getLanguageValue('admin_button'),
+                'description' => $lang->getLanguageValue('plugin_description_short'),
+                'datei_admin' => 'index.php',
+            ]
+        ];
     }
 
     /***************************************************************
