@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.1.4-beta';
+    private const PLUGIN_VERSION = '0.1.5-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2304,11 +2304,12 @@ class schemaOrgData extends Plugin {
         // Globaler Geltungsbereich (Sonderfall): schemaOrgData_cat und
         // schemaOrgData_page sind beide leer, wenn "Global" der aktive
         // Scope ist (siehe renderAdminPage()). saveConfig('global', ...)
-        // wird hier einmalig mit den tatsächlichen POST-Daten ausgeführt,
-        // auch wenn $scopes['global'] aus dem POST nicht als Array
-        // vorliegt (dann mit leerem Array). Der normale Scope-Loop
-        // unten überspringt 'global' in diesem Fall, damit nicht
-        // zweimal mit unterschiedlichem Ergebnis gespeichert wird.
+        // wird ausschließlich hier ausgeführt, mit den tatsächlichen
+        // POST-Daten - auch wenn $scopes['global'] aus dem POST nicht
+        // als Array vorliegt (dann mit leerem Array). Der Scope-Loop
+        // unten iteriert nur noch über 'category' und 'page', damit
+        // Global nicht zusätzlich (mit ggf. leeren Daten) erneut
+        // gespeichert wird.
         $catParam  = $this->sanitizeScopeIdentifier((string) ($_POST['schemaOrgData_cat']  ?? ''));
         $pageParam = $this->sanitizeScopeIdentifier((string) ($_POST['schemaOrgData_page'] ?? ''));
         $isGlobalScope = ($catParam === '' && $pageParam === '');
@@ -2325,11 +2326,7 @@ class schemaOrgData extends Plugin {
             $errors = array_merge($errors, $result['errors']);
         }
 
-        foreach(['global', 'category', 'page'] as $scope) {
-            if($scope === 'global' && $isGlobalScope) {
-                continue;
-            }
-
+        foreach(['category', 'page'] as $scope) {
             $hasData = isset($scopes[$scope]) and is_array($scopes[$scope]);
 
             if(!$hasData) {
