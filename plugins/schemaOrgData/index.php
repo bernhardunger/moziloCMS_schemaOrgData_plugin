@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.1.0-beta';
+    private const PLUGIN_VERSION = '0.1.1-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2444,7 +2444,28 @@ class schemaOrgData extends Plugin {
 
         $formAction = URL_BASE . ADMIN_DIR_NAME . '/index.php';
 
-        $html = '<style>'.$this->getAdminCss().'</style>'."\n";
+        // TODO DEBUG (temporär - nach Analyse "Type-Selektor zeigt
+        // --kein Schema-- nach dem Speichern" wieder entfernen):
+        // Zeigt den nach dem POST aktiven Geltungsbereich sowie die
+        // dafür von loadScopeConfig() gelieferten Daten an, direkt
+        // bevor die zugehörige Sektion gerendert wird.
+        $debugScope = $selectedPage !== null ? 'page' : ($selectedCat !== null ? 'category' : 'global');
+        $debugConfig = match($debugScope) {
+            'page'     => $this->loadScopeConfig('page', $selectedCat, $selectedPage),
+            'category' => $this->loadScopeConfig('category', $selectedCat),
+            default    => $this->loadScopeConfig('global'),
+        };
+        $html = '<pre style="background:#fffae0;border:2px solid #d33;padding:8px;white-space:pre-wrap;">'
+              . "DEBUG renderAdminPage()\n"
+              . '$_POST[schemaOrgData_cat]  = '.var_export($_POST['schemaOrgData_cat']  ?? null, true)."\n"
+              . '$_POST[schemaOrgData_page] = '.var_export($_POST['schemaOrgData_page'] ?? null, true)."\n"
+              . '$selectedCat  = '.var_export($selectedCat, true)."\n"
+              . '$selectedPage = '.var_export($selectedPage, true)."\n"
+              . 'aktiver Geltungsbereich = '.$debugScope."\n"
+              . 'loadScopeConfig('.$debugScope.') = '.print_r($debugConfig, true)
+              . '</pre>'."\n";
+
+        $html .= '<style>'.$this->getAdminCss().'</style>'."\n";
         $html .= '<form method="POST" action="'.htmlspecialchars($formAction, ENT_QUOTES, CHARSET).'">'."\n";
         $html .= '<input type="hidden" name="pluginadmin" value="'.PLUGINADMIN.'" />'."\n";
         $html .= '<input type="hidden" name="action" value="'.ACTION.'" />'."\n";
