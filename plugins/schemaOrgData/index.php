@@ -28,7 +28,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.0.6-beta';
+    private const PLUGIN_VERSION = '0.0.7-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1188,15 +1188,17 @@ class schemaOrgData extends Plugin {
     * @param string $name  Property-Name (üblicherweise "address")
     * @param array $fieldSchema bereits via resolveSchemaRef() aufgelöstes Schema
     * @param array $value gespeicherte Adress-Properties
+    * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     *
     ***************************************************************/
-    private function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value): string {
+    private function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix = null): string {
         $lang = $this->loadAdminLanguage();
-        $countryFieldId = 'schemaOrgData_'.$scope.'_'.$name.'_addressCountry';
+        $idPrefix = $idPrefix ?? $scope;
+        $countryFieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_addressCountry';
         $html = '';
 
         foreach($fieldSchema['properties'] ?? [] as $subName => $subSchema) {
-            $fieldId = 'schemaOrgData_'.$scope.'_'.$name.'_'.$subName;
+            $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$subName;
             $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$subName.']';
             $subValue = $value[$subName] ?? ($subSchema['default'] ?? null);
             $required = (bool) ($subSchema['ui:required'] ?? false);
@@ -1240,10 +1242,12 @@ class schemaOrgData extends Plugin {
     * @param string $name  Property-Name (üblicherweise "openingHours")
     * @param array $fieldSchema Feld-Schema (ui:days, ui:dayLabelKeys)
     * @param array $value gespeichertes openingHours-Array
+    * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     *
     ***************************************************************/
-    private function renderOpeningHoursWidget(string $scope, string $name, array $fieldSchema, array $value): string {
+    private function renderOpeningHoursWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix = null): string {
         $lang = $this->loadAdminLanguage();
+        $idPrefix = $idPrefix ?? $scope;
         $weekdayLang = $this->loadWeekdayLanguage();
         $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
         $dayLabelKeys = $fieldSchema['ui:dayLabelKeys'] ?? [];
@@ -1256,8 +1260,8 @@ class schemaOrgData extends Plugin {
 
         foreach($days as $day) {
             $dayLabel = isset($dayLabelKeys[$day]) ? $weekdayLang->getLanguageHtml($dayLabelKeys[$day]) : htmlspecialchars($day, ENT_QUOTES, CHARSET);
-            $fromId = 'schemaOrgData_'.$scope.'_'.$name.'_'.$day.'_from';
-            $toId = 'schemaOrgData_'.$scope.'_'.$name.'_'.$day.'_to';
+            $fromId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_from';
+            $toId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_to';
             $fromName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][from]';
             $toName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][to]';
             $from = $perDay[$day]['from'] ?? '';
@@ -1292,10 +1296,12 @@ class schemaOrgData extends Plugin {
     * @param string $name  Property-Name (üblicherweise "mainEntity")
     * @param array $fieldSchema Feld-Schema (items.properties)
     * @param array $value gespeichertes mainEntity-Array
+    * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     *
     ***************************************************************/
-    private function renderFaqListWidget(string $scope, string $name, array $fieldSchema, array $value): string {
+    private function renderFaqListWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix = null): string {
         $lang = $this->loadAdminLanguage();
+        $idPrefix = $idPrefix ?? $scope;
         $itemSchema = $fieldSchema['items'] ?? [];
         $questionSchema = $itemSchema['properties']['name'] ?? [];
         $answerSchema = $itemSchema['properties']['acceptedAnswer']['properties']['text'] ?? [];
@@ -1306,8 +1312,8 @@ class schemaOrgData extends Plugin {
 
         $html = '';
         foreach($entries as $index => $entry) {
-            $questionId = 'schemaOrgData_'.$scope.'_'.$name.'_'.$index.'_name';
-            $answerId = 'schemaOrgData_'.$scope.'_'.$name.'_'.$index.'_answer';
+            $questionId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$index.'_name';
+            $answerId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$index.'_answer';
             $questionName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$index.'][name]';
             $answerName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$index.'][acceptedAnswer][text]';
             $question = $entry['name'] ?? '';
@@ -1342,11 +1348,13 @@ class schemaOrgData extends Plugin {
     * @param string $scope Geltungsbereich
     * @param string $type  Schema-Type (für data-schema-url)
     * @param string $extensionJson bereits formatiertes JSON (oder '')
+    * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     *
     ***************************************************************/
-    private function renderExtensionFieldWidget(string $scope, string $type, string $extensionJson): string {
+    private function renderExtensionFieldWidget(string $scope, string $type, string $extensionJson, ?string $idPrefix = null): string {
         $lang = $this->loadAdminLanguage();
-        $fieldId = 'schemaOrgData_'.$scope.'_'.$type.'_extension';
+        $idPrefix = $idPrefix ?? $scope;
+        $fieldId = 'schemaOrgData_'.$idPrefix.'_extension';
         $fieldName = 'schemaOrgData['.$scope.'][extension]['.$type.']';
         $schemaUrl = $this->PLUGIN_SELF_URL.'schemas/'.$type.'.json';
 
@@ -1368,10 +1376,12 @@ class schemaOrgData extends Plugin {
     * Live-Validierung eines Feldes (data-validate, ggf.
     * data-country-field für telephone).
     *
+    * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     * @return array<string,string>
     *
     ***************************************************************/
-    private function buildValidationAttrs(string $scope, string $name, array $fieldSchema): array {
+    private function buildValidationAttrs(string $scope, string $name, array $fieldSchema, ?string $idPrefix = null): array {
+        $idPrefix = $idPrefix ?? $scope;
         $format = $fieldSchema['format'] ?? null;
 
         if($format === 'uri') {
@@ -1385,7 +1395,7 @@ class schemaOrgData extends Plugin {
         if($name === 'telephone') {
             return [
                 'data-validate' => 'telephone',
-                'data-country-field' => 'schemaOrgData_'.$scope.'_address_addressCountry',
+                'data-country-field' => 'schemaOrgData_'.$idPrefix.'_address_addressCountry',
             ];
         }
 
@@ -1435,22 +1445,24 @@ class schemaOrgData extends Plugin {
     * @param mixed $value  aktueller Wert
     * @param array $rootSchema vollständiges Schema (für resolveSchemaRef)
     * @param array $allData alle Formular-Properties dieses Schema-Types
+    * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     *
     ***************************************************************/
-    private function renderField(string $scope, string $name, array $fieldSchema, mixed $value, array $rootSchema, array $allData): string {
+    private function renderField(string $scope, string $name, array $fieldSchema, mixed $value, array $rootSchema, array $allData, ?string $idPrefix = null): string {
+        $idPrefix = $idPrefix ?? $scope;
         $fieldSchema = $this->resolveSchemaRef($fieldSchema, $rootSchema);
         $widget = $fieldSchema['ui:widget'] ?? 'text';
         $lang = $this->loadAdminLanguage();
         $label = $lang->getLanguageHtml($fieldSchema['ui:label'] ?? $name);
         $required = (bool) ($fieldSchema['ui:required'] ?? false);
         $badge = $this->renderRequiredBadge($required);
-        $fieldId = 'schemaOrgData_'.$scope.'_'.$name;
+        $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name;
 
         if(in_array($widget, ['postal_address', 'opening_hours', 'faq_list'], true)) {
             $inner = match($widget) {
-                'postal_address' => $this->renderPostalAddressWidget($scope, $name, $fieldSchema, is_array($value) ? $value : []),
-                'opening_hours'  => $this->renderOpeningHoursWidget($scope, $name, $fieldSchema, is_array($value) ? $value : []),
-                'faq_list'       => $this->renderFaqListWidget($scope, $name, $fieldSchema, is_array($value) ? $value : []),
+                'postal_address' => $this->renderPostalAddressWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix),
+                'opening_hours'  => $this->renderOpeningHoursWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix),
+                'faq_list'       => $this->renderFaqListWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix),
                 default          => '',
             };
 
@@ -1465,7 +1477,7 @@ class schemaOrgData extends Plugin {
         $widgetHtml = match($widget) {
             'select'   => $this->renderSelectWidget($fieldId, $fieldName, $fieldSchema, $value),
             'textarea' => $this->renderTextareaWidget($fieldId, $fieldName, $fieldSchema, $value),
-            default    => $this->renderTextWidget($fieldId, $fieldName, $fieldSchema, $value, $this->buildValidationAttrs($scope, $name, $fieldSchema)),
+            default    => $this->renderTextWidget($fieldId, $fieldName, $fieldSchema, $value, $this->buildValidationAttrs($scope, $name, $fieldSchema, $idPrefix)),
         };
 
         $feedback = ($value !== null and $value !== '' and is_scalar($value))
@@ -1487,10 +1499,12 @@ class schemaOrgData extends Plugin {
     * @param string $type  Schema-Type, z. B. "LocalBusiness"
     * @param array $schema vollständiges Schema (schemas/{Type}.json)
     * @param array $data   gespeicherte Properties dieses Types (Formular + Erweiterung gemischt)
+    * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     * @return string HTML-Snippet
     *
     ***************************************************************/
-    private function renderTypeFields(string $scope, string $type, array $schema, array $data): string {
+    private function renderTypeFields(string $scope, string $type, array $schema, array $data, ?string $idPrefix = null): string {
+        $idPrefix = $idPrefix ?? $scope;
         $split = $this->splitDataForRendering($data, $schema);
         $formData = $split['form'];
 
@@ -1500,10 +1514,10 @@ class schemaOrgData extends Plugin {
 
         $html = '';
         foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
-            $html .= $this->renderField($scope, $name, $fieldSchema, $formData[$name] ?? null, $schema, $formData);
+            $html .= $this->renderField($scope, $name, $fieldSchema, $formData[$name] ?? null, $schema, $formData, $idPrefix);
         }
 
-        $html .= $this->renderExtensionFieldWidget($scope, $type, $extensionJson);
+        $html .= $this->renderExtensionFieldWidget($scope, $type, $extensionJson, $idPrefix);
 
         return $html;
     }
@@ -1517,12 +1531,14 @@ class schemaOrgData extends Plugin {
     * @param string $scope Geltungsbereich
     * @param array<string,array> $availableTypes Type => Schema, für diese Ebene zulässig (ui:scopes)
     * @param string|null $selectedType aktuell konfigurierter Type oder null
+    * @param string|null $idPrefix Präfix für die HTML-ID des <select> (Fallback: $scope)
     * @return string HTML-Snippet
     *
     ***************************************************************/
-    private function renderTypeSelector(string $scope, array $availableTypes, ?string $selectedType): string {
+    private function renderTypeSelector(string $scope, array $availableTypes, ?string $selectedType, ?string $idPrefix = null): string {
         $lang = $this->loadAdminLanguage();
-        $fieldId = 'schemaOrgData_'.$scope.'_type';
+        $idPrefix = $idPrefix ?? $scope;
+        $fieldId = 'schemaOrgData_'.$idPrefix.'_type';
         $fieldName = 'schemaOrgData['.$scope.'][type]';
 
         $html = '<div class="mo-select-div flex">';
@@ -1761,14 +1777,19 @@ class schemaOrgData extends Plugin {
     * über die initScopeSelector() (validator.js) sie dem
     * passenden Button im Scope-Selektor zuordnet. Ist $active
     * false, wird die Sektion initial mit style="display:none"
-    * ausgeblendet (JS-loses Laden zeigt dennoch die aktive Sektion).
+    * ausgeblendet und alle enthaltenen Formularelemente erhalten
+    * disabled="disabled" (JS-loses Laden zeigt dennoch die aktive
+    * Sektion, initScopeSelector toggled disabled beim Umschalten).
     *
     * @param string $scope 'global' | 'category' | 'page'
     * @param bool   $active ob diese Sektion initial sichtbar ist
+    * @param string|null $idPrefix Präfix für HTML-IDs dieser Sektion
+    *                     (z. B. "global", "cat_Startseite"; Fallback: $scope)
     * @return string HTML-Snippet
     *
     ***************************************************************/
-    private function renderScopeSection(string $scope, ?string $cat, ?string $page, bool $active = true): string {
+    private function renderScopeSection(string $scope, ?string $cat, ?string $page, bool $active = true, ?string $idPrefix = null): string {
+        $idPrefix = $idPrefix ?? $scope;
         $lang = $this->loadAdminLanguage();
         $config = $this->loadScopeConfig($scope, $cat, $page);
 
@@ -1804,16 +1825,17 @@ class schemaOrgData extends Plugin {
         }
 
         $html .= '<div class="c-content">'
-            .'<div class="mo-in-li-l"><label for="schemaOrgData_'.$scope.'_type">'.$lang->getLanguageHtml('label_schema_type').'</label></div>'
-            .'<div class="mo-in-li-r">'.$this->renderTypeSelector($scope, $availableTypes, $selectedType).'</div>'
+            .'<div class="mo-in-li-l"><label for="schemaOrgData_'.$idPrefix.'_type">'.$lang->getLanguageHtml('label_schema_type').'</label></div>'
+            .'<div class="mo-in-li-r">'.$this->renderTypeSelector($scope, $availableTypes, $selectedType, $idPrefix).'</div>'
             .'</div>'."\n";
 
         foreach($availableTypes as $type => $schema) {
             $display = ($type === $selectedType) ? '' : ' style="display:none"';
             $data = is_array($config[$type] ?? null) ? $config[$type] : [];
+            $typeIdPrefix = $idPrefix.'_'.$type;
 
             $html .= '<div class="schemaOrgData-type-fields" data-schema-type="'.htmlspecialchars($type, ENT_QUOTES, CHARSET).'"'.$display.'>'."\n";
-            $html .= $this->renderTypeFields($scope, $type, $schema, $data);
+            $html .= $this->renderTypeFields($scope, $type, $schema, $data, $typeIdPrefix);
             $html .= '</div>'."\n";
         }
 
@@ -1825,6 +1847,13 @@ class schemaOrgData extends Plugin {
         }
 
         $html .= '</div>'."\n";
+
+        // Inaktive Sektionen werden vorgerendert, aber deaktiviert,
+        // damit beim Speichern nur die aktive Sektion übertragen wird
+        // (initScopeSelector aktiviert/deaktiviert beim Umschalten erneut)
+        if(!$active) {
+            $html = (string) preg_replace('/<(input|select|textarea)(\s)/i', '<$1 disabled="disabled"$2', $html);
+        }
 
         return $html;
     }
@@ -2337,7 +2366,6 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-scope-selector__link { padding: .2em .6em; border-radius: 3px; background: #fff; border: 1px solid #bbb; text-decoration: none; color: #333; font-size: .9em; white-space: nowrap; }
 .schemaOrgData-admin .schemaOrgData-scope-selector__link--active { background: #1a73e8; border-color: #1a73e8; color: #fff; font-weight: bold; }
 .schemaOrgData-admin .schemaOrgData-scope-selector__link--page { margin-left: .5em; font-size: .85em; }
-.schemaOrgData-admin .schemaOrgData-save-bar { margin-top: 1.5em; padding: .75em 0; border-top: 1px solid #ddd; text-align: right; }
 ';
     }
 
@@ -2354,37 +2382,29 @@ class schemaOrgData extends Plugin {
     * wird als Hinweisblock (renderSaveResultNotice()) oberhalb der
     * Geltungsbereiche ausgegeben.
     *
-    * Das gesamte Formular wird in ein eigenes <form method="POST">
-    * mit Save-Button eingewickelt (analog MetaKeywordsDescription) -
-    * moziloCMS submittet die Felder des Plugin-Panels sonst nicht.
-    * Die CMS-Kontextparameter (pluginadmin/action) werden als hidden
-    * fields mitgeführt, damit das moziloCMS-Panel nach dem Speichern
-    * geöffnet bleibt.
+    * Das Formular wird OHNE eigenes <form>-Element ausgegeben:
+    * moziloCMS umschließt den Plugin-Inhalt bereits mit einem
+    * eigenen <form id="js-plugin-manage">; ein verschachteltes
+    * <form> würde vom Browser ignoriert und nie abgeschickt.
+    * Gespeichert wird über das moziloCMS-eigene Disketten-Icon
+    * (.js-save-plugin), das alle [name]-Felder per AJAX überträgt.
+    *
+    * Damit der Scope-Wechsel ohne Page-Reload funktioniert, werden
+    * alle Geltungsbereiche (Global + alle Kategorien + Seiten der
+    * aktuell gewählten Kategorie) vorgerendert. Nur die aktive
+    * Sektion ist sichtbar und ihre Felder sind nicht disabled;
+    * initScopeSelector() (validator.js) schaltet beim Wechsel des
+    * Geltungsbereichs Sichtbarkeit und disabled-Status um, damit
+    * beim Speichern nur die aktive Sektion übertragen wird.
     *
     ***************************************************************/
     function getConfig(): array {
+        global $CatPage;
         $lang = $this->loadAdminLanguage();
 
         $saveResult = ($_POST !== []) ? $this->handlePostRequest() : null;
 
-        $adminUrl = URL_BASE . ADMIN_DIR_NAME . '/index.php';
-
         $html = '<style>'.$this->getAdminCss().'</style>'."\n";
-        $html .= '<form method="POST" action="'
-            . htmlspecialchars($adminUrl, ENT_QUOTES, CHARSET) . '">' . "\n";
-
-        // Bestehende moziloCMS-Kontext-Parameter als hidden fields
-        // (analog MetaKeywordsDescription) - hält das Plugin-Panel
-        // nach dem Speichern geöffnet.
-        if (defined('PLUGINADMIN')) {
-            $html .= '<input type="hidden" name="pluginadmin" value="'
-                . htmlspecialchars(PLUGINADMIN, ENT_QUOTES, CHARSET) . '" />' . "\n";
-        }
-        if (defined('ACTION')) {
-            $html .= '<input type="hidden" name="action" value="'
-                . htmlspecialchars(ACTION, ENT_QUOTES, CHARSET) . '" />' . "\n";
-        }
-
         $html .= '<div class="schemaOrgData-admin">'."\n";
 
         if($saveResult !== null) {
@@ -2408,20 +2428,46 @@ class schemaOrgData extends Plugin {
         // Scope-Selektor rendern
         $html .= $this->renderScopeSelector($selectedCat, $selectedPage);
 
-        // Sektionen rendern - die aktivste gewählte Ebene (Seite > Kategorie >
-        // Global) wird initial sichtbar dargestellt, die anderen ausgeblendet
-        // (initScopeSelector blendet beim Klick zwischen ihnen um).
-        $activeScope = ($selectedPage !== null) ? 'page' : (($selectedCat !== null) ? 'category' : 'global');
+        // Global immer rendern (aktiv wenn keine Kategorie gewählt)
+        $html .= $this->renderScopeSection(
+            'global', null, null,
+            active: $selectedCat === null,
+            idPrefix: 'global'
+        );
 
-        $html .= $this->renderScopeSection('global', null, null, $activeScope === 'global');
-        if ($selectedCat !== null) {
-            $html .= $this->renderScopeSection('category', $selectedCat, null, $activeScope === 'category');
-            if ($selectedPage !== null) {
-                $html .= $this->renderScopeSection('page', $selectedCat, $selectedPage, $activeScope === 'page');
+        // Alle Kategorien vorrendern
+        $allCats = (isset($CatPage) && is_object($CatPage))
+            ? $CatPage->get_CatArray(false, false, [EXT_PAGE, EXT_HIDDEN])
+            : [];
+
+        foreach ($allCats as $cat) {
+            $catActive = ($cat === $selectedCat && $selectedPage === null);
+            $safeCat   = $this->sanitizeScopeIdentifier($cat);
+            $html .= $this->renderScopeSection(
+                'category', $cat, null,
+                active: $catActive,
+                idPrefix: 'cat_' . $safeCat
+            );
+
+            // Seiten der aktiven Kategorie vorrendern
+            if ($cat === $selectedCat && isset($CatPage) && is_object($CatPage)
+                && method_exists($CatPage, 'get_PageArray')) {
+                $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
+                foreach ($pages as $page) {
+                    $pageActive = ($page === $selectedPage);
+                    $safePage   = $this->sanitizeScopeIdentifier($page);
+                    $html .= $this->renderScopeSection(
+                        'page', $cat, $page,
+                        active: $pageActive,
+                        idPrefix: 'page_' . $safeCat . '_' . $safePage
+                    );
+                }
             }
         }
 
-        // GET-Parameter als versteckte Felder für POST mitführen
+        // GET-Parameter als versteckte Felder mitführen - werden vom
+        // Disketten-Icon per send_data() mitgesendet und von
+        // resolveScopeIdentifiers() für den POST-Geltungsbereich ausgewertet.
         if ($selectedCat !== null) {
             $html .= '<input type="hidden" name="schemaOrgData_cat"'
                    . ' value="'.htmlspecialchars($selectedCat, ENT_QUOTES, CHARSET).'" />'."\n";
@@ -2432,14 +2478,6 @@ class schemaOrgData extends Plugin {
         }
 
         $html .= '</div>'."\n";
-
-        // Save-Button
-        $html .= '<div class="schemaOrgData-save-bar">'
-            . '<button type="submit" class="mo-btn mo-btn--primary">'
-            . $lang->getLanguageHtml('label_save') . '</button>'
-            . '</div>' . "\n";
-
-        $html .= '</form>' . "\n";
 
         // Lokalisierte Texte für die clientseitige Validierung (validator.js)
         $messages = [

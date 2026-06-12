@@ -381,9 +381,12 @@
      * renderScopeSelector()/renderScopeSection()): blendet beim Klick
      * auf einen Button die zugehörige .schemaOrgData-scope-Sektion
      * ein und alle anderen aus, ohne die Seite neu zu laden (moziloCMS
-     * würde den Plugin-Tab bei einem Page-Reload schließen). Die
-     * hidden inputs schemaOrgData_cat/_page werden für den POST beim
-     * Speichern aktualisiert.
+     * würde den Plugin-Tab bei einem Page-Reload schließen). Alle
+     * Sektionen sind vorgerendert; nur die Felder der aktiven Sektion
+     * werden aktiviert (disabled=false), die übrigen deaktiviert,
+     * damit das moziloCMS-Disketten-Icon beim Speichern nur die aktive
+     * Sektion überträgt. Die hidden inputs schemaOrgData_cat/_page
+     * werden für den POST beim Speichern aktualisiert.
      */
     function initScopeSelector() {
         var buttons = document.querySelectorAll(
@@ -410,8 +413,16 @@
                     function (section) {
                         var sCat  = section.getAttribute('data-scope-cat')  || '';
                         var sPage = section.getAttribute('data-scope-page') || '';
-                        section.style.display =
-                            (sCat === cat && sPage === page) ? '' : 'none';
+                        var isActive = (sCat === cat && sPage === page);
+                        section.style.display = isActive ? '' : 'none';
+
+                        // Inputs der Sektion aktivieren/deaktivieren damit nur
+                        // die aktive Sektion beim Speichern mitgesendet wird
+                        section.querySelectorAll('input, select, textarea').forEach(
+                            function (el) {
+                                el.disabled = !isActive;
+                            }
+                        );
                     }
                 );
 

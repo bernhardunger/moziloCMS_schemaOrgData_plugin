@@ -110,5 +110,3 @@ description_import_jsonld = Fügt einen bestehenden JSON-LD-Block ein. Bekannte 
 button_import = Importieren
 
 button_save = Speichern
-
-label_save = Konfiguration speichern
