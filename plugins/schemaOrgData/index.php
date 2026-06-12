@@ -28,7 +28,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.0.4-beta';
+    private const PLUGIN_VERSION = '0.0.5-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2224,14 +2224,16 @@ class schemaOrgData extends Plugin {
     * Wird von getConfig() aufgerufen, bevor das Formular gerendert
     * wird, sofern $_POST nicht leer ist.
     *
-    * @return array{success: bool, errors: string[]}
+    * @return ?array{success: bool, errors: string[]}
     *
     ***************************************************************/
-    private function handlePostRequest(): array {
+    private function handlePostRequest(): ?array {
         $scopes = $_POST['schemaOrgData'] ?? null;
 
+        // Keine schemaOrgData-Formulardaten im POST - kein Speichervorgang,
+        // kein Ergebnis zurückgeben (verhindert falsche Erfolgsmeldung).
         if(!is_array($scopes)) {
-            return ['success' => true, 'errors' => []];
+            return null;
         }
 
         $success = true;
