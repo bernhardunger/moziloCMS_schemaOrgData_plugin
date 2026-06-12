@@ -434,6 +434,17 @@ class schemaOrgData extends Plugin {
         $cat = (defined('CAT_REQUEST') and CAT_REQUEST) ? $this->sanitizeScopeIdentifier((string) CAT_REQUEST) : null;
         $page = (defined('PAGE_REQUEST') and PAGE_REQUEST) ? $this->sanitizeScopeIdentifier((string) PAGE_REQUEST) : null;
 
+        // Fallback auf Plugin-eigene GET-Parameter im Admin-Kontext
+        // (CAT_REQUEST/PAGE_REQUEST sind im moziloCMS-Admin nicht gesetzt)
+        if ($cat === null && isset($_GET['schemaOrgData_cat'])) {
+            $cat = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_cat']);
+            if ($cat === '') $cat = null;
+        }
+        if ($page === null && isset($_GET['schemaOrgData_page'])) {
+            $page = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_page']);
+            if ($page === '') $page = null;
+        }
+
         return match($scope) {
             'category' => [$cat, null],
             'page'     => [$cat, $page],
@@ -1644,6 +1655,85 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Rendert den Scope-Selektor als Link-Navigation.
+    *
+    * Baut Navigations-Links mit den moziloCMS-Admin-Konstanten
+    * URL_BASE, ADMIN_DIR_NAME, PLUGINADMIN und ACTION — analog
+    * zur form-action in MetaKeywordsDescription. Klick auf eine
+    * Kategorie oder Seite lädt dieselbe Plugin-Admin-Seite mit
+    * den Plugin-eigenen GET-Parametern schemaOrgData_cat/_page
+    * neu. Ist $CatPage nicht verfügbar, wird ein leerer String
+    * zurückgegeben.
+    *
+    * @param string|null $selectedCat  aktuell gewählte Kategorie
+    * @param string|null $selectedPage aktuell gewählte Seite
+    * @return string HTML-Snippet
+    *
+    ***************************************************************/
+    private function renderScopeSelector(?string $selectedCat, ?string $selectedPage): string {
+        global $CatPage;
+        $lang = $this->loadAdminLanguage();
+
+        if (!isset($CatPage) || !is_object($CatPage)
+            || !defined('PLUGINADMIN') || !defined('ACTION')) {
+            return '';
+        }
+
+        // Basis-URL für alle Navigations-Links (wie MetaKeywordsDescription)
+        $adminBase = URL_BASE . ADMIN_DIR_NAME . '/index.php'
+            . '?pluginadmin=' . urlencode(PLUGINADMIN)
+            . '&action='      . urlencode(ACTION);
+
+        $cats = $CatPage->get_CatArray(false, false, [EXT_PAGE, EXT_HIDDEN]);
+
+        $html  = '<div class="schemaOrgData-scope-selector">'."\n";
+        $html .= '<span class="schemaOrgData-scope-selector__label">'
+               . $lang->getLanguageHtml('label_scope_selector') . '</span>'."\n";
+        $html .= '<nav class="schemaOrgData-scope-selector__nav">'."\n";
+
+        // Link "Global" (kein cat/page-Parameter)
+        $activeGlobal = ($selectedCat === null) ? ' schemaOrgData-scope-selector__link--active' : '';
+        $html .= '<a class="schemaOrgData-scope-selector__link'.$activeGlobal.'"'
+               . ' href="'.htmlspecialchars($adminBase, ENT_QUOTES, CHARSET).'">'
+               . $lang->getLanguageHtml('scope_global') . '</a>'."\n";
+
+        // Link je Kategorie
+        foreach ($cats as $cat) {
+            $catUrl    = $adminBase . '&schemaOrgData_cat=' . urlencode($cat);
+            $activeCat = ($cat === $selectedCat && $selectedPage === null)
+                ? ' schemaOrgData-scope-selector__link--active' : '';
+            $catLabel  = htmlspecialchars(
+                $CatPage->get_HrefText($cat, false), ENT_QUOTES, CHARSET
+            );
+            $html .= '<a class="schemaOrgData-scope-selector__link'.$activeCat.'"'
+                   . ' href="'.htmlspecialchars($catUrl, ENT_QUOTES, CHARSET).'">'
+                   . $catLabel . '</a>'."\n";
+
+            // Seiten der aktuell gewählten Kategorie einrückt darunter
+            if ($cat === $selectedCat) {
+                $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
+                foreach ($pages as $page) {
+                    $pageUrl    = $catUrl . '&schemaOrgData_page=' . urlencode($page);
+                    $activePage = ($page === $selectedPage)
+                        ? ' schemaOrgData-scope-selector__link--active' : '';
+                    $pageLabel  = htmlspecialchars(
+                        $CatPage->get_HrefText($cat, $page), ENT_QUOTES, CHARSET
+                    );
+                    $html .= '<a class="schemaOrgData-scope-selector__link'
+                           . ' schemaOrgData-scope-selector__link--page'.$activePage.'"'
+                           . ' href="'.htmlspecialchars($pageUrl, ENT_QUOTES, CHARSET).'">'
+                           . '↳ ' . $pageLabel . '</a>'."\n";
+                }
+            }
+        }
+
+        $html .= '</nav>'."\n";
+        $html .= '</div>'."\n";
+        return $html;
+    }
+
+    /***************************************************************
+    *
     * Rendert den vollständigen Konfigurationsblock einer
     * Geltungsebene: Info-Block, Hinweis auf vorhandenes JSON-LD
     * (siehe renderExistingJsonLdNotice), Type-Auswahl,
@@ -2207,6 +2297,12 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-faq-entry { border-top: 1px solid #eee; padding-top: .5em; margin-top: .5em; }
 .schemaOrgData-admin .schemaOrgData-faq-entry:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 .schemaOrgData-admin .schemaOrgData-checkbox { display: inline-block; margin: 0 1em .25em 0; }
+.schemaOrgData-admin .schemaOrgData-scope-selector { display: flex; align-items: flex-start; gap: .75em; flex-wrap: wrap; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .6em 1em; margin-bottom: 1.25em; }
+.schemaOrgData-admin .schemaOrgData-scope-selector__label { font-weight: bold; padding-top: .15em; white-space: nowrap; }
+.schemaOrgData-admin .schemaOrgData-scope-selector__nav { display: flex; flex-wrap: wrap; gap: .35em; }
+.schemaOrgData-admin .schemaOrgData-scope-selector__link { padding: .2em .6em; border-radius: 3px; background: #fff; border: 1px solid #bbb; text-decoration: none; color: #333; font-size: .9em; white-space: nowrap; }
+.schemaOrgData-admin .schemaOrgData-scope-selector__link--active { background: #1a73e8; border-color: #1a73e8; color: #fff; font-weight: bold; }
+.schemaOrgData-admin .schemaOrgData-scope-selector__link--page { margin-left: .5em; font-size: .85em; }
 ';
     }
 
@@ -2236,14 +2332,40 @@ class schemaOrgData extends Plugin {
             $html .= $this->renderSaveResultNotice($saveResult);
         }
 
+        // Aktiven Scope ermitteln: CMS-Konstanten haben Vorrang vor GET-Params
+        $selectedCat = null;
+        $selectedPage = null;
+        if (defined('CAT_REQUEST') && CAT_REQUEST) {
+            $selectedCat = $this->sanitizeScopeIdentifier((string) CAT_REQUEST);
+        } elseif (isset($_GET['schemaOrgData_cat'])) {
+            $selectedCat = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_cat']) ?: null;
+        }
+        if (defined('PAGE_REQUEST') && PAGE_REQUEST) {
+            $selectedPage = $this->sanitizeScopeIdentifier((string) PAGE_REQUEST);
+        } elseif (isset($_GET['schemaOrgData_page'])) {
+            $selectedPage = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_page']) ?: null;
+        }
+
+        // Scope-Selektor rendern
+        $html .= $this->renderScopeSelector($selectedCat, $selectedPage);
+
+        // Sektionen rendern
         $html .= $this->renderScopeSection('global', null, null);
-
-        if(defined('CAT_REQUEST') and CAT_REQUEST) {
-            $html .= $this->renderScopeSection('category', CAT_REQUEST, null);
-
-            if(defined('PAGE_REQUEST') and PAGE_REQUEST) {
-                $html .= $this->renderScopeSection('page', CAT_REQUEST, PAGE_REQUEST);
+        if ($selectedCat !== null) {
+            $html .= $this->renderScopeSection('category', $selectedCat, null);
+            if ($selectedPage !== null) {
+                $html .= $this->renderScopeSection('page', $selectedCat, $selectedPage);
             }
+        }
+
+        // GET-Parameter als versteckte Felder für POST mitführen
+        if ($selectedCat !== null) {
+            $html .= '<input type="hidden" name="schemaOrgData_cat"'
+                   . ' value="'.htmlspecialchars($selectedCat, ENT_QUOTES, CHARSET).'" />'."\n";
+        }
+        if ($selectedPage !== null) {
+            $html .= '<input type="hidden" name="schemaOrgData_page"'
+                   . ' value="'.htmlspecialchars($selectedPage, ENT_QUOTES, CHARSET).'" />'."\n";
         }
 
         $html .= '</div>'."\n";

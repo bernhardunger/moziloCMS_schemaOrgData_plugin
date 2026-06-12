@@ -5,6 +5,8 @@ scope_global = Global
 scope_category = Category
 scope_page = Page
 
+label_scope_selector = Configuration scope
+
 info_text_global = This configuration is output on every page by default. Use the exclusion list below to exempt individual categories from the global output. If a category or page has the same schema type configured, the global output for that type is automatically suppressed.
 info_text_category = This configuration is output on all pages of this category, in addition to the global configuration. If this category has the same schema type configured as global, this configuration overrides the global output for that type.
 info_text_page = This configuration is output only on this single page, in addition to the global and category configuration. If this page has the same schema type configured as a more general level, this configuration overrides that level's output for that type.

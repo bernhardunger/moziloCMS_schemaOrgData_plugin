@@ -5,6 +5,8 @@ scope_global = Global
 scope_category = Kategorie
 scope_page = Seite
 
+label_scope_selector = Konfigurationsbereich
+
 info_text_global = Diese Konfiguration wird standardmäßig auf jeder Seite ausgegeben. Über die Ausschlussliste unten können einzelne Kategorien von der globalen Ausgabe ausgenommen werden. Ist für eine Kategorie oder Seite derselbe Schema-Type konfiguriert, wird die globale Ausgabe für diesen Type automatisch unterdrückt.
 info_text_category = Diese Konfiguration wird zusätzlich zur globalen Konfiguration auf allen Seiten dieser Kategorie ausgegeben. Ist für diese Kategorie derselbe Schema-Type wie global konfiguriert, überschreibt diese Konfiguration die globale Ausgabe für diesen Type.
 info_text_page = Diese Konfiguration wird zusätzlich zur globalen und zur Kategorie-Konfiguration nur auf dieser einzelnen Seite ausgegeben. Ist für diese Seite derselbe Schema-Type wie auf einer allgemeineren Ebene konfiguriert, überschreibt diese Konfiguration deren Ausgabe für diesen Type.
