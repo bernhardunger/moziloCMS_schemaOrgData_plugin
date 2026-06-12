@@ -377,6 +377,58 @@
     }
 
     /**
+     * Aktiviert den Scope-Selektor (siehe index.php,
+     * renderScopeSelector()/renderScopeSection()): blendet beim Klick
+     * auf einen Button die zugehörige .schemaOrgData-scope-Sektion
+     * ein und alle anderen aus, ohne die Seite neu zu laden (moziloCMS
+     * würde den Plugin-Tab bei einem Page-Reload schließen). Die
+     * hidden inputs schemaOrgData_cat/_page werden für den POST beim
+     * Speichern aktualisiert.
+     */
+    function initScopeSelector() {
+        var buttons = document.querySelectorAll(
+            '.schemaOrgData-scope-selector__link'
+        );
+        if (!buttons.length) return;
+
+        buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                // Aktiv-Klasse umsetzen
+                buttons.forEach(function (b) {
+                    b.classList.remove(
+                        'schemaOrgData-scope-selector__link--active'
+                    );
+                });
+                btn.classList.add(
+                    'schemaOrgData-scope-selector__link--active'
+                );
+
+                // Sektionen ein-/ausblenden
+                var cat  = btn.getAttribute('data-scope-cat')  || '';
+                var page = btn.getAttribute('data-scope-page') || '';
+                document.querySelectorAll('.schemaOrgData-scope').forEach(
+                    function (section) {
+                        var sCat  = section.getAttribute('data-scope-cat')  || '';
+                        var sPage = section.getAttribute('data-scope-page') || '';
+                        section.style.display =
+                            (sCat === cat && sPage === page) ? '' : 'none';
+                    }
+                );
+
+                // Hidden inputs für POST aktualisieren
+                var hiddenCat = document.querySelector(
+                    'input[name="schemaOrgData_cat"]'
+                );
+                var hiddenPage = document.querySelector(
+                    'input[name="schemaOrgData_page"]'
+                );
+                if (hiddenCat)  hiddenCat.value  = cat;
+                if (hiddenPage) hiddenPage.value = page;
+            });
+        });
+    }
+
+    /**
      * Aktiviert die Type-Auswahl je Geltungsbereich: blendet die
      * Formularfelder des gewählten Schema-Types ein und alle anderen
      * aus (siehe index.php, renderScopeSection()).
@@ -467,12 +519,13 @@
     }
 
     /**
-     * Initialisiert das gesamte Admin-Formular: Type-Umschaltung,
-     * Live-Validierung der Formularfelder sowie der
+     * Initialisiert das gesamte Admin-Formular: Scope-Selektor,
+     * Type-Umschaltung, Live-Validierung der Formularfelder sowie der
      * Erweiterungsfelder. Wird von getConfig() nach DOMContentLoaded
      * aufgerufen.
      */
     function initAdminForm() {
+        initScopeSelector();
         initTypeSwitcher();
         initFieldValidation();
         initExtensionFieldValidation();

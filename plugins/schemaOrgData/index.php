@@ -28,7 +28,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.0.5-beta';
+    private const PLUGIN_VERSION = '0.0.6-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -437,11 +437,22 @@ class schemaOrgData extends Plugin {
         $cat = (defined('CAT_REQUEST') and CAT_REQUEST) ? $this->sanitizeScopeIdentifier((string) CAT_REQUEST) : null;
         $page = (defined('PAGE_REQUEST') and PAGE_REQUEST) ? $this->sanitizeScopeIdentifier((string) PAGE_REQUEST) : null;
 
-        // Fallback auf Plugin-eigene GET-Parameter im Admin-Kontext
-        // (CAT_REQUEST/PAGE_REQUEST sind im moziloCMS-Admin nicht gesetzt)
+        // Fallback auf Plugin-eigene Parameter im Admin-Kontext
+        // (CAT_REQUEST/PAGE_REQUEST sind im moziloCMS-Admin nicht gesetzt).
+        // Fallback-Reihenfolge: CMS-Konstanten → POST → GET. POST hat
+        // Vorrang vor GET, da das Speichern-Formular ohne Query-String
+        // an die admin/index.php sendet (siehe getConfig()).
+        if ($cat === null && isset($_POST['schemaOrgData_cat'])) {
+            $cat = $this->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_cat']);
+            if ($cat === '') $cat = null;
+        }
         if ($cat === null && isset($_GET['schemaOrgData_cat'])) {
             $cat = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_cat']);
             if ($cat === '') $cat = null;
+        }
+        if ($page === null && isset($_POST['schemaOrgData_page'])) {
+            $page = $this->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_page']);
+            if ($page === '') $page = null;
         }
         if ($page === null && isset($_GET['schemaOrgData_page'])) {
             $page = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_page']);
@@ -1666,15 +1677,17 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
-    * Rendert den Scope-Selektor als Link-Navigation.
+    * Rendert den Scope-Selektor als Button-Navigation.
     *
-    * Baut Navigations-Links mit den moziloCMS-Admin-Konstanten
-    * URL_BASE, ADMIN_DIR_NAME, PLUGINADMIN und ACTION — analog
-    * zur form-action in MetaKeywordsDescription. Klick auf eine
-    * Kategorie oder Seite lädt dieselbe Plugin-Admin-Seite mit
-    * den Plugin-eigenen GET-Parametern schemaOrgData_cat/_page
-    * neu. Ist $CatPage nicht verfügbar, wird ein leerer String
-    * zurückgegeben.
+    * moziloCMS öffnet die Plugin-Einstellungen über einen
+    * JavaScript-Tab-Mechanismus — ein Page-Reload würde diesen Tab
+    * schließen und auf die Info-Seite zurückspringen. Statt
+    * <a href>-Links werden daher <button>-Elemente mit
+    * data-scope-cat/data-scope-page Attributen gerendert.
+    * initScopeSelector() (validator.js) wertet diese Buttons aus
+    * und blendet die passende .schemaOrgData-scope-Sektion ein,
+    * ohne die Seite neu zu laden. Ist $CatPage nicht verfügbar,
+    * wird ein leerer String zurückgegeben.
     *
     * @param string|null $selectedCat  aktuell gewählte Kategorie
     * @param string|null $selectedPage aktuell gewählte Seite
@@ -1689,15 +1702,6 @@ class schemaOrgData extends Plugin {
             return '';
         }
 
-        // Basis-URL aus der exakten aktuellen Request-URI ableiten —
-        // bewahrt alle CMS-internen Panel-Parameter unverändert.
-        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-        $requestUri = preg_replace('/([&?])schemaOrgData_cat=[^&]*/u', '$1', $requestUri);
-        $requestUri = preg_replace('/([&?])schemaOrgData_page=[^&]*/u', '$1', $requestUri);
-        $requestUri = rtrim($requestUri, '?&');
-        $adminBase  = $requestUri;
-        $sep = (strpos($requestUri, '?') !== false) ? '&' : '?';
-
         $cats = $CatPage->get_CatArray(false, false, [EXT_PAGE, EXT_HIDDEN]);
 
         $html  = '<div class="schemaOrgData-scope-selector">'."\n";
@@ -1705,36 +1709,35 @@ class schemaOrgData extends Plugin {
                . $lang->getLanguageHtml('label_scope_selector') . '</span>'."\n";
         $html .= '<nav class="schemaOrgData-scope-selector__nav">'."\n";
 
-        // Link "Global" (kein cat/page-Parameter)
+        // Button "Global" (kein data-scope-cat / data-scope-page)
         $activeGlobal = ($selectedCat === null) ? ' schemaOrgData-scope-selector__link--active' : '';
-        $html .= '<a class="schemaOrgData-scope-selector__link'.$activeGlobal.'"'
-               . ' href="'.htmlspecialchars($adminBase, ENT_QUOTES, CHARSET).'">'
-               . $lang->getLanguageHtml('scope_global') . '</a>'."\n";
+        $html .= '<button type="button" class="schemaOrgData-scope-selector__link'.$activeGlobal.'">'
+               . $lang->getLanguageHtml('scope_global') . '</button>'."\n";
 
-        // Link je Kategorie
+        // Button je Kategorie
         foreach ($cats as $cat) {
-            $catUrl    = $adminBase . $sep . 'schemaOrgData_cat=' . urlencode($cat);
             $activeCat = ($cat === $selectedCat && $selectedPage === null)
                 ? ' schemaOrgData-scope-selector__link--active' : '';
+            $catAttr   = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
             // rawurldecode() dekodiert den moziloCMS-URL-kodierten Bezeichner
             // ("%C3%9CBer..." → "Über..."), htmlspecialchars() sichert danach HTML-sauber.
             $catLabel  = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
-            $html .= '<a class="schemaOrgData-scope-selector__link'.$activeCat.'"'
-                   . ' href="'.htmlspecialchars($catUrl, ENT_QUOTES, CHARSET).'">'
-                   . $catLabel . '</a>'."\n";
+            $html .= '<button type="button" class="schemaOrgData-scope-selector__link'.$activeCat.'"'
+                   . ' data-scope-cat="'.$catAttr.'">'
+                   . $catLabel . '</button>'."\n";
 
-            // Seiten der aktuell gewählten Kategorie einrückt darunter
+            // Seiten der aktuell gewählten Kategorie eingerückt darunter
             if ($cat === $selectedCat) {
                 $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
                 foreach ($pages as $page) {
-                    $pageUrl    = $catUrl . '&schemaOrgData_page=' . urlencode($page);
                     $activePage = ($page === $selectedPage)
                         ? ' schemaOrgData-scope-selector__link--active' : '';
+                    $pageAttr   = htmlspecialchars($page, ENT_QUOTES, CHARSET);
                     $pageLabel  = htmlspecialchars(rawurldecode($page), ENT_QUOTES, CHARSET);
-                    $html .= '<a class="schemaOrgData-scope-selector__link'
+                    $html .= '<button type="button" class="schemaOrgData-scope-selector__link'
                            . ' schemaOrgData-scope-selector__link--page'.$activePage.'"'
-                           . ' href="'.htmlspecialchars($pageUrl, ENT_QUOTES, CHARSET).'">'
-                           . '↳ ' . $pageLabel . '</a>'."\n";
+                           . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'">'
+                           . '↳ ' . $pageLabel . '</button>'."\n";
                 }
             }
         }
@@ -1754,11 +1757,18 @@ class schemaOrgData extends Plugin {
     * erfolgt clientseitig) sowie - nur für "global" - die
     * Ausschlussliste.
     *
+    * Die Sektion erhält data-scope-cat/data-scope-page Attribute,
+    * über die initScopeSelector() (validator.js) sie dem
+    * passenden Button im Scope-Selektor zuordnet. Ist $active
+    * false, wird die Sektion initial mit style="display:none"
+    * ausgeblendet (JS-loses Laden zeigt dennoch die aktive Sektion).
+    *
     * @param string $scope 'global' | 'category' | 'page'
+    * @param bool   $active ob diese Sektion initial sichtbar ist
     * @return string HTML-Snippet
     *
     ***************************************************************/
-    private function renderScopeSection(string $scope, ?string $cat, ?string $page): string {
+    private function renderScopeSection(string $scope, ?string $cat, ?string $page, bool $active = true): string {
         $lang = $this->loadAdminLanguage();
         $config = $this->loadScopeConfig($scope, $cat, $page);
 
@@ -1780,7 +1790,11 @@ class schemaOrgData extends Plugin {
             }
         }
 
-        $html = '<div class="schemaOrgData-scope card mb" data-scope="'.$scope.'">'."\n";
+        $catAttr  = htmlspecialchars($cat ?? '', ENT_QUOTES, CHARSET);
+        $pageAttr = htmlspecialchars($page ?? '', ENT_QUOTES, CHARSET);
+        $displayStyle = $active ? '' : ' style="display:none"';
+        $html = '<div class="schemaOrgData-scope card mb" data-scope="'.$scope.'"'
+              . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'"'.$displayStyle.'>'."\n";
         $html .= '<h3>'.$lang->getLanguageHtml('scope_'.$scope).'</h3>'."\n";
         $html .= $this->renderInfoBlock($scope);
         $html .= $this->renderExistingJsonLdNotice($scope, $cat, $page);
@@ -2323,6 +2337,7 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-scope-selector__link { padding: .2em .6em; border-radius: 3px; background: #fff; border: 1px solid #bbb; text-decoration: none; color: #333; font-size: .9em; white-space: nowrap; }
 .schemaOrgData-admin .schemaOrgData-scope-selector__link--active { background: #1a73e8; border-color: #1a73e8; color: #fff; font-weight: bold; }
 .schemaOrgData-admin .schemaOrgData-scope-selector__link--page { margin-left: .5em; font-size: .85em; }
+.schemaOrgData-admin .schemaOrgData-save-bar { margin-top: 1.5em; padding: .75em 0; border-top: 1px solid #ddd; text-align: right; }
 ';
     }
 
@@ -2339,13 +2354,37 @@ class schemaOrgData extends Plugin {
     * wird als Hinweisblock (renderSaveResultNotice()) oberhalb der
     * Geltungsbereiche ausgegeben.
     *
+    * Das gesamte Formular wird in ein eigenes <form method="POST">
+    * mit Save-Button eingewickelt (analog MetaKeywordsDescription) -
+    * moziloCMS submittet die Felder des Plugin-Panels sonst nicht.
+    * Die CMS-Kontextparameter (pluginadmin/action) werden als hidden
+    * fields mitgeführt, damit das moziloCMS-Panel nach dem Speichern
+    * geöffnet bleibt.
+    *
     ***************************************************************/
     function getConfig(): array {
         $lang = $this->loadAdminLanguage();
 
         $saveResult = ($_POST !== []) ? $this->handlePostRequest() : null;
 
+        $adminUrl = URL_BASE . ADMIN_DIR_NAME . '/index.php';
+
         $html = '<style>'.$this->getAdminCss().'</style>'."\n";
+        $html .= '<form method="POST" action="'
+            . htmlspecialchars($adminUrl, ENT_QUOTES, CHARSET) . '">' . "\n";
+
+        // Bestehende moziloCMS-Kontext-Parameter als hidden fields
+        // (analog MetaKeywordsDescription) - hält das Plugin-Panel
+        // nach dem Speichern geöffnet.
+        if (defined('PLUGINADMIN')) {
+            $html .= '<input type="hidden" name="pluginadmin" value="'
+                . htmlspecialchars(PLUGINADMIN, ENT_QUOTES, CHARSET) . '" />' . "\n";
+        }
+        if (defined('ACTION')) {
+            $html .= '<input type="hidden" name="action" value="'
+                . htmlspecialchars(ACTION, ENT_QUOTES, CHARSET) . '" />' . "\n";
+        }
+
         $html .= '<div class="schemaOrgData-admin">'."\n";
 
         if($saveResult !== null) {
@@ -2369,12 +2408,16 @@ class schemaOrgData extends Plugin {
         // Scope-Selektor rendern
         $html .= $this->renderScopeSelector($selectedCat, $selectedPage);
 
-        // Sektionen rendern
-        $html .= $this->renderScopeSection('global', null, null);
+        // Sektionen rendern - die aktivste gewählte Ebene (Seite > Kategorie >
+        // Global) wird initial sichtbar dargestellt, die anderen ausgeblendet
+        // (initScopeSelector blendet beim Klick zwischen ihnen um).
+        $activeScope = ($selectedPage !== null) ? 'page' : (($selectedCat !== null) ? 'category' : 'global');
+
+        $html .= $this->renderScopeSection('global', null, null, $activeScope === 'global');
         if ($selectedCat !== null) {
-            $html .= $this->renderScopeSection('category', $selectedCat, null);
+            $html .= $this->renderScopeSection('category', $selectedCat, null, $activeScope === 'category');
             if ($selectedPage !== null) {
-                $html .= $this->renderScopeSection('page', $selectedCat, $selectedPage);
+                $html .= $this->renderScopeSection('page', $selectedCat, $selectedPage, $activeScope === 'page');
             }
         }
 
@@ -2389,6 +2432,14 @@ class schemaOrgData extends Plugin {
         }
 
         $html .= '</div>'."\n";
+
+        // Save-Button
+        $html .= '<div class="schemaOrgData-save-bar">'
+            . '<button type="submit" class="mo-btn mo-btn--primary">'
+            . $lang->getLanguageHtml('label_save') . '</button>'
+            . '</div>' . "\n";
+
+        $html .= '</form>' . "\n";
 
         // Lokalisierte Texte für die clientseitige Validierung (validator.js)
         $messages = [
