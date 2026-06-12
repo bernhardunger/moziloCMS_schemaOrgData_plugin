@@ -435,6 +435,17 @@
                 );
                 if (hiddenCat)  hiddenCat.value  = cat;
                 if (hiddenPage) hiddenPage.value = page;
+
+                // Seiten-Buttons der gewählten Kategorie ein-, alle
+                // anderen ausblenden (data-parent-cat, siehe
+                // renderScopeSelector())
+                buttons.forEach(function (b) {
+                    if (!b.classList.contains('schemaOrgData-scope-selector__link--page')) {
+                        return;
+                    }
+                    var parentCat = b.getAttribute('data-parent-cat') || '';
+                    b.style.display = (cat !== '' && parentCat === cat) ? '' : 'none';
+                });
             });
         });
     }
@@ -530,6 +541,58 @@
     }
 
     /**
+     * Aktiviert den Speichern-Button (.schemaOrgData-save-btn,
+     * siehe getConfig()): moziloCMS umschließt den Plugin-Inhalt mit
+     * einem eigenen <form id="js-plugin-manage">, ein verschachteltes
+     * <form> würde der Browser ignorieren. Das moziloCMS-eigene
+     * Disketten-Icon speichert über eine Settings-API, die getConfig()
+     * nicht aufruft. Beim Klick wird daher eine eigene, versteckte
+     * <form> direkt an <body> gehängt, mit den aktivierten [name]-
+     * Feldern der aktuellen Konfiguration befüllt und per POST an die
+     * aktuelle Seite abgeschickt - moziloCMS lädt die Plugin-Seite neu,
+     * getConfig() verarbeitet die Daten über handlePostRequest().
+     */
+    function initSaveButton() {
+        var btn = document.querySelector('.schemaOrgData-save-btn');
+        if (!btn) return;
+
+        btn.addEventListener('click', function () {
+            // Alle aktivierten [name]-Felder aus .js-config sammeln
+            var configDiv = btn.closest('.js-config') ||
+                            btn.closest('.schemaOrgData-admin');
+            if (!configDiv) return;
+
+            // Versteckte Form außerhalb von moziloCMS's <form> erstellen
+            // (direkt an <body> hängen verhindert verschachtelte Forms)
+            var form = document.createElement('form');
+            form.method = 'POST';
+            // Aktuelle URL ohne Fragment → POST geht zur selben Seite,
+            // moziloCMS lädt Plugins-Seite, getConfig() erhält $_POST
+            form.action = window.location.pathname + window.location.search;
+            form.style.display = 'none';
+
+            var fields = configDiv.querySelectorAll('input[name], select[name], textarea[name]');
+            fields.forEach(function (field) {
+                if (field.disabled) return;
+
+                // Checkboxen/Radios nur übernehmen, wenn aktiviert
+                if ((field.type === 'checkbox' || field.type === 'radio') && !field.checked) {
+                    return;
+                }
+
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = field.name;
+                hidden.value = field.value;
+                form.appendChild(hidden);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+        });
+    }
+
+    /**
      * Initialisiert das gesamte Admin-Formular: Scope-Selektor,
      * Type-Umschaltung, Live-Validierung der Formularfelder sowie der
      * Erweiterungsfelder. Wird von getConfig() nach DOMContentLoaded
@@ -540,6 +603,7 @@
         initTypeSwitcher();
         initFieldValidation();
         initExtensionFieldValidation();
+        initSaveButton();
     }
 
     // Öffentliche API

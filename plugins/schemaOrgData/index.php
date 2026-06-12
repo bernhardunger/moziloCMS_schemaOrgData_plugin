@@ -28,7 +28,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.0.7-beta';
+    private const PLUGIN_VERSION = '0.0.8-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1742,19 +1742,22 @@ class schemaOrgData extends Plugin {
                    . ' data-scope-cat="'.$catAttr.'">'
                    . $catLabel . '</button>'."\n";
 
-            // Seiten der aktuell gewählten Kategorie eingerückt darunter
-            if ($cat === $selectedCat) {
-                $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
-                foreach ($pages as $page) {
-                    $activePage = ($page === $selectedPage)
-                        ? ' schemaOrgData-scope-selector__link--active' : '';
-                    $pageAttr   = htmlspecialchars($page, ENT_QUOTES, CHARSET);
-                    $pageLabel  = htmlspecialchars(rawurldecode($page), ENT_QUOTES, CHARSET);
-                    $html .= '<button type="button" class="schemaOrgData-scope-selector__link'
-                           . ' schemaOrgData-scope-selector__link--page'.$activePage.'"'
-                           . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'">'
-                           . '↳ ' . $pageLabel . '</button>'."\n";
-                }
+            // Seiten aller Kategorien eingerückt darunter vorrendern - nur
+            // Seiten der initial aktiven Kategorie sind sichtbar,
+            // initScopeSelector() blendet die übrigen anhand
+            // data-parent-cat beim Kategoriewechsel ein/aus
+            $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
+            foreach ($pages as $page) {
+                $activePage = ($page === $selectedPage)
+                    ? ' schemaOrgData-scope-selector__link--active' : '';
+                $pageAttr   = htmlspecialchars($page, ENT_QUOTES, CHARSET);
+                $pageLabel  = htmlspecialchars(rawurldecode($page), ENT_QUOTES, CHARSET);
+                $pageDisplay = ($cat === $selectedCat) ? '' : ' style="display:none"';
+                $html .= '<button type="button" class="schemaOrgData-scope-selector__link'
+                       . ' schemaOrgData-scope-selector__link--page'.$activePage.'"'
+                       . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'"'
+                       . ' data-parent-cat="'.$catAttr.'"'.$pageDisplay.'>'
+                       . '↳ ' . $pageLabel . '</button>'."\n";
             }
         }
 
@@ -2366,6 +2369,7 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-scope-selector__link { padding: .2em .6em; border-radius: 3px; background: #fff; border: 1px solid #bbb; text-decoration: none; color: #333; font-size: .9em; white-space: nowrap; }
 .schemaOrgData-admin .schemaOrgData-scope-selector__link--active { background: #1a73e8; border-color: #1a73e8; color: #fff; font-weight: bold; }
 .schemaOrgData-admin .schemaOrgData-scope-selector__link--page { margin-left: .5em; font-size: .85em; }
+.schemaOrgData-admin .schemaOrgData-save-bar { margin-top: 1.5em; padding: .75em 0; border-top: 1px solid #ddd; text-align: right; }
 ';
     }
 
@@ -2385,14 +2389,19 @@ class schemaOrgData extends Plugin {
     * Das Formular wird OHNE eigenes <form>-Element ausgegeben:
     * moziloCMS umschließt den Plugin-Inhalt bereits mit einem
     * eigenen <form id="js-plugin-manage">; ein verschachteltes
-    * <form> würde vom Browser ignoriert und nie abgeschickt.
-    * Gespeichert wird über das moziloCMS-eigene Disketten-Icon
-    * (.js-save-plugin), das alle [name]-Felder per AJAX überträgt.
+    * <form> würde vom Browser ignoriert und nie abgeschickt. Das
+    * moziloCMS-eigene Disketten-Icon (.js-save-plugin) speichert
+    * über eine Settings-API, die getConfig() nicht aufruft und die
+    * conf/-Dateien dieses Plugins ignoriert. Gespeichert wird daher
+    * über den eigenen Button (.schemaOrgData-save-btn):
+    * initSaveButton() (validator.js) erstellt dafür eine eigene,
+    * versteckte <form> außerhalb des moziloCMS-Formulars und sendet
+    * sie per POST an die aktuelle Seite.
     *
     * Damit der Scope-Wechsel ohne Page-Reload funktioniert, werden
-    * alle Geltungsbereiche (Global + alle Kategorien + Seiten der
-    * aktuell gewählten Kategorie) vorgerendert. Nur die aktive
-    * Sektion ist sichtbar und ihre Felder sind nicht disabled;
+    * alle Geltungsbereiche (Global + alle Kategorien + alle Seiten
+    * aller Kategorien) vorgerendert. Nur die aktive Sektion ist
+    * sichtbar und ihre Felder sind nicht disabled;
     * initScopeSelector() (validator.js) schaltet beim Wechsel des
     * Geltungsbereichs Sichtbarkeit und disabled-Status um, damit
     * beim Speichern nur die aktive Sektion übertragen wird.
@@ -2449,12 +2458,12 @@ class schemaOrgData extends Plugin {
                 idPrefix: 'cat_' . $safeCat
             );
 
-            // Seiten der aktiven Kategorie vorrendern
-            if ($cat === $selectedCat && isset($CatPage) && is_object($CatPage)
+            // Seiten aller Kategorien vorrendern - inaktive erhalten display:none
+            if (isset($CatPage) && is_object($CatPage)
                 && method_exists($CatPage, 'get_PageArray')) {
                 $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
                 foreach ($pages as $page) {
-                    $pageActive = ($page === $selectedPage);
+                    $pageActive = ($cat === $selectedCat && $page === $selectedPage);
                     $safePage   = $this->sanitizeScopeIdentifier($page);
                     $html .= $this->renderScopeSection(
                         'page', $cat, $page,
@@ -2465,17 +2474,23 @@ class schemaOrgData extends Plugin {
             }
         }
 
-        // GET-Parameter als versteckte Felder mitführen - werden vom
-        // Disketten-Icon per send_data() mitgesendet und von
-        // resolveScopeIdentifiers() für den POST-Geltungsbereich ausgewertet.
-        if ($selectedCat !== null) {
-            $html .= '<input type="hidden" name="schemaOrgData_cat"'
-                   . ' value="'.htmlspecialchars($selectedCat, ENT_QUOTES, CHARSET).'" />'."\n";
-        }
-        if ($selectedPage !== null) {
-            $html .= '<input type="hidden" name="schemaOrgData_page"'
-                   . ' value="'.htmlspecialchars($selectedPage, ENT_QUOTES, CHARSET).'" />'."\n";
-        }
+        // Scope-Hidden-Inputs immer rendern - JS aktualisiert value beim
+        // Scope-Wechsel (initScopeSelector); resolveScopeIdentifiers()
+        // wertet sie für den POST-Geltungsbereich aus.
+        $html .= '<input type="hidden" id="schemaOrgData_hidden_cat"'
+               . ' name="schemaOrgData_cat"'
+               . ' value="'.htmlspecialchars($selectedCat ?? '', ENT_QUOTES, CHARSET).'" />'."\n";
+        $html .= '<input type="hidden" id="schemaOrgData_hidden_page"'
+               . ' name="schemaOrgData_page"'
+               . ' value="'.htmlspecialchars($selectedPage ?? '', ENT_QUOTES, CHARSET).'" />'."\n";
+
+        // Speichern-Button: sendet die aktive Sektion per eigener,
+        // versteckter Form außerhalb des moziloCMS-Formulars (siehe
+        // initSaveButton() in validator.js)
+        $html .= '<div class="schemaOrgData-save-bar">'."\n";
+        $html .= '<button type="button" class="schemaOrgData-save-btn mo-btn mo-btn--primary">'
+               . $lang->getLanguageHtml('label_save').'</button>'."\n";
+        $html .= '</div>'."\n";
 
         $html .= '</div>'."\n";
 

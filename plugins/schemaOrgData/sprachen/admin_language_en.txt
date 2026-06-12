@@ -110,3 +110,5 @@ description_import_jsonld = Insert an existing JSON-LD block. Known fields are f
 button_import = Import
 
 button_save = Save
+
+label_save = Save configuration
