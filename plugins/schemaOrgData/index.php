@@ -28,7 +28,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.0.2-beta';
+    private const PLUGIN_VERSION = '0.0.3-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -418,7 +418,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function sanitizeScopeIdentifier(string $value): string {
-        return preg_replace('/[^a-zA-Z0-9_\-]/', '', $value);
+        // Buchstaben, Ziffern, Bindestriche, Unterstriche und Prozentzeichen
+        // (URL-Encoding moziloCMS) erhalten. Path-Traversal-Zeichen (.,/,\,NUL)
+        // werden entfernt — % allein stellt kein Traversal-Risiko dar.
+        return preg_replace('/[^a-zA-Z0-9_\-%]/', '', $value);
     }
 
     /***************************************************************
@@ -1682,12 +1685,14 @@ class schemaOrgData extends Plugin {
             return '';
         }
 
-        // Basis-URL: aktuelle GET-Parameter übernehmen, Plugin-eigene entfernen
-        $baseParams = $_GET;
-        unset($baseParams['schemaOrgData_cat'], $baseParams['schemaOrgData_page']);
-        $adminBase = URL_BASE . ADMIN_DIR_NAME . '/index.php'
-            . (empty($baseParams) ? '' : '?' . http_build_query($baseParams));
-        $sep = empty($baseParams) ? '?' : '&';
+        // Basis-URL aus der exakten aktuellen Request-URI ableiten —
+        // bewahrt alle CMS-internen Panel-Parameter unverändert.
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+        $requestUri = preg_replace('/([&?])schemaOrgData_cat=[^&]*/u', '$1', $requestUri);
+        $requestUri = preg_replace('/([&?])schemaOrgData_page=[^&]*/u', '$1', $requestUri);
+        $requestUri = rtrim($requestUri, '?&');
+        $adminBase  = $requestUri;
+        $sep = (strpos($requestUri, '?') !== false) ? '&' : '?';
 
         $cats = $CatPage->get_CatArray(false, false, [EXT_PAGE, EXT_HIDDEN]);
 
@@ -1707,9 +1712,9 @@ class schemaOrgData extends Plugin {
             $catUrl    = $adminBase . $sep . 'schemaOrgData_cat=' . urlencode($cat);
             $activeCat = ($cat === $selectedCat && $selectedPage === null)
                 ? ' schemaOrgData-scope-selector__link--active' : '';
-            $catLabel  = htmlspecialchars(
-                $CatPage->get_HrefText($cat, false), ENT_QUOTES, CHARSET
-            );
+            // rawurldecode() dekodiert den moziloCMS-URL-kodierten Bezeichner
+            // ("%C3%9CBer..." → "Über..."), htmlspecialchars() sichert danach HTML-sauber.
+            $catLabel  = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
             $html .= '<a class="schemaOrgData-scope-selector__link'.$activeCat.'"'
                    . ' href="'.htmlspecialchars($catUrl, ENT_QUOTES, CHARSET).'">'
                    . $catLabel . '</a>'."\n";
@@ -1721,9 +1726,7 @@ class schemaOrgData extends Plugin {
                     $pageUrl    = $catUrl . '&schemaOrgData_page=' . urlencode($page);
                     $activePage = ($page === $selectedPage)
                         ? ' schemaOrgData-scope-selector__link--active' : '';
-                    $pageLabel  = htmlspecialchars(
-                        $CatPage->get_HrefText($cat, $page), ENT_QUOTES, CHARSET
-                    );
+                    $pageLabel  = htmlspecialchars(rawurldecode($page), ENT_QUOTES, CHARSET);
                     $html .= '<a class="schemaOrgData-scope-selector__link'
                            . ' schemaOrgData-scope-selector__link--page'.$activePage.'"'
                            . ' href="'.htmlspecialchars($pageUrl, ENT_QUOTES, CHARSET).'">'
