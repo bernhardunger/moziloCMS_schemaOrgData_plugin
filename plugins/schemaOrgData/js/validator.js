@@ -394,6 +394,16 @@
         );
         if (!buttons.length) return;
 
+        // Schreibt den aktiven Geltungsbereich in die Hidden-Felder, die
+        // beim Speichern mitgesendet werden (siehe renderAdminPage(),
+        // #schemaOrgData_hidden_cat / #schemaOrgData_hidden_page).
+        function updateScopeHiddenFields(activeCat, activePage) {
+            var hiddenCat  = document.getElementById('schemaOrgData_hidden_cat');
+            var hiddenPage = document.getElementById('schemaOrgData_hidden_page');
+            if (hiddenCat)  hiddenCat.value  = activeCat  || '';
+            if (hiddenPage) hiddenPage.value = activePage || '';
+        }
+
         buttons.forEach(function (btn) {
             btn.addEventListener('click', function () {
                 // Aktiv-Klasse umsetzen
@@ -427,14 +437,7 @@
                 );
 
                 // Hidden inputs für POST aktualisieren
-                var hiddenCat = document.querySelector(
-                    'input[name="schemaOrgData_cat"]'
-                );
-                var hiddenPage = document.querySelector(
-                    'input[name="schemaOrgData_page"]'
-                );
-                if (hiddenCat)  hiddenCat.value  = cat;
-                if (hiddenPage) hiddenPage.value = page;
+                updateScopeHiddenFields(cat, page);
 
                 // Seiten-Buttons der gewählten Kategorie ein-, alle
                 // anderen ausblenden (data-parent-cat, siehe
@@ -448,6 +451,19 @@
                 });
             });
         });
+
+        // Einmalig beim Init: Hidden-Felder auf den serverseitig aktiven
+        // Geltungsbereich setzen (Button mit --active-Klasse, von PHP
+        // anhand $selectedCat/$selectedPage gerendert) - ohne diesen
+        // Schritt enthalten die Hidden-Felder nach einem Scope-Wechsel
+        // per Klick zwar den richtigen Wert, beim allerersten Laden der
+        // Seite (inkl. direkt nach dem Speichern) aber immer "".
+        var activeButton = document.querySelector(
+            '.schemaOrgData-scope-selector__link--active'
+        );
+        var activeCat  = activeButton ? (activeButton.getAttribute('data-scope-cat')  || '') : '';
+        var activePage = activeButton ? (activeButton.getAttribute('data-scope-page') || '') : '';
+        updateScopeHiddenFields(activeCat, activePage);
     }
 
     /**
