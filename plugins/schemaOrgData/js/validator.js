@@ -433,6 +433,13 @@
                                 el.disabled = !isActive;
                             }
                         );
+
+                        // Innerhalb der aktivierten Sektion nur die Felder der
+                        // aktuell gewählten Typ-Sektion aktiviert lassen (siehe
+                        // applyTypeFieldsState())
+                        if (isActive) {
+                            applyTypeFieldsState(section);
+                        }
                     }
                 );
 
@@ -474,9 +481,36 @@
     }
 
     /**
+     * Aktiviert innerhalb einer Scope-Sektion nur die Formularfelder der
+     * aktuell gewählten Typ-Sektion (.schemaOrgData-type-fields, siehe
+     * index.php renderScopeSection()) und deaktiviert alle anderen.
+     * Deaktivierte Felder werden vom Browser nicht mitgesendet - ohne
+     * dies würden ausgeblendete Typ-Sektionen mit leeren Werten
+     * gleichnamige Felder der aktiven Typ-Sektion überschreiben
+     * (last-value-wins).
+     */
+    function applyTypeFieldsState(scopeSection) {
+        var select = scopeSection.querySelector('.schemaOrgData-type-select');
+        var activeType = select ? select.value : null;
+
+        scopeSection.querySelectorAll('.schemaOrgData-type-fields').forEach(
+            function (group) {
+                var isActive = group.getAttribute('data-schema-type') === activeType;
+                group.style.display = isActive ? '' : 'none';
+
+                group.querySelectorAll('input, select, textarea').forEach(
+                    function (el) {
+                        el.disabled = !isActive;
+                    }
+                );
+            }
+        );
+    }
+
+    /**
      * Aktiviert die Type-Auswahl je Geltungsbereich: blendet die
      * Formularfelder des gewählten Schema-Types ein und alle anderen
-     * aus (siehe index.php, renderScopeSection()).
+     * aus und deaktiviert deren Felder (siehe applyTypeFieldsState()).
      */
     function initTypeSwitcher() {
         var selects = document.querySelectorAll('.schemaOrgData-type-select');
@@ -489,12 +523,15 @@
                 }
 
                 select.addEventListener('change', function () {
-                    var groups = scope.querySelectorAll('.schemaOrgData-type-fields');
-                    for (var j = 0; j < groups.length; j++) {
-                        var visible = groups[j].getAttribute('data-schema-type') === select.value;
-                        groups[j].style.display = visible ? '' : 'none';
-                    }
+                    applyTypeFieldsState(scope);
                 });
+
+                // Initialzustand: nur für die aktive Scope-Sektion
+                // anwenden - inaktive Sektionen sind bereits serverseitig
+                // vollständig deaktiviert (renderScopeSection()).
+                if (scope.style.display !== 'none') {
+                    applyTypeFieldsState(scope);
+                }
             })(selects[i]);
         }
     }
