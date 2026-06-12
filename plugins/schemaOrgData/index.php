@@ -459,6 +459,12 @@ class schemaOrgData extends Plugin {
             $meta
         );
 
+        // Conf-Verzeichnis anlegen, falls noch nicht vorhanden
+        $confDir = dirname($file);
+        if (!is_dir($confDir)) {
+            mkdir($confDir, 0755, true);
+        }
+
         file_put_contents($file, '<?php die(); ?>'."\n".serialize($config));
     }
 
@@ -2034,6 +2040,12 @@ class schemaOrgData extends Plugin {
         $jsonldMode = $_POST['schemaOrgData_jsonld_mode_'.$scope] ?? null;
         if(in_array($jsonldMode, ['keep', 'override'], true)) {
             $config['_meta']['jsonld_mode'] = $jsonldMode;
+        }
+
+        // Conf-Verzeichnis anlegen, falls noch nicht vorhanden
+        $confDir = dirname($file);
+        if (!is_dir($confDir)) {
+            mkdir($confDir, 0755, true);
         }
 
         file_put_contents($file, '<?php die(); ?>'."\n".serialize($config));
