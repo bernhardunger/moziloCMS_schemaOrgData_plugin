@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.3.3-beta';
+    private const PLUGIN_VERSION = '0.3.4-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1121,10 +1121,14 @@ class schemaOrgData extends Plugin {
     * Validierungsergebnis (siehe validate*-Methoden).
     *
     * @param array{status: string|null, message: string|null} $result
+    * @param string|null $feedbackId Element-ID für das <span> (z. B.
+    *        "<fieldId>_feedback"). validator.js (showFieldFeedback())
+    *        sucht/aktualisiert das Element anhand dieser ID, statt ein
+    *        zweites (falsch positioniertes) Feedback-Element anzulegen.
     * @return string HTML-Snippet oder '' wenn $result['status'] === null
     *
     ***************************************************************/
-    private function renderValidationFeedback(array $result): string {
+    private function renderValidationFeedback(array $result, ?string $feedbackId = null): string {
         $icons = ['ok' => '&#9989;', 'warning' => '&#9888;&#65039;', 'error' => '&#10060;'];
 
         if($result['status'] === null or !isset($icons[$result['status']])) {
@@ -1135,7 +1139,11 @@ class schemaOrgData extends Plugin {
             ? ' '.htmlspecialchars($result['message'], ENT_QUOTES, CHARSET)
             : '';
 
-        return '<span class="schemaOrgData-feedback schemaOrgData-feedback--'.$result['status'].'">'
+        $idAttr = $feedbackId !== null
+            ? ' id="'.htmlspecialchars($feedbackId, ENT_QUOTES, CHARSET).'"'
+            : '';
+
+        return '<span'.$idAttr.' class="schemaOrgData-feedback schemaOrgData-feedback--'.$result['status'].'">'
             .$icons[$result['status']].$message.'</span>';
     }
 
@@ -1344,7 +1352,7 @@ class schemaOrgData extends Plugin {
         $feedback = '';
         if($subName === 'postalCode' and $subValue !== null and $subValue !== '') {
             $countryCode = (string) ($value['addressCountry'] ?? 'DE');
-            $feedback = $this->renderValidationFeedback($this->validatePostalCode((string) $subValue, $countryCode));
+            $feedback = $this->renderValidationFeedback($this->validatePostalCode((string) $subValue, $countryCode), $fieldId.'_feedback');
         }
 
         return ['fieldId' => $fieldId, 'label' => $label, 'badge' => $badge, 'widget' => $widgetHtml, 'feedback' => $feedback];
@@ -1435,7 +1443,7 @@ class schemaOrgData extends Plugin {
                 'data-validate' => 'opening_hours', 'data-pair' => $fromId, 'maxlength' => '5',
             ]);
 
-            $feedback = $this->renderValidationFeedback($this->validateOpeningHoursTime($from, $to));
+            $feedback = $this->renderValidationFeedback($this->validateOpeningHoursTime($from, $to), $fromId.'_feedback');
 
             $html .= '<tr><td>'.$dayLabel.'</td>'
                 .'<td><div class="schemaOrgData-opening-hours-group">'.$fromInput
@@ -1584,22 +1592,24 @@ class schemaOrgData extends Plugin {
     *
     * @param array $allData alle Formular-Properties des Schema-Types
     *                        (für telephone -> address.addressCountry)
+    * @param string $feedbackId Element-ID für das Feedback-<span>
+    *        (siehe renderValidationFeedback())
     *
     ***************************************************************/
-    private function renderFieldFeedback(string $name, array $fieldSchema, string $value, array $allData): string {
+    private function renderFieldFeedback(string $name, array $fieldSchema, string $value, array $allData, string $feedbackId): string {
         $format = $fieldSchema['format'] ?? null;
 
         if($format === 'uri') {
-            return $this->renderValidationFeedback($this->validateUrl($value));
+            return $this->renderValidationFeedback($this->validateUrl($value), $feedbackId);
         }
 
         if($format === 'email') {
-            return $this->renderValidationFeedback($this->validateEmail($value));
+            return $this->renderValidationFeedback($this->validateEmail($value), $feedbackId);
         }
 
         if($name === 'telephone') {
             $countryCode = (string) ($allData['address']['addressCountry'] ?? 'DE');
-            return $this->renderValidationFeedback($this->validateTelephone($value, $countryCode));
+            return $this->renderValidationFeedback($this->validateTelephone($value, $countryCode), $feedbackId);
         }
 
         return '';
@@ -1655,7 +1665,7 @@ class schemaOrgData extends Plugin {
         };
 
         $feedback = ($value !== null and $value !== '' and is_scalar($value))
-            ? $this->renderFieldFeedback($name, $fieldSchema, (string) $value, $allData)
+            ? $this->renderFieldFeedback($name, $fieldSchema, (string) $value, $allData, $fieldId.'_feedback')
             : '';
 
         return '<div class="c-content schemaOrgData-field-row">'
@@ -2590,12 +2600,12 @@ class schemaOrgData extends Plugin {
         $lang = $this->loadAdminLanguage();
 
         if($result['success']) {
-            return '<div class="schemaOrgData-notice schemaOrgData-notice--success">'
+            return '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--success">'
                 .$lang->getLanguageHtml('notice_config_saved')
                 .'</div>'."\n";
         }
 
-        $html = '<div class="schemaOrgData-notice schemaOrgData-notice--error">'."\n";
+        $html = '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--error">'."\n";
         $html .= '<p>'.$lang->getLanguageHtml('notice_config_save_error').'</p>'."\n";
         $html .= '<ul>'."\n";
 
@@ -2628,11 +2638,10 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-fieldset { border: 1px solid #ddd; border-radius: 4px; padding: 1em; margin-bottom: 1em; }
 .schemaOrgData-admin .schemaOrgData-fieldset legend { font-weight: bold; padding: 0 .5em; }
 .schemaOrgData-admin .schemaOrgData-hint { color: #666; font-size: .85em; margin: 0 0 .5em; }
-.schemaOrgData-admin .schemaOrgData-feedback { margin-left: .5em; font-size: .9em; }
+.schemaOrgData-admin .schemaOrgData-feedback { display: block; margin-top: .25em; font-size: .9em; }
 .schemaOrgData-admin .schemaOrgData-feedback--ok { color: #2e7d32; }
 .schemaOrgData-admin .schemaOrgData-feedback--warning { color: #b8860b; }
 .schemaOrgData-admin .schemaOrgData-feedback--error { color: #c0392b; }
-.schemaOrgData-admin .schemaOrgData-extension-feedback span { display: block; margin-top: .25em; }
 .schemaOrgData-admin .schemaOrgData-opening-hours { border-collapse: collapse; }
 .schemaOrgData-admin .schemaOrgData-opening-hours th, .schemaOrgData-admin .schemaOrgData-opening-hours td { padding: .25em .5em; text-align: left; }
 .schemaOrgData-admin .schemaOrgData-opening-hours-group { display: flex; align-items: center; gap: 4px; }

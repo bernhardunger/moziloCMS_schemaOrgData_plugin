@@ -302,20 +302,32 @@
     }
 
     /**
-     * Zeigt das Validierungsergebnis eines Feldes in dem dazugehörigen
-     * "<id>_feedback"-Element an (wird bei Bedarf direkt nach dem
-     * Eingabefeld erzeugt).
+     * Zeigt das Validierungsergebnis in dem Element mit der ID
+     * "feedbackId" an. Existiert das Element noch nicht (server-seitig
+     * wird ein Feedback-<span> nur bei status !== null gerendert, siehe
+     * renderValidationFeedback()), wird es bei Bedarf direkt nach
+     * "anchor" eingefügt - so landet das Feedback an derselben Stelle
+     * wie ein server-seitig gerendertes <span> (siehe Fix 2/3,
+     * README.md "Formularvalidierung"). Ist "feedbackId" bereits
+     * vorhanden, wird dieses Element aktualisiert statt ein zweites
+     * (gedoppeltes) Feedback-Element anzulegen.
      *
-     * @param {HTMLElement} input
+     * @param {HTMLElement} anchor Element, nach dem ein neues
+     *        Feedback-<span> eingefügt wird (insertAdjacentElement
+     *        "afterend"), falls noch keines existiert
+     * @param {string} feedbackId Element-ID des Feedback-<span>
      * @param {{status: string|null, message: string|null}} result
      */
-    function showFieldFeedback(input, result) {
-        var feedback = document.getElementById(input.id + '_feedback');
+    function showFieldFeedback(anchor, feedbackId, result) {
+        var feedback = document.getElementById(feedbackId);
 
         if (!feedback) {
+            if (!result.status) {
+                return;
+            }
             feedback = document.createElement('span');
-            feedback.id = input.id + '_feedback';
-            input.insertAdjacentElement('afterend', feedback);
+            feedback.id = feedbackId;
+            anchor.insertAdjacentElement('afterend', feedback);
         }
 
         if (!result.status) {
@@ -343,11 +355,52 @@
     }
 
     /**
+     * Validiert ein Von/Bis-Zeitfeldpaar des Öffnungszeiten-Widgets und
+     * zeigt das Ergebnis in einem gemeinsamen Feedback-Element für das
+     * Paar an (ID "<vonFeldId>_feedback", siehe renderOpeningHoursWidget()
+     * in index.php - dort wird dasselbe <span> server-seitig mit dieser ID
+     * gerendert). Ein gemeinsames Element statt je eines pro Feld
+     * verhindert doppelte/verschobene Fehlermeldungen (Fix 2).
+     *
+     * @param {HTMLElement} input das gerade geänderte Von- oder Bis-Feld
+     */
+    function runOpeningHoursValidation(input) {
+        var pairInput = document.getElementById(input.getAttribute('data-pair'));
+        var isFrom = input.id.endsWith('_from');
+        var fromInput = isFrom ? input : pairInput;
+        var from = isFrom ? input.value : (pairInput ? pairInput.value : '');
+        var to = isFrom ? (pairInput ? pairInput.value : '') : input.value;
+        var fromEmpty = from.trim() === '';
+        var toEmpty = to.trim() === '';
+        var result = { status: null, message: null };
+
+        if (fromEmpty && toEmpty) {
+            // Beide Felder leer = "geschlossen", kein Fehler.
+        } else if (fromEmpty !== toEmpty) {
+            // Nur eines der beiden Felder ausgefüllt: die Von/Bis-
+            // Reihenfolge kann noch nicht geprüft werden (Benutzer
+            // tabbt evtl. noch zum anderen Feld), das Zeitformat des
+            // ausgefüllten Feldes aber schon.
+            var filledValue = fromEmpty ? to : from;
+            if (!isValidTimeFormat(filledValue)) {
+                result = { status: 'error', message: getMessages().openingHoursFormat || null };
+            }
+        } else {
+            result = validateOpeningHoursTime(from, to);
+        }
+
+        var group = input.closest('.schemaOrgData-opening-hours-group');
+        var feedbackId = (fromInput ? fromInput.id : input.id) + '_feedback';
+        showFieldFeedback(group || input, feedbackId, result);
+    }
+
+    /**
      * Führt die zu input.dataset.validate passende Live-Validierung
      * aus und zeigt das Ergebnis an. Bei "opening_hours" wird das
-     * über data-pair verknüpfte Gegenstück (Von/Bis) mit einbezogen.
-     * Felder mit data-required-message melden einen leeren Wert
-     * sofort als Fehler, unabhängig vom data-validate-Typ.
+     * über data-pair verknüpfte Gegenstück (Von/Bis) mit einbezogen
+     * (siehe runOpeningHoursValidation()). Felder mit
+     * data-required-message melden einen leeren Wert sofort als
+     * Fehler, unabhängig vom data-validate-Typ.
      *
      * @param {HTMLElement} input
      */
@@ -358,7 +411,7 @@
         // Pflichtfeld leer: sofort melden, unabhängig vom sonstigen
         // Validierungstyp (url/email/telephone/required).
         if (requiredMessage && input.value.trim() === '') {
-            showFieldFeedback(input, { status: 'error', message: requiredMessage });
+            showFieldFeedback(input, input.id + '_feedback', { status: 'error', message: requiredMessage });
             return;
         }
 
@@ -381,58 +434,31 @@
                 result = validateRequiredField(input.value, input.getAttribute('data-required-message'));
                 break;
             case 'opening_hours':
-                var pairInput = document.getElementById(input.getAttribute('data-pair'));
-                var isFrom = input.id.endsWith('_from');
-                var from = isFrom ? input.value : (pairInput ? pairInput.value : '');
-                var to = isFrom ? (pairInput ? pairInput.value : '') : input.value;
-                var fromEmpty = from.trim() === '';
-                var toEmpty = to.trim() === '';
-                var fromResult = { status: null, message: null };
-                var toResult = { status: null, message: null };
-
-                if (fromEmpty && toEmpty) {
-                    // Beide Felder leer = "geschlossen", kein Fehler.
-                } else if (fromEmpty !== toEmpty) {
-                    // Nur eines der beiden Felder ausgefüllt: die Von/Bis-
-                    // Reihenfolge kann noch nicht geprüft werden (Benutzer
-                    // tabbt evtl. noch zum anderen Feld), das Zeitformat des
-                    // ausgefüllten Feldes aber schon.
-                    var filledValue = fromEmpty ? to : from;
-                    var formatResult = isValidTimeFormat(filledValue)
-                        ? { status: null, message: null }
-                        : { status: 'error', message: getMessages().openingHoursFormat || null };
-                    if (fromEmpty) {
-                        toResult = formatResult;
-                    } else {
-                        fromResult = formatResult;
-                    }
-                } else {
-                    fromResult = toResult = validateOpeningHoursTime(from, to);
-                }
-
-                result = isFrom ? fromResult : toResult;
-                // Beide Felder des Paares gleichzeitig markieren, nicht nur
-                // das gerade verlassene (von/bis gehören zusammen).
-                if (pairInput) {
-                    showFieldFeedback(pairInput, isFrom ? toResult : fromResult);
-                }
-                break;
+                runOpeningHoursValidation(input);
+                return;
             default:
                 return;
         }
 
-        showFieldFeedback(input, result);
+        showFieldFeedback(input, input.id + '_feedback', result);
     }
 
     /**
-     * Aktiviert die Live-Validierung (bei "blur") für alle Felder mit
-     * data-validate innerhalb des Admin-Formulars.
+     * Aktiviert die Live-Validierung (bei "blur" und "input") für alle
+     * Felder mit data-validate innerhalb des Admin-Formulars. Das
+     * "input"-Event sorgt dafür, dass eine bereits angezeigte
+     * Fehlermeldung sofort verschwindet, sobald der Wert während der
+     * Eingabe wieder gültig wird (Fix 1) - ohne dass das Feld erst
+     * verlassen werden muss.
      */
     function initFieldValidation() {
         var inputs = document.querySelectorAll('[data-validate]');
 
         for (var i = 0; i < inputs.length; i++) {
             inputs[i].addEventListener('blur', function (event) {
+                runFieldValidation(event.target);
+            });
+            inputs[i].addEventListener('input', function (event) {
                 runFieldValidation(event.target);
             });
         }
@@ -452,7 +478,10 @@
      * werden aktiviert (disabled=false), die übrigen deaktiviert,
      * damit das moziloCMS-Disketten-Icon beim Speichern nur die aktive
      * Sektion überträgt. Die hidden inputs schemaOrgData_cat/_page
-     * werden für den POST beim Speichern aktualisiert.
+     * werden für den POST beim Speichern aktualisiert. Bei einem
+     * Scope-Wechsel durch den Nutzer wird zusätzlich die serverseitige
+     * Save-Ergebnis-Box entfernt (siehe hideSaveNotice()), da sie sich
+     * auf den vorherigen Geltungsbereich bezieht.
      */
     function initScopeSelector() {
         var catSelect  = document.getElementById('schemaOrgData_scope_cat');
@@ -464,6 +493,17 @@
             pagesByCat = JSON.parse(pageSelect.getAttribute('data-pages') || '{}');
         } catch (e) {
             pagesByCat = {};
+        }
+
+        // Entfernt die serverseitige Save-Ergebnis-Box (Erfolg/Fehler,
+        // siehe renderSaveResultNotice(), #schemaOrgData_save_notice).
+        // Sie bezieht sich auf den zuvor gespeicherten Geltungsbereich und
+        // ist nach einem Scope-Wechsel nicht mehr relevant (Fix 4).
+        function hideSaveNotice() {
+            var notice = document.getElementById('schemaOrgData_save_notice');
+            if (notice) {
+                notice.remove();
+            }
         }
 
         // Schreibt den aktiven Geltungsbereich in die Hidden-Felder, die
@@ -533,11 +573,13 @@
 
         catSelect.addEventListener('change', function () {
             var cat = catSelect.value;
+            hideSaveNotice();
             populatePageSelect(cat, '');
             activateSection(cat, '');
         });
 
         pageSelect.addEventListener('change', function () {
+            hideSaveNotice();
             activateSection(catSelect.value, pageSelect.value);
         });
 
