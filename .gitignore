@@ -5,3 +5,4 @@ vendor/
 CLAUDE.md
 conf/
 tests/SMOKE-TESTS.md
+/doc/
