@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.2.2-beta';
+    private const PLUGIN_VERSION = '0.2.3-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1713,6 +1713,15 @@ class schemaOrgData extends Plugin {
                 .$catDisplayLabel.'</label>'."\n";
         }
 
+        // "Alle Kategorien"-Select-All-Toggle: rein clientseitig (kein
+        // name-Attribut, daher kein Einfluss auf saveConfig()/excluded_cats).
+        // initExcludedCatsSelectAll() (validator.js) setzt/leert beim
+        // Anklicken alle Kategorie-Checkboxen oben und zeigt bei
+        // Teilauswahl einen indeterminate-Zustand.
+        $html .= '<label class="schemaOrgData-checkbox schemaOrgData-checkbox--all" for="schemaOrgData_global_excluded_cats_all">'
+            .'<input type="checkbox" id="schemaOrgData_global_excluded_cats_all" data-select-all="schemaOrgData[global][excluded_cats][]" /> '
+            .$lang->getLanguageHtml('label_excluded_cats_all').'</label>'."\n";
+
         $html .= '</fieldset>'."\n";
 
         return $html;
@@ -2455,6 +2464,7 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-faq-entry { border-top: 1px solid #eee; padding-top: .5em; margin-top: .5em; }
 .schemaOrgData-admin .schemaOrgData-faq-entry:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 .schemaOrgData-admin .schemaOrgData-checkbox { display: inline-block; margin: 0 1em .25em 0; }
+.schemaOrgData-admin .schemaOrgData-checkbox--all { font-weight: bold; border-left: 1px solid #ccc; padding-left: 1em; }
 .schemaOrgData-admin .schemaOrgData-scope-selector { display: flex; align-items: flex-start; gap: .75em; flex-wrap: wrap; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .6em 1em; margin-bottom: 1.25em; }
 .schemaOrgData-admin .schemaOrgData-scope-selector__label { font-weight: bold; padding-top: .15em; white-space: nowrap; }
 .schemaOrgData-admin .schemaOrgData-scope-selector__nav { display: flex; flex-wrap: wrap; gap: .35em; }

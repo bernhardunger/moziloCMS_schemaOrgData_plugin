@@ -16,6 +16,7 @@ notice_type_collision = Für den Type "{PARAM1}" ist auch auf Ebene {PARAM2} ein
 
 label_excluded_cats = Ausnahmen (Kategorien ohne globale Ausgabe)
 description_excluded_cats = Auf den hier angehakten Kategorien (und deren Seiten) wird die globale Konfiguration nicht ausgegeben, z. B. Impressum, Datenschutz, Sitemap.
+label_excluded_cats_all = Alle Kategorien
 
 label_schema_type = Schema-Type
 schema_type_none = – kein Schema –

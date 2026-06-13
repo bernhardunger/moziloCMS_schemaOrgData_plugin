@@ -626,6 +626,55 @@
     }
 
     /**
+     * Aktiviert den "Alle Kategorien"-Toggle der Ausschlussliste
+     * (siehe index.php, renderExcludedCatsField()): ein Klick auf den
+     * Toggle setzt bzw. leert alle Kategorie-Checkboxen mit
+     * passendem name-Attribut; eine Änderung an einer einzelnen
+     * Kategorie-Checkbox aktualisiert den Toggle-Zustand
+     * (gecheckt / leer / indeterminate bei Teilauswahl).
+     */
+    function initExcludedCatsSelectAll() {
+        var toggles = document.querySelectorAll('[data-select-all]');
+
+        for (var i = 0; i < toggles.length; i++) {
+            (function (toggle) {
+                var name = toggle.getAttribute('data-select-all');
+                var checkboxes = document.querySelectorAll(
+                    'input[type="checkbox"][name="' + name + '"]'
+                );
+
+                if (checkboxes.length === 0) {
+                    return;
+                }
+
+                var updateToggleState = function () {
+                    var checkedCount = 0;
+                    for (var j = 0; j < checkboxes.length; j++) {
+                        if (checkboxes[j].checked) {
+                            checkedCount++;
+                        }
+                    }
+                    toggle.checked = (checkedCount === checkboxes.length);
+                    toggle.indeterminate = (checkedCount > 0 && checkedCount < checkboxes.length);
+                };
+
+                toggle.addEventListener('change', function () {
+                    for (var j = 0; j < checkboxes.length; j++) {
+                        checkboxes[j].checked = toggle.checked;
+                    }
+                    toggle.indeterminate = false;
+                });
+
+                for (var j = 0; j < checkboxes.length; j++) {
+                    checkboxes[j].addEventListener('change', updateToggleState);
+                }
+
+                updateToggleState();
+            })(toggles[i]);
+        }
+    }
+
+    /**
      * Initialisiert das gesamte Admin-Formular: Scope-Selektor,
      * Type-Umschaltung, Live-Validierung der Formularfelder sowie der
      * Erweiterungsfelder. Wird von renderAdminPage() nach
@@ -636,6 +685,7 @@
         initTypeSwitcher();
         initFieldValidation();
         initExtensionFieldValidation();
+        initExcludedCatsSelectAll();
     }
 
     // Öffentliche API
@@ -650,6 +700,7 @@
         validateEmail: validateEmail,
         validateRequiredField: validateRequiredField,
         validateOpeningHoursTime: validateOpeningHoursTime,
+        initExcludedCatsSelectAll: initExcludedCatsSelectAll,
         initAdminForm: initAdminForm
     };
 
