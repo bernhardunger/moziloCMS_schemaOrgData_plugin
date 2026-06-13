@@ -374,6 +374,11 @@
                 } else {
                     result = validateOpeningHoursTime(from, to);
                 }
+                // Beide Felder des Paares gleichzeitig markieren, nicht nur
+                // das gerade verlassene (von/bis gehören zusammen).
+                if (pairInput) {
+                    showFieldFeedback(pairInput, result);
+                }
                 break;
             default:
                 return;
