@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.2.1-beta';
+    private const PLUGIN_VERSION = '0.2.2-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1519,17 +1519,25 @@ class schemaOrgData extends Plugin {
     * @param array $schema vollständiges Schema (schemas/{Type}.json)
     * @param array $data   gespeicherte Properties dieses Types (Formular + Erweiterung gemischt)
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
+    * @param string|null $extensionJsonOverride wenn gesetzt, wird dieser Wert
+    *        statt der aus $data abgeleiteten Erweiterungs-Properties als
+    *        Inhalt des Erweiterungsfelds verwendet (siehe renderScopeSection(),
+    *        POST-Daten nach fehlgeschlagenem Speichern)
     * @return string HTML-Snippet
     *
     ***************************************************************/
-    private function renderTypeFields(string $scope, string $type, array $schema, array $data, ?string $idPrefix = null): string {
+    private function renderTypeFields(string $scope, string $type, array $schema, array $data, ?string $idPrefix = null, ?string $extensionJsonOverride = null): string {
         $idPrefix = $idPrefix ?? $scope;
         $split = $this->splitDataForRendering($data, $schema);
         $formData = $split['form'];
 
-        $extensionJson = $split['extension'] !== []
-            ? json_encode($split['extension'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
-            : '';
+        if($extensionJsonOverride !== null) {
+            $extensionJson = $extensionJsonOverride;
+        } else {
+            $extensionJson = $split['extension'] !== []
+                ? json_encode($split['extension'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
+                : '';
+        }
 
         $html = '';
         foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
@@ -1810,10 +1818,19 @@ class schemaOrgData extends Plugin {
     * @return string HTML-Snippet
     *
     ***************************************************************/
-    private function renderScopeSection(string $scope, ?string $cat, ?string $page, bool $active = true, ?string $idPrefix = null): string {
+    private function renderScopeSection(string $scope, ?string $cat, ?string $page, bool $active = true, ?string $idPrefix = null, bool $saveFailed = false): string {
         $idPrefix = $idPrefix ?? $scope;
         $lang = $this->loadAdminLanguage();
         $config = $this->loadScopeConfig($scope, $cat, $page);
+
+        // Bei fehlgeschlagenem Speichern: die aktive Sektion mit den
+        // POST-Daten statt mit dem gespeicherten Konfigurations-Stand
+        // befüllen, damit fehlerhafte Eingaben nicht verloren gehen
+        // (siehe renderAdminPage()).
+        $postScope = null;
+        if($active and $saveFailed and is_array($_POST['schemaOrgData'][$scope] ?? null)) {
+            $postScope = $_POST['schemaOrgData'][$scope];
+        }
 
         // verfügbare Schema-Types für diesen Geltungsbereich ermitteln
         $availableTypes = [];
@@ -1824,12 +1841,22 @@ class schemaOrgData extends Plugin {
             }
         }
 
-        // aktuell konfigurierten Type ermitteln (erster bekannter Type in $config)
+        // aktuell konfigurierten Type ermitteln: nach fehlgeschlagenem
+        // Speichern der vom Nutzer im Formular gewählte Type (POST), sonst
+        // der erste bekannte Type in $config
         $selectedType = null;
-        foreach(array_keys($config) as $type) {
-            if(isset($availableTypes[$type])) {
-                $selectedType = $type;
-                break;
+        if($postScope !== null) {
+            $postedType = (string) ($postScope['type'] ?? '');
+            if(isset($availableTypes[$postedType])) {
+                $selectedType = $postedType;
+            }
+        }
+        if($selectedType === null) {
+            foreach(array_keys($config) as $type) {
+                if(isset($availableTypes[$type])) {
+                    $selectedType = $type;
+                    break;
+                }
             }
         }
 
@@ -1853,18 +1880,37 @@ class schemaOrgData extends Plugin {
 
         foreach($availableTypes as $type => $schema) {
             $display = ($type === $selectedType) ? '' : ' style="display:none"';
-            $data = is_array($config[$type] ?? null) ? $config[$type] : [];
+            $extensionOverride = null;
+
+            if($postScope !== null and $type === $selectedType) {
+                $postData = is_array($postScope['data'] ?? null) ? $postScope['data'] : [];
+                $data = $this->sanitizePostData($postData, $schema);
+                $extensionOverride = (string) ($postScope['extension'][$type] ?? '');
+            } else {
+                $data = is_array($config[$type] ?? null) ? $config[$type] : [];
+            }
+
             $typeIdPrefix = $idPrefix.'_'.$type;
 
             $html .= '<div class="schemaOrgData-type-fields" data-schema-type="'.htmlspecialchars($type, ENT_QUOTES, CHARSET).'"'.$display.'>'."\n";
-            $html .= $this->renderTypeFields($scope, $type, $schema, $data, $typeIdPrefix);
+            $html .= $this->renderTypeFields($scope, $type, $schema, $data, $typeIdPrefix, $extensionOverride);
             $html .= '</div>'."\n";
         }
 
         if($scope === 'global') {
-            $excludedCats = !empty($config['excluded_cats'])
-                ? array_map('trim', explode(',', (string) $config['excluded_cats']))
-                : [];
+            if($postScope !== null) {
+                $excludedCats = [];
+                foreach((array) ($postScope['excluded_cats'] ?? []) as $excludedCat) {
+                    $excludedCat = $this->sanitizeScopeIdentifier(trim((string) $excludedCat));
+                    if($excludedCat !== '') {
+                        $excludedCats[] = $excludedCat;
+                    }
+                }
+            } else {
+                $excludedCats = !empty($config['excluded_cats'])
+                    ? array_map('trim', explode(',', (string) $config['excluded_cats']))
+                    : [];
+            }
             $html .= $this->renderExcludedCatsField($excludedCats);
         }
 
@@ -2457,6 +2503,11 @@ class schemaOrgData extends Plugin {
 
         $saveResult = ($_POST !== []) ? $this->handlePostRequest() : null;
 
+        // Bei fehlgeschlagenem Speichern wird die aktive Sektion in
+        // renderScopeSection() mit den POST-Daten statt mit dem
+        // gespeicherten Konfigurations-Stand befüllt (siehe dort).
+        $saveFailed = ($saveResult !== null and $saveResult['success'] === false);
+
         // Aktiven Scope ermitteln: $_POST (Formular wurde abgeschickt) hat
         // Vorrang vor $_GET (initialer Aufruf der Admin-Seite)
         $selectedCat = null;
@@ -2491,7 +2542,8 @@ class schemaOrgData extends Plugin {
         $html .= $this->renderScopeSection(
             'global', null, null,
             active: $selectedCat === null,
-            idPrefix: 'global'
+            idPrefix: 'global',
+            saveFailed: $saveFailed
         );
 
         // Alle Kategorien vorrendern
@@ -2505,7 +2557,8 @@ class schemaOrgData extends Plugin {
             $html .= $this->renderScopeSection(
                 'category', $cat, null,
                 active: $catActive,
-                idPrefix: 'cat_' . $safeCat
+                idPrefix: 'cat_' . $safeCat,
+                saveFailed: $saveFailed
             );
 
             // Seiten aller Kategorien vorrendern - inaktive erhalten display:none
@@ -2518,7 +2571,8 @@ class schemaOrgData extends Plugin {
                     $html .= $this->renderScopeSection(
                         'page', $cat, $page,
                         active: $pageActive,
-                        idPrefix: 'page_' . $safeCat . '_' . $safePage
+                        idPrefix: 'page_' . $safeCat . '_' . $safePage,
+                        saveFailed: $saveFailed
                     );
                 }
             }
