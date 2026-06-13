@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.1.8-beta';
+    private const PLUGIN_VERSION = '0.1.9-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -146,10 +146,8 @@ class schemaOrgData extends Plugin {
         // Kollisionserkennung: vorhandenes JSON-LD im gerenderten HTML
         // erkennen und das Ergebnis je Geltungsebene im jeweiligen
         // settings-Key persistieren (siehe loadScopeMeta/saveScopeMeta).
-        // TODO: $value enthält im aktuellen Aufrufkontext nur den
-        //       Platzhalter-Inhalt. Für eine zuverlässige Erkennung sollte
-        //       zusätzlich der Rohinhalt von Template und Seite (vor der
-        //       Ausgabe dieses Plugins) geprüft werden.
+        // detectExistingJsonLd() prüft sowohl $value (Platzhalter-Inhalt)
+        // als auch das aktive Website-Template (detectExistingJsonLdInTemplate()).
         $hasExistingJsonLd = $this->detectExistingJsonLd((string) $value);
 
         foreach($scopeConfigs as $scope => $config) {
