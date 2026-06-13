@@ -75,7 +75,6 @@ label_faq_remove_entry = Remove
 label_extension_field = Additional Properties (JSON)
 description_extension_field = Additional schema.org properties as a JSON object. Merged with the form fields on save, form fields take precedence.
 
-label_optional = (optional)
 label_required_field = Required field
 label_select_placeholder = – please select –
 

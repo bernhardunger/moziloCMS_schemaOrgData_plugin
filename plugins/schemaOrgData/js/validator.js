@@ -262,6 +262,17 @@
     }
 
     /**
+     * Prüft, ob ein Zeitwert dem Format "HH:MM" entspricht
+     * (24-Stunden-Format, siehe README.md "Öffnungszeiten").
+     *
+     * @param {string} value
+     * @returns {boolean}
+     */
+    function isValidTimeFormat(value) {
+        return /^[0-9]{2}:[0-9]{2}$/.test((value || '').trim());
+    }
+
+    /**
      * Validiert ein Von/Bis-Zeitpaar des Öffnungszeiten-Widgets
      * (siehe index.php, validateOpeningHoursTime()).
      *
@@ -374,21 +385,36 @@
                 var isFrom = input.id.endsWith('_from');
                 var from = isFrom ? input.value : (pairInput ? pairInput.value : '');
                 var to = isFrom ? (pairInput ? pairInput.value : '') : input.value;
-                // Kein Feedback solange nur eines der beiden Felder ausgefüllt
-                // ist (Benutzer tabbt gerade zwischen Von und Bis und hat das
-                // jeweils andere Feld noch nicht ausgefüllt) - in beide
-                // Richtungen.
                 var fromEmpty = from.trim() === '';
                 var toEmpty = to.trim() === '';
-                if (fromEmpty !== toEmpty) {
-                    result = { status: null, message: null };
+                var fromResult = { status: null, message: null };
+                var toResult = { status: null, message: null };
+
+                if (fromEmpty && toEmpty) {
+                    // Beide Felder leer = "geschlossen", kein Fehler.
+                } else if (fromEmpty !== toEmpty) {
+                    // Nur eines der beiden Felder ausgefüllt: die Von/Bis-
+                    // Reihenfolge kann noch nicht geprüft werden (Benutzer
+                    // tabbt evtl. noch zum anderen Feld), das Zeitformat des
+                    // ausgefüllten Feldes aber schon.
+                    var filledValue = fromEmpty ? to : from;
+                    var formatResult = isValidTimeFormat(filledValue)
+                        ? { status: null, message: null }
+                        : { status: 'error', message: getMessages().openingHoursFormat || null };
+                    if (fromEmpty) {
+                        toResult = formatResult;
+                    } else {
+                        fromResult = formatResult;
+                    }
                 } else {
-                    result = validateOpeningHoursTime(from, to);
+                    fromResult = toResult = validateOpeningHoursTime(from, to);
                 }
+
+                result = isFrom ? fromResult : toResult;
                 // Beide Felder des Paares gleichzeitig markieren, nicht nur
                 // das gerade verlassene (von/bis gehören zusammen).
                 if (pairInput) {
-                    showFieldFeedback(pairInput, result);
+                    showFieldFeedback(pairInput, isFrom ? toResult : fromResult);
                 }
                 break;
             default:

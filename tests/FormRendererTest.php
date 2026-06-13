@@ -52,7 +52,7 @@ final class FormRendererTest extends TestCase {
         $this->assertStringNotContainsString('schemaOrgData-optional', $html);
     }
 
-    function testOptionalFieldGetsOptionalBadge(): void {
+    function testOptionalFieldGetsNoBadge(): void {
         $plugin = new \schemaOrgData();
         $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
 
@@ -60,7 +60,7 @@ final class FormRendererTest extends TestCase {
             'global', 'description', $schema['properties']['description'], '', $schema, [],
         ]);
 
-        $this->assertStringContainsString('schemaOrgData-optional', $html);
+        $this->assertStringNotContainsString('schemaOrgData-optional', $html);
         $this->assertStringNotContainsString('schemaOrgData-required', $html);
     }
 
@@ -105,5 +105,44 @@ final class FormRendererTest extends TestCase {
             $this->assertStringContainsString('schemaOrgData_global_openingHours_'.$day.'_from', $html);
             $this->assertStringContainsString('schemaOrgData_global_openingHours_'.$day.'_to', $html);
         }
+    }
+
+    /***************************************************************
+    *
+    * get_CatArray(true) liefert auch das Wurzelverzeichnis
+    * "kategorien" selbst als Eintrag zurück - das ist keine echte
+    * Kategorie und darf in der Ausschlussliste nicht als Checkbox
+    * erscheinen (nur echte Kategorien + "Alle Kategorien"-Toggle).
+    *
+    ***************************************************************/
+    function testExcludedCatsFieldOmitsKategorienRootEntry(): void {
+        global $CatPage;
+        $CatPage = new FakeCatPage(['kategorien', 'ueber-uns', 'impressum']);
+
+        $plugin = new \schemaOrgData();
+        $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[]]);
+
+        unset($CatPage);
+
+        $this->assertStringContainsString('value="ueber-uns"', $html);
+        $this->assertStringContainsString('value="impressum"', $html);
+        $this->assertStringNotContainsString('value="kategorien"', $html);
+        $this->assertStringContainsString('data-select-all="schemaOrgData[global][excluded_cats][]"', $html);
+    }
+}
+
+/***************************************************************
+*
+* Minimaler Ersatz für die moziloCMS-Klasse CatPage, ausschließlich
+* für renderExcludedCatsField() (get_CatArray()).
+*
+***************************************************************/
+final class FakeCatPage {
+
+    function __construct(private array $cats) {
+    }
+
+    function get_CatArray(bool $all = false): array {
+        return $this->cats;
     }
 }

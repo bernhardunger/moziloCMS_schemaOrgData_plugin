@@ -357,4 +357,64 @@ final class PersistenceTest extends TestCase {
         $key = callPluginMethod($plugin, 'getScopeSettingsKey', ['category', $sanitized, null]);
         $this->assertSame('config_cat_etcpasswd', $key);
     }
+
+    // -----------------------------------------------------------
+    // POST-Retention nach fehlgeschlagenem Save (renderScopeSection)
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Regressionstest für 0.2.2-beta: schlägt das Speichern fehl
+    * (z. B. wegen ungültiger url), müssen die vom Nutzer
+    * eingegebenen POST-Werte erhalten bleiben - auch wenn bereits
+    * eine andere, gespeicherte Konfiguration existiert.
+    *
+    ***************************************************************/
+    function testFailedSaveRetainsPostedScalarValuesInActiveSection(): void {
+        $plugin = $this->createPlugin();
+
+        $oldData = $this->validLocalBusinessData('Alte Firma');
+        callPluginMethod($plugin, 'saveConfig', ['global', $oldData]);
+
+        $newData = $this->validLocalBusinessData('Neue Firma');
+        $newData['data']['url'] = 'nicht-eine-url';
+        $newData['data']['address']['addressLocality'] = 'Neustadt';
+        $_POST['schemaOrgData'] = ['global' => $newData];
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = callPluginMethod($plugin, 'renderScopeSection', ['global', null, null, true, 'global', true]);
+
+        $this->assertStringContainsString('Neue Firma', $html);
+        $this->assertStringContainsString('Neustadt', $html);
+        $this->assertStringContainsString('nicht-eine-url', $html);
+        $this->assertStringNotContainsString('Alte Firma', $html);
+        $this->assertStringNotContainsString('Altstadt', $html);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest: ein ungültiges Zeitformat (z. B. "8:00" statt
+    * "08:00") in einem Öffnungszeiten-Feld darf beim Re-Display nach
+    * fehlgeschlagenem Save nicht zu leeren Von/Bis-Feldern führen.
+    * buildOpeningHoursArray()/parseOpeningHours() würden den Eintrag
+    * sonst verlustbehaftet verwerfen (siehe renderScopeSection /
+    * renderOpeningHoursWidget).
+    *
+    ***************************************************************/
+    function testFailedSaveRetainsInvalidOpeningHoursTime(): void {
+        $plugin = $this->createPlugin();
+
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['url'] = 'nicht-eine-url';
+        $postData['data']['openingHours']['Mo'] = ['from' => '8:00', 'to' => '18:00'];
+        $_POST['schemaOrgData'] = ['global' => $postData];
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = callPluginMethod($plugin, 'renderScopeSection', ['global', null, null, true, 'global', true]);
+
+        $this->assertStringContainsString('value="8:00"', $html);
+        $this->assertStringContainsString('value="18:00"', $html);
+    }
 }

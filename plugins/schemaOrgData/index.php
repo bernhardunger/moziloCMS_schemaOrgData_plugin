@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.3.2-beta';
+    private const PLUGIN_VERSION = '0.3.3-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -815,6 +815,22 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Erkennt, ob ein openingHours-Wert bereits als rohe Pro-Tag-Werte
+    * vorliegt (["Mo" => ["from" => ..., "to" => ...], ...], aus dem
+    * POST nach fehlgeschlagenem Save - siehe renderScopeSection) statt
+    * als openingHours-Array in schema.org-Notation (["Mo-Fr 09:00-18:00"]).
+    *
+    ***************************************************************/
+    private function isPerDayOpeningHoursValue(array $value): bool {
+        foreach($value as $entry) {
+            return is_array($entry);
+        }
+
+        return false;
+    }
+
+    /***************************************************************
+    *
     * Zerlegt ein openingHours-Array (schema.org-Notation, z. B.
     * "Mo-Fr 09:00-18:00") in Von/Bis-Zeiten je Wochentag.
     *
@@ -1125,21 +1141,22 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
-    * Rendert die Pflichtfeld-/Optional-Kennzeichnung eines
-    * Formularfeldes anhand von "ui:required".
+    * Rendert die Pflichtfeld-Kennzeichnung eines Formularfeldes
+    * anhand von "ui:required". Optionale Felder erhalten keine
+    * Kennzeichnung.
     *
     * @return string HTML-Snippet
     *
     ***************************************************************/
     private function renderRequiredBadge(bool $required): string {
-        $lang = $this->loadAdminLanguage();
-
-        if($required) {
-            return ' <span class="schemaOrgData-required" title="'
-                .$lang->getLanguageHtml('label_required_field').'">*</span>';
+        if(!$required) {
+            return '';
         }
 
-        return ' <span class="schemaOrgData-optional">'.$lang->getLanguageHtml('label_optional').'</span>';
+        $lang = $this->loadAdminLanguage();
+
+        return ' <span class="schemaOrgData-required" title="'
+            .$lang->getLanguageHtml('label_required_field').'">*</span>';
     }
 
     /***************************************************************
@@ -1251,10 +1268,7 @@ class schemaOrgData extends Plugin {
         // volle Zeile.
         if(isset($properties['streetAddress'])) {
             $field = $this->renderAddressSubField($scope, $name, 'streetAddress', $properties['streetAddress'], $value, $countryFieldId, $idPrefix);
-            $html .= '<div class="c-content schemaOrgData-field-row">'
-                .'<div class="mo-in-li-l"><label for="'.$field['fieldId'].'">'.$field['label'].'</label>'.$field['badge'].'</div>'
-                .'<div class="mo-in-li-r">'.$field['widget'].$field['feedback'].'</div>'
-                .'</div>'."\n";
+            $html .= $this->renderAddressFullRow($field);
         }
 
         // PLZ + Ort kompakt in einer Zeile (PLZ schmal, Ort flexibel)
@@ -1263,13 +1277,33 @@ class schemaOrgData extends Plugin {
             'addressLocality' => false,
         ]);
 
-        // Region + Land kompakt in einer Zeile
-        $html .= $this->renderAddressFieldGroup($scope, $name, $properties, $value, $countryFieldId, $idPrefix, [
-            'addressRegion'  => false,
-            'addressCountry' => false,
-        ]);
+        // Land: eigene Zeile, Select ~200px breit (siehe getAdminCss)
+        if(isset($properties['addressCountry'])) {
+            $field = $this->renderAddressSubField($scope, $name, 'addressCountry', $properties['addressCountry'], $value, $countryFieldId, $idPrefix);
+            $html .= $this->renderAddressFullRow($field);
+        }
+
+        // Region/Bundesland: eigene Zeile, ~300px breit (siehe getAdminCss)
+        if(isset($properties['addressRegion'])) {
+            $field = $this->renderAddressSubField($scope, $name, 'addressRegion', $properties['addressRegion'], $value, $countryFieldId, $idPrefix);
+            $html .= $this->renderAddressFullRow($field);
+        }
 
         return $html;
+    }
+
+    /***************************************************************
+    *
+    * Rendert ein einzelnes Sub-Feld des PostalAddress-Widgets
+    * (siehe renderAddressSubField()) als eigenständige
+    * schemaOrgData-field-row (Label links, Eingabefeld rechts).
+    *
+    ***************************************************************/
+    private function renderAddressFullRow(array $field): string {
+        return '<div class="c-content schemaOrgData-field-row">'
+            .'<div class="mo-in-li-l"><label for="'.$field['fieldId'].'">'.$field['label'].'</label>'.$field['badge'].'</div>'
+            .'<div class="mo-in-li-r">'.$field['widget'].$field['feedback'].'</div>'
+            .'</div>'."\n";
     }
 
     /***************************************************************
@@ -1370,7 +1404,15 @@ class schemaOrgData extends Plugin {
         $weekdayLang = $this->loadWeekdayLanguage();
         $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
         $dayLabelKeys = $fieldSchema['ui:dayLabelKeys'] ?? [];
-        $perDay = $this->parseOpeningHours($value, $days);
+
+        // $value liegt entweder als openingHours-Array in schema.org-Notation
+        // vor (gespeicherte Konfiguration / sanitizePostData) oder als rohe
+        // Pro-Tag-Werte aus dem POST (Re-Display nach fehlgeschlagenem Save,
+        // siehe renderScopeSection) - im zweiten Fall die Werte unverändert
+        // übernehmen, um auch ungültige Zeitformate anzuzeigen.
+        $perDay = $this->isPerDayOpeningHoursValue($value)
+            ? $value
+            : $this->parseOpeningHours($value, $days);
 
         $html = '<table class="schemaOrgData-opening-hours">'."\n";
         $html .= '<thead><tr><th></th><th>'.$lang->getLanguageHtml('label_opening_hours_from').' – '
@@ -1383,8 +1425,8 @@ class schemaOrgData extends Plugin {
             $toId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_to';
             $fromName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][from]';
             $toName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][to]';
-            $from = $perDay[$day]['from'] ?? '';
-            $to = $perDay[$day]['to'] ?? '';
+            $from = trim((string) ($perDay[$day]['from'] ?? ''));
+            $to = trim((string) ($perDay[$day]['to'] ?? ''));
 
             $fromInput = $this->renderTextWidget($fromId, $fromName, ['ui:placeholder' => '09:00'], $from, [
                 'data-validate' => 'opening_hours', 'data-pair' => $toId, 'maxlength' => '5',
@@ -1815,6 +1857,13 @@ class schemaOrgData extends Plugin {
         $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_excluded_cats').'</p>'."\n";
 
         foreach($cats as $cat) {
+            // get_CatArray(true) liefert auch das Wurzelverzeichnis
+            // "kategorien" selbst zurück - das ist keine echte Kategorie
+            // und wird daher nicht als Checkbox angeboten.
+            if(strtolower(rawurldecode($cat)) === 'kategorien') {
+                continue;
+            }
+
             $checked = in_array($cat, $excludedCats, true) ? ' checked="checked"' : '';
             $catLabel = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
             // rawurldecode() dekodiert den moziloCMS-Bezeichner nur für die
@@ -2009,6 +2058,18 @@ class schemaOrgData extends Plugin {
                 $postData = is_array($postScope['data'] ?? null) ? $postScope['data'] : [];
                 $data = $this->sanitizePostData($postData, $schema);
                 $extensionOverride = (string) ($postScope['extension'][$type] ?? '');
+
+                // Öffnungszeiten: die rohen Pro-Tag-Werte aus dem POST statt
+                // des verlustbehafteten Roundtrips über buildOpeningHoursArray()/
+                // parseOpeningHours() verwenden, damit Felder mit ungültigem
+                // Zeitformat beim Re-Display nicht geleert werden (siehe
+                // renderOpeningHoursWidget).
+                foreach($schema['properties'] ?? [] as $propName => $propSchema) {
+                    $propSchema = $this->resolveSchemaRef($propSchema, $schema);
+                    if(($propSchema['ui:widget'] ?? '') === 'opening_hours' and is_array($postData[$propName] ?? null)) {
+                        $data[$propName] = $postData[$propName];
+                    }
+                }
             } else {
                 $data = is_array($config[$type] ?? null) ? $config[$type] : [];
             }
@@ -2564,7 +2625,6 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-notice--error { background: #fdecea; border: 1px solid #f5c6c2; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--error ul { margin: .25em 0 0; padding-left: 1.5em; }
 .schemaOrgData-admin .schemaOrgData-required { color: #c0392b; font-weight: bold; }
-.schemaOrgData-admin .schemaOrgData-optional { color: #888; font-size: .85em; }
 .schemaOrgData-admin .schemaOrgData-fieldset { border: 1px solid #ddd; border-radius: 4px; padding: 1em; margin-bottom: 1em; }
 .schemaOrgData-admin .schemaOrgData-fieldset legend { font-weight: bold; padding: 0 .5em; }
 .schemaOrgData-admin .schemaOrgData-hint { color: #666; font-size: .85em; margin: 0 0 .5em; }
@@ -2598,6 +2658,8 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-address-field--narrow input { max-width: 80px; }
 .schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
 .schemaOrgData-admin select[id$="_priceRange"] { max-width: 250px; }
+.schemaOrgData-admin select[id$="_addressCountry"] { max-width: 200px; }
+.schemaOrgData-admin input[id$="_addressRegion"] { max-width: 300px; }
 ';
     }
 
