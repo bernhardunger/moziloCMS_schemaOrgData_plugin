@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.3.0-beta';
+    private const PLUGIN_VERSION = '0.3.1-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1832,16 +1832,20 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
-    * Rendert den Scope-Selektor als Button-Navigation.
+    * Rendert den Scope-Selektor als zweistufiges Select-Paar.
+    *
+    * Stufe 1 (#schemaOrgData_scope_cat) enthält "Global" und alle
+    * Kategorien. Stufe 2 (#schemaOrgData_scope_page) enthält die
+    * Seiten der gewählten Kategorie und wird clientseitig
+    * (initScopeSelector(), validator.js) anhand der im data-pages-
+    * Attribut hinterlegten JSON-Map (Kategorie => Seiten) befüllt
+    * und ein-/ausgeblendet - ohne PHP-Roundtrip.
     *
     * moziloCMS öffnet die Plugin-Einstellungen über einen
     * JavaScript-Tab-Mechanismus — ein Page-Reload würde diesen Tab
-    * schließen und auf die Info-Seite zurückspringen. Statt
-    * <a href>-Links werden daher <button>-Elemente mit
-    * data-scope-cat/data-scope-page Attributen gerendert.
-    * initScopeSelector() (validator.js) wertet diese Buttons aus
-    * und blendet die passende .schemaOrgData-scope-Sektion ein,
-    * ohne die Seite neu zu laden. Ist $CatPage nicht verfügbar,
+    * schließen und auf die Info-Seite zurückspringen. Die Auswahl
+    * blendet daher nur die passende .schemaOrgData-scope-Sektion
+    * ein, ohne die Seite neu zu laden. Ist $CatPage nicht verfügbar,
     * wird ein leerer String zurückgegeben.
     *
     * @param string|null $selectedCat  aktuell gewählte Kategorie
@@ -1860,48 +1864,44 @@ class schemaOrgData extends Plugin {
         $cats = $CatPage->get_CatArray(false, false, [EXT_PAGE, EXT_HIDDEN]);
 
         $html  = '<div class="schemaOrgData-scope-selector">'."\n";
-        $html .= '<span class="schemaOrgData-scope-selector__label">'
-               . $lang->getLanguageHtml('label_scope_selector') . '</span>'."\n";
-        $html .= '<nav class="schemaOrgData-scope-selector__nav">'."\n";
+        $html .= '<label class="schemaOrgData-scope-selector__label" for="schemaOrgData_scope_cat">'
+               . $lang->getLanguageHtml('label_scope_selector') . '</label>'."\n";
 
-        // Button "Global" (kein data-scope-cat / data-scope-page)
-        $activeGlobal = ($selectedCat === null) ? ' schemaOrgData-scope-selector__link--active' : '';
-        $html .= '<button type="button" class="schemaOrgData-scope-selector__link'.$activeGlobal.'">'
-               . $lang->getLanguageHtml('scope_global') . '</button>'."\n";
+        // Stufe 1: Global + alle Kategorien
+        $html .= '<select id="schemaOrgData_scope_cat" class="mo-select schemaOrgData-scope-selector__select">'."\n";
+        $html .= '<option value="">'.$lang->getLanguageHtml('scope_global').'</option>'."\n";
 
-        // Button je Kategorie
+        // Seiten je Kategorie als JSON-Map für Stufe 2 sammeln - rawurldecode()
+        // dekodiert den moziloCMS-URL-kodierten Bezeichner ("%C3%9CBer..." →
+        // "Über...") nur für die Anzeige, der value-Attributwert bleibt roh.
+        $pagesByCat = [];
+
         foreach ($cats as $cat) {
-            $activeCat = ($cat === $selectedCat && $selectedPage === null)
-                ? ' schemaOrgData-scope-selector__link--active' : '';
-            $catAttr   = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
-            // rawurldecode() dekodiert den moziloCMS-URL-kodierten Bezeichner
-            // ("%C3%9CBer..." → "Über..."), htmlspecialchars() sichert danach HTML-sauber.
-            $catLabel  = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
-            $html .= '<button type="button" class="schemaOrgData-scope-selector__link'.$activeCat.'"'
-                   . ' data-scope-cat="'.$catAttr.'">'
-                   . $catLabel . '</button>'."\n";
+            $catAttr  = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
+            $catLabel = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
+            $html .= '<option value="'.$catAttr.'">'.$catLabel.'</option>'."\n";
 
-            // Seiten aller Kategorien eingerückt darunter vorrendern - nur
-            // Seiten der initial aktiven Kategorie sind sichtbar,
-            // initScopeSelector() blendet die übrigen anhand
-            // data-parent-cat beim Kategoriewechsel ein/aus
             $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
-            foreach ($pages as $page) {
-                $activePage = ($page === $selectedPage)
-                    ? ' schemaOrgData-scope-selector__link--active' : '';
-                $pageAttr   = htmlspecialchars($page, ENT_QUOTES, CHARSET);
-                $pageLabel  = htmlspecialchars(rawurldecode($page), ENT_QUOTES, CHARSET);
-                $pageDisplay = ($cat === $selectedCat) ? '' : ' style="display:none"';
-                $html .= '<button type="button" class="schemaOrgData-scope-selector__link'
-                       . ' schemaOrgData-scope-selector__link--page'.$activePage.'"'
-                       . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'"'
-                       . ' data-parent-cat="'.$catAttr.'"'.$pageDisplay.'>'
-                       . '↳ ' . $pageLabel . '</button>'."\n";
-            }
+            $pagesByCat[$cat] = array_map(
+                fn($page) => ['value' => $page, 'label' => rawurldecode($page)],
+                $pages
+            );
         }
 
-        $html .= '</nav>'."\n";
+        $html .= '</select>'."\n";
+
+        // Stufe 2: Seiten der gewählten Kategorie - wird von
+        // initScopeSelector() (validator.js) anhand von data-pages befüllt,
+        // initial nur sichtbar wenn bereits eine Kategorie aktiv ist
+        $pagesJson = json_encode($pagesByCat, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $pageStyle = ($selectedCat === null) ? ' style="display:none"' : '';
+        $html .= '<select id="schemaOrgData_scope_page" class="mo-select schemaOrgData-scope-selector__select"'
+               . ' data-pages="'.htmlspecialchars($pagesJson, ENT_QUOTES, CHARSET).'"'.$pageStyle.'>'."\n";
+        $html .= '<option value="">— '.$lang->getLanguageHtml('scope_category').' —</option>'."\n";
+        $html .= '</select>'."\n";
+
         $html .= '</div>'."\n";
+
         return $html;
     }
 
@@ -2568,12 +2568,9 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-faq-entry:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 .schemaOrgData-admin .schemaOrgData-checkbox { display: inline-block; margin: 0 1em .25em 0; }
 .schemaOrgData-admin .schemaOrgData-checkbox--all { font-weight: bold; border-left: 1px solid #ccc; padding-left: 1em; }
-.schemaOrgData-admin .schemaOrgData-scope-selector { display: flex; align-items: flex-start; gap: .75em; flex-wrap: wrap; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .6em 1em; margin-bottom: 1.25em; }
-.schemaOrgData-admin .schemaOrgData-scope-selector__label { font-weight: bold; padding-top: .15em; white-space: nowrap; }
-.schemaOrgData-admin .schemaOrgData-scope-selector__nav { display: flex; flex-wrap: wrap; gap: .35em; }
-.schemaOrgData-admin .schemaOrgData-scope-selector__link { padding: .2em .6em; border-radius: 3px; background: #fff; border: 1px solid #bbb; text-decoration: none; color: #333; font-size: .9em; white-space: nowrap; }
-.schemaOrgData-admin .schemaOrgData-scope-selector__link--active { background: #1a73e8; border-color: #1a73e8; color: #fff; font-weight: bold; }
-.schemaOrgData-admin .schemaOrgData-scope-selector__link--page { margin-left: .5em; font-size: .85em; }
+.schemaOrgData-admin .schemaOrgData-scope-selector { display: flex; align-items: center; gap: .75em; flex-wrap: wrap; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .6em 1em; margin-bottom: 1.25em; }
+.schemaOrgData-admin .schemaOrgData-scope-selector__label { font-weight: bold; white-space: nowrap; }
+.schemaOrgData-admin .schemaOrgData-scope-selector__select { min-width: 200px; }
 .schemaOrgData-admin .schemaOrgData-save-bar { margin-top: 1.5em; padding: .75em 0; border-top: 1px solid #ddd; text-align: right; }
 .schemaOrgData-admin .schemaOrgData-save-bar--top { margin: 0 0 1.25em; padding: 0 0 .75em; border-top: none; border-bottom: 1px solid #ddd; }
 .schemaOrgData-admin .schemaOrgData-field-row { display: grid; grid-template-columns: 200px 1fr; align-items: baseline; gap: 4px 12px; margin-bottom: .5em; }

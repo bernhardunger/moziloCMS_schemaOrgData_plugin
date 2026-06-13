@@ -402,9 +402,13 @@
     }
 
     /**
-     * Aktiviert den Scope-Selektor (siehe index.php,
-     * renderScopeSelector()/renderScopeSection()): blendet beim Klick
-     * auf einen Button die zugehörige .schemaOrgData-scope-Sektion
+     * Aktiviert den zweistufigen Scope-Selektor (siehe index.php,
+     * renderScopeSelector()/renderScopeSection()): Stufe 1
+     * (#schemaOrgData_scope_cat) wählt Global oder eine Kategorie,
+     * Stufe 2 (#schemaOrgData_scope_page) wählt optional eine Seite
+     * dieser Kategorie und wird anhand der auf Stufe 2 als JSON
+     * hinterlegten data-pages-Map befüllt (kein PHP-Roundtrip nötig).
+     * Eine Auswahl blendet die zugehörige .schemaOrgData-scope-Sektion
      * ein und alle anderen aus, ohne die Seite neu zu laden (moziloCMS
      * würde den Plugin-Tab bei einem Page-Reload schließen). Alle
      * Sektionen sind vorgerendert; nur die Felder der aktiven Sektion
@@ -414,10 +418,16 @@
      * werden für den POST beim Speichern aktualisiert.
      */
     function initScopeSelector() {
-        var buttons = document.querySelectorAll(
-            '.schemaOrgData-scope-selector__link'
-        );
-        if (!buttons.length) return;
+        var catSelect  = document.getElementById('schemaOrgData_scope_cat');
+        var pageSelect = document.getElementById('schemaOrgData_scope_page');
+        if (!catSelect || !pageSelect) return;
+
+        var pagesByCat = {};
+        try {
+            pagesByCat = JSON.parse(pageSelect.getAttribute('data-pages') || '{}');
+        } catch (e) {
+            pagesByCat = {};
+        }
 
         // Schreibt den aktiven Geltungsbereich in die Hidden-Felder, die
         // beim Speichern mitgesendet werden (siehe renderAdminPage(),
@@ -429,71 +439,80 @@
             if (hiddenPage) hiddenPage.value = activePage || '';
         }
 
-        buttons.forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                // Aktiv-Klasse umsetzen
-                buttons.forEach(function (b) {
-                    b.classList.remove(
-                        'schemaOrgData-scope-selector__link--active'
-                    );
-                });
-                btn.classList.add(
-                    'schemaOrgData-scope-selector__link--active'
-                );
+        // Blendet die zu cat/page passende .schemaOrgData-scope-Sektion
+        // ein und alle anderen aus, (de-)aktiviert deren Felder und
+        // aktualisiert die Hidden-Felder für den POST.
+        function activateSection(cat, page) {
+            document.querySelectorAll('.schemaOrgData-scope').forEach(function (section) {
+                var sCat  = section.getAttribute('data-scope-cat')  || '';
+                var sPage = section.getAttribute('data-scope-page') || '';
+                var isActive = (sCat === cat && sPage === page);
+                section.style.display = isActive ? '' : 'none';
 
-                // Sektionen ein-/ausblenden
-                var cat  = btn.getAttribute('data-scope-cat')  || '';
-                var page = btn.getAttribute('data-scope-page') || '';
-                document.querySelectorAll('.schemaOrgData-scope').forEach(
-                    function (section) {
-                        var sCat  = section.getAttribute('data-scope-cat')  || '';
-                        var sPage = section.getAttribute('data-scope-page') || '';
-                        var isActive = (sCat === cat && sPage === page);
-                        section.style.display = isActive ? '' : 'none';
-
-                        // Inputs der Sektion aktivieren/deaktivieren damit nur
-                        // die aktive Sektion beim Speichern mitgesendet wird
-                        section.querySelectorAll('input, select, textarea').forEach(
-                            function (el) {
-                                el.disabled = !isActive;
-                            }
-                        );
-
-                        // Innerhalb der aktivierten Sektion nur die Felder der
-                        // aktuell gewählten Typ-Sektion aktiviert lassen (siehe
-                        // applyTypeFieldsState())
-                        if (isActive) {
-                            applyTypeFieldsState(section);
-                        }
+                // Inputs der Sektion aktivieren/deaktivieren damit nur
+                // die aktive Sektion beim Speichern mitgesendet wird
+                section.querySelectorAll('input, select, textarea').forEach(
+                    function (el) {
+                        el.disabled = !isActive;
                     }
                 );
 
-                // Hidden inputs für POST aktualisieren
-                updateScopeHiddenFields(cat, page);
-
-                // Seiten-Buttons der gewählten Kategorie ein-, alle
-                // anderen ausblenden (data-parent-cat, siehe
-                // renderScopeSelector())
-                buttons.forEach(function (b) {
-                    if (!b.classList.contains('schemaOrgData-scope-selector__link--page')) {
-                        return;
-                    }
-                    var parentCat = b.getAttribute('data-parent-cat') || '';
-                    b.style.display = (cat !== '' && parentCat === cat) ? '' : 'none';
-                });
+                // Innerhalb der aktivierten Sektion nur die Felder der
+                // aktuell gewählten Typ-Sektion aktiviert lassen (siehe
+                // applyTypeFieldsState())
+                if (isActive) {
+                    applyTypeFieldsState(section);
+                }
             });
+
+            updateScopeHiddenFields(cat, page);
+        }
+
+        // Befüllt Stufe 2 (Seiten-Select) anhand der gewählten Kategorie
+        // aus der data-pages-Map und blendet sie nur ein, wenn die
+        // Kategorie Seiten hat bzw. eine Kategorie gewählt ist.
+        function populatePageSelect(cat, selectedPage) {
+            while (pageSelect.options.length > 1) {
+                pageSelect.remove(1);
+            }
+
+            var pages = pagesByCat[cat] || [];
+            pages.forEach(function (page) {
+                var option = document.createElement('option');
+                option.value = page.value;
+                option.textContent = page.label;
+                if (page.value === selectedPage) {
+                    option.selected = true;
+                }
+                pageSelect.appendChild(option);
+            });
+
+            if (!selectedPage) {
+                pageSelect.value = '';
+            }
+
+            pageSelect.style.display = (cat !== '') ? '' : 'none';
+        }
+
+        catSelect.addEventListener('change', function () {
+            var cat = catSelect.value;
+            populatePageSelect(cat, '');
+            activateSection(cat, '');
         });
 
-        // Einmalig beim Init: Hidden-Felder auf den serverseitig aktiven
-        // Geltungsbereich setzen. Quelle ist die sichtbare
+        pageSelect.addEventListener('change', function () {
+            activateSection(catSelect.value, pageSelect.value);
+        });
+
+        // Einmalig beim Init: beide Selects auf den serverseitig aktiven
+        // Geltungsbereich vorbelegen. Quelle ist die sichtbare
         // .schemaOrgData-scope-Sektion (renderScopeSection() rendert genau
         // eine Sektion ohne style="display:none" und versieht jede Sektion
         // zuverlässig mit data-scope-cat/data-scope-page - auch für
-        // "Seite", anders als der Scope-Selektor-Button mit --active-Klasse,
-        // dessen data-scope-page bei gleichnamigen Seiten verschiedener
-        // Kategorien mehrdeutig sein kann). Ohne diesen Schritt enthalten
-        // die Hidden-Felder beim ersten Laden der Seite (inkl. direkt nach
-        // dem Speichern) immer "".
+        // "Seite", anders als ein <option>-Attribut, das bei gleichnamigen
+        // Seiten verschiedener Kategorien mehrdeutig sein könnte). Ohne
+        // diesen Schritt enthalten die Hidden-Felder beim ersten Laden der
+        // Seite (inkl. direkt nach dem Speichern) immer "".
         var activeSection = null;
         document.querySelectorAll('.schemaOrgData-scope').forEach(function (section) {
             if (activeSection === null && section.style.display !== 'none') {
@@ -502,6 +521,9 @@
         });
         var activeCat  = activeSection ? (activeSection.getAttribute('data-scope-cat')  || '') : '';
         var activePage = activeSection ? (activeSection.getAttribute('data-scope-page') || '') : '';
+
+        catSelect.value = activeCat;
+        populatePageSelect(activeCat, activePage);
         updateScopeHiddenFields(activeCat, activePage);
     }
 
