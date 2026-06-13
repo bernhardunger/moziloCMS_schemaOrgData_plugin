@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.2.4-beta';
+    private const PLUGIN_VERSION = '0.3.0-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1240,45 +1240,111 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix = null): string {
-        $lang = $this->loadAdminLanguage();
         $idPrefix = $idPrefix ?? $scope;
         $countryFieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_addressCountry';
+        $properties = $fieldSchema['properties'] ?? [];
         $html = '';
 
-        foreach($fieldSchema['properties'] ?? [] as $subName => $subSchema) {
-            $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$subName;
-            $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$subName.']';
-            $subValue = $value[$subName] ?? ($subSchema['default'] ?? null);
-            $required = (bool) ($subSchema['ui:required'] ?? false);
-            $label = $lang->getLanguageHtml($subSchema['ui:label'] ?? $subName);
-            $badge = $this->renderRequiredBadge($required);
-
-            if(($subSchema['ui:widget'] ?? 'text') === 'select') {
-                $widgetHtml = $this->renderSelectWidget($fieldId, $fieldName, $subSchema, $subValue);
-            } else {
-                $extraAttrs = [];
-                if($subName === 'postalCode') {
-                    $extraAttrs = ['data-validate' => 'postal_code', 'data-country-field' => $countryFieldId];
-                } elseif($required) {
-                    $extraAttrs = [
-                        'data-validate' => 'required',
-                        'data-required-message' => $lang->getLanguageValue('error_required_field', $lang->getLanguageValue($subSchema['ui:label'] ?? $subName)),
-                    ];
-                }
-                $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $subSchema, $subValue, $extraAttrs);
-            }
-
-            $feedback = '';
-            if($subName === 'postalCode' and $subValue !== null and $subValue !== '') {
-                $countryCode = (string) ($value['addressCountry'] ?? 'DE');
-                $feedback = $this->renderValidationFeedback($this->validatePostalCode((string) $subValue, $countryCode));
-            }
-
-            $html .= '<div class="c-content">'
-                .'<div class="mo-in-li-l"><label for="'.$fieldId.'">'.$label.'</label>'.$badge.'</div>'
-                .'<div class="mo-in-li-r">'.$widgetHtml.$feedback.'</div>'
+        // Straße und Hausnummer: schema.org kennt kein eigenes
+        // Hausnummer-Feld - "Straße und Hausnummer" ist ein
+        // kombiniertes streetAddress-Feld und erhält eine eigene,
+        // volle Zeile.
+        if(isset($properties['streetAddress'])) {
+            $field = $this->renderAddressSubField($scope, $name, 'streetAddress', $properties['streetAddress'], $value, $countryFieldId, $idPrefix);
+            $html .= '<div class="c-content schemaOrgData-field-row">'
+                .'<div class="mo-in-li-l"><label for="'.$field['fieldId'].'">'.$field['label'].'</label>'.$field['badge'].'</div>'
+                .'<div class="mo-in-li-r">'.$field['widget'].$field['feedback'].'</div>'
                 .'</div>'."\n";
         }
+
+        // PLZ + Ort kompakt in einer Zeile (PLZ schmal, Ort flexibel)
+        $html .= $this->renderAddressFieldGroup($scope, $name, $properties, $value, $countryFieldId, $idPrefix, [
+            'postalCode'      => true,
+            'addressLocality' => false,
+        ]);
+
+        // Region + Land kompakt in einer Zeile
+        $html .= $this->renderAddressFieldGroup($scope, $name, $properties, $value, $countryFieldId, $idPrefix, [
+            'addressRegion'  => false,
+            'addressCountry' => false,
+        ]);
+
+        return $html;
+    }
+
+    /***************************************************************
+    *
+    * Rendert ein einzelnes Sub-Feld des PostalAddress-Widgets
+    * (Eingabefeld, Pflichtfeld-/PLZ-Validierungsattribute und ggf.
+    * Validierungs-Feedback). Wird sowohl für eigenständige Zeilen
+    * (streetAddress) als auch für gruppierte Zeilen (PLZ+Ort,
+    * Region+Land, siehe renderAddressFieldGroup()) verwendet.
+    *
+    * @return array{fieldId:string,label:string,badge:string,widget:string,feedback:string}
+    *
+    ***************************************************************/
+    private function renderAddressSubField(string $scope, string $name, string $subName, array $subSchema, array $value, string $countryFieldId, string $idPrefix): array {
+        $lang = $this->loadAdminLanguage();
+        $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$subName;
+        $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$subName.']';
+        $subValue = $value[$subName] ?? ($subSchema['default'] ?? null);
+        $required = (bool) ($subSchema['ui:required'] ?? false);
+        $label = $lang->getLanguageHtml($subSchema['ui:label'] ?? $subName);
+        $badge = $this->renderRequiredBadge($required);
+
+        if(($subSchema['ui:widget'] ?? 'text') === 'select') {
+            $widgetHtml = $this->renderSelectWidget($fieldId, $fieldName, $subSchema, $subValue);
+        } else {
+            $extraAttrs = [];
+            if($subName === 'postalCode') {
+                $extraAttrs = ['data-validate' => 'postal_code', 'data-country-field' => $countryFieldId];
+            } elseif($required) {
+                $extraAttrs = [
+                    'data-validate' => 'required',
+                    'data-required-message' => $lang->getLanguageValue('error_required_field', $lang->getLanguageValue($subSchema['ui:label'] ?? $subName)),
+                ];
+            }
+            $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $subSchema, $subValue, $extraAttrs);
+        }
+
+        $feedback = '';
+        if($subName === 'postalCode' and $subValue !== null and $subValue !== '') {
+            $countryCode = (string) ($value['addressCountry'] ?? 'DE');
+            $feedback = $this->renderValidationFeedback($this->validatePostalCode((string) $subValue, $countryCode));
+        }
+
+        return ['fieldId' => $fieldId, 'label' => $label, 'badge' => $badge, 'widget' => $widgetHtml, 'feedback' => $feedback];
+    }
+
+    /***************************************************************
+    *
+    * Rendert eine gruppierte Zeile des PostalAddress-Widgets: mehrere
+    * Sub-Felder nebeneinander, jeweils mit eigenem (kleinem) Label
+    * über dem Eingabefeld (siehe schemaOrgData-address-row /
+    * schemaOrgData-address-field in getAdminCss()).
+    *
+    * @param array<string,bool> $subNames Sub-Feldname => schmal
+    *        darstellen (z. B. PLZ, max-width 80px)
+    *
+    ***************************************************************/
+    private function renderAddressFieldGroup(string $scope, string $name, array $properties, array $value, string $countryFieldId, string $idPrefix, array $subNames): string {
+        $html = '<div class="c-content schemaOrgData-field-row">'
+            .'<div class="mo-in-li-l"></div>'
+            .'<div class="mo-in-li-r"><div class="schemaOrgData-address-row">'."\n";
+
+        foreach($subNames as $subName => $narrow) {
+            if(!isset($properties[$subName])) {
+                continue;
+            }
+            $field = $this->renderAddressSubField($scope, $name, $subName, $properties[$subName], $value, $countryFieldId, $idPrefix);
+            $narrowClass = $narrow ? ' schemaOrgData-address-field--narrow' : '';
+            $html .= '<div class="schemaOrgData-address-field'.$narrowClass.'">'
+                .'<label for="'.$field['fieldId'].'">'.$field['label'].$field['badge'].'</label>'
+                .$field['widget'].$field['feedback']
+                .'</div>'."\n";
+        }
+
+        $html .= '</div></div></div>'."\n";
 
         return $html;
     }
@@ -1307,7 +1373,7 @@ class schemaOrgData extends Plugin {
         $perDay = $this->parseOpeningHours($value, $days);
 
         $html = '<table class="schemaOrgData-opening-hours">'."\n";
-        $html .= '<thead><tr><th></th><th>'.$lang->getLanguageHtml('label_opening_hours_from').'</th>'
+        $html .= '<thead><tr><th></th><th>'.$lang->getLanguageHtml('label_opening_hours_from').'</th><th></th>'
             .'<th>'.$lang->getLanguageHtml('label_opening_hours_to').'</th></tr></thead>'."\n";
         $html .= '<tbody>'."\n";
 
@@ -1329,7 +1395,9 @@ class schemaOrgData extends Plugin {
 
             $feedback = $this->renderValidationFeedback($this->validateOpeningHoursTime($from, $to));
 
-            $html .= '<tr><td>'.$dayLabel.'</td><td>'.$fromInput.'</td><td>'.$toInput.$feedback.'</td></tr>'."\n";
+            $html .= '<tr><td>'.$dayLabel.'</td><td>'.$fromInput.'</td>'
+                .'<td class="schemaOrgData-opening-hours-sep">–</td>'
+                .'<td>'.$toInput.$feedback.'</td></tr>'."\n";
         }
 
         $html .= '</tbody></table>'."\n";
@@ -1377,11 +1445,11 @@ class schemaOrgData extends Plugin {
             $badge = $this->renderRequiredBadge((bool) ($questionSchema['ui:required'] ?? false));
 
             $html .= '<div class="schemaOrgData-faq-entry">'."\n";
-            $html .= '<div class="c-content">'
+            $html .= '<div class="c-content schemaOrgData-field-row">'
                 .'<div class="mo-in-li-l"><label for="'.$questionId.'">'.$questionLabel.'</label>'.$badge.'</div>'
                 .'<div class="mo-in-li-r">'.$this->renderTextWidget($questionId, $questionName, $questionSchema, $question).'</div>'
                 .'</div>'."\n";
-            $html .= '<div class="c-content">'
+            $html .= '<div class="c-content schemaOrgData-field-row">'
                 .'<div class="mo-in-li-l"><label for="'.$answerId.'">'.$answerLabel.'</label></div>'
                 .'<div class="mo-in-li-r">'.$this->renderTextareaWidget($answerId, $answerName, $answerSchema, $answer).'</div>'
                 .'</div>'."\n";
@@ -1537,7 +1605,7 @@ class schemaOrgData extends Plugin {
             ? $this->renderFieldFeedback($name, $fieldSchema, (string) $value, $allData)
             : '';
 
-        return '<div class="c-content">'
+        return '<div class="c-content schemaOrgData-field-row">'
             .'<div class="mo-in-li-l"><label for="'.$fieldId.'">'.$label.'</label>'.$badge.'</div>'
             .'<div class="mo-in-li-r">'.$widgetHtml.$feedback.'</div>'
             .'</div>'."\n";
@@ -1917,7 +1985,7 @@ class schemaOrgData extends Plugin {
             $html .= $this->renderCollisionNotice($scope, $cat, $page, $selectedType);
         }
 
-        $html .= '<div class="c-content">'
+        $html .= '<div class="c-content schemaOrgData-field-row schemaOrgData-type-selector-row">'
             .'<div class="mo-in-li-l"><label for="schemaOrgData_'.$idPrefix.'_type">'.$lang->getLanguageHtml('label_schema_type').'</label></div>'
             .'<div class="mo-in-li-r">'.$this->renderTypeSelector($scope, $availableTypes, $selectedType, $idPrefix).'</div>'
             .'</div>'."\n";
@@ -2507,6 +2575,20 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-scope-selector__link--active { background: #1a73e8; border-color: #1a73e8; color: #fff; font-weight: bold; }
 .schemaOrgData-admin .schemaOrgData-scope-selector__link--page { margin-left: .5em; font-size: .85em; }
 .schemaOrgData-admin .schemaOrgData-save-bar { margin-top: 1.5em; padding: .75em 0; border-top: 1px solid #ddd; text-align: right; }
+.schemaOrgData-admin .schemaOrgData-save-bar--top { margin: 0 0 1.25em; padding: 0 0 .75em; border-top: none; border-bottom: 1px solid #ddd; }
+.schemaOrgData-admin .schemaOrgData-field-row { display: grid; grid-template-columns: 200px 1fr; align-items: baseline; gap: 4px 12px; margin-bottom: .5em; }
+.schemaOrgData-admin .schemaOrgData-field-row .mo-in-li-l, .schemaOrgData-admin .schemaOrgData-field-row .mo-in-li-r { float: none; width: auto; padding: 0; margin: 0; }
+.schemaOrgData-admin .schemaOrgData-type-selector-row { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .75em 1em; margin-bottom: 1.25em; }
+.schemaOrgData-admin .schemaOrgData-type-selector-row .mo-in-li-l label { font-weight: bold; font-size: 1.05em; }
+.schemaOrgData-admin .schemaOrgData-opening-hours input { max-width: 80px; }
+.schemaOrgData-admin .schemaOrgData-opening-hours td.schemaOrgData-opening-hours-sep { padding: .25em .15em; text-align: center; color: #999; }
+.schemaOrgData-admin .schemaOrgData-address-row { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.schemaOrgData-admin .schemaOrgData-address-field { display: flex; flex-direction: column; flex: 1 1 160px; }
+.schemaOrgData-admin .schemaOrgData-address-field label { font-size: .85em; color: #666; margin-bottom: 2px; }
+.schemaOrgData-admin .schemaOrgData-address-field--narrow { flex: 0 0 80px; }
+.schemaOrgData-admin .schemaOrgData-address-field--narrow input { max-width: 80px; }
+.schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
+.schemaOrgData-admin select[id$="_priceRange"] { max-width: 250px; }
 ';
     }
 
@@ -2579,6 +2661,14 @@ class schemaOrgData extends Plugin {
         if($saveResult !== null) {
             $html .= $this->renderSaveResultNotice($saveResult);
         }
+
+        // Zusätzlicher Speichern-Button am Formularanfang (oben rechts) -
+        // derselbe Submit wie der Button am Formularende, damit lange
+        // Formulare nicht erst bis zum Ende gescrollt werden müssen
+        $html .= '<div class="schemaOrgData-save-bar schemaOrgData-save-bar--top">'."\n";
+        $html .= '<button type="submit" class="mo-btn mo-btn--primary">'
+               . $lang->getLanguageHtml('label_save').'</button>'."\n";
+        $html .= '</div>'."\n";
 
         // Scope-Selektor rendern
         $html .= $this->renderScopeSelector($selectedCat, $selectedPage);
