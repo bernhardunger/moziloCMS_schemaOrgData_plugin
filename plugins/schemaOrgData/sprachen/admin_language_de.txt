@@ -7,12 +7,12 @@ scope_page = Seite
 
 label_scope_selector = Konfigurationsbereich
 
-info_text_global = Diese Konfiguration wird standardmäßig auf jeder Seite ausgegeben. Über die Ausschlussliste unten können einzelne Kategorien von der globalen Ausgabe ausgenommen werden. Ist für eine Kategorie oder Seite derselbe Schema-Type konfiguriert, wird die globale Ausgabe für diesen Type automatisch unterdrückt.
-info_text_category = Diese Konfiguration wird zusätzlich zur globalen Konfiguration auf allen Seiten dieser Kategorie ausgegeben. Ist für diese Kategorie derselbe Schema-Type wie global konfiguriert, überschreibt diese Konfiguration die globale Ausgabe für diesen Type.
-info_text_page = Diese Konfiguration wird zusätzlich zur globalen und zur Kategorie-Konfiguration nur auf dieser einzelnen Seite ausgegeben. Ist für diese Seite derselbe Schema-Type wie auf einer allgemeineren Ebene konfiguriert, überschreibt diese Konfiguration deren Ausgabe für diesen Type.
+info_text_global = Diese Konfiguration wird standardmäßig auf jeder Seite ausgegeben. Über die Ausschlussliste unten können einzelne Kategorien von der globalen Ausgabe ausgenommen werden. Ist für eine Kategorie oder Seite derselbe Schema-Type konfiguriert, werden leere Felder dieser Ebene von der globalen Konfiguration übernommen - gefüllte Felder überschreiben die globale Ausgabe für diesen Type.
+info_text_category = Diese Konfiguration wird zusätzlich zur globalen Konfiguration auf allen Seiten dieser Kategorie ausgegeben. Ist für diese Kategorie derselbe Schema-Type wie global konfiguriert, übernimmt diese Konfiguration leere Felder von der globalen Konfiguration - gefüllte Felder überschreiben die globale Ausgabe für diesen Type.
+info_text_page = Diese Konfiguration wird zusätzlich zur globalen und zur Kategorie-Konfiguration nur auf dieser einzelnen Seite ausgegeben. Ist für diese Seite derselbe Schema-Type wie auf einer allgemeineren Ebene konfiguriert, übernimmt diese Konfiguration leere Felder von dieser Ebene - gefüllte Felder überschreiben deren Ausgabe für diesen Type.
 info_text_general = Das erzeugte JSON-LD wird unsichtbar im &lt;head&gt;-Bereich der Seite ausgegeben und erscheint nicht im sichtbaren Seiteninhalt. Es kann mit dem offiziellen Schema.org-Validator unter https://validator.schema.org geprüft werden.
 
-notice_type_collision = Für den Type "{PARAM1}" ist auch auf Ebene {PARAM2} eine Konfiguration vorhanden. Da diese Ebene spezifischer ist, wird nur ihre eigene Ausgabe verwendet - die Ausgabe von {PARAM2} für diesen Type wird hier automatisch unterdrückt.
+notice_type_collision = Für den Type "{PARAM1}" ist auch auf Ebene {PARAM2} eine Konfiguration vorhanden. Leere Felder werden von der übergeordneten Ebene übernommen - gefüllte Felder überschreiben die Ausgabe von {PARAM2} für diesen Type.
 
 label_excluded_cats = Ausnahmen (Kategorien ohne globale Ausgabe)
 description_excluded_cats = Auf den hier angehakten Kategorien (und deren Seiten) wird die globale Konfiguration nicht ausgegeben, z. B. Impressum, Datenschutz, Sitemap.

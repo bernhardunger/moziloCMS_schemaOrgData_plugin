@@ -7,12 +7,12 @@ scope_page = Page
 
 label_scope_selector = Configuration scope
 
-info_text_global = This configuration is output on every page by default. Use the exclusion list below to exempt individual categories from the global output. If a category or page has the same schema type configured, the global output for that type is automatically suppressed.
-info_text_category = This configuration is output on all pages of this category, in addition to the global configuration. If this category has the same schema type configured as global, this configuration overrides the global output for that type.
-info_text_page = This configuration is output only on this single page, in addition to the global and category configuration. If this page has the same schema type configured as a more general level, this configuration overrides that level's output for that type.
+info_text_global = This configuration is output on every page by default. Use the exclusion list below to exempt individual categories from the global output. If a category or page has the same schema type configured, empty fields at that level inherit their value from the global configuration - filled fields override the global output for that type.
+info_text_category = This configuration is output on all pages of this category, in addition to the global configuration. If this category has the same schema type configured as global, empty fields here inherit their value from the global configuration - filled fields override the global output for that type.
+info_text_page = This configuration is output only on this single page, in addition to the global and category configuration. If this page has the same schema type configured as a more general level, empty fields here inherit their value from that level - filled fields override that level's output for that type.
 info_text_general = The generated JSON-LD is output invisibly in the page's &lt;head&gt; and does not appear in the visible page content. It can be checked with the official Schema.org validator at https://validator.schema.org.
 
-notice_type_collision = A configuration for type "{PARAM1}" also exists at the {PARAM2} level. Since this level is more specific, only its own output is used - the output of {PARAM2} for this type is automatically suppressed here.
+notice_type_collision = A configuration for type "{PARAM1}" also exists at the {PARAM2} level. Empty fields here inherit their value from that level - filled fields override the output of {PARAM2} for this type.
 
 label_excluded_cats = Exceptions (categories without global output)
 description_excluded_cats = The global configuration is not output on the categories checked here (and their pages), e.g. imprint, privacy policy, sitemap.

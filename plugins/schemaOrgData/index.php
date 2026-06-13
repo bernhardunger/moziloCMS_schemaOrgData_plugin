@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.2.3-beta';
+    private const PLUGIN_VERSION = '0.2.4-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -119,22 +119,10 @@ class schemaOrgData extends Plugin {
             }
         }
 
-        // Type-Kollision auflösen: ist derselbe Schema-Type auf mehreren
-        // Ebenen konfiguriert, gibt nur die spezifischere Ebene aus
-        // (Priorität Seite > Kategorie > Global).
-        $usedTypes = [];
-        foreach(['page', 'category', 'global'] as $scope) {
-            if(!isset($scopeConfigs[$scope])) {
-                continue;
-            }
-            foreach($scopeConfigs[$scope] as $type => $data) {
-                if(in_array($type, $usedTypes, true)) {
-                    unset($scopeConfigs[$scope][$type]);
-                } else {
-                    $usedTypes[] = $type;
-                }
-            }
-        }
+        // Feldweise Vererbung: ist derselbe Schema-Type auf mehreren
+        // Ebenen konfiguriert, werden die Felder zusammengeführt
+        // (Global -> Kategorie -> Seite, siehe resolveTypeInheritance()).
+        $scopeConfigs = $this->resolveTypeInheritance($scopeConfigs);
 
         // JSON-LD-Blöcke der verbleibenden Types ausgeben
         foreach($scopeConfigs as $scope => $config) {
@@ -207,6 +195,52 @@ class schemaOrgData extends Plugin {
             }
         }
         return $result;
+    }
+
+    /***************************************************************
+    *
+    * Löst Type-Kollisionen zwischen den Geltungsebenen feldweise auf
+    * (Vererbung Global -> Kategorie -> Seite, siehe README.md
+    * Abschnitt "Type-Kollision"): ist derselbe Schema-Type auf
+    * mehreren Ebenen konfiguriert, werden die Felder über
+    * mergeConfigs() zusammengeführt - leere/fehlende Felder der
+    * spezifischeren Ebene erben den Wert der übergeordneten Ebene,
+    * gefüllte Felder (inkl. verschachtelter Felder wie "address" oder
+    * "openingHours") überschreiben vollständig (kein Merge innerhalb
+    * verschachtelter Felder). Die zusammengeführten Daten werden
+    * einmalig auf der spezifischsten Ebene ausgegeben, auf der der
+    * Type konfiguriert ist. Verschiedene Types bleiben unabhängig.
+    *
+    * @param array $scopeConfigs array('global' => [...], 'category' => [...], 'page' => [...]),
+    *                             jeweils array('TypeName' => array('property' => 'wert', ...), ...)
+    * @return array dieselbe Struktur, mit feldweise zusammengeführten Daten
+    *
+    ***************************************************************/
+    private function resolveTypeInheritance(array $scopeConfigs): array {
+        $typeScopes = [];
+        foreach(['global', 'category', 'page'] as $scope) {
+            if(!isset($scopeConfigs[$scope])) {
+                continue;
+            }
+            foreach($scopeConfigs[$scope] as $type => $data) {
+                $typeScopes[$type] = $scope;
+            }
+        }
+
+        $merged = $this->mergeConfigs(
+            $scopeConfigs['global'] ?? [],
+            $scopeConfigs['category'] ?? [],
+            $scopeConfigs['page'] ?? []
+        );
+
+        foreach($scopeConfigs as $scope => $config) {
+            $scopeConfigs[$scope] = [];
+        }
+        foreach($merged as $type => $data) {
+            $scopeConfigs[$typeScopes[$type]][$type] = $data;
+        }
+
+        return $scopeConfigs;
     }
 
     /***************************************************************
@@ -1621,12 +1655,13 @@ class schemaOrgData extends Plugin {
     *
     * Prüft, ob für $selectedType bereits auf einer allgemeineren
     * Ebene (Global bzw. Global+Kategorie) eine Konfiguration
-    * existiert. Ist dies der Fall, unterdrückt die allgemeinere
-    * Ebene ihre Ausgabe für diesen Type (siehe README.md,
-    * Abschnitt "Type-Kollision").
+    * existiert. Ist dies der Fall, erbt diese Ebene leere Felder von
+    * der allgemeineren Ebene; gefüllte Felder überschreiben deren
+    * Ausgabe für diesen Type (siehe README.md, Abschnitt
+    * "Type-Kollision" und resolveTypeInheritance()).
     *
     * @param string $scope 'category' | 'page' (für 'global' immer [])
-    * @return string[] Liste der kollidierenden, allgemeineren Ebenen
+    * @return string[] Liste der allgemeineren Ebenen, von denen geerbt wird
     *
     ***************************************************************/
     private function detectTypeCollision(string $scope, ?string $cat, ?string $page, string $selectedType): array {
@@ -1651,10 +1686,10 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
-    * Rendert den Hinweis auf eine Type-Kollision mit einer
-    * allgemeineren Ebene (siehe detectTypeCollision()).
+    * Rendert den Hinweis auf eine Vererbung von einer allgemeineren
+    * Ebene für denselben Type (siehe detectTypeCollision()).
     *
-    * @return string HTML-Snippet oder '' wenn keine Kollision vorliegt
+    * @return string HTML-Snippet oder '' wenn keine Vererbung vorliegt
     *
     ***************************************************************/
     private function renderCollisionNotice(string $scope, ?string $cat, ?string $page, string $selectedType): string {

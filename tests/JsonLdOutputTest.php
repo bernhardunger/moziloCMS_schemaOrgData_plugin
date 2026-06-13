@@ -326,29 +326,117 @@ final class JsonLdOutputTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // Type-Kollision
+    // Type-Kollision / feldweise Vererbung (resolveTypeInheritance)
     // -----------------------------------------------------------
+    //
+    // CAT_REQUEST/PAGE_REQUEST sind in tests/bootstrap.php fest auf
+    // "false" gesetzt, getContent() lädt daher nie eine Kategorie- oder
+    // Seiten-Konfiguration. Die feldweise Vererbung selbst (siehe
+    // resolveTypeInheritance()) ist eine reine Datentransformation ohne
+    // Abhängigkeit von CAT_REQUEST/PAGE_REQUEST und wird daher direkt
+    // über callPluginMethod() getestet.
 
-    function testSameTypeOnGlobalAndCategoryOutputsOnlyCategory(): void {
-        $this->markTestSkipped(
-            'CAT_REQUEST ist in tests/bootstrap.php fest auf "false" gesetzt, '
-            .'getContent() lädt daher nie eine Kategorie-Konfiguration - eine '
-            .'Type-Kollision Global/Kategorie ist im Testkontext nicht '
-            .'auslösbar, ohne tests/bootstrap.php zu ändern. Vom '
-            .'Storage-Layer-Refactor (settings statt conf/-Dateien) '
-            .'unabhängig.'
-        );
+    function testSameTypeOnGlobalAndCategoryMergesFieldsOnCategory(): void {
+        $plugin = $this->createPlugin();
+
+        $scopeConfigs = [
+            'global' => [
+                'LocalBusiness' => [
+                    'name' => 'Beispiel GmbH',
+                    'priceRange' => '€€',
+                ],
+            ],
+            'category' => [
+                'LocalBusiness' => [
+                    'name' => 'Beispiel GmbH - Filiale Nord',
+                ],
+            ],
+        ];
+
+        $result = callPluginMethod($plugin, 'resolveTypeInheritance', [$scopeConfigs]);
+
+        $this->assertSame([], $result['global']);
+        $this->assertSame('Beispiel GmbH - Filiale Nord', $result['category']['LocalBusiness']['name']);
+        $this->assertSame('€€', $result['category']['LocalBusiness']['priceRange']);
     }
 
-    function testSameTypeOnCategoryAndPageOutputsOnlyPage(): void {
-        $this->markTestSkipped(
-            'CAT_REQUEST/PAGE_REQUEST sind in tests/bootstrap.php fest auf '
-            .'"false" gesetzt, getContent() lädt daher nie eine Kategorie- '
-            .'oder Seiten-Konfiguration - eine Type-Kollision Kategorie/'
-            .'Seite ist im Testkontext nicht auslösbar, ohne '
-            .'tests/bootstrap.php zu ändern. Vom Storage-Layer-Refactor '
-            .'(settings statt conf/-Dateien) unabhängig.'
-        );
+    function testSameTypeOnCategoryAndPageMergesFieldsOnPage(): void {
+        $plugin = $this->createPlugin();
+
+        // "name" ist auf Seiten-Ebene leer und damit (siehe
+        // sanitizePostData()) gar nicht im gespeicherten Array enthalten.
+        $scopeConfigs = [
+            'global' => [],
+            'category' => [
+                'LocalBusiness' => [
+                    'name' => 'Steuerkanzlei',
+                    'telephone' => '+49891234567',
+                ],
+            ],
+            'page' => [
+                'LocalBusiness' => [
+                    'telephone' => '+498987654321',
+                ],
+            ],
+        ];
+
+        $result = callPluginMethod($plugin, 'resolveTypeInheritance', [$scopeConfigs]);
+
+        $this->assertSame([], $result['category']);
+        $this->assertSame('Steuerkanzlei', $result['page']['LocalBusiness']['name']);
+        $this->assertSame('+498987654321', $result['page']['LocalBusiness']['telephone']);
+    }
+
+    function testNestedFieldOverridesWithoutMergingProperties(): void {
+        $plugin = $this->createPlugin();
+
+        $scopeConfigs = [
+            'global' => [
+                'LocalBusiness' => [
+                    'name' => 'Beispiel GmbH',
+                    'address' => [
+                        'streetAddress' => 'Globalweg 1',
+                        'addressLocality' => 'Globalstadt',
+                        'addressCountry' => 'DE',
+                    ],
+                ],
+            ],
+            'category' => [
+                'LocalBusiness' => [
+                    'address' => [
+                        'addressLocality' => 'Filialstadt',
+                        'addressCountry' => 'DE',
+                    ],
+                ],
+            ],
+        ];
+
+        $result = callPluginMethod($plugin, 'resolveTypeInheritance', [$scopeConfigs]);
+
+        $address = $result['category']['LocalBusiness']['address'];
+        $this->assertSame('Beispiel GmbH', $result['category']['LocalBusiness']['name']);
+        $this->assertSame('Filialstadt', $address['addressLocality']);
+        $this->assertArrayNotHasKey('streetAddress', $address);
+    }
+
+    function testDifferentTypesRemainIndependent(): void {
+        $plugin = $this->createPlugin();
+
+        $scopeConfigs = [
+            'global' => [
+                'WebSite' => ['name' => 'Beispiel-Website', 'url' => 'https://www.beispiel-domain.example'],
+            ],
+            'category' => [
+                'FAQPage' => ['mainEntity' => [['name' => 'Frage?', 'acceptedAnswer' => ['text' => 'Antwort.']]]],
+            ],
+        ];
+
+        $result = callPluginMethod($plugin, 'resolveTypeInheritance', [$scopeConfigs]);
+
+        $this->assertArrayHasKey('WebSite', $result['global']);
+        $this->assertArrayNotHasKey('FAQPage', $result['global']);
+        $this->assertArrayHasKey('FAQPage', $result['category']);
+        $this->assertArrayNotHasKey('WebSite', $result['category']);
     }
 
     function testDifferentTypesProduceBothBlocks(): void {

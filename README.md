@@ -244,11 +244,13 @@ Globale Ausgabe deaktivieren für:
 [ ] sitemap
 ```
 
-### Type-Kollision
+### Type-Kollision / feldweise Vererbung
 
-Ist für eine Kategorie oder Seite derselbe Schema-Type wie in der globalen Konfiguration hinterlegt, gibt **nur die spezifischere Ebene** aus. Die globale Ausgabe wird in diesem Fall automatisch unterdrückt.
+Ist für eine Kategorie oder Seite derselbe Schema-Type wie auf einer übergeordneten Ebene hinterlegt, werden die Felder zusammengeführt (Global → Kategorie → Seite): leere bzw. fehlende Felder der spezifischeren Ebene übernehmen den Wert der übergeordneten Ebene, gefüllte Felder überschreiben ihn. Bei verschachtelten Feldern (z. B. `address`, `openingHours`) gewinnt die Ebene mit dem gefüllten Objekt vollständig — es erfolgt kein Merge innerhalb des Objekts. Die Ausgabe erfolgt einmalig auf der spezifischsten Ebene, auf der der Type konfiguriert ist.
 
-Beispiel: `LocalBusiness` global + `LocalBusiness` auf Kategorie `kontakt` → auf der Kontakt-Seite wird nur der Kategorie-Block ausgegeben.
+Beispiel: `LocalBusiness` global mit `name = "Beispiel GmbH"` und `priceRange = "€€"`, dieselbe Konfiguration auf Kategorie `kontakt` mit `name = "Beispiel GmbH - Filiale Nord"` → auf Seiten der Kategorie `kontakt` wird `name = "Beispiel GmbH - Filiale Nord"` und `priceRange = "€€"` (von global geerbt) ausgegeben.
+
+Verschiedene Types bleiben unabhängig voneinander.
 
 ### Info-Block im Admin
 
