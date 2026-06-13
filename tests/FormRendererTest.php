@@ -83,6 +83,27 @@ final class FormRendererTest extends TestCase {
         }
     }
 
+    /***************************************************************
+    *
+    * Regressionstest für die addressLocality-Pflichtfeld-Validierung
+    * (Fix in 0.2.0-beta): das Feld muss data-validate="required" und
+    * eine vollständig aufgelöste data-required-message tragen, damit
+    * validator.js beim Blur sofort "Pflichtfeld "Ort" fehlt." anzeigt.
+    *
+    ***************************************************************/
+    function testAddressLocalityFieldHasRequiredValidationAttributes(): void {
+        $plugin = new \schemaOrgData();
+        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+        $addressSchema = callPluginMethod($plugin, 'resolveSchemaRef', [$schema['properties']['address'], $schema]);
+
+        $html = callPluginMethod($plugin, 'renderPostalAddressWidget', ['global', 'address', $addressSchema, []]);
+
+        $this->assertMatchesRegularExpression(
+            '/id="schemaOrgData_global_address_addressLocality"[^>]*data-validate="required"[^>]*data-required-message="Pflichtfeld &quot;Ort&quot; fehlt\./',
+            $html
+        );
+    }
+
     function testAddressCountrySelectContainsGermanyAsDefault(): void {
         $plugin = new \schemaOrgData();
         $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);

@@ -78,7 +78,7 @@ description_extension_field = Zusätzliche schema.org-Properties als JSON-Objekt
 label_required_field = Pflichtfeld
 label_select_placeholder = – bitte wählen –
 
-error_json_invalid = Das eingegebene JSON ist ungültig: {PARAM1}
+error_json_invalid = Das eingegebene JSON ist ungültig.
 error_json_syntax = JSON-Syntaxfehler in Zeile {PARAM1}, Spalte {PARAM2}
 warning_unknown_property = Unbekannte Property "{PARAM1}" wird übernommen, ist aber im Schema nicht definiert.
 error_required_field = Pflichtfeld "{PARAM1}" fehlt.

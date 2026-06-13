@@ -52,9 +52,7 @@
         try {
             return { valid: true, data: JSON.parse(trimmed), error: null };
         } catch (e) {
-            // TODO: Zeile/Spalte aus der Fehlermeldung ermitteln und
-            //       in admin_lang-Schlüssel "error_json_syntax" einsetzen
-            return { valid: false, data: null, error: e.message };
+            return { valid: false, data: null, error: getMessages().jsonInvalid || e.message };
         }
     }
 
@@ -449,7 +447,11 @@
      * "input"-Event sorgt dafür, dass eine bereits angezeigte
      * Fehlermeldung sofort verschwindet, sobald der Wert während der
      * Eingabe wieder gültig wird (Fix 1) - ohne dass das Feld erst
-     * verlassen werden muss.
+     * verlassen werden muss. Bereits befüllte Felder werden zusätzlich
+     * einmalig beim Laden der Seite validiert, damit ein ungültiger
+     * gespeicherter bzw. nach gescheitertem Save zurückgegebener Wert
+     * sofort als Fehler angezeigt wird, ohne dass der Nutzer das Feld
+     * erst verlassen muss.
      */
     function initFieldValidation() {
         var inputs = document.querySelectorAll('[data-validate]');
@@ -461,6 +463,10 @@
             inputs[i].addEventListener('input', function (event) {
                 runFieldValidation(event.target);
             });
+
+            if (inputs[i].value.trim() !== '') {
+                runFieldValidation(inputs[i]);
+            }
         }
     }
 
@@ -697,7 +703,12 @@
      * Aktiviert die Live-Validierung der Erweiterungsfelder
      * (.schemaOrgData-extension-field): lädt das zugehörige Schema
      * über data-schema-url und validiert bei "blur" mit
-     * validateExtensionField().
+     * validateExtensionField(). Ein bereits befülltes Feld wird
+     * zusätzlich einmalig beim Laden der Seite validiert (JSON-
+     * Syntaxfehler erscheinen so sofort, auch ohne Nutzerinteraktion);
+     * nach dem Nachladen des Schemas wird bei einem nicht-leeren Feld
+     * erneut validiert, damit Warnungen zu unbekannten Properties
+     * bzw. Format-Fehler ebenfalls ohne Blur sichtbar werden.
      */
     function initExtensionFieldValidation() {
         var textareas = document.querySelectorAll('.schemaOrgData-extension-field');
@@ -717,11 +728,20 @@
                 if (schemaUrl) {
                     fetch(schemaUrl)
                         .then(function (response) { return response.json(); })
-                        .then(function (data) { schema = data; })
+                        .then(function (data) {
+                            schema = data;
+                            if (textarea.value.trim() !== '') {
+                                validate();
+                            }
+                        })
                         .catch(function () { schema = null; });
                 }
 
                 textarea.addEventListener('blur', validate);
+
+                if (textarea.value.trim() !== '') {
+                    validate();
+                }
             })(textareas[i]);
         }
     }

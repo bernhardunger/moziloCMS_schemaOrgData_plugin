@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.3.4-beta';
+    private const PLUGIN_VERSION = '0.3.5-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2447,7 +2447,7 @@ class schemaOrgData extends Plugin {
                     $decoded = json_decode($extensionRaw, true);
 
                     if(json_last_error() !== JSON_ERROR_NONE or !is_array($decoded)) {
-                        $errors[] = $lang->getLanguageValue('error_json_invalid', json_last_error_msg());
+                        $errors[] = $lang->getLanguageValue('error_json_invalid');
                     } else {
                         $extensionData = $decoded;
                         $errors = array_merge($errors, $this->validateExtensionGeo($extensionData));
@@ -2824,6 +2824,7 @@ class schemaOrgData extends Plugin {
             'openingHoursFormat' => $lang->getLanguageValue('error_opening_hours_format'),
             'openingHoursOrder'  => $lang->getLanguageValue('error_opening_hours_order'),
             'unknownProperty'    => $lang->getLanguageValue('warning_unknown_property'),
+            'jsonInvalid'        => $lang->getLanguageValue('error_json_invalid'),
         ];
 
         $html .= '<script>window.schemaOrgDataMessages = '
