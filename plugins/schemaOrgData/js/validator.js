@@ -245,6 +245,23 @@
     }
 
     /**
+     * Validiert ein Pflichtfeld (siehe index.php, renderPostalAddressWidget()).
+     * Die Fehlermeldung wird bereits server-seitig vollständig aufgelöst und
+     * über data-required-message übergeben.
+     *
+     * @param {string} value
+     * @param {string|null} message
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function validateRequiredField(value, message) {
+        if (value.trim() !== '') {
+            return { status: null, message: null };
+        }
+
+        return { status: 'error', message: message || null };
+    }
+
+    /**
      * Validiert ein Von/Bis-Zeitpaar des Öffnungszeiten-Widgets
      * (siehe index.php, validateOpeningHoursTime()).
      *
@@ -337,6 +354,9 @@
                 break;
             case 'telephone':
                 result = validateTelephone(input.value, getCountryCode(input));
+                break;
+            case 'required':
+                result = validateRequiredField(input.value, input.getAttribute('data-required-message'));
                 break;
             case 'opening_hours':
                 var pairInput = document.getElementById(input.getAttribute('data-pair'));
@@ -623,6 +643,7 @@
         validateTelephone: validateTelephone,
         validateUrl: validateUrl,
         validateEmail: validateEmail,
+        validateRequiredField: validateRequiredField,
         validateOpeningHoursTime: validateOpeningHoursTime,
         initAdminForm: initAdminForm
     };

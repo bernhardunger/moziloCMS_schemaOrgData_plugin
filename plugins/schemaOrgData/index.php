@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.1.9-beta';
+    private const PLUGIN_VERSION = '0.2.0-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1225,6 +1225,11 @@ class schemaOrgData extends Plugin {
                 $extraAttrs = [];
                 if($subName === 'postalCode') {
                     $extraAttrs = ['data-validate' => 'postal_code', 'data-country-field' => $countryFieldId];
+                } elseif($required) {
+                    $extraAttrs = [
+                        'data-validate' => 'required',
+                        'data-required-message' => $lang->getLanguageValue('error_required_field', $lang->getLanguageValue($subSchema['ui:label'] ?? $subName)),
+                    ];
                 }
                 $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $subSchema, $subValue, $extraAttrs);
             }
