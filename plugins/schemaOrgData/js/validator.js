@@ -335,11 +335,22 @@
      * Führt die zu input.dataset.validate passende Live-Validierung
      * aus und zeigt das Ergebnis an. Bei "opening_hours" wird das
      * über data-pair verknüpfte Gegenstück (Von/Bis) mit einbezogen.
+     * Felder mit data-required-message melden einen leeren Wert
+     * sofort als Fehler, unabhängig vom data-validate-Typ.
      *
      * @param {HTMLElement} input
      */
     function runFieldValidation(input) {
         var type = input.getAttribute('data-validate');
+        var requiredMessage = input.getAttribute('data-required-message');
+
+        // Pflichtfeld leer: sofort melden, unabhängig vom sonstigen
+        // Validierungstyp (url/email/telephone/required).
+        if (requiredMessage && input.value.trim() === '') {
+            showFieldFeedback(input, { status: 'error', message: requiredMessage });
+            return;
+        }
+
         var result = { status: null, message: null };
 
         switch (type) {

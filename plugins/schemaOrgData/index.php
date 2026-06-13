@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.3.1-beta';
+    private const PLUGIN_VERSION = '0.3.2-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1373,8 +1373,8 @@ class schemaOrgData extends Plugin {
         $perDay = $this->parseOpeningHours($value, $days);
 
         $html = '<table class="schemaOrgData-opening-hours">'."\n";
-        $html .= '<thead><tr><th></th><th>'.$lang->getLanguageHtml('label_opening_hours_from').'</th><th></th>'
-            .'<th>'.$lang->getLanguageHtml('label_opening_hours_to').'</th></tr></thead>'."\n";
+        $html .= '<thead><tr><th></th><th>'.$lang->getLanguageHtml('label_opening_hours_from').' – '
+            .$lang->getLanguageHtml('label_opening_hours_to').'</th></tr></thead>'."\n";
         $html .= '<tbody>'."\n";
 
         foreach($days as $day) {
@@ -1395,9 +1395,10 @@ class schemaOrgData extends Plugin {
 
             $feedback = $this->renderValidationFeedback($this->validateOpeningHoursTime($from, $to));
 
-            $html .= '<tr><td>'.$dayLabel.'</td><td>'.$fromInput.'</td>'
-                .'<td class="schemaOrgData-opening-hours-sep">–</td>'
-                .'<td>'.$toInput.$feedback.'</td></tr>'."\n";
+            $html .= '<tr><td>'.$dayLabel.'</td>'
+                .'<td><div class="schemaOrgData-opening-hours-group">'.$fromInput
+                .'<span class="schemaOrgData-opening-hours-sep">–</span>'
+                .$toInput.'</div>'.$feedback.'</td></tr>'."\n";
         }
 
         $html .= '</tbody></table>'."\n";
@@ -1495,7 +1496,10 @@ class schemaOrgData extends Plugin {
     *
     * Ermittelt zusätzliche HTML-Attribute für die clientseitige
     * Live-Validierung eines Feldes (data-validate, ggf.
-    * data-country-field für telephone).
+    * data-country-field für telephone). Pflichtfelder ("ui:required")
+    * erhalten zusätzlich data-required-message, damit der Blur-Handler
+    * (validator.js, runFieldValidation()) leere Pflichtfelder sofort
+    * meldet.
     *
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     * @return array<string,string>
@@ -1504,23 +1508,30 @@ class schemaOrgData extends Plugin {
     private function buildValidationAttrs(string $scope, string $name, array $fieldSchema, ?string $idPrefix = null): array {
         $idPrefix = $idPrefix ?? $scope;
         $format = $fieldSchema['format'] ?? null;
+        $required = (bool) ($fieldSchema['ui:required'] ?? false);
 
         if($format === 'uri') {
-            return ['data-validate' => 'url'];
-        }
-
-        if($format === 'email') {
-            return ['data-validate' => 'email'];
-        }
-
-        if($name === 'telephone') {
-            return [
+            $attrs = ['data-validate' => 'url'];
+        } elseif($format === 'email') {
+            $attrs = ['data-validate' => 'email'];
+        } elseif($name === 'telephone') {
+            $attrs = [
                 'data-validate' => 'telephone',
                 'data-country-field' => 'schemaOrgData_'.$idPrefix.'_address_addressCountry',
             ];
+        } elseif($required) {
+            $attrs = ['data-validate' => 'required'];
+        } else {
+            $attrs = [];
         }
 
-        return [];
+        if($required) {
+            $lang = $this->loadAdminLanguage();
+            $label = $lang->getLanguageValue($fieldSchema['ui:label'] ?? $name);
+            $attrs['data-required-message'] = $lang->getLanguageValue('error_required_field', $label);
+        }
+
+        return $attrs;
     }
 
     /***************************************************************
@@ -2562,8 +2573,11 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-feedback--warning { color: #b8860b; }
 .schemaOrgData-admin .schemaOrgData-feedback--error { color: #c0392b; }
 .schemaOrgData-admin .schemaOrgData-extension-feedback span { display: block; margin-top: .25em; }
-.schemaOrgData-admin .schemaOrgData-opening-hours { width: 100%; border-collapse: collapse; }
+.schemaOrgData-admin .schemaOrgData-opening-hours { border-collapse: collapse; }
 .schemaOrgData-admin .schemaOrgData-opening-hours th, .schemaOrgData-admin .schemaOrgData-opening-hours td { padding: .25em .5em; text-align: left; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-group { display: flex; align-items: center; gap: 4px; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-group input { max-width: 80px; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-sep { color: #999; }
 .schemaOrgData-admin .schemaOrgData-faq-entry { border-top: 1px solid #eee; padding-top: .5em; margin-top: .5em; }
 .schemaOrgData-admin .schemaOrgData-faq-entry:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 .schemaOrgData-admin .schemaOrgData-checkbox { display: inline-block; margin: 0 1em .25em 0; }
@@ -2573,16 +2587,14 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-scope-selector__select { min-width: 200px; }
 .schemaOrgData-admin .schemaOrgData-save-bar { margin-top: 1.5em; padding: .75em 0; border-top: 1px solid #ddd; text-align: right; }
 .schemaOrgData-admin .schemaOrgData-save-bar--top { margin: 0 0 1.25em; padding: 0 0 .75em; border-top: none; border-bottom: 1px solid #ddd; }
-.schemaOrgData-admin .schemaOrgData-field-row { display: grid; grid-template-columns: 200px 1fr; align-items: baseline; gap: 4px 12px; margin-bottom: .5em; }
-.schemaOrgData-admin .schemaOrgData-field-row .mo-in-li-l, .schemaOrgData-admin .schemaOrgData-field-row .mo-in-li-r { float: none; width: auto; padding: 0; margin: 0; }
+.schemaOrgData-admin .schemaOrgData-field-row { display: grid !important; grid-template-columns: 200px 1fr !important; align-items: baseline !important; gap: 4px 12px !important; margin-bottom: .5em; }
+.schemaOrgData-admin .schemaOrgData-field-row .mo-in-li-l, .schemaOrgData-admin .schemaOrgData-field-row .mo-in-li-r { float: none !important; width: auto !important; padding: 0; margin: 0; }
 .schemaOrgData-admin .schemaOrgData-type-selector-row { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .75em 1em; margin-bottom: 1.25em; }
 .schemaOrgData-admin .schemaOrgData-type-selector-row .mo-in-li-l label { font-weight: bold; font-size: 1.05em; }
-.schemaOrgData-admin .schemaOrgData-opening-hours input { max-width: 80px; }
-.schemaOrgData-admin .schemaOrgData-opening-hours td.schemaOrgData-opening-hours-sep { padding: .25em .15em; text-align: center; color: #999; }
-.schemaOrgData-admin .schemaOrgData-address-row { display: flex; flex-wrap: wrap; gap: 8px 12px; }
-.schemaOrgData-admin .schemaOrgData-address-field { display: flex; flex-direction: column; flex: 1 1 160px; }
+.schemaOrgData-admin .schemaOrgData-address-row { display: flex !important; flex-wrap: wrap; gap: 8px 12px; }
+.schemaOrgData-admin .schemaOrgData-address-field { display: flex !important; flex-direction: column; flex: 1 1 160px !important; }
 .schemaOrgData-admin .schemaOrgData-address-field label { font-size: .85em; color: #666; margin-bottom: 2px; }
-.schemaOrgData-admin .schemaOrgData-address-field--narrow { flex: 0 0 80px; }
+.schemaOrgData-admin .schemaOrgData-address-field--narrow { flex: 0 0 80px !important; }
 .schemaOrgData-admin .schemaOrgData-address-field--narrow input { max-width: 80px; }
 .schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
 .schemaOrgData-admin select[id$="_priceRange"] { max-width: 250px; }
