@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.3.7-beta';
+    private const PLUGIN_VERSION = '0.3.8-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1977,6 +1977,31 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Liefert die für den Nutzer lesbare Bezeichnung eines
+    * Geltungsbereichs, z. B. "Global", "Kategorie Über-uns" oder
+    * "Seite kontakt". Wird als data-scope-label in
+    * renderScopeSection() ausgegeben und von initScopeSelector()
+    * (validator.js) für den Hinweis auf ungespeicherte Eingaben
+    * beim Scope-Wechsel verwendet (Sprachschlüssel
+    * notice_unsaved_changes, Platzhalter {PARAM1}).
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @return string
+    *
+    ***************************************************************/
+    private function buildScopeLabel(string $scope, ?string $cat, ?string $page): string {
+        $lang = $this->loadAdminLanguage();
+
+        return match($scope) {
+            'global'   => $lang->getLanguageValue('scope_global'),
+            'category' => $lang->getLanguageValue('scope_category').' '.rawurldecode((string) $cat),
+            'page'     => $lang->getLanguageValue('scope_page').' '.rawurldecode((string) $page),
+            default    => $lang->getLanguageValue('scope_'.$scope),
+        };
+    }
+
+    /***************************************************************
+    *
     * Rendert den vollständigen Konfigurationsblock einer
     * Geltungsebene: Info-Block, Hinweis auf vorhandenes JSON-LD
     * (siehe renderExistingJsonLdNotice), Type-Auswahl,
@@ -1987,7 +2012,9 @@ class schemaOrgData extends Plugin {
     *
     * Die Sektion erhält data-scope-cat/data-scope-page Attribute,
     * über die initScopeSelector() (validator.js) sie dem
-    * passenden Button im Scope-Selektor zuordnet. Ist $active
+    * passenden Button im Scope-Selektor zuordnet, sowie
+    * data-scope-label (siehe buildScopeLabel()) für den Hinweis
+    * auf ungespeicherte Eingaben beim Scope-Wechsel. Ist $active
     * false, wird die Sektion initial mit style="display:none"
     * ausgeblendet und alle enthaltenen Formularelemente erhalten
     * disabled="disabled" (JS-loses Laden zeigt dennoch die aktive
@@ -2042,11 +2069,13 @@ class schemaOrgData extends Plugin {
             }
         }
 
-        $catAttr  = htmlspecialchars($cat ?? '', ENT_QUOTES, CHARSET);
-        $pageAttr = htmlspecialchars($page ?? '', ENT_QUOTES, CHARSET);
+        $catAttr   = htmlspecialchars($cat ?? '', ENT_QUOTES, CHARSET);
+        $pageAttr  = htmlspecialchars($page ?? '', ENT_QUOTES, CHARSET);
+        $labelAttr = htmlspecialchars($this->buildScopeLabel($scope, $cat, $page), ENT_QUOTES, CHARSET);
         $displayStyle = $active ? '' : ' style="display:none"';
         $html = '<div class="schemaOrgData-scope card mb" data-scope="'.$scope.'"'
-              . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'"'.$displayStyle.'>'."\n";
+              . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'"'
+              . ' data-scope-label="'.$labelAttr.'"'.$displayStyle.'>'."\n";
         $html .= '<h3>'.$lang->getLanguageHtml('scope_'.$scope).'</h3>'."\n";
         $html .= $this->renderInfoBlock($scope);
         $html .= $this->renderExistingJsonLdNotice($scope, $cat, $page);
@@ -2635,7 +2664,7 @@ class schemaOrgData extends Plugin {
     private function getAdminCss(): string {
         return '
 .schemaOrgData-admin .schemaOrgData-info { background: #eef6ff; border: 1px solid #b6d4f5; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
-.schemaOrgData-admin .schemaOrgData-notice--info { background: #fff8e1; border: 1px solid #ffe082; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
+.schemaOrgData-admin .schemaOrgData-notice--info, .schemaOrgData-admin .schemaOrgData-notice--unsaved { background: #fff8e1; border: 1px solid #ffe082; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--success { background: #e8f5e9; border: 1px solid #a5d6a7; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--error { background: #fdecea; border: 1px solid #f5c6c2; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--error ul { margin: .25em 0 0; padding-left: 1.5em; }
@@ -2838,6 +2867,7 @@ class schemaOrgData extends Plugin {
             'openingHoursOrder'  => $lang->getLanguageValue('error_opening_hours_order'),
             'unknownProperty'    => $lang->getLanguageValue('warning_unknown_property'),
             'jsonInvalid'        => $lang->getLanguageValue('error_json_invalid'),
+            'unsavedChanges'     => $lang->getLanguageValue('notice_unsaved_changes'),
         ];
 
         $html .= '<script>window.schemaOrgDataMessages = '

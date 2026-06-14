@@ -97,6 +97,7 @@ error_invalid_schema_type = Der Schema-Type "{PARAM1}" ist für diesen Geltungsb
 
 notice_config_saved = Die Konfiguration wurde gespeichert.
 notice_config_save_error = Die Konfiguration konnte nicht gespeichert werden:
+notice_unsaved_changes = Nicht gespeicherte Eingaben im Bereich {PARAM1} – bei Bedarf dort speichern.
 error_config_write_failed = Die Konfigurationsdatei konnte nicht geschrieben werden. Bitte Schreibrechte auf das conf/-Verzeichnis prüfen.
 
 notice_existing_jsonld_title = Auf dieser Seite wurde bereits ein JSON-LD-Block gefunden.

@@ -471,6 +471,128 @@
     }
 
     /**
+     * Liefert eine eindeutige Kennung für ein Formularfeld zur
+     * Snapshot-Erstellung (siehe snapshotSectionValues()): Felder mit
+     * "id" über "id:<id>", Radios/Checkboxen ohne "id" (z. B.
+     * jsonld_mode, siehe renderExistingJsonLdNotice() in index.php)
+     * über "name:<name>=<value>".
+     *
+     * @param {HTMLElement} el
+     * @returns {string|null}
+     */
+    function fieldSnapshotKey(el) {
+        if (el.id) {
+            return 'id:' + el.id;
+        }
+        if (el.name) {
+            return 'name:' + el.name + '=' + el.value;
+        }
+        return null;
+    }
+
+    /**
+     * Erstellt einen Snapshot der aktuellen Feldwerte einer
+     * .schemaOrgData-scope-Sektion (siehe fieldSnapshotKey()).
+     *
+     * @param {HTMLElement} section
+     * @returns {object}
+     */
+    function snapshotSectionValues(section) {
+        var values = {};
+
+        section.querySelectorAll('input, select, textarea').forEach(function (el) {
+            var key = fieldSnapshotKey(el);
+            if (key === null) {
+                return;
+            }
+            values[key] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
+        });
+
+        return values;
+    }
+
+    /**
+     * Prüft, ob sich die Feldwerte einer Sektion gegenüber ihrem beim
+     * Laden erstellten Snapshot (siehe initScopeSelector()) geändert
+     * haben.
+     *
+     * @param {HTMLElement} section
+     * @returns {boolean}
+     */
+    function sectionHasUnsavedChanges(section) {
+        var initial = section.schemaOrgDataSnapshot;
+        if (!initial) {
+            return false;
+        }
+
+        var current = snapshotSectionValues(section);
+
+        for (var key in initial) {
+            if (initial[key] !== current[key]) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Liefert die aktuell sichtbare .schemaOrgData-scope-Sektion (ohne
+     * style="display:none"), oder null falls keine sichtbar ist.
+     *
+     * @returns {HTMLElement|null}
+     */
+    function getVisibleSection() {
+        var result = null;
+
+        document.querySelectorAll('.schemaOrgData-scope').forEach(function (section) {
+            if (result === null && section.style.display !== 'none') {
+                result = section;
+            }
+        });
+
+        return result;
+    }
+
+    /**
+     * Entfernt den dezenten Hinweis auf ungespeicherte Eingaben
+     * (siehe showUnsavedNotice()), falls vorhanden.
+     */
+    function hideUnsavedNotice() {
+        var notice = document.getElementById('schemaOrgData_unsaved_notice');
+        if (notice) {
+            notice.remove();
+        }
+    }
+
+    /**
+     * Zeigt einen dezenten, nicht-blockierenden Hinweis oberhalb des
+     * Formulars an, dass die Sektion "sectionLabel" (data-scope-label,
+     * siehe buildScopeLabel() in index.php) ungespeicherte Eingaben
+     * enthält (Sprachschlüssel notice_unsaved_changes, Platzhalter
+     * {PARAM1}, siehe getMessages().unsavedChanges).
+     *
+     * @param {string} sectionLabel
+     */
+    function showUnsavedNotice(sectionLabel) {
+        var notice = document.getElementById('schemaOrgData_unsaved_notice');
+
+        if (!notice) {
+            var admin = document.querySelector('.schemaOrgData-admin');
+            if (!admin) {
+                return;
+            }
+            notice = document.createElement('div');
+            notice.id = 'schemaOrgData_unsaved_notice';
+            notice.className = 'schemaOrgData-notice schemaOrgData-notice--unsaved';
+            admin.insertBefore(notice, admin.firstChild);
+        }
+
+        var template = getMessages().unsavedChanges || '';
+        notice.textContent = template.replace('{PARAM1}', sectionLabel);
+    }
+
+    /**
      * Aktiviert den zweistufigen Scope-Selektor (siehe index.php,
      * renderScopeSelector()/renderScopeSection()): Stufe 1
      * (#schemaOrgData_scope_cat) wählt Global oder eine Kategorie,
@@ -488,6 +610,17 @@
      * Scope-Wechsel durch den Nutzer wird zusätzlich die serverseitige
      * Save-Ergebnis-Box entfernt (siehe hideSaveNotice()), da sie sich
      * auf den vorherigen Geltungsbereich bezieht.
+     *
+     * Zusätzlich wird beim Init für jede Sektion ein Snapshot ihrer
+     * Feldwerte erstellt (snapshotSectionValues()). Verlässt der
+     * Nutzer eine Sektion mit gegenüber diesem Snapshot geänderten
+     * Werten, ohne zu speichern, zeigt updateUnsavedNotice() einen
+     * dezenten, nicht-blockierenden Hinweis oberhalb des Formulars
+     * (showUnsavedNotice()). Der Hinweis verschwindet automatisch,
+     * wenn der Nutzer in die betroffene Sektion zurückwechselt oder
+     * die Seite speichert (vollständiger Page-Reload). Es wird kein
+     * Autosave ausgelöst und kein Wechsel verhindert; Feldwerte
+     * bleiben beim Wechsel unverändert im DOM erhalten.
      */
     function initScopeSelector() {
         var catSelect  = document.getElementById('schemaOrgData_scope_cat');
@@ -499,6 +632,34 @@
             pagesByCat = JSON.parse(pageSelect.getAttribute('data-pages') || '{}');
         } catch (e) {
             pagesByCat = {};
+        }
+
+        // Initialzustand jeder Sektion merken (siehe
+        // sectionHasUnsavedChanges()).
+        document.querySelectorAll('.schemaOrgData-scope').forEach(function (section) {
+            section.schemaOrgDataSnapshot = snapshotSectionValues(section);
+        });
+
+        // Sektion, für die aktuell der Hinweis auf ungespeicherte
+        // Eingaben angezeigt wird (oder null).
+        var flaggedSection = null;
+
+        // Zeigt bzw. verbirgt den Hinweis auf ungespeicherte Eingaben
+        // beim Wechsel von "leavingSection" zu "enteringSection"
+        // (siehe showUnsavedNotice()/hideUnsavedNotice()).
+        function updateUnsavedNotice(leavingSection, enteringSection) {
+            if (leavingSection && sectionHasUnsavedChanges(leavingSection)) {
+                flaggedSection = leavingSection;
+                showUnsavedNotice(leavingSection.getAttribute('data-scope-label') || '');
+            } else if (flaggedSection === leavingSection) {
+                flaggedSection = null;
+                hideUnsavedNotice();
+            }
+
+            if (enteringSection === flaggedSection) {
+                flaggedSection = null;
+                hideUnsavedNotice();
+            }
         }
 
         // Entfernt die serverseitige Save-Ergebnis-Box (Erfolg/Fehler,
@@ -579,14 +740,18 @@
 
         catSelect.addEventListener('change', function () {
             var cat = catSelect.value;
+            var leavingSection = getVisibleSection();
             hideSaveNotice();
             populatePageSelect(cat, '');
             activateSection(cat, '');
+            updateUnsavedNotice(leavingSection, getVisibleSection());
         });
 
         pageSelect.addEventListener('change', function () {
+            var leavingSection = getVisibleSection();
             hideSaveNotice();
             activateSection(catSelect.value, pageSelect.value);
+            updateUnsavedNotice(leavingSection, getVisibleSection());
         });
 
         // Einmalig beim Init: beide Selects auf den serverseitig aktiven
@@ -598,12 +763,7 @@
         // Seiten verschiedener Kategorien mehrdeutig sein könnte). Ohne
         // diesen Schritt enthalten die Hidden-Felder beim ersten Laden der
         // Seite (inkl. direkt nach dem Speichern) immer "".
-        var activeSection = null;
-        document.querySelectorAll('.schemaOrgData-scope').forEach(function (section) {
-            if (activeSection === null && section.style.display !== 'none') {
-                activeSection = section;
-            }
-        });
+        var activeSection = getVisibleSection();
         var activeCat  = activeSection ? (activeSection.getAttribute('data-scope-cat')  || '') : '';
         var activePage = activeSection ? (activeSection.getAttribute('data-scope-page') || '') : '';
 
