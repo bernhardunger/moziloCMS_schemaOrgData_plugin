@@ -66,7 +66,7 @@ label_opening_hours_to = Bis
 label_opening_hours_closed = geschlossen
 hint_opening_hours = Bitte im 24-Stunden-Format eingeben (z. B. 09:00, 18:00). Leere Felder bedeuten
 
-label_faq_entries = Fragen &amp; Antworten
+label_faq_entries = Fragen & Antworten
 label_faq_question = Frage
 label_faq_answer = Antwort
 label_faq_add_entry = Frage hinzufügen

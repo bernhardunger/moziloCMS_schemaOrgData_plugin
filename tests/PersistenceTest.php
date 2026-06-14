@@ -261,6 +261,64 @@ final class PersistenceTest extends TestCase {
         $this->assertSame([], $result['errors']);
     }
 
+    /***************************************************************
+    *
+    * Bug 1 (0.3.6-beta): das Pflichtfeld "Ort" (addressLocality)
+    * einer PostalAddress muss auch dann beim Speichern greifen, wenn
+    * der Nutzer kein einziges Adressfeld ausgefüllt hat - die
+    * Länder-Select-Box trägt per Default bereits "DE", wodurch die
+    * Adresse fälschlich als "angegeben" erschien und der
+    * Pflichtfeld-Check übersprungen wurde (Submit-Verhalten, nicht
+    * nur das gerenderte data-Attribut).
+    *
+    ***************************************************************/
+    function testGlobalSaveWithEmptyAddressLocalityIsRejected(): void {
+        $plugin = $this->createPlugin();
+
+        $postData = $this->validLocalBusinessData();
+        // Komplett leere Adresse - nur die voreingestellte Länder-Select (DE).
+        $postData['data']['address'] = [
+            'streetAddress' => '',
+            'postalCode' => '',
+            'addressLocality' => '',
+            'addressRegion' => '',
+            'addressCountry' => 'DE',
+        ];
+
+        $result = callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertFalse($this->settings->keyExists('config_global'));
+    }
+
+    /***************************************************************
+    *
+    * Bug 2 (0.3.6-beta): Pflichtfeld-Fehlermeldungen mit Sonderzeichen
+    * im Label (z. B. FAQPage "Fragen & Antworten") dürfen nicht doppelt
+    * HTML-kodiert werden. renderSaveResultNotice() kodiert die Meldung
+    * einmal via htmlspecialchars(); der Label-Wert selbst muss daher
+    * unkodiert aus der Sprachdatei kommen, sodass exactly "&amp;" (statt
+    * "&amp;amp;") im gerenderten Hinweisblock erscheint.
+    *
+    ***************************************************************/
+    function testRequiredFieldErrorWithAmpersandLabelIsSingleEncoded(): void {
+        $plugin = $this->createPlugin();
+        $_POST['schemaOrgData_cat'] = 'faq';
+        $_POST['schemaOrgData_page'] = 'allgemein';
+
+        $postData = $this->validFaqPageData();
+        $postData['data']['mainEntity'] = [];
+
+        $result = callPluginMethod($plugin, 'saveConfig', ['page', $postData]);
+        $this->assertFalse($result['success']);
+
+        $html = callPluginMethod($plugin, 'renderSaveResultNotice', [$result]);
+
+        $this->assertStringContainsString('Fragen &amp; Antworten', $html);
+        $this->assertStringNotContainsString('&amp;amp;', $html);
+    }
+
     // -----------------------------------------------------------
     // Spezialfelder
     // -----------------------------------------------------------

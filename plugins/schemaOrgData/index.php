@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.3.5-beta';
+    private const PLUGIN_VERSION = '0.3.6-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2147,7 +2147,7 @@ class schemaOrgData extends Plugin {
 
             if($widget === 'postal_address') {
                 $errors = array_merge($errors, $this->validatePostalAddressData(
-                    is_array($value) ? $value : [], $fieldSchema, $required
+                    is_array($value) ? $value : [], $fieldSchema
                 ));
                 continue;
             }
@@ -2203,7 +2203,9 @@ class schemaOrgData extends Plugin {
     *
     * Prüft, ob für eine PostalAddress Werte übermittelt wurden:
     * mindestens ein Feld ohne "default" (also nicht addressCountry,
-    * das standardmäßig "DE" enthält) ist nicht leer.
+    * das standardmäßig "DE" enthält) ist nicht leer. Wird beim
+    * Bereinigen (sanitizeAddressData) verwendet, um keine Adresse zu
+    * speichern, die nur den Default-Wert von addressCountry enthält.
     *
     ***************************************************************/
     private function isAddressProvided(array $address, array $subProperties): bool {
@@ -2221,27 +2223,30 @@ class schemaOrgData extends Plugin {
     *
     * Validiert die Pflichtfelder und das Format einer PostalAddress
     * (siehe resolveSchemaRef/renderPostalAddressWidget).
-    * addressLocality/addressCountry sind nur dann Pflicht, wenn die
-    * Adresse insgesamt Pflicht ist oder mindestens ein anderes
-    * Adressfeld ausgefüllt wurde (siehe isAddressProvided).
+    *
+    * Die als "ui:required" markierten Unter-Properties (z. B.
+    * addressLocality, addressCountry) werden grundsätzlich geprüft -
+    * auch dann, wenn der Nutzer kein einziges Adressfeld ausgefüllt
+    * hat. Andernfalls würde die voreingestellte Länder-Select-Box
+    * (default "DE") eine leere Adresse als "nicht angegeben"
+    * erscheinen lassen und der Pflichtfeld-Check für "Ort" beim
+    * Speichern (z. B. auf Globalebene) nicht greifen.
     *
     * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
     *
     ***************************************************************/
-    private function validatePostalAddressData(array $address, array $fieldSchema, bool $addressRequired): array {
+    private function validatePostalAddressData(array $address, array $fieldSchema): array {
         $lang = $this->loadAdminLanguage();
         $errors = [];
         $subProperties = $fieldSchema['properties'] ?? [];
 
-        if($addressRequired or $this->isAddressProvided($address, $subProperties)) {
-            foreach($subProperties as $subName => $subSchema) {
-                $subRequired = (bool) ($subSchema['ui:required'] ?? false);
-                $subValue = trim((string) ($address[$subName] ?? ''));
+        foreach($subProperties as $subName => $subSchema) {
+            $subRequired = (bool) ($subSchema['ui:required'] ?? false);
+            $subValue = trim((string) ($address[$subName] ?? ''));
 
-                if($subRequired and $subValue === '') {
-                    $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
-                    $errors[] = $lang->getLanguageValue('error_required_field', $subLabel);
-                }
+            if($subRequired and $subValue === '') {
+                $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
+                $errors[] = $lang->getLanguageValue('error_required_field', $subLabel);
             }
         }
 
