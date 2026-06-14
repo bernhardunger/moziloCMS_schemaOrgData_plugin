@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.3.6-beta';
+    private const PLUGIN_VERSION = '0.3.7-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2772,8 +2772,16 @@ class schemaOrgData extends Plugin {
             : [];
 
         foreach ($allCats as $cat) {
-            $catActive = ($cat === $selectedCat && $selectedPage === null);
+            // $selectedCat/$selectedPage stammen aus sanitizeScopeIdentifier()
+            // (siehe oben) - $cat/$page von get_CatArray()/get_PageArray()
+            // müssen für den Vergleich ebenso sanitiert werden, sonst bleibt
+            // die gerade gespeicherte Kategorie/Seite bei Bezeichnern mit
+            // Zeichen außerhalb [a-zA-Z0-9_\-%] inaktiv (display:none,
+            // disabled) und renderScopeSection() füllt das Formular aus
+            // $config statt aus den POST-Daten - bei fehlgeschlagenem Save
+            // einer neuen Kategorie/Seite wirkt das wie geleerte Feldwerte.
             $safeCat   = $this->sanitizeScopeIdentifier($cat);
+            $catActive = ($safeCat === $selectedCat && $selectedPage === null);
             $html .= $this->renderScopeSection(
                 'category', $cat, null,
                 active: $catActive,
@@ -2786,8 +2794,8 @@ class schemaOrgData extends Plugin {
                 && method_exists($CatPage, 'get_PageArray')) {
                 $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
                 foreach ($pages as $page) {
-                    $pageActive = ($cat === $selectedCat && $page === $selectedPage);
                     $safePage   = $this->sanitizeScopeIdentifier($page);
+                    $pageActive = ($safeCat === $selectedCat && $safePage === $selectedPage);
                     $html .= $this->renderScopeSection(
                         'page', $cat, $page,
                         active: $pageActive,

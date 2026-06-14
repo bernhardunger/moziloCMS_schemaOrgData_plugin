@@ -3,6 +3,8 @@
 namespace SchemaOrgData\Tests;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
 
 /***************************************************************
 *
@@ -474,5 +476,77 @@ final class PersistenceTest extends TestCase {
 
         $this->assertStringContainsString('value="8:00"', $html);
         $this->assertStringContainsString('value="18:00"', $html);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest 0.3.7-beta: renderAdminPage() ermittelt
+    * $selectedCat aus sanitizeScopeIdentifier($_POST['schemaOrgData_cat'])
+    * und verglich diesen Wert bislang direkt mit dem UNSANIERTEN
+    * Kategorie-Bezeichner aus get_CatArray(). Enthält dieser
+    * Zeichen, die sanitizeScopeIdentifier() entfernt (z. B. Umlaute),
+    * blieb die gerade bearbeitete Kategorie-Sektion inaktiv
+    * (display:none, disabled) und renderScopeSection() füllte das
+    * Formular aus $config statt aus den POST-Daten. Bei einer noch
+    * nie gespeicherten Kategorie (erster Speicherversuch, der wegen
+    * der seit 0.3.6-beta bedingungslosen addressLocality-Prüfung
+    * fehlschlägt) ist $config leer - alle Feldwerte erschienen
+    * dadurch als geleert.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testFailedCategorySaveWithSpecialCharsRetainsPostValuesInActiveSection(): void {
+        // renderAdminPage() benötigt die im PLUGINADMIN-Kontext von
+        // moziloCMS gesetzten Admin-Konstanten - in eigenem Prozess
+        // definiert, damit andere Tests (getContent() im Frontend-
+        // Kontext) nicht durch defined('PLUGINADMIN') beeinflusst werden.
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        global $CatPage;
+        $rawCat = 'Über-uns';
+        $CatPage = new FakeCatPageWithPages([$rawCat]);
+
+        $plugin = $this->createPlugin();
+
+        $postData = $this->validLocalBusinessData('Filiale Nord');
+        $postData['data']['address']['streetAddress'] = 'Musterstrasse 5';
+        $postData['data']['address']['addressLocality'] = '';
+
+        $_POST['schemaOrgData'] = ['category' => $postData];
+        $_POST['schemaOrgData_cat'] = $rawCat;
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = callPluginMethod($plugin, 'renderAdminPage', []);
+
+        unset($CatPage);
+
+        $this->assertStringContainsString('Filiale Nord', $html);
+        $this->assertStringContainsString('Musterstrasse 5', $html);
+    }
+}
+
+/***************************************************************
+*
+* Minimaler Ersatz für die moziloCMS-Klasse CatPage, ausschließlich
+* für renderAdminPage()/renderScopeSelector() (get_CatArray() und
+* get_PageArray()).
+*
+***************************************************************/
+final class FakeCatPageWithPages {
+
+    function __construct(private array $cats, private array $pages = []) {
+    }
+
+    function get_CatArray(bool $all = false, $showlink = false, $containspage = null): array {
+        return $this->cats;
+    }
+
+    function get_PageArray(string $cat, $extensions = null, $showlink = true): array {
+        return $this->pages[$cat] ?? [];
     }
 }
