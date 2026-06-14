@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.3.8-beta';
+    private const PLUGIN_VERSION = '0.3.9-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2865,9 +2865,19 @@ class schemaOrgData extends Plugin {
             'emailInvalid'       => $lang->getLanguageValue('error_email_invalid'),
             'openingHoursFormat' => $lang->getLanguageValue('error_opening_hours_format'),
             'openingHoursOrder'  => $lang->getLanguageValue('error_opening_hours_order'),
-            'unknownProperty'    => $lang->getLanguageValue('warning_unknown_property'),
+            // '{PARAM1}' wird hier als Wert übergeben, damit
+            // getLanguageValue() den Platzhalter NICHT durch ""
+            // ersetzt (Default von $param1) - die Ersetzung mit dem
+            // Property-Namen erfolgt erst clientseitig in
+            // initExtensionFieldValidation() (validator.js).
+            'unknownProperty'    => $lang->getLanguageValue('warning_unknown_property', '{PARAM1}'),
             'jsonInvalid'        => $lang->getLanguageValue('error_json_invalid'),
-            'unsavedChanges'     => $lang->getLanguageValue('notice_unsaved_changes'),
+            // '{PARAM1}' wird hier als Wert übergeben, damit
+            // getLanguageValue() den Platzhalter NICHT durch ""
+            // ersetzt (Default von $param1) - die Ersetzung mit dem
+            // tatsächlichen Bereichsnamen erfolgt erst clientseitig
+            // in showUnsavedNotice() (validator.js).
+            'unsavedChanges'     => $lang->getLanguageValue('notice_unsaved_changes', '{PARAM1}'),
         ];
 
         $html .= '<script>window.schemaOrgDataMessages = '
