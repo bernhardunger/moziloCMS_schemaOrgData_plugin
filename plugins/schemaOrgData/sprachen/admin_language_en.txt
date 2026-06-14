@@ -78,6 +78,9 @@ description_extension_field = Additional schema.org properties as a JSON object.
 label_required_field = Required field
 label_select_placeholder = – please select –
 
+badge_inherited = i
+tooltip_inherited_from = Inherited from: {PARAM1}
+
 error_json_invalid = The entered JSON is invalid.
 error_json_syntax = JSON syntax error at line {PARAM1}, column {PARAM2}
 warning_unknown_property = Unknown property "{PARAM1}" will be saved but is not defined in the schema.
@@ -112,7 +115,9 @@ button_import = Import
 
 button_save = Save
 
-label_save = Save configuration
+button_save_global = Save global configuration
+button_save_category = Save configuration for category {PARAM1}
+button_save_page = Save configuration for page {PARAM1}
 
 admin_button = Settings
 plugin_description_short = Schema.org JSON-LD for all pages

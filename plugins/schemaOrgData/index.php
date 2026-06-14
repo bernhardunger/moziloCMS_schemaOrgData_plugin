@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.0-beta';
+    private const PLUGIN_VERSION = '0.4.1-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1169,6 +1169,32 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Rendert das "ü"-Badge für ein im aktuellen Geltungsbereich
+    * leeres Feld, dessen Wert von einer übergeordneten Ebene geerbt
+    * würde (siehe resolveInheritableFields()), analog
+    * renderRequiredBadge(). Der Tooltip nennt die Ursprungsebene
+    * (z. B. "Übernommen von: Global").
+    *
+    * @param string|null $originLabel lesbares Label der Ursprungsebene
+    *        (siehe buildScopeLabel()) oder null, wenn das Feld nicht
+    *        geerbt würde
+    * @return string HTML-Snippet oder '' wenn $originLabel null ist
+    *
+    ***************************************************************/
+    private function renderInheritedBadge(?string $originLabel): string {
+        if($originLabel === null) {
+            return '';
+        }
+
+        $lang = $this->loadAdminLanguage();
+
+        return ' <span class="schemaOrgData-inherited" title="'
+            .$lang->getLanguageHtml('tooltip_inherited_from', $originLabel).'">'
+            .$lang->getLanguageHtml('badge_inherited').'</span>';
+    }
+
+    /***************************************************************
+    *
     * Rendert ein einfaches Textfeld (<input type="text">).
     *
     * @param string $id   HTML-id des Feldes
@@ -1262,9 +1288,15 @@ class schemaOrgData extends Plugin {
     * @param array $fieldSchema bereits via resolveSchemaRef() aufgelöstes Schema
     * @param array $value gespeicherte Adress-Properties
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
+    * @param array|null $inheritedValue Adress-Properties, die von einer
+    *        übergeordneten Ebene geerbt würden (siehe
+    *        resolveInheritableFields()) - nur für Placeholder + "ü"-Badge,
+    *        wird nicht übernommen
+    * @param string|null $inheritedLabel lesbares Label der Ursprungsebene
+    *        (siehe buildScopeLabel()), für den Badge-Tooltip
     *
     ***************************************************************/
-    private function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix = null): string {
+    private function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix = null, ?array $inheritedValue = null, ?string $inheritedLabel = null): string {
         $idPrefix = $idPrefix ?? $scope;
         $countryFieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_addressCountry';
         $properties = $fieldSchema['properties'] ?? [];
@@ -1275,7 +1307,7 @@ class schemaOrgData extends Plugin {
         // kombiniertes streetAddress-Feld und erhält eine eigene,
         // volle Zeile.
         if(isset($properties['streetAddress'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'streetAddress', $properties['streetAddress'], $value, $countryFieldId, $idPrefix);
+            $field = $this->renderAddressSubField($scope, $name, 'streetAddress', $properties['streetAddress'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel);
             $html .= $this->renderAddressFullRow($field);
         }
 
@@ -1283,17 +1315,17 @@ class schemaOrgData extends Plugin {
         $html .= $this->renderAddressFieldGroup($scope, $name, $properties, $value, $countryFieldId, $idPrefix, [
             'postalCode'      => true,
             'addressLocality' => false,
-        ]);
+        ], $inheritedValue, $inheritedLabel);
 
         // Land: eigene Zeile, Select ~200px breit (siehe getAdminCss)
         if(isset($properties['addressCountry'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'addressCountry', $properties['addressCountry'], $value, $countryFieldId, $idPrefix);
+            $field = $this->renderAddressSubField($scope, $name, 'addressCountry', $properties['addressCountry'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel);
             $html .= $this->renderAddressFullRow($field);
         }
 
         // Region/Bundesland: eigene Zeile, ~300px breit (siehe getAdminCss)
         if(isset($properties['addressRegion'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'addressRegion', $properties['addressRegion'], $value, $countryFieldId, $idPrefix);
+            $field = $this->renderAddressSubField($scope, $name, 'addressRegion', $properties['addressRegion'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel);
             $html .= $this->renderAddressFullRow($field);
         }
 
@@ -1322,10 +1354,16 @@ class schemaOrgData extends Plugin {
     * (streetAddress) als auch für gruppierte Zeilen (PLZ+Ort,
     * Region+Land, siehe renderAddressFieldGroup()) verwendet.
     *
+    * @param array|null $inheritedValue Adress-Properties, die von einer
+    *        übergeordneten Ebene geerbt würden (siehe
+    *        resolveInheritableFields()) - nur für Placeholder + "ü"-Badge,
+    *        wird nicht übernommen
+    * @param string|null $inheritedLabel lesbares Label der Ursprungsebene
+    *        (siehe buildScopeLabel()), für den Badge-Tooltip
     * @return array{fieldId:string,label:string,badge:string,widget:string,feedback:string}
     *
     ***************************************************************/
-    private function renderAddressSubField(string $scope, string $name, string $subName, array $subSchema, array $value, string $countryFieldId, string $idPrefix): array {
+    private function renderAddressSubField(string $scope, string $name, string $subName, array $subSchema, array $value, string $countryFieldId, string $idPrefix, ?array $inheritedValue = null, ?string $inheritedLabel = null): array {
         $lang = $this->loadAdminLanguage();
         $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$subName;
         $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$subName.']';
@@ -1333,6 +1371,18 @@ class schemaOrgData extends Plugin {
         $required = (bool) ($subSchema['ui:required'] ?? false);
         $label = $lang->getLanguageHtml($subSchema['ui:label'] ?? $subName);
         $badge = $this->renderRequiredBadge($required);
+
+        // Placeholder + "ü"-Badge für ein leeres Sub-Feld, dessen Wert von
+        // einer übergeordneten Ebene geerbt würde (siehe Task 1,
+        // resolveInheritableFields()) - das Feld selbst bleibt leer.
+        $isEmpty = !isset($value[$subName]) or $value[$subName] === '';
+        $inheritedSubValue = $inheritedValue[$subName] ?? null;
+        if($isEmpty and is_scalar($inheritedSubValue) and (string) $inheritedSubValue !== '') {
+            if(($subSchema['ui:widget'] ?? 'text') !== 'select') {
+                $subSchema['ui:placeholder'] = (string) $inheritedSubValue;
+            }
+            $badge .= $this->renderInheritedBadge($inheritedLabel);
+        }
 
         if(($subSchema['ui:widget'] ?? 'text') === 'select') {
             $widgetHtml = $this->renderSelectWidget($fieldId, $fieldName, $subSchema, $subValue);
@@ -1367,9 +1417,14 @@ class schemaOrgData extends Plugin {
     *
     * @param array<string,bool> $subNames Sub-Feldname => schmal
     *        darstellen (z. B. PLZ, max-width 80px)
+    * @param array|null $inheritedValue Adress-Properties, die von einer
+    *        übergeordneten Ebene geerbt würden (siehe
+    *        resolveInheritableFields()) - nur für Placeholder + "ü"-Badge
+    * @param string|null $inheritedLabel lesbares Label der Ursprungsebene
+    *        (siehe buildScopeLabel()), für den Badge-Tooltip
     *
     ***************************************************************/
-    private function renderAddressFieldGroup(string $scope, string $name, array $properties, array $value, string $countryFieldId, string $idPrefix, array $subNames): string {
+    private function renderAddressFieldGroup(string $scope, string $name, array $properties, array $value, string $countryFieldId, string $idPrefix, array $subNames, ?array $inheritedValue = null, ?string $inheritedLabel = null): string {
         $html = '<div class="c-content schemaOrgData-field-row">'
             .'<div class="mo-in-li-l"></div>'
             .'<div class="mo-in-li-r"><div class="schemaOrgData-address-row">'."\n";
@@ -1378,7 +1433,7 @@ class schemaOrgData extends Plugin {
             if(!isset($properties[$subName])) {
                 continue;
             }
-            $field = $this->renderAddressSubField($scope, $name, $subName, $properties[$subName], $value, $countryFieldId, $idPrefix);
+            $field = $this->renderAddressSubField($scope, $name, $subName, $properties[$subName], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel);
             $narrowClass = $narrow ? ' schemaOrgData-address-field--narrow' : '';
             $html .= '<div class="schemaOrgData-address-field'.$narrowClass.'">'
                 .'<label for="'.$field['fieldId'].'">'.$field['label'].$field['badge'].'</label>'
@@ -1630,9 +1685,14 @@ class schemaOrgData extends Plugin {
     * @param array $rootSchema vollständiges Schema (für resolveSchemaRef)
     * @param array $allData alle Formular-Properties dieses Schema-Types
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
+    * @param mixed $inheritedValue Wert, der von einer übergeordneten Ebene
+    *        geerbt würde (siehe resolveInheritableFields()) - nur für
+    *        Placeholder + "ü"-Badge, wird nicht übernommen
+    * @param string|null $inheritedLabel lesbares Label der Ursprungsebene
+    *        (siehe buildScopeLabel()), für den Badge-Tooltip
     *
     ***************************************************************/
-    private function renderField(string $scope, string $name, array $fieldSchema, mixed $value, array $rootSchema, array $allData, ?string $idPrefix = null): string {
+    private function renderField(string $scope, string $name, array $fieldSchema, mixed $value, array $rootSchema, array $allData, ?string $idPrefix = null, mixed $inheritedValue = null, ?string $inheritedLabel = null): string {
         $idPrefix = $idPrefix ?? $scope;
         $fieldSchema = $this->resolveSchemaRef($fieldSchema, $rootSchema);
         $widget = $fieldSchema['ui:widget'] ?? 'text';
@@ -1641,10 +1701,11 @@ class schemaOrgData extends Plugin {
         $required = (bool) ($fieldSchema['ui:required'] ?? false);
         $badge = $this->renderRequiredBadge($required);
         $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name;
+        $isEmpty = ($value === null or $value === '' or $value === []);
 
         if(in_array($widget, ['postal_address', 'opening_hours', 'faq_list'], true)) {
             $inner = match($widget) {
-                'postal_address' => $this->renderPostalAddressWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix),
+                'postal_address' => $this->renderPostalAddressWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, is_array($inheritedValue) ? $inheritedValue : null, $inheritedLabel),
                 'opening_hours'  => $this->renderOpeningHoursWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix),
                 'faq_list'       => $this->renderFaqListWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix),
                 default          => '',
@@ -1654,6 +1715,16 @@ class schemaOrgData extends Plugin {
                 .'<legend>'.$label.$badge.'</legend>'."\n"
                 .$inner
                 .'</fieldset>'."\n";
+        }
+
+        // Placeholder + "ü"-Badge für ein leeres Feld, dessen Wert von einer
+        // übergeordneten Ebene geerbt würde (siehe Task 1,
+        // resolveInheritableFields()) - das Feld selbst bleibt leer.
+        if($isEmpty and is_scalar($inheritedValue) and (string) $inheritedValue !== '') {
+            if($widget !== 'select') {
+                $fieldSchema['ui:placeholder'] = (string) $inheritedValue;
+            }
+            $badge .= $this->renderInheritedBadge($inheritedLabel);
         }
 
         $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.']';
@@ -1688,10 +1759,14 @@ class schemaOrgData extends Plugin {
     *        statt der aus $data abgeleiteten Erweiterungs-Properties als
     *        Inhalt des Erweiterungsfelds verwendet (siehe renderScopeSection(),
     *        POST-Daten nach fehlgeschlagenem Speichern)
+    * @param array{data: array<string,mixed>, originLabel: array<string,string>} $inheritable
+    *        Werte (und deren Herkunfts-Label), die von einer übergeordneten
+    *        Ebene für dieses Type geerbt würden (siehe
+    *        resolveInheritableFields()) - nur für Placeholder + "ü"-Badge
     * @return string HTML-Snippet
     *
     ***************************************************************/
-    private function renderTypeFields(string $scope, string $type, array $schema, array $data, ?string $idPrefix = null, ?string $extensionJsonOverride = null): string {
+    private function renderTypeFields(string $scope, string $type, array $schema, array $data, ?string $idPrefix = null, ?string $extensionJsonOverride = null, array $inheritable = ['data' => [], 'originLabel' => []]): string {
         $idPrefix = $idPrefix ?? $scope;
         $split = $this->splitDataForRendering($data, $schema);
         $formData = $split['form'];
@@ -1706,7 +1781,10 @@ class schemaOrgData extends Plugin {
 
         $html = '';
         foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
-            $html .= $this->renderField($scope, $name, $fieldSchema, $formData[$name] ?? null, $schema, $formData, $idPrefix);
+            $html .= $this->renderField(
+                $scope, $name, $fieldSchema, $formData[$name] ?? null, $schema, $formData, $idPrefix,
+                $inheritable['data'][$name] ?? null, $inheritable['originLabel'][$name] ?? null,
+            );
         }
 
         $html .= $this->renderExtensionFieldWidget($scope, $type, $extensionJson, $idPrefix);
@@ -1813,6 +1891,55 @@ class schemaOrgData extends Plugin {
         }
 
         return $collisions;
+    }
+
+    /***************************************************************
+    *
+    * Ermittelt für eine Kategorie-/Seiten-Sektion, welche Feldwerte
+    * eines Schema-Types von einer übergeordneten Ebene (Global bzw.
+    * Global+Kategorie) geerbt würden (siehe resolveTypeInheritance()),
+    * sowie die jeweilige Ursprungsebene als lesbares Label (siehe
+    * buildScopeLabel()). Dient ausschließlich der Anzeige im Formular
+    * (Placeholder + "ü"-Badge, siehe renderInheritedBadge()) - die
+    * zurückgegebenen Werte werden NICHT in die Formularfelder
+    * übernommen und nicht gespeichert, damit die feldweise Vererbung
+    * aus 0.2.4-beta unverändert bleibt.
+    *
+    * Bei mehreren übergeordneten Ebenen gewinnt die spezifischere
+    * (Kategorie vor Global) - analog mergeConfigs()/
+    * resolveTypeInheritance().
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @param string $type  Schema-Type, z. B. "LocalBusiness"
+    * @return array{data: array<string,mixed>, originLabel: array<string,string>}
+    *
+    ***************************************************************/
+    private function resolveInheritableFields(string $scope, ?string $cat, ?string $page, string $type): array {
+        $higherScopes = match($scope) {
+            'category' => [
+                ['global', $this->loadScopeConfig('global'), null, null],
+            ],
+            'page' => [
+                ['global', $this->loadScopeConfig('global'), null, null],
+                ['category', $this->loadScopeConfig('category', $cat), $cat, null],
+            ],
+            default => [],
+        };
+
+        $data = [];
+        $originLabel = [];
+        foreach($higherScopes as [$higherScope, $higherConfig, $higherCat, $higherPage]) {
+            if(!is_array($higherConfig[$type] ?? null)) {
+                continue;
+            }
+            $label = $this->buildScopeLabel($higherScope, $higherCat, $higherPage);
+            foreach($higherConfig[$type] as $field => $value) {
+                $data[$field] = $value;
+                $originLabel[$field] = $label;
+            }
+        }
+
+        return ['data' => $data, 'originLabel' => $originLabel];
     }
 
     /***************************************************************
@@ -2002,6 +2129,37 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Liefert den Text des Speichern-Buttons für den aktuell aktiven
+    * Geltungsbereich, z. B. "Globale Konfiguration speichern",
+    * "Konfiguration Kategorie Über-uns speichern" oder
+    * "Konfiguration Seite kontakt speichern". Wird in
+    * renderAdminPage() für beide Speichern-Buttons (oben und unten)
+    * verwendet, analog zu buildScopeLabel().
+    *
+    * @param string|null $selectedCat  sanitierter Kategorie-Bezeichner
+    *        des aktiven Scopes (siehe sanitizeScopeIdentifier()) oder
+    *        null für den globalen Scope
+    * @param string|null $selectedPage sanitierter Seiten-Bezeichner des
+    *        aktiven Scopes oder null für Global/Kategorie
+    * @return string HTML (bereits escaped via getLanguageHtml())
+    *
+    ***************************************************************/
+    private function buildSaveButtonLabel(?string $selectedCat, ?string $selectedPage): string {
+        $lang = $this->loadAdminLanguage();
+
+        if($selectedCat === null) {
+            return $lang->getLanguageHtml('button_save_global');
+        }
+
+        if($selectedPage === null) {
+            return $lang->getLanguageHtml('button_save_category', rawurldecode($selectedCat));
+        }
+
+        return $lang->getLanguageHtml('button_save_page', rawurldecode($selectedPage));
+    }
+
+    /***************************************************************
+    *
     * Rendert den vollständigen Konfigurationsblock einer
     * Geltungsebene: Info-Block, Hinweis auf vorhandenes JSON-LD
     * (siehe renderExistingJsonLdNotice), Type-Auswahl,
@@ -2114,9 +2272,10 @@ class schemaOrgData extends Plugin {
             }
 
             $typeIdPrefix = $idPrefix.'_'.$type;
+            $inheritable = $this->resolveInheritableFields($scope, $cat, $page, $type);
 
             $html .= '<div class="schemaOrgData-type-fields" data-schema-type="'.htmlspecialchars($type, ENT_QUOTES, CHARSET).'"'.$display.'>'."\n";
-            $html .= $this->renderTypeFields($scope, $type, $schema, $data, $typeIdPrefix, $extensionOverride);
+            $html .= $this->renderTypeFields($scope, $type, $schema, $data, $typeIdPrefix, $extensionOverride, $inheritable);
             $html .= '</div>'."\n";
         }
 
@@ -2669,6 +2828,9 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-notice--error { background: #fdecea; border: 1px solid #f5c6c2; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--error ul { margin: .25em 0 0; padding-left: 1.5em; }
 .schemaOrgData-admin .schemaOrgData-required { color: #c0392b; font-weight: bold; }
+.schemaOrgData-admin .schemaOrgData-inherited { color: #888; font-weight: normal; font-style: italic; cursor: help; }
+.schemaOrgData-admin input.mo-input-text::placeholder,
+.schemaOrgData-admin textarea.mo-input-text::placeholder { color: #aaa; }
 .schemaOrgData-admin .schemaOrgData-fieldset { border: 1px solid #ddd; border-radius: 4px; padding: 1em; margin-bottom: 1em; }
 .schemaOrgData-admin .schemaOrgData-fieldset legend { font-weight: bold; padding: 0 .5em; }
 .schemaOrgData-admin .schemaOrgData-hint { color: #666; font-size: .85em; margin: 0 0 .5em; }
@@ -2765,6 +2927,7 @@ class schemaOrgData extends Plugin {
         }
 
         $formAction = URL_BASE . ADMIN_DIR_NAME . '/index.php';
+        $saveButtonLabel = $this->buildSaveButtonLabel($selectedCat, $selectedPage);
 
         $html = '<style>'.$this->getAdminCss().'</style>'."\n";
         $html .= '<form method="POST" action="'.htmlspecialchars($formAction, ENT_QUOTES, CHARSET).'">'."\n";
@@ -2781,7 +2944,7 @@ class schemaOrgData extends Plugin {
         // Formulare nicht erst bis zum Ende gescrollt werden müssen
         $html .= '<div class="schemaOrgData-save-bar schemaOrgData-save-bar--top">'."\n";
         $html .= '<button type="submit" class="mo-btn mo-btn--primary">'
-               . $lang->getLanguageHtml('label_save').'</button>'."\n";
+               . $saveButtonLabel.'</button>'."\n";
         $html .= '</div>'."\n";
 
         // Scope-Selektor rendern
@@ -2850,7 +3013,7 @@ class schemaOrgData extends Plugin {
         // JS-Workaround mehr nötig
         $html .= '<div class="schemaOrgData-save-bar">'."\n";
         $html .= '<button type="submit" class="mo-btn mo-btn--primary">'
-               . $lang->getLanguageHtml('label_save').'</button>'."\n";
+               . $saveButtonLabel.'</button>'."\n";
         $html .= '</div>'."\n";
 
         $html .= '</div>'."\n";

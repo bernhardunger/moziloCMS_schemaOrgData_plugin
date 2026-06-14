@@ -136,6 +136,126 @@ final class FormRendererTest extends TestCase {
     * erscheinen (nur echte Kategorien + "Alle Kategorien"-Toggle).
     *
     ***************************************************************/
+    /***************************************************************
+    *
+    * resolveInheritableFields() (Feature 0.4.1-beta): Für eine
+    * Kategorie-Sektion liefert die Methode die Properties der
+    * globalen Konfiguration desselben Types als "geerbte" Werte
+    * inkl. Ursprungs-Label "Global" - rein zur Anzeige
+    * (Placeholder + "ü"-Badge), nicht zum Befüllen.
+    *
+    ***************************************************************/
+    function testResolveInheritableFieldsReturnsGlobalValuesForCategoryScope(): void {
+        [$plugin, $settings] = $this->pluginWithInMemorySettings();
+        $settings->set('config_global', [
+            'LocalBusiness' => [
+                'name' => 'Global GmbH',
+                'telephone' => '+49 89 12345678',
+            ],
+        ]);
+
+        $result = callPluginMethod($plugin, 'resolveInheritableFields', ['category', 'testkat', null, 'LocalBusiness']);
+
+        $this->assertSame('+49 89 12345678', $result['data']['telephone']);
+        $this->assertSame('Global', $result['originLabel']['telephone']);
+    }
+
+    function testResolveInheritableFieldsReturnsEmptyArraysForGlobalScope(): void {
+        [$plugin, $settings] = $this->pluginWithInMemorySettings();
+        $settings->set('config_global', ['LocalBusiness' => ['telephone' => '+49 89 12345678']]);
+
+        $result = callPluginMethod($plugin, 'resolveInheritableFields', ['global', null, null, 'LocalBusiness']);
+
+        $this->assertSame([], $result['data']);
+        $this->assertSame([], $result['originLabel']);
+    }
+
+    /***************************************************************
+    *
+    * Geerbtes Feld (Feature 0.4.1-beta): renderField() rendert für
+    * ein leeres Feld, dessen Wert von einer übergeordneten Ebene
+    * geerbt würde, einen grauen Placeholder mit dem geerbten Wert
+    * und ein "ü"-Badge mit Herkunfts-Tooltip - das Feld selbst
+    * bleibt leer (value=""), damit die feldweise Vererbung aus
+    * 0.2.4-beta beim Speichern unverändert bleibt.
+    *
+    ***************************************************************/
+    function testInheritedFieldStaysEmptyButShowsPlaceholderAndBadge(): void {
+        $plugin = new \schemaOrgData();
+        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+
+        $html = callPluginMethod($plugin, 'renderField', [
+            'category', 'telephone', $schema['properties']['telephone'], '', $schema, [], null,
+            '+49 89 12345678', 'Global',
+        ]);
+
+        $this->assertStringContainsString('value=""', $html);
+        $this->assertStringContainsString('placeholder="+49 89 12345678"', $html);
+        $this->assertStringContainsString('schemaOrgData-inherited', $html);
+        $this->assertStringContainsString('&Uuml;bernommen von: Global', $html);
+    }
+
+    function testFieldWithOwnValueDoesNotShowInheritedBadge(): void {
+        $plugin = new \schemaOrgData();
+        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+
+        $html = callPluginMethod($plugin, 'renderField', [
+            'category', 'telephone', $schema['properties']['telephone'], '+49 30 99999999', $schema, [], null,
+            '+49 89 12345678', 'Global',
+        ]);
+
+        $this->assertStringContainsString('value="+49 30 99999999"', $html);
+        $this->assertStringNotContainsString('schemaOrgData-inherited', $html);
+    }
+
+    /***************************************************************
+    *
+    * Geerbtes PostalAddress-Sub-Feld (Feature 0.4.1-beta):
+    * renderPostalAddressWidget() reicht $inheritedValue/$inheritedLabel
+    * an renderAddressSubField() durch - ein leeres streetAddress-Feld
+    * erhält den geerbten Wert als Placeholder und das "ü"-Badge.
+    *
+    ***************************************************************/
+    function testInheritedAddressSubFieldRendersPlaceholderAndBadge(): void {
+        $plugin = new \schemaOrgData();
+        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+        $addressSchema = callPluginMethod($plugin, 'resolveSchemaRef', [$schema['properties']['address'], $schema]);
+
+        $inheritedAddress = ['streetAddress' => 'Globalweg 1', 'addressLocality' => 'Globalstadt', 'addressCountry' => 'DE'];
+
+        $html = callPluginMethod($plugin, 'renderPostalAddressWidget', [
+            'category', 'address', $addressSchema, [], 'cat_testkat', $inheritedAddress, 'Global',
+        ]);
+
+        $this->assertMatchesRegularExpression(
+            '/id="schemaOrgData_cat_testkat_address_streetAddress"[^>]*value=""[^>]*placeholder="Globalweg 1"/',
+            $html
+        );
+        $this->assertStringContainsString('schemaOrgData-inherited', $html);
+        $this->assertStringContainsString('&Uuml;bernommen von: Global', $html);
+    }
+
+    /***************************************************************
+    *
+    * Erzeugt ein Plugin mit isoliertem InMemorySettings-Stub als
+    * $this->settings, damit resolveInheritableFields() (über
+    * loadScopeConfig()) ohne Zugriff auf die echte plugin.conf.php
+    * getestet werden kann (siehe JsonLdOutputTest::createPlugin()).
+    *
+    * @return array{0: \schemaOrgData, 1: \InMemorySettings}
+    *
+    ***************************************************************/
+    private function pluginWithInMemorySettings(): array {
+        $plugin = new \schemaOrgData();
+        $settings = new \InMemorySettings();
+
+        $ref = new \ReflectionProperty(\schemaOrgData::class, 'settings');
+        $ref->setAccessible(true);
+        $ref->setValue($plugin, $settings);
+
+        return [$plugin, $settings];
+    }
+
     function testExcludedCatsFieldOmitsKategorienRootEntry(): void {
         global $CatPage;
         $CatPage = new FakeCatPage(['kategorien', 'ueber-uns', 'impressum']);
