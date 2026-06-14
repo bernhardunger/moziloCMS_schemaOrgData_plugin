@@ -310,14 +310,28 @@
      * vorhanden, wird dieses Element aktualisiert statt ein zweites
      * (gedoppeltes) Feedback-Element anzulegen.
      *
+     * Mit "onlyClearErrors" (true beim "input"-Event, siehe
+     * initFieldValidation()) wird KEINE neue Fehler-/Warnmeldung
+     * angezeigt - weder in einem neuen noch in einem bestehenden
+     * Feedback-Element. Ist der Wert hingegen jetzt gültig (status
+     * "ok" oder null), wird ein bereits sichtbares Feedback wie gewohnt
+     * aktualisiert bzw. entfernt ("Korrektur wird sofort honoriert").
+     *
      * @param {HTMLElement} anchor Element, nach dem ein neues
      *        Feedback-<span> eingefügt wird (insertAdjacentElement
      *        "afterend"), falls noch keines existiert
      * @param {string} feedbackId Element-ID des Feedback-<span>
      * @param {{status: string|null, message: string|null}} result
+     * @param {boolean} [onlyClearErrors] true beim "input"-Event:
+     *        neue Fehler/Warnungen unterdrücken, nur Entfernen erlauben
      */
-    function showFieldFeedback(anchor, feedbackId, result) {
+    function showFieldFeedback(anchor, feedbackId, result, onlyClearErrors) {
         var feedback = document.getElementById(feedbackId);
+        var isProblem = (result.status === 'error' || result.status === 'warning');
+
+        if (onlyClearErrors && isProblem) {
+            return;
+        }
 
         if (!feedback) {
             if (!result.status) {
@@ -361,8 +375,9 @@
      * verhindert doppelte/verschobene Fehlermeldungen (Fix 2).
      *
      * @param {HTMLElement} input das gerade geänderte Von- oder Bis-Feld
+     * @param {boolean} [onlyClearErrors] siehe showFieldFeedback()
      */
-    function runOpeningHoursValidation(input) {
+    function runOpeningHoursValidation(input, onlyClearErrors) {
         var pairInput = document.getElementById(input.getAttribute('data-pair'));
         var isFrom = input.id.endsWith('_from');
         var fromInput = isFrom ? input : pairInput;
@@ -389,7 +404,7 @@
 
         var group = input.closest('.schemaOrgData-opening-hours-group');
         var feedbackId = (fromInput ? fromInput.id : input.id) + '_feedback';
-        showFieldFeedback(group || input, feedbackId, result);
+        showFieldFeedback(group || input, feedbackId, result, onlyClearErrors);
     }
 
     /**
@@ -397,19 +412,23 @@
      * aus und zeigt das Ergebnis an. Bei "opening_hours" wird das
      * über data-pair verknüpfte Gegenstück (Von/Bis) mit einbezogen
      * (siehe runOpeningHoursValidation()). Felder mit
-     * data-required-message melden einen leeren Wert sofort als
-     * Fehler, unabhängig vom data-validate-Typ.
+     * data-required-message melden einen leeren Wert als Fehler,
+     * unabhängig vom data-validate-Typ.
      *
      * @param {HTMLElement} input
+     * @param {boolean} [onlyClearErrors] siehe showFieldFeedback() -
+     *        true beim "input"-Event: zeigt keine neue Fehler-/
+     *        Warnmeldung an, entfernt aber ein bereits sichtbares
+     *        Feedback, sobald der Wert wieder gültig ist
      */
-    function runFieldValidation(input) {
+    function runFieldValidation(input, onlyClearErrors) {
         var type = input.getAttribute('data-validate');
         var requiredMessage = input.getAttribute('data-required-message');
 
-        // Pflichtfeld leer: sofort melden, unabhängig vom sonstigen
+        // Pflichtfeld leer: melden, unabhängig vom sonstigen
         // Validierungstyp (url/email/telephone/required).
         if (requiredMessage && input.value.trim() === '') {
-            showFieldFeedback(input, input.id + '_feedback', { status: 'error', message: requiredMessage });
+            showFieldFeedback(input, input.id + '_feedback', { status: 'error', message: requiredMessage }, onlyClearErrors);
             return;
         }
 
@@ -432,40 +451,48 @@
                 result = validateRequiredField(input.value, input.getAttribute('data-required-message'));
                 break;
             case 'opening_hours':
-                runOpeningHoursValidation(input);
+                runOpeningHoursValidation(input, onlyClearErrors);
                 return;
             default:
                 return;
         }
 
-        showFieldFeedback(input, input.id + '_feedback', result);
+        showFieldFeedback(input, input.id + '_feedback', result, onlyClearErrors);
     }
 
     /**
      * Aktiviert die Live-Validierung (bei "blur" und "input") für alle
-     * Felder mit data-validate innerhalb des Admin-Formulars. Das
-     * "input"-Event sorgt dafür, dass eine bereits angezeigte
-     * Fehlermeldung sofort verschwindet, sobald der Wert während der
-     * Eingabe wieder gültig wird (Fix 1) - ohne dass das Feld erst
-     * verlassen werden muss. Bereits befüllte Felder werden zusätzlich
-     * einmalig beim Laden der Seite validiert, damit ein ungültiger
-     * gespeicherter bzw. nach gescheitertem Save zurückgegebener Wert
-     * sofort als Fehler angezeigt wird, ohne dass der Nutzer das Feld
-     * erst verlassen muss.
+     * Felder mit data-validate innerhalb des Admin-Formulars.
+     *
+     * - "blur": vollständige Validierung wie gewohnt, inkl. neuer
+     *   Fehler-/Warnmeldungen.
+     * - "input": KEINE neue Fehler-/Warnmeldung während der Eingabe
+     *   (keine premature validation) - ein bereits sichtbares Feedback
+     *   wird aber sofort entfernt bzw. aktualisiert, sobald der Wert
+     *   wieder gültig ist (Fix 1, "Korrektur wird sofort honoriert").
+     *
+     * Konsistentes Muster für alle Felder mit Live-Validierung: Tippen
+     * meckert nie, Verlassen des Feldes gibt vollständiges Feedback.
+     *
+     * Bereits befüllte Felder werden zusätzlich einmalig beim Laden der
+     * Seite vollständig validiert, damit ein ungültiger gespeicherter
+     * bzw. nach gescheitertem Save zurückgegebener Wert sofort als
+     * Fehler angezeigt wird, ohne dass der Nutzer das Feld erst
+     * verlassen muss.
      */
     function initFieldValidation() {
         var inputs = document.querySelectorAll('[data-validate]');
 
         for (var i = 0; i < inputs.length; i++) {
             inputs[i].addEventListener('blur', function (event) {
-                runFieldValidation(event.target);
+                runFieldValidation(event.target, false);
             });
             inputs[i].addEventListener('input', function (event) {
-                runFieldValidation(event.target);
+                runFieldValidation(event.target, true);
             });
 
             if (inputs[i].value.trim() !== '') {
-                runFieldValidation(inputs[i]);
+                runFieldValidation(inputs[i], false);
             }
         }
     }
