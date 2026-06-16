@@ -5,5 +5,7 @@ vendor/
 CLAUDE.md
 conf/
 tests/SMOKE-TESTS.md
+tests/PLAYWRIGHT-VERIFICATION.md
+.playwright-mcp/
 /doc/
 /.claude/
