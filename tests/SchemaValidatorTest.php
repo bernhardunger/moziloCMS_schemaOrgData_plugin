@@ -138,14 +138,55 @@ final class SchemaValidatorTest extends TestCase {
             $schema,
         ]);
 
-        // addressLocality leer, kein geerbter Wert → Fehler erwartet
+        // streetAddress ausgefüllt (Adresse gilt als "provided"), addressLocality
+        // leer, kein geerbter Wert → Fehler für das required Ort-Feld erwartet.
         $errors = callPluginMethod($plugin, 'validatePostalAddressData', [
-            ['addressCountry' => 'DE'],
+            ['streetAddress' => 'Musterstraße 1', 'addressCountry' => 'DE'],
             $addressSchema,
             [],
         ]);
 
         $this->assertNotEmpty($errors,
-            'Leeres Adress-Pflichtfeld ohne geerbten Wert muss einen Fehler erzeugen.');
+            'Teilausgefüllte Adresse ohne addressLocality und ohne geerbten Wert muss einen Fehler erzeugen.');
+    }
+
+    function testCompletelyEmptyAddressWithNameUrlProducesNoError(): void {
+        $plugin = new \schemaOrgData();
+        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+
+        // name + url gefüllt, address nur mit Default addressCountry=DE (kein
+        // Adressfeld manuell ausgefüllt) → validateFormData() darf keinen Fehler liefern.
+        $errors = callPluginMethod($plugin, 'validateFormData', [
+            [
+                'name' => 'Muster GmbH',
+                'url'  => 'https://example.com',
+                'address' => ['addressCountry' => 'DE'],
+            ],
+            $schema,
+            [],
+        ]);
+
+        $this->assertSame([], $errors,
+            'Komplett leere Adresse (nur Default addressCountry=DE) darf keinen Fehler erzeugen.');
+    }
+
+    function testAddressPartialFillMissingLocalityProducesError(): void {
+        $plugin = new \schemaOrgData();
+        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+        $addressSchema = callPluginMethod($plugin, 'resolveSchemaRef', [
+            $schema['properties']['address'],
+            $schema,
+        ]);
+
+        // streetAddress gesetzt → Adresse gilt als "provided";
+        // addressLocality fehlt, kein geerbter Wert → Fehler erwartet (Regressionsschutz).
+        $errors = callPluginMethod($plugin, 'validatePostalAddressData', [
+            ['streetAddress' => 'Musterstraße 1', 'addressCountry' => 'DE'],
+            $addressSchema,
+            [],
+        ]);
+
+        $this->assertNotEmpty($errors,
+            'Teilausgefüllte Adresse ohne addressLocality muss einen Fehler erzeugen.');
     }
 }

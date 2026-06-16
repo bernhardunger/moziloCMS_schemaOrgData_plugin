@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.2-beta';
+    private const PLUGIN_VERSION = '0.4.3-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2457,6 +2457,12 @@ class schemaOrgData extends Plugin {
         $lang = $this->loadAdminLanguage();
         $errors = [];
         $subProperties = $fieldSchema['properties'] ?? [];
+
+        // Wurde kein Adressfeld ausgefüllt (nur Default-Werte wie addressCountry=DE),
+        // entfallen alle Pflichtfeld-Prüfungen — die Adresse als Ganzes ist nicht required.
+        if(!$this->isAddressProvided($address, $subProperties)) {
+            return [];
+        }
 
         foreach($subProperties as $subName => $subSchema) {
             $subRequired = (bool) ($subSchema['ui:required'] ?? false);

@@ -425,11 +425,18 @@
         var type = input.getAttribute('data-validate');
         var requiredMessage = input.getAttribute('data-required-message');
 
-        // Pflichtfeld leer: nur melden wenn kein geerbter Wert als Placeholder
-        // gesetzt ist (ein gesetzter Placeholder bedeutet, dass ein Wert von einer
-        // übergeordneten Ebene geerbt wird und das Pflichtfeld abdeckt).
-        if (requiredMessage && input.value.trim() === '' && input.placeholder.trim() === '') {
-            showFieldFeedback(input, input.id + '_feedback', { status: 'error', message: requiredMessage }, onlyClearErrors);
+        // Pflichtfeld leer: Fehler nur wenn kein geerbter Wert als Placeholder gesetzt
+        // ist. Ein gesetzter Placeholder bedeutet, dass ein Wert von einer übergeordneten
+        // Ebene geerbt wird und das Pflichtfeld abdeckt — dann vorhandenes Feedback
+        // entfernen statt einen Fehler zu zeigen. Ohne Placeholder: Fehler anzeigen.
+        // Wichtig: return in beiden Zweigen verhindert, dass case 'required' im
+        // switch validateRequiredField() aufruft und doppelt einen Fehler erzeugt.
+        if (requiredMessage && input.value.trim() === '') {
+            if (input.placeholder.trim() !== '') {
+                showFieldFeedback(input, input.id + '_feedback', { status: null, message: null }, onlyClearErrors);
+            } else {
+                showFieldFeedback(input, input.id + '_feedback', { status: 'error', message: requiredMessage }, onlyClearErrors);
+            }
             return;
         }
 

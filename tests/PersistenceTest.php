@@ -265,20 +265,21 @@ final class PersistenceTest extends TestCase {
 
     /***************************************************************
     *
-    * Bug 1 (0.3.6-beta): das Pflichtfeld "Ort" (addressLocality)
-    * einer PostalAddress muss auch dann beim Speichern greifen, wenn
-    * der Nutzer kein einziges Adressfeld ausgefüllt hat - die
-    * Länder-Select-Box trägt per Default bereits "DE", wodurch die
-    * Adresse fälschlich als "angegeben" erschien und der
-    * Pflichtfeld-Check übersprungen wurde (Submit-Verhalten, nicht
-    * nur das gerenderte data-Attribut).
+    * Fix 0.4.3-beta: Eine komplett leere Adresse (nur Default-Wert
+    * addressCountry=DE aus der Select-Box, alle anderen Felder leer)
+    * darf das Speichern nicht blockieren — die Adresse als Ganzes ist
+    * optional. isAddressProvided() liefert false → validatePostalAddressData()
+    * überspringt alle Pflichtfeld-Prüfungen → saveConfig() erfolgreich.
+    * Zuvor (0.3.6-beta) erzwang der Pflichtfeld-Check für addressLocality
+    * einen Fehler, obwohl die Adresse gar nicht ausgefüllt wurde.
     *
     ***************************************************************/
-    function testGlobalSaveWithEmptyAddressLocalityIsRejected(): void {
+    function testGlobalSaveWithCompletelyEmptyAddressSucceeds(): void {
         $plugin = $this->createPlugin();
 
         $postData = $this->validLocalBusinessData();
-        // Komplett leere Adresse - nur die voreingestellte Länder-Select (DE).
+        // Komplett leere Adresse — nur die voreingestellte Länder-Select (DE).
+        // isAddressProvided() muss false liefern → kein Pflichtfeld-Fehler.
         $postData['data']['address'] = [
             'streetAddress' => '',
             'postalCode' => '',
@@ -289,9 +290,9 @@ final class PersistenceTest extends TestCase {
 
         $result = callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
 
-        $this->assertFalse($result['success']);
-        $this->assertNotEmpty($result['errors']);
-        $this->assertFalse($this->settings->keyExists('config_global'));
+        $this->assertTrue($result['success'],
+            'Speichern mit komplett leerer Adresse (nur Default DE) muss erfolgreich sein.');
+        $this->assertSame([], $result['errors']);
     }
 
     /***************************************************************
