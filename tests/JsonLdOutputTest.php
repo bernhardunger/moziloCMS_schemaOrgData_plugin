@@ -461,6 +461,88 @@ final class JsonLdOutputTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // Debug-Modus (buildDebugWidget / debug_output-Flag)
+    // -----------------------------------------------------------
+
+    function testDebugOutputFalseProducesNoDebugWidget(): void {
+        $plugin = $this->createPlugin();
+        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+
+        $output = $plugin->getContent('');
+
+        $this->assertStringNotContainsString('schemaOrgData-debug-dialog', $output);
+        $this->assertStringNotContainsString('schemaOrgData-debug-trigger', $output);
+    }
+
+    function testDebugOutputTrueProducesDebugWidget(): void {
+        $plugin = $this->createPlugin();
+        $postData = $this->validLocalBusinessData();
+        $postData['debug_output'] = '1';
+        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+
+        $output = $plugin->getContent('');
+
+        $this->assertStringContainsString('schemaOrgData-debug-dialog', $output);
+        $this->assertStringContainsString('schemaOrgData-debug-trigger', $output);
+    }
+
+    function testDebugWidgetContainsGlobalScopeStringAndType(): void {
+        $plugin = $this->createPlugin();
+        $postData = $this->validLocalBusinessData();
+        $postData['debug_output'] = '1';
+        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+
+        $output = $plugin->getContent('');
+
+        // Scope-Herkunft und Type-Name müssen im Widget auftauchen
+        $this->assertStringContainsString('>global &mdash; LocalBusiness<', $output);
+    }
+
+    function testDebugWidgetContainsFormattedJsonWithContextAndType(): void {
+        $plugin = $this->createPlugin();
+        $postData = $this->validLocalBusinessData();
+        $postData['debug_output'] = '1';
+        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+
+        $output = $plugin->getContent('');
+
+        // Das formatierte JSON muss @context und @type enthalten
+        $this->assertStringContainsString('"@context"', $output);
+        $this->assertStringContainsString('"@type": "LocalBusiness"', $output);
+        $this->assertStringContainsString('"name": "Beispiel GmbH"', $output);
+    }
+
+    function testDebugWidgetContainsValidatorLink(): void {
+        $plugin = $this->createPlugin();
+        $postData = $this->validLocalBusinessData();
+        $postData['debug_output'] = '1';
+        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+
+        $output = $plugin->getContent('');
+
+        $this->assertStringContainsString('href="https://validator.schema.org"', $output);
+    }
+
+    function testScriptBlocksIdenticalRegardlessOfDebugOutput(): void {
+        // Ohne Debug
+        $plugin1 = $this->createPlugin();
+        callPluginMethod($plugin1, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        $output1 = $plugin1->getContent('');
+
+        // Mit Debug
+        $plugin2 = $this->createPlugin();
+        $postData = $this->validLocalBusinessData();
+        $postData['debug_output'] = '1';
+        callPluginMethod($plugin2, 'saveConfig', ['global', $postData]);
+        $output2 = $plugin2->getContent('');
+
+        preg_match_all('#<script type="application/ld\+json">.*?</script>#s', $output1, $m1);
+        preg_match_all('#<script type="application/ld\+json">.*?</script>#s', $output2, $m2);
+
+        $this->assertSame($m1[0], $m2[0], 'Die <script>-Blöcke müssen mit und ohne debug_output identisch sein.');
+    }
+
+    // -----------------------------------------------------------
     // Sicherheit
     // -----------------------------------------------------------
 

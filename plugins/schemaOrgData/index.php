@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.5-beta';
+    private const PLUGIN_VERSION = '0.4.6-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -94,10 +94,15 @@ class schemaOrgData extends Plugin {
             unset($scopeConfigs['global']);
         }
 
-        // Verwaltungsdaten (_meta, excluded_cats) entfernen - übrig bleiben
-        // je Ebene nur noch die Schema-Type-Konfigurationen.
+        // Debug-Modus: Flag aus config_global lesen, bevor die Verwaltungsdaten
+        // entfernt werden (debug_output ist kein Schema-Type, sondern ein
+        // Meta-Schlüssel analog zu excluded_cats).
+        $debugOutput = !empty($scopeConfigs['global']['debug_output'] ?? false);
+
+        // Verwaltungsdaten (_meta, excluded_cats, debug_output) entfernen -
+        // übrig bleiben je Ebene nur noch die Schema-Type-Konfigurationen.
         foreach($scopeConfigs as $scope => $config) {
-            unset($scopeConfigs[$scope]['_meta'], $scopeConfigs[$scope]['excluded_cats']);
+            unset($scopeConfigs[$scope]['_meta'], $scopeConfigs[$scope]['excluded_cats'], $scopeConfigs[$scope]['debug_output']);
         }
 
         // jsonld_mode prüfen: wurde bereits vorhandenes JSON-LD erkannt
@@ -124,11 +129,25 @@ class schemaOrgData extends Plugin {
         // (Global -> Kategorie -> Seite, siehe resolveTypeInheritance()).
         $scopeConfigs = $this->resolveTypeInheritance($scopeConfigs);
 
-        // JSON-LD-Blöcke der verbleibenden Types ausgeben
+        // JSON-LD-Blöcke der verbleibenden Types ausgeben; bei aktivem
+        // Debug-Modus Metadaten je Block für buildDebugWidget() sammeln.
+        $debugBlocks = [];
         foreach($scopeConfigs as $scope => $config) {
             foreach($config as $type => $data) {
                 $output .= $this->buildJsonLdScript($type, $data);
+                if($debugOutput) {
+                    $scopeKey = match($scope) {
+                        'category' => 'cat_'.(CAT_REQUEST ? (string) CAT_REQUEST : ''),
+                        'page'     => 'page_'.(CAT_REQUEST ? (string) CAT_REQUEST : '').'_'.(PAGE_REQUEST ? (string) PAGE_REQUEST : ''),
+                        default    => 'global',
+                    };
+                    $debugBlocks[] = ['scope' => $scopeKey, 'type' => $type, 'data' => $data];
+                }
             }
+        }
+
+        if($debugOutput and $debugBlocks !== []) {
+            $output .= $this->buildDebugWidget($debugBlocks);
         }
 
         // Kollisionserkennung: vorhandenes JSON-LD im gerenderten HTML
@@ -1980,54 +1999,66 @@ class schemaOrgData extends Plugin {
     * Geltungsbereich "global"): eine Checkbox je vorhandener
     * Kategorie. Angehakte Kategorien erhalten keine globale
     * JSON-LD-Ausgabe (siehe README.md, "excluded_cats").
+    * Zusätzlich wird die Debug-Modus-Checkbox gerendert.
     *
     * @param string[] $excludedCats aktuell ausgeschlossene Kategorien
-    * @return string HTML-Snippet oder '' falls $CatPage nicht verfügbar ist
+    * @param bool $debugOutput      aktueller Zustand des Debug-Flags
+    * @return string HTML-Snippet
     *
     ***************************************************************/
-    private function renderExcludedCatsField(array $excludedCats): string {
+    private function renderExcludedCatsField(array $excludedCats, bool $debugOutput = false): string {
         global $CatPage;
         $lang = $this->loadAdminLanguage();
+        $html = '';
 
-        if(!isset($CatPage) or !is_object($CatPage)) {
-            return '';
-        }
+        // Ausschlussliste nur wenn Kategorienliste verfügbar
+        if(isset($CatPage) and is_object($CatPage)) {
+            $cats = $CatPage->get_CatArray(true);
 
-        $cats = $CatPage->get_CatArray(true);
+            $html .= '<fieldset class="schemaOrgData-fieldset">'."\n";
+            $html .= '<legend>'.$lang->getLanguageHtml('label_excluded_cats').'</legend>'."\n";
+            $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_excluded_cats').'</p>'."\n";
 
-        $html = '<fieldset class="schemaOrgData-fieldset">'."\n";
-        $html .= '<legend>'.$lang->getLanguageHtml('label_excluded_cats').'</legend>'."\n";
-        $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_excluded_cats').'</p>'."\n";
+            foreach($cats as $cat) {
+                // get_CatArray(true) liefert auch das Wurzelverzeichnis
+                // "kategorien" selbst zurück - das ist keine echte Kategorie
+                // und wird daher nicht als Checkbox angeboten.
+                if(strtolower(rawurldecode($cat)) === 'kategorien') {
+                    continue;
+                }
 
-        foreach($cats as $cat) {
-            // get_CatArray(true) liefert auch das Wurzelverzeichnis
-            // "kategorien" selbst zurück - das ist keine echte Kategorie
-            // und wird daher nicht als Checkbox angeboten.
-            if(strtolower(rawurldecode($cat)) === 'kategorien') {
-                continue;
+                $checked = in_array($cat, $excludedCats, true) ? ' checked="checked"' : '';
+                $catLabel = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
+                // rawurldecode() dekodiert den moziloCMS-Bezeichner nur für die
+                // Anzeige - der value-Attributwert bleibt roh (% erhalten),
+                // damit excluded_cats weiterhin zu CAT_REQUEST passt.
+                $catDisplayLabel = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
+                $fieldId = 'schemaOrgData_global_excluded_cats_'.md5($cat);
+                $html .= '<label class="schemaOrgData-checkbox" for="'.$fieldId.'">'
+                    .'<input type="checkbox" id="'.$fieldId.'" name="schemaOrgData[global][excluded_cats][]" value="'.$catLabel.'"'.$checked.' /> '
+                    .$catDisplayLabel.'</label>'."\n";
             }
 
-            $checked = in_array($cat, $excludedCats, true) ? ' checked="checked"' : '';
-            $catLabel = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
-            // rawurldecode() dekodiert den moziloCMS-Bezeichner nur für die
-            // Anzeige - der value-Attributwert bleibt roh (% erhalten),
-            // damit excluded_cats weiterhin zu CAT_REQUEST passt.
-            $catDisplayLabel = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
-            $fieldId = 'schemaOrgData_global_excluded_cats_'.md5($cat);
-            $html .= '<label class="schemaOrgData-checkbox" for="'.$fieldId.'">'
-                .'<input type="checkbox" id="'.$fieldId.'" name="schemaOrgData[global][excluded_cats][]" value="'.$catLabel.'"'.$checked.' /> '
-                .$catDisplayLabel.'</label>'."\n";
+            // "Alle Kategorien"-Select-All-Toggle: rein clientseitig (kein
+            // name-Attribut, daher kein Einfluss auf saveConfig()/excluded_cats).
+            // initExcludedCatsSelectAll() (validator.js) setzt/leert beim
+            // Anklicken alle Kategorie-Checkboxen oben und zeigt bei
+            // Teilauswahl einen indeterminate-Zustand.
+            $html .= '<label class="schemaOrgData-checkbox schemaOrgData-checkbox--all" for="schemaOrgData_global_excluded_cats_all">'
+                .'<input type="checkbox" id="schemaOrgData_global_excluded_cats_all" data-select-all="schemaOrgData[global][excluded_cats][]" /> '
+                .$lang->getLanguageHtml('label_excluded_cats_all').'</label>'."\n";
+
+            $html .= '</fieldset>'."\n";
         }
 
-        // "Alle Kategorien"-Select-All-Toggle: rein clientseitig (kein
-        // name-Attribut, daher kein Einfluss auf saveConfig()/excluded_cats).
-        // initExcludedCatsSelectAll() (validator.js) setzt/leert beim
-        // Anklicken alle Kategorie-Checkboxen oben und zeigt bei
-        // Teilauswahl einen indeterminate-Zustand.
-        $html .= '<label class="schemaOrgData-checkbox schemaOrgData-checkbox--all" for="schemaOrgData_global_excluded_cats_all">'
-            .'<input type="checkbox" id="schemaOrgData_global_excluded_cats_all" data-select-all="schemaOrgData[global][excluded_cats][]" /> '
-            .$lang->getLanguageHtml('label_excluded_cats_all').'</label>'."\n";
-
+        // Debug-Modus-Checkbox (immer sichtbar, unabhängig von $CatPage)
+        $checkedAttr = $debugOutput ? ' checked="checked"' : '';
+        $html .= '<fieldset class="schemaOrgData-fieldset">'."\n";
+        $html .= '<legend>'.$lang->getLanguageHtml('label_debug_output').'</legend>'."\n";
+        $html .= '<label class="schemaOrgData-checkbox" for="schemaOrgData_global_debug_output">'
+            .'<input type="checkbox" id="schemaOrgData_global_debug_output" name="schemaOrgData[global][debug_output]" value="1"'.$checkedAttr.' /> '
+            .$lang->getLanguageHtml('label_debug_output').'</label>'."\n";
+        $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_debug_output').'</p>'."\n";
         $html .= '</fieldset>'."\n";
 
         return $html;
@@ -2298,12 +2329,14 @@ class schemaOrgData extends Plugin {
                         $excludedCats[] = $excludedCat;
                     }
                 }
+                $debugOutput = !empty($postScope['debug_output']);
             } else {
                 $excludedCats = !empty($config['excluded_cats'])
                     ? array_map('trim', explode(',', (string) $config['excluded_cats']))
                     : [];
+                $debugOutput = !empty($config['debug_output']);
             }
-            $html .= $this->renderExcludedCatsField($excludedCats);
+            $html .= $this->renderExcludedCatsField($excludedCats, $debugOutput);
         }
 
         $html .= '</div>'."\n";
@@ -2666,6 +2699,7 @@ class schemaOrgData extends Plugin {
 
         if($scope === 'global') {
             $config['excluded_cats'] = $existing['excluded_cats'] ?? '';
+            $config['debug_output'] = !empty($existing['debug_output']);
         }
 
         $type = (string) ($postData['type'] ?? '');
@@ -2714,6 +2748,7 @@ class schemaOrgData extends Plugin {
                 }
             }
             $config['excluded_cats'] = implode(',', $excludedCats);
+            $config['debug_output'] = !empty($postData['debug_output']);
         }
 
         $jsonldMode = $_POST['schemaOrgData_jsonld_mode_'.$scope] ?? null;
@@ -2855,6 +2890,123 @@ class schemaOrgData extends Plugin {
         }
 
         $html .= '</ul></div>'."\n";
+
+        return $html;
+    }
+
+    /***************************************************************
+    *
+    * Baut das Frontend-Debug-Widget: einen fixierten Trigger-Button
+    * und einen <dialog> mit je einem Abschnitt pro ausgegebenem
+    * JSON-LD-Block (Scope-Herkunft, formatiertes JSON, Kopier-Button)
+    * sowie einem Link auf validator.schema.org.
+    *
+    * Wird von getContent() angehängt, wenn debug_output aktiv ist
+    * und mindestens ein Block ausgegeben wurde. Alle Styles sind
+    * inline, alle IDs mit "schemaOrgData-debug-" präfixiert — keine
+    * globalen CSS-Klassen, da dies auf der echten Frontend-Seite
+    * landet.
+    *
+    * @param array $blocks [['scope' => 'global'|'cat_x'|'page_x_y', 'type' => '...', 'data' => [...]], ...]
+    * @return string HTML-Snippet inkl. <script>
+    *
+    ***************************************************************/
+    private function buildDebugWidget(array $blocks): string {
+        $count = count($blocks);
+        $plural = $count !== 1 ? 'Blöcke' : 'Block';
+
+        $html  = '<button id="schemaOrgData-debug-trigger" type="button" '
+            .'style="position:fixed;bottom:1em;right:1em;z-index:9999;background:#1a73e8;color:#fff;'
+            .'border:none;border-radius:4px;padding:.5em 1em;font-size:14px;cursor:pointer;'
+            .'box-shadow:0 2px 8px rgba(0,0,0,.3);">'
+            .'🔧 Debug: '.$count.' JSON-LD-'.$plural.'</button>'."\n";
+
+        $html .= '<dialog id="schemaOrgData-debug-dialog" '
+            .'style="max-width:800px;width:90vw;max-height:85vh;overflow:auto;border-radius:6px;'
+            .'border:1px solid #ccc;box-shadow:0 4px 24px rgba(0,0,0,.2);padding:1.5em;">'."\n";
+
+        // Kopfzeile mit Validator-Link und Schließen-Button
+        $html .= '<div style="display:flex;justify-content:space-between;align-items:center;'
+            .'margin-bottom:1em;border-bottom:1px solid #eee;padding-bottom:.75em;">'."\n";
+        $html .= '<strong style="font-size:1.1em;">🔧 Schema.org JSON-LD Debug</strong>'."\n";
+        $html .= '<div style="display:flex;gap:.5em;align-items:center;">'."\n";
+        $html .= '<a href="https://validator.schema.org" target="_blank" rel="noopener" '
+            .'style="font-size:.85em;color:#1a73e8;text-decoration:none;border:1px solid #1a73e8;'
+            .'border-radius:3px;padding:.2em .6em;">validator.schema.org öffnen ↗</a>'."\n";
+        $html .= '<button id="schemaOrgData-debug-close" type="button" '
+            .'style="background:none;border:none;font-size:1.3em;cursor:pointer;color:#666;'
+            .'padding:.1em .4em;" aria-label="Schlie&szlig;en">&#x2715;</button>'."\n";
+        $html .= '</div></div>'."\n";
+
+        foreach($blocks as $i => $block) {
+            $type  = $block['type'];
+            $scope = $block['scope'];
+            $data  = $block['data'];
+            $preId  = 'schemaOrgData-debug-pre-'.$i;
+            $copyId = 'schemaOrgData-debug-copy-'.$i;
+
+            // Dieselben Transformationen wie buildJsonLdScript(), damit die
+            // Vorschau byte-identisch mit dem echten <script>-Block ist.
+            $data = $this->decodeJsonLdValues($data);
+            $data = $this->removeEmptyJsonLdProperties($data);
+            foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person'] as $property => $nestedType) {
+                if(isset($data[$property]) and is_array($data[$property])) {
+                    $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
+                }
+            }
+            $jsonLd = array_merge(['@context' => 'https://schema.org', '@type' => $type], $data);
+            $prettyJson = json_encode($jsonLd, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+            $html .= '<div style="margin-bottom:1.5em;">'."\n";
+            $html .= '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4em;">'."\n";
+            $html .= '<h3 style="margin:0;font-size:.95em;color:#333;">'
+                .htmlspecialchars($scope, ENT_QUOTES, CHARSET).' &mdash; '
+                .htmlspecialchars($type, ENT_QUOTES, CHARSET).'</h3>'."\n";
+            $html .= '<button id="'.$copyId.'" type="button" data-pre="'.$preId.'" '
+                .'style="font-size:.8em;background:#f5f5f5;border:1px solid #ccc;border-radius:3px;'
+                .'padding:.2em .6em;cursor:pointer;">JSON kopieren</button>'."\n";
+            $html .= '</div>'."\n";
+            $html .= '<pre id="'.$preId.'" '
+                .'style="background:#f8f8f8;border:1px solid #ddd;border-radius:4px;padding:.75em;'
+                .'overflow:auto;font-size:.8em;white-space:pre-wrap;margin:0;">'
+                .htmlspecialchars($prettyJson !== false ? $prettyJson : '', ENT_QUOTES, CHARSET)
+                .'</pre>'."\n";
+            $html .= '</div>'."\n";
+        }
+
+        $html .= '</dialog>'."\n";
+
+        $html .= '<script>(function(){'."\n";
+        $html .= 'var trigger=document.getElementById("schemaOrgData-debug-trigger");'."\n";
+        $html .= 'var dialog=document.getElementById("schemaOrgData-debug-dialog");'."\n";
+        $html .= 'var closeBtn=document.getElementById("schemaOrgData-debug-close");'."\n";
+        $html .= 'if(trigger&&dialog&&dialog.showModal){'."\n";
+        $html .= '  trigger.addEventListener("click",function(){dialog.showModal();});'."\n";
+        $html .= '}'."\n";
+        $html .= 'if(closeBtn&&dialog){'."\n";
+        $html .= '  closeBtn.addEventListener("click",function(){dialog.close();});'."\n";
+        $html .= '}'."\n";
+        $html .= 'function fallbackCopy(text){'."\n";
+        $html .= '  var ta=document.createElement("textarea");'."\n";
+        $html .= '  ta.value=text;ta.style.position="fixed";ta.style.opacity="0";'."\n";
+        $html .= '  document.body.appendChild(ta);ta.focus();ta.select();'."\n";
+        $html .= '  try{document.execCommand("copy");}catch(e){}'."\n";
+        $html .= '  document.body.removeChild(ta);'."\n";
+        $html .= '}'."\n";
+        $html .= 'var copyBtns=document.querySelectorAll("[id^=\'schemaOrgData-debug-copy-\']");'."\n";
+        $html .= 'copyBtns.forEach(function(btn){'."\n";
+        $html .= '  btn.addEventListener("click",function(){'."\n";
+        $html .= '    var pre=document.getElementById(btn.getAttribute("data-pre"));'."\n";
+        $html .= '    if(!pre)return;'."\n";
+        $html .= '    var text=pre.textContent||pre.innerText;'."\n";
+        $html .= '    var orig=btn.textContent;'."\n";
+        $html .= '    function ok(){btn.textContent="Kopiert!";setTimeout(function(){btn.textContent=orig;},1500);}'."\n";
+        $html .= '    if(navigator.clipboard&&window.isSecureContext){'."\n";
+        $html .= '      navigator.clipboard.writeText(text).then(ok).catch(function(){fallbackCopy(text);ok();});'."\n";
+        $html .= '    }else{fallbackCopy(text);ok();}'."\n";
+        $html .= '  });'."\n";
+        $html .= '});'."\n";
+        $html .= '})();</script>'."\n";
 
         return $html;
     }

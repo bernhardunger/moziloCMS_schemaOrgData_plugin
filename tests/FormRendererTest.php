@@ -280,6 +280,60 @@ final class FormRendererTest extends TestCase {
         $this->assertStringNotContainsString('value="kategorien"', $html);
         $this->assertStringContainsString('data-select-all="schemaOrgData[global][excluded_cats][]"', $html);
     }
+
+    // -----------------------------------------------------------
+    // Debug-Modus-Checkbox (renderExcludedCatsField, scope=global)
+    // -----------------------------------------------------------
+
+    function testDebugOutputCheckboxIsAlwaysRendered(): void {
+        $plugin = new \schemaOrgData();
+        $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[], false]);
+
+        $this->assertStringContainsString('name="schemaOrgData[global][debug_output]"', $html);
+    }
+
+    function testDebugOutputCheckboxIsCheckedWhenEnabled(): void {
+        $plugin = new \schemaOrgData();
+        $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[], true]);
+
+        $this->assertMatchesRegularExpression(
+            '/name="schemaOrgData\[global\]\[debug_output\]"[^>]*checked="checked"/',
+            $html
+        );
+    }
+
+    function testDebugOutputCheckboxIsUncheckedWhenDisabled(): void {
+        $plugin = new \schemaOrgData();
+        $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[], false]);
+
+        // Das Eingabefeld darf kein checked-Attribut tragen
+        $this->assertMatchesRegularExpression(
+            '/name="schemaOrgData\[global\]\[debug_output\]"[^>]*>/',
+            $html
+        );
+        $this->assertStringNotContainsString('checked="checked"', $html);
+    }
+
+    function testDebugOutputCheckboxHasLabelAndHint(): void {
+        $plugin = new \schemaOrgData();
+        $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[], false]);
+
+        // Sprachschlüssel label_debug_output und hint_debug_output müssen gerendert werden
+        $this->assertStringContainsString('Debug', $html);
+        $this->assertStringContainsString('validator.schema.org', $html);
+    }
+
+    function testDebugOutputCheckboxAbsentForNonGlobalScope(): void {
+        // renderExcludedCatsField() wird nur für scope='global' aufgerufen.
+        // Für Kategorie/Seite darf die Checkbox nicht erscheinen.
+        // Da renderScopeSection() private ist, testen wir indirekt:
+        // renderTypeFields() für scope='category' darf das debug_output-Feld nicht enthalten.
+        $plugin = new \schemaOrgData();
+        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+        $html = callPluginMethod($plugin, 'renderTypeFields', ['category', 'LocalBusiness', $schema, []]);
+
+        $this->assertStringNotContainsString('debug_output', $html);
+    }
 }
 
 /***************************************************************
