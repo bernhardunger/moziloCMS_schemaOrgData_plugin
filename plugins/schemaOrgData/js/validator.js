@@ -425,9 +425,10 @@
         var type = input.getAttribute('data-validate');
         var requiredMessage = input.getAttribute('data-required-message');
 
-        // Pflichtfeld leer: melden, unabhängig vom sonstigen
-        // Validierungstyp (url/email/telephone/required).
-        if (requiredMessage && input.value.trim() === '') {
+        // Pflichtfeld leer: nur melden wenn kein geerbter Wert als Placeholder
+        // gesetzt ist (ein gesetzter Placeholder bedeutet, dass ein Wert von einer
+        // übergeordneten Ebene geerbt wird und das Pflichtfeld abdeckt).
+        if (requiredMessage && input.value.trim() === '' && input.placeholder.trim() === '') {
             showFieldFeedback(input, input.id + '_feedback', { status: 'error', message: requiredMessage }, onlyClearErrors);
             return;
         }
@@ -712,8 +713,12 @@
 
         // Blendet die zu cat/page passende .schemaOrgData-scope-Sektion
         // ein und alle anderen aus, (de-)aktiviert deren Felder und
-        // aktualisiert die Hidden-Felder für den POST.
+        // aktualisiert die Hidden-Felder für den POST. Liest außerdem
+        // data-save-label der aktiven Sektion aus und aktualisiert
+        // beide Speichern-Buttons (oben + unten, siehe renderAdminPage()).
         function activateSection(cat, page) {
+            var newSaveLabel = null;
+
             document.querySelectorAll('.schemaOrgData-scope').forEach(function (section) {
                 var sCat  = section.getAttribute('data-scope-cat')  || '';
                 var sPage = section.getAttribute('data-scope-page') || '';
@@ -733,8 +738,15 @@
                 // applyTypeFieldsState())
                 if (isActive) {
                     applyTypeFieldsState(section);
+                    newSaveLabel = section.getAttribute('data-save-label') || null;
                 }
             });
+
+            if (newSaveLabel !== null) {
+                document.querySelectorAll('.schemaOrgData-save-bar button').forEach(function (btn) {
+                    btn.textContent = newSaveLabel;
+                });
+            }
 
             updateScopeHiddenFields(cat, page);
         }

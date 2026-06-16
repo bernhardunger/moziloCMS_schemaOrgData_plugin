@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.1-beta';
+    private const PLUGIN_VERSION = '0.4.2-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -2227,13 +2227,17 @@ class schemaOrgData extends Plugin {
             }
         }
 
-        $catAttr   = htmlspecialchars($cat ?? '', ENT_QUOTES, CHARSET);
-        $pageAttr  = htmlspecialchars($page ?? '', ENT_QUOTES, CHARSET);
-        $labelAttr = htmlspecialchars($this->buildScopeLabel($scope, $cat, $page), ENT_QUOTES, CHARSET);
+        $catAttr       = htmlspecialchars($cat ?? '', ENT_QUOTES, CHARSET);
+        $pageAttr      = htmlspecialchars($page ?? '', ENT_QUOTES, CHARSET);
+        $labelAttr     = htmlspecialchars($this->buildScopeLabel($scope, $cat, $page), ENT_QUOTES, CHARSET);
+        $saveLabelAttr = htmlspecialchars($this->buildSaveButtonLabel(
+            $scope === 'global' ? null : $cat,
+            $scope === 'page'   ? $page : null
+        ), ENT_QUOTES, CHARSET);
         $displayStyle = $active ? '' : ' style="display:none"';
         $html = '<div class="schemaOrgData-scope card mb" data-scope="'.$scope.'"'
               . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'"'
-              . ' data-scope-label="'.$labelAttr.'"'.$displayStyle.'>'."\n";
+              . ' data-scope-label="'.$labelAttr.'" data-save-label="'.$saveLabelAttr.'"'.$displayStyle.'>'."\n";
         $html .= '<h3>'.$lang->getLanguageHtml('scope_'.$scope).'</h3>'."\n";
         $html .= $this->renderInfoBlock($scope);
         $html .= $this->renderExistingJsonLdNotice($scope, $cat, $page);
@@ -2317,13 +2321,21 @@ class schemaOrgData extends Plugin {
     * validateTelephone, validateUrl, validateEmail und
     * validateOpeningHoursTime.
     *
-    * @param array $formData Formularfeld-Werte (schemaOrgData[scope][data])
-    * @param array $schema   aktives JSON-Schema (schemas/{Type}.json)
+    * Ist ein Pflichtfeld leer, aber ein geerbter Wert von einer
+    * übergeordneten Ebene vorhanden ($inheritable['data']), wird
+    * kein Pflichtfeld-Fehler erzeugt - der geerbte Wert deckt das
+    * Pflichtfeld ab (analog clientseitigem Placeholder-Check).
+    *
+    * @param array $formData   Formularfeld-Werte (schemaOrgData[scope][data])
+    * @param array $schema     aktives JSON-Schema (schemas/{Type}.json)
+    * @param array $inheritable Rückgabe von resolveInheritableFields():
+    *                           ['data' => [...], 'originLabel' => [...]]
     * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
     *
     ***************************************************************/
-    private function validateFormData(array $formData, array $schema): array {
+    private function validateFormData(array $formData, array $schema, array $inheritable = []): array {
         $lang = $this->loadAdminLanguage();
+        $inheritableData = $inheritable['data'] ?? [];
         $errors = [];
 
         foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
@@ -2334,8 +2346,9 @@ class schemaOrgData extends Plugin {
             $value = $formData[$name] ?? null;
 
             if($widget === 'postal_address') {
+                $inheritableAddress = is_array($inheritableData[$name] ?? null) ? $inheritableData[$name] : [];
                 $errors = array_merge($errors, $this->validatePostalAddressData(
-                    is_array($value) ? $value : [], $fieldSchema
+                    is_array($value) ? $value : [], $fieldSchema, $inheritableAddress
                 ));
                 continue;
             }
@@ -2357,7 +2370,12 @@ class schemaOrgData extends Plugin {
 
             if($widget === 'faq_list') {
                 if($required and !$this->hasFaqEntry(is_array($value) ? $value : [])) {
-                    $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                    // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
+                    // Ebene ein nicht-leeres FAQ-Array geerbt wird.
+                    $inheritedList = $inheritableData[$name] ?? null;
+                    if(!is_array($inheritedList) or !$this->hasFaqEntry($inheritedList)) {
+                        $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                    }
                 }
                 continue;
             }
@@ -2366,7 +2384,12 @@ class schemaOrgData extends Plugin {
 
             if($stringValue === '') {
                 if($required) {
-                    $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                    // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
+                    // Ebene ein nicht-leerer Wert geerbt wird.
+                    $inheritedValue = $inheritableData[$name] ?? null;
+                    if(!is_scalar($inheritedValue) or (string) $inheritedValue === '') {
+                        $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                    }
                 }
                 continue;
             }
@@ -2420,10 +2443,17 @@ class schemaOrgData extends Plugin {
     * erscheinen lassen und der Pflichtfeld-Check für "Ort" beim
     * Speichern (z. B. auf Globalebene) nicht greifen.
     *
+    * Ist ein Pflichtfeld leer, aber ein geerbter Wert aus einer
+    * übergeordneten Ebene vorhanden ($inheritableAddress), entfällt
+    * der Fehler - der geerbte Wert deckt das Pflichtfeld ab.
+    *
+    * @param array $inheritableAddress Adress-Properties, die von einer
+    *        übergeordneten Ebene geerbt würden (Rückgabe von
+    *        resolveInheritableFields()['data']['address'])
     * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
     *
     ***************************************************************/
-    private function validatePostalAddressData(array $address, array $fieldSchema): array {
+    private function validatePostalAddressData(array $address, array $fieldSchema, array $inheritableAddress = []): array {
         $lang = $this->loadAdminLanguage();
         $errors = [];
         $subProperties = $fieldSchema['properties'] ?? [];
@@ -2433,8 +2463,13 @@ class schemaOrgData extends Plugin {
             $subValue = trim((string) ($address[$subName] ?? ''));
 
             if($subRequired and $subValue === '') {
-                $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
-                $errors[] = $lang->getLanguageValue('error_required_field', $subLabel);
+                // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
+                // Ebene ein nicht-leerer Wert für dieses Sub-Feld geerbt wird.
+                $inheritedSubValue = trim((string) ($inheritableAddress[$subName] ?? ''));
+                if($inheritedSubValue === '') {
+                    $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
+                    $errors[] = $lang->getLanguageValue('error_required_field', $subLabel);
+                }
             }
         }
 
@@ -2634,7 +2669,8 @@ class schemaOrgData extends Plugin {
                 $extensionRaw = trim((string) ($postData['extension'][$type] ?? ''));
                 $extensionData = [];
 
-                $errors = $this->validateFormData($formData, $schema);
+                $inheritable = $this->resolveInheritableFields($scope, $cat, $page, $type);
+                $errors = $this->validateFormData($formData, $schema, $inheritable);
 
                 if($extensionRaw !== '') {
                     $decoded = json_decode($extensionRaw, true);
