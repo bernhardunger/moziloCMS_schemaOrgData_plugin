@@ -59,6 +59,7 @@ label_postal_code = Postleitzahl
 label_address_locality = Ort
 label_address_region = Region / Bundesland
 label_address_country = Land
+hint_address_conditional_required = Wird ein Adressfeld ausgefüllt, werden Ort und Land zur Pflichtangabe.
 
 label_opening_hours = Öffnungszeiten
 label_opening_hours_from = Von

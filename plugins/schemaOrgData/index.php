@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.3-beta';
+    private const PLUGIN_VERSION = '0.4.4-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1710,6 +1710,12 @@ class schemaOrgData extends Plugin {
                 'faq_list'       => $this->renderFaqListWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix),
                 default          => '',
             };
+
+            if($widget === 'postal_address') {
+                $inner = '<p class="schemaOrgData-hint">'
+                    .$lang->getLanguageHtml('hint_address_conditional_required')
+                    .'</p>'."\n".$inner;
+            }
 
             return '<fieldset class="schemaOrgData-fieldset">'."\n"
                 .'<legend>'.$label.$badge.'</legend>'."\n"

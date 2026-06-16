@@ -256,6 +256,18 @@ final class FormRendererTest extends TestCase {
         return [$plugin, $settings];
     }
 
+    function testPostalAddressFieldsetShowsConditionalRequiredHint(): void {
+        $plugin = new \schemaOrgData();
+        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+
+        $html = callPluginMethod($plugin, 'renderField', [
+            'global', 'address', $schema['properties']['address'], [], $schema, [],
+        ]);
+
+        $this->assertStringContainsString('schemaOrgData-hint', $html);
+        $this->assertStringContainsString('Adressfeld', $html);
+    }
+
     function testExcludedCatsFieldOmitsKategorienRootEntry(): void {
         global $CatPage;
         $CatPage = new FakeCatPage(['kategorien', 'ueber-uns', 'impressum']);

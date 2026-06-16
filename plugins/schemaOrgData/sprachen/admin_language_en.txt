@@ -59,6 +59,7 @@ label_postal_code = Postal Code
 label_address_locality = City
 label_address_region = Region / State
 label_address_country = Country
+hint_address_conditional_required = If any address field is filled in, City and Country become required.
 
 label_opening_hours = Opening Hours
 label_opening_hours_from = From
