@@ -24,24 +24,24 @@ final class ScopeConfigTest extends TestCase {
     }
 
     function testCategoryOverridesGlobal(): void {
-        $global = ['LocalBusiness' => ['name' => 'Muster GmbH', 'priceRange' => '€€']];
+        $global = ['LocalBusiness' => ['name' => 'Muster GmbH', 'telephone' => '+49 89 11111111']];
         $category = ['LocalBusiness' => ['name' => 'Muster GmbH - Filiale Nord']];
 
         $result = $this->merge($global, $category);
 
         $this->assertSame('Muster GmbH - Filiale Nord', $result['LocalBusiness']['name']);
-        $this->assertSame('€€', $result['LocalBusiness']['priceRange']);
+        $this->assertSame('+49 89 11111111', $result['LocalBusiness']['telephone']);
     }
 
     function testPageOverridesCategory(): void {
-        $global = ['LocalBusiness' => ['name' => 'Global', 'priceRange' => '€']];
+        $global = ['LocalBusiness' => ['name' => 'Global', 'email' => 'global@example.com']];
         $category = ['LocalBusiness' => ['name' => 'Kategorie', 'telephone' => '+49 89 11111111']];
         $page = ['LocalBusiness' => ['name' => 'Seite']];
 
         $result = $this->merge($global, $category, $page);
 
         $this->assertSame('Seite', $result['LocalBusiness']['name']);
-        $this->assertSame('€', $result['LocalBusiness']['priceRange']);
+        $this->assertSame('global@example.com', $result['LocalBusiness']['email']);
         $this->assertSame('+49 89 11111111', $result['LocalBusiness']['telephone']);
     }
 

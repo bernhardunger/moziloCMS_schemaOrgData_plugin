@@ -262,14 +262,14 @@ final class JsonLdOutputTest extends TestCase {
     function testFormFieldTakesPrecedenceOverExtensionField(): void {
         $plugin = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
-        $postData['data']['priceRange'] = '€€';
-        $postData['extension']['LocalBusiness'] = json_encode(['priceRange' => '€€€']);
+        $postData['data']['telephone'] = '+4989111111';
+        $postData['extension']['LocalBusiness'] = json_encode(['telephone' => '+4989222222']);
 
         callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
 
-        $this->assertSame('€€', $jsonLd['priceRange']);
+        $this->assertSame('+4989111111', $jsonLd['telephone']);
     }
 
     // -----------------------------------------------------------
@@ -343,7 +343,7 @@ final class JsonLdOutputTest extends TestCase {
             'global' => [
                 'LocalBusiness' => [
                     'name' => 'Beispiel GmbH',
-                    'priceRange' => '€€',
+                    'telephone' => '+49 89 11111111',
                 ],
             ],
             'category' => [
@@ -357,7 +357,7 @@ final class JsonLdOutputTest extends TestCase {
 
         $this->assertSame([], $result['global']);
         $this->assertSame('Beispiel GmbH - Filiale Nord', $result['category']['LocalBusiness']['name']);
-        $this->assertSame('€€', $result['category']['LocalBusiness']['priceRange']);
+        $this->assertSame('+49 89 11111111', $result['category']['LocalBusiness']['telephone']);
     }
 
     function testSameTypeOnCategoryAndPageMergesFieldsOnPage(): void {

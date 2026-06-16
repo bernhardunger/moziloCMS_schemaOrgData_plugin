@@ -29,14 +29,12 @@ final class FormRendererTest extends TestCase {
         $this->assertNotNull($schema);
         $this->assertSame('text', $schema['properties']['name']['ui:widget']);
         $this->assertSame('textarea', $schema['properties']['description']['ui:widget']);
-        $this->assertSame('select', $schema['properties']['priceRange']['ui:widget']);
         $this->assertSame('opening_hours', $schema['properties']['openingHours']['ui:widget']);
 
         $html = callPluginMethod($plugin, 'renderTypeFields', ['global', 'LocalBusiness', $schema, []]);
 
         $this->assertStringContainsString('name="schemaOrgData[global][data][name]"', $html);
         $this->assertStringContainsString('<textarea id="schemaOrgData_global_description"', $html);
-        $this->assertStringContainsString('name="schemaOrgData[global][data][priceRange]"', $html);
         $this->assertStringContainsString('schemaOrgData-opening-hours', $html);
     }
 

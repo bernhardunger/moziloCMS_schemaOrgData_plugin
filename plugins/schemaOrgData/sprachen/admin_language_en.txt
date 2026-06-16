@@ -42,8 +42,6 @@ label_logo = Logo URL
 label_legal_name = Legal Name
 label_job_title = Job Title
 label_in_language = Language (e.g. en-US)
-label_price_range = Price Range
-
 label_headline = Headline
 label_author = Author
 label_date_published = Date Published

@@ -51,13 +51,6 @@
       "ui:placeholder": "https://www.beispiel.de/bild.jpg",
       "ui:required": false
     },
-    "priceRange": {
-      "type": "string",
-      "ui:widget": "select",
-      "ui:label": "label_price_range",
-      "ui:required": false,
-      "ui:options": ["€", "€€", "€€€"]
-    },
     "address": {
       "$ref": "#/definitions/PostalAddress"
     },

@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.4-beta';
+    private const PLUGIN_VERSION = '0.4.5-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1234,7 +1234,7 @@ class schemaOrgData extends Plugin {
     /***************************************************************
     *
     * Rendert eine Dropdown-Auswahl (<select>). Optionen entweder aus
-    * "ui:options" (flache Liste, z. B. priceRange) oder aus "enum" +
+    * "ui:options" (flache Liste) oder aus "enum" +
     * "ui:enumLabels" (z. B. addressCountry, sprachabhängig).
     *
     * Felder ohne "default" und ohne "ui:required" erhalten zusätzlich
@@ -2910,7 +2910,6 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-address-field--narrow { flex: 0 0 80px !important; }
 .schemaOrgData-admin .schemaOrgData-address-field--narrow input { max-width: 80px; }
 .schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
-.schemaOrgData-admin select[id$="_priceRange"] { max-width: 250px; }
 .schemaOrgData-admin select[id$="_addressCountry"] { max-width: 200px; }
 .schemaOrgData-admin input[id$="_addressRegion"] { max-width: 300px; }
 ';

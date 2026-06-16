@@ -42,13 +42,6 @@
       "ui:label": "label_email",
       "ui:placeholder": "info@beispiel.de",
       "ui:required": false
-    },
-    "priceRange": {
-      "type": "string",
-      "ui:widget": "select",
-      "ui:label": "label_price_range",
-      "ui:required": false,
-      "ui:options": ["€", "€€", "€€€"]
     }
   }
 }
