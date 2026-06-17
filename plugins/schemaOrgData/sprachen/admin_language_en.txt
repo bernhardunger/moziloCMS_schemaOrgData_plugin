@@ -12,6 +12,8 @@ info_text_category = This configuration is output on all pages of this category,
 info_text_page = This configuration is output only on this single page, in addition to the global and category configuration. If this page has the same schema type configured as a more general level, empty fields here inherit their value from that level - filled fields override that level's output for that type.
 info_text_general = The generated JSON-LD is output invisibly in the page's &lt;head&gt; and does not appear in the visible page content. It can be checked with the official Schema.org validator at https://validator.schema.org.
 
+info_text_template_global = Note: A JSON-LD block embedded directly in the layout template applies to the entire website. Such a block is therefore detected and shown only here in the 'Global' scope – not at category or page level.
+
 notice_type_collision = A configuration for type "{PARAM1}" also exists at the {PARAM2} level. Empty fields here inherit their value from that level - filled fields override the output of {PARAM2} for this type.
 
 label_excluded_cats = Exceptions (categories without global output)

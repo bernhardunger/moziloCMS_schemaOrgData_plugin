@@ -529,6 +529,55 @@ final class PersistenceTest extends TestCase {
         $this->assertStringContainsString('Filiale Nord', $html);
         $this->assertStringContainsString('Musterstrasse 5', $html);
     }
+
+    /***************************************************************
+    *
+    * Regressionstest 0.4.8-beta: Ein im Layout-Template gefundener
+    * JSON-LD-Block ist layoutweit und damit kein seiten-/kategorie-
+    * spezifisches Signal. renderAdminPage() darf das existing_jsonld-
+    * Flag deshalb nur für 'global' setzen, nicht für die gerade
+    * aktive Kategorie (siehe README.md).
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testTemplateJsonLdIsPersistedOnlyForGlobalScope(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $layout = 'schemaOrgData_test_' . uniqid();
+        $layoutDir = \BASE_DIR . \LAYOUT_DIR_NAME . '/' . $layout;
+        mkdir($layoutDir, 0777, true);
+        file_put_contents(
+            $layoutDir . '/template.html',
+            '<head><script type="application/ld+json">{"@context":"https://schema.org"}</script></head>'
+        );
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        global $CatPage;
+        $cat = 'unterseite';
+        $CatPage = new FakeCatPageWithPages([$cat]);
+
+        $plugin = $this->createPlugin();
+        $_POST['schemaOrgData_cat'] = $cat;
+        $_POST['schemaOrgData_page'] = '';
+
+        callPluginMethod($plugin, 'renderAdminPage', []);
+
+        unset($CatPage);
+        unlink($layoutDir . '/template.html');
+        rmdir($layoutDir);
+
+        $globalMeta = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+        $categoryMeta = callPluginMethod($plugin, 'loadScopeMeta', ['category', $cat]);
+
+        $this->assertTrue($globalMeta['existing_jsonld']);
+        $this->assertFalse($categoryMeta['existing_jsonld']);
+    }
 }
 
 /***************************************************************

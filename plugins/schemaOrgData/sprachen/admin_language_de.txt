@@ -12,6 +12,8 @@ info_text_category = Diese Konfiguration wird zusätzlich zur globalen Konfigura
 info_text_page = Diese Konfiguration wird zusätzlich zur globalen und zur Kategorie-Konfiguration nur auf dieser einzelnen Seite ausgegeben. Ist für diese Seite derselbe Schema-Type wie auf einer allgemeineren Ebene konfiguriert, übernimmt diese Konfiguration leere Felder von dieser Ebene - gefüllte Felder überschreiben deren Ausgabe für diesen Type.
 info_text_general = Das erzeugte JSON-LD wird unsichtbar im &lt;head&gt;-Bereich der Seite ausgegeben und erscheint nicht im sichtbaren Seiteninhalt. Es kann mit dem offiziellen Schema.org-Validator unter https://validator.schema.org geprüft werden.
 
+info_text_template_global = Hinweis: Ein direkt im Layout-Template eingebundener JSON-LD-Block gilt für die gesamte Website. Ein solcher Block wird daher ausschließlich hier im Geltungsbereich „Global" erkannt und angezeigt – nicht auf Kategorie- oder Seitenebene.
+
 notice_type_collision = Für den Type "{PARAM1}" ist auch auf Ebene {PARAM2} eine Konfiguration vorhanden. Leere Felder werden von der übergeordneten Ebene übernommen - gefüllte Felder überschreiben die Ausgabe von {PARAM2} für diesen Type.
 
 label_excluded_cats = Ausnahmen (Kategorien ohne globale Ausgabe)

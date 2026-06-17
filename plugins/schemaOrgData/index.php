@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.7-beta';
+    private const PLUGIN_VERSION = '0.4.8-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -1943,8 +1943,16 @@ class schemaOrgData extends Plugin {
             return '';
         }
 
+        // Im Global-Scope zusätzlicher Hinweis, dass eine im Layout-Template
+        // erkannte JSON-LD-Kollision ausschließlich hier angezeigt wird
+        // (siehe renderAdminPage(), Template-Detection ist layoutweit).
+        $templateNotice = ($scope === 'global')
+            ? '<p>'.$lang->getLanguageHtml('info_text_template_global').'</p>'
+            : '';
+
         return '<div class="schemaOrgData-info">'
             .'<p>'.$lang->getLanguageHtml($key).'</p>'
+            .$templateNotice
             .'<p>'.$lang->getLanguageHtml('info_text_general').'</p>'
             .'</div>'."\n";
     }
@@ -3213,17 +3221,24 @@ class schemaOrgData extends Plugin {
         // Scope-Selektor rendern
         $html .= $this->renderScopeSelector($selectedCat, $selectedPage);
 
-        // Template-Kollisionserkennung: im Admin-Kontext (IS_ADMIN) live prüfen
-        // und für den aktiven Scope persistieren — Properties::set() schreibt
-        // im IS_ADMIN-Kontext auf die Platte (im Frontend war set() ein No-Op).
-        // Reihenfolge: erst saveScopeMeta(), dann renderScopeSection(), damit
-        // renderExistingJsonLdNotice() das frisch gesetzte Flag sieht.
+        // Template-Kollisionserkennung: im Admin-Kontext (IS_ADMIN) live prüfen.
+        // Ein im Layout-Template eingebundener JSON-LD-Block ist layoutweit
+        // und damit kein seiten-/kategoriespezifisches Signal - das Ergebnis
+        // wird deshalb unabhängig vom aktiven Scope ausschließlich dem
+        // Global-Scope zugeordnet (siehe README.md). Properties::set()
+        // schreibt im IS_ADMIN-Kontext auf die Platte (im Frontend war
+        // set() ein No-Op). Reihenfolge: erst saveScopeMeta(), dann
+        // renderScopeSection(), damit renderExistingJsonLdNotice() das
+        // frisch gesetzte Flag sieht.
         $templateHasJsonLd = $this->detectExistingJsonLdInTemplateAdmin();
 
-        // Global immer rendern (aktiv wenn keine Kategorie gewählt)
-        if ($selectedCat === null) {
+        // Schreib-Guard: nur bei tatsächlicher Änderung persistieren, um
+        // nicht bei jedem Admin-Load einen file_put_contents auszulösen.
+        if ($this->loadScopeMeta('global')['existing_jsonld'] !== $templateHasJsonLd) {
             $this->saveScopeMeta('global', ['existing_jsonld' => $templateHasJsonLd]);
         }
+
+        // Global immer rendern (aktiv wenn keine Kategorie gewählt)
         $html .= $this->renderScopeSection(
             'global', null, null,
             active: $selectedCat === null,
@@ -3247,9 +3262,6 @@ class schemaOrgData extends Plugin {
             // einer neuen Kategorie/Seite wirkt das wie geleerte Feldwerte.
             $safeCat   = $this->sanitizeScopeIdentifier($cat);
             $catActive = ($safeCat === $selectedCat && $selectedPage === null);
-            if ($catActive) {
-                $this->saveScopeMeta('category', ['existing_jsonld' => $templateHasJsonLd], $cat);
-            }
             $html .= $this->renderScopeSection(
                 'category', $cat, null,
                 active: $catActive,
@@ -3264,9 +3276,6 @@ class schemaOrgData extends Plugin {
                 foreach ($pages as $page) {
                     $safePage   = $this->sanitizeScopeIdentifier($page);
                     $pageActive = ($safeCat === $selectedCat && $safePage === $selectedPage);
-                    if ($pageActive) {
-                        $this->saveScopeMeta('page', ['existing_jsonld' => $templateHasJsonLd], $cat, $page);
-                    }
                     $html .= $this->renderScopeSection(
                         'page', $cat, $page,
                         active: $pageActive,
