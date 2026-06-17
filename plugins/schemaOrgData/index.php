@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.6-beta';
+    private const PLUGIN_VERSION = '0.4.7-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -442,6 +442,70 @@ class schemaOrgData extends Plugin {
         $content = file_get_contents($TEMPLATE_FILE);
         return $content !== false
             && (bool) preg_match('#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i', $content);
+    }
+
+    /***************************************************************
+    *
+    * Prüft im Admin-Kontext, ob das aktiv ausgelieferte Layout-Template
+    * einen <script type="application/ld+json">-Block enthält.
+    *
+    * Im Gegensatz zu detectExistingJsonLdInTemplate() wird der
+    * Template-Pfad NICHT aus der globalen $TEMPLATE_FILE-Variablen
+    * (die im Admin undefiniert ist) gelesen, sondern aus
+    * $CMS_CONF->get('cmslayout') abgeleitet. Bei aktivem Draftmode
+    * wird zusätzlich das Draftlayout geprüft (mirrors
+    * moziloCMS-Frontend-index.php:87–91). Inaktive Layouts werden
+    * bewusst NICHT geprüft (False-Positive-Schutz).
+    *
+    * Je ermitteltem Layout werden template.html und
+    * gallerytemplate.html geprüft (Pfadbildung analog
+    * admin/template.php:46 / admin/editsite.php:346). Defensiv:
+    * $CMS_CONF / LAYOUT_DIR_NAME / BASE_DIR auf Verfügbarkeit geprüft,
+    * file_exists/Lesbarkeit abgesichert.
+    *
+    * @return bool true wenn mindestens ein JSON-LD-Block gefunden wurde
+    *
+    ***************************************************************/
+    private function detectExistingJsonLdInTemplateAdmin(): bool {
+        global $CMS_CONF;
+
+        if (!defined('BASE_DIR') || !defined('LAYOUT_DIR_NAME')
+            || !isset($CMS_CONF) || !is_object($CMS_CONF)) {
+            return false;
+        }
+
+        $activeLayout = (string) ($CMS_CONF->get('cmslayout') ?? '');
+        if ($activeLayout === '' || $activeLayout === 'false') {
+            return false;
+        }
+
+        // Immer das aktive Layout prüfen; Draftlayout zusätzlich nur
+        // wenn Draftmode aktiviert und Draftlayout gültig gesetzt ist.
+        $layoutsToCheck = [$activeLayout];
+
+        if ($CMS_CONF->get('draftmode') === 'true') {
+            $draftLayout = (string) ($CMS_CONF->get('draftlayout') ?? '');
+            if ($draftLayout !== '' && $draftLayout !== 'false') {
+                $layoutsToCheck[] = $draftLayout;
+            }
+        }
+
+        $regex = '#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i';
+
+        foreach ($layoutsToCheck as $layout) {
+            foreach (['template.html', 'gallerytemplate.html'] as $tplFile) {
+                $path = BASE_DIR . LAYOUT_DIR_NAME . '/' . $layout . '/' . $tplFile;
+                if (!file_exists($path) || !is_readable($path)) {
+                    continue;
+                }
+                $content = file_get_contents($path);
+                if ($content !== false && (bool) preg_match($regex, $content)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /***************************************************************
@@ -3149,7 +3213,17 @@ class schemaOrgData extends Plugin {
         // Scope-Selektor rendern
         $html .= $this->renderScopeSelector($selectedCat, $selectedPage);
 
+        // Template-Kollisionserkennung: im Admin-Kontext (IS_ADMIN) live prüfen
+        // und für den aktiven Scope persistieren — Properties::set() schreibt
+        // im IS_ADMIN-Kontext auf die Platte (im Frontend war set() ein No-Op).
+        // Reihenfolge: erst saveScopeMeta(), dann renderScopeSection(), damit
+        // renderExistingJsonLdNotice() das frisch gesetzte Flag sieht.
+        $templateHasJsonLd = $this->detectExistingJsonLdInTemplateAdmin();
+
         // Global immer rendern (aktiv wenn keine Kategorie gewählt)
+        if ($selectedCat === null) {
+            $this->saveScopeMeta('global', ['existing_jsonld' => $templateHasJsonLd]);
+        }
         $html .= $this->renderScopeSection(
             'global', null, null,
             active: $selectedCat === null,
@@ -3173,6 +3247,9 @@ class schemaOrgData extends Plugin {
             // einer neuen Kategorie/Seite wirkt das wie geleerte Feldwerte.
             $safeCat   = $this->sanitizeScopeIdentifier($cat);
             $catActive = ($safeCat === $selectedCat && $selectedPage === null);
+            if ($catActive) {
+                $this->saveScopeMeta('category', ['existing_jsonld' => $templateHasJsonLd], $cat);
+            }
             $html .= $this->renderScopeSection(
                 'category', $cat, null,
                 active: $catActive,
@@ -3187,6 +3264,9 @@ class schemaOrgData extends Plugin {
                 foreach ($pages as $page) {
                     $safePage   = $this->sanitizeScopeIdentifier($page);
                     $pageActive = ($safeCat === $selectedCat && $safePage === $selectedPage);
+                    if ($pageActive) {
+                        $this->saveScopeMeta('page', ['existing_jsonld' => $templateHasJsonLd], $cat, $page);
+                    }
                     $html .= $this->renderScopeSection(
                         'page', $cat, $page,
                         active: $pageActive,
