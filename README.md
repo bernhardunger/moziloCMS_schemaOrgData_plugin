@@ -39,6 +39,7 @@ Das Plugin ist **vollständig eigenständig** und setzt kein anderes Plugin (z. 
 | `LocalBusiness` | Lokales Unternehmen | Global / Kategorie |
 | `ProfessionalService` | Dienstleister (z. B. Anwaltskanzlei, Arztpraxis) | Global / Kategorie |
 | `Organization` | Organisation / Firma | Global |
+| `NGO` | Gemeinnützige Organisation (Verein, Stiftung u. a.) | Global |
 | `Person` | Einzelperson | Global / Kategorie |
 | `WebSite` | Website-Metadaten | Global |
 | `FAQPage` | Häufig gestellte Fragen | Kategorie / Seite |
@@ -213,6 +214,52 @@ Das Plugin gibt das JSON-LD als `<script>`-Tag im `<head>` aus:
 > 🔗 [https://validator.schema.org](https://validator.schema.org)
 
 Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global + Kategorie + Seite = bis zu drei Blöcke). Types die ausschließlich auf Globalebene sinnvoll sind (`WebSite`, `Organization`) werden nur einmal ausgegeben.
+
+---
+
+## @id-Anker (stabile Knoten-Identität)
+
+Ausgewählte Schema-Types erhalten zusätzlich eine stabile `@id` — eine URI, die
+den Knoten innerhalb des Datengraphen eindeutig identifiziert. Spätere
+Erweiterungen (z. B. eine Spendenaktion oder Veranstaltung) können so per `@id`
+auf den global definierten Organisationsknoten verweisen, ohne den
+Organisationsblock auf jeder Seite zu wiederholen.
+
+```html
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "NGO",
+  "@id": "https://www.example.org/#organization",
+  "name": "Beispiel-Hilfe e. V.",
+  "url": "https://www.example.org",
+  "nonprofitStatus": "DERegisteredAssociationCharity"
+}
+</script>
+```
+
+**Generisch und schema-getrieben.** Ob und unter welchem URI-Fragment ein Type
+eine `@id` bekommt, wird ausschließlich in der jeweiligen Schema-Datei über die
+Property `ui:idFragment` festgelegt — es gibt keine Type-Namen im PHP-Code.
+Org-Identitätstypen (z. B. `Organization`, `NGO`) teilen sich das Fragment
+`organization`; pro Seite trägt **genau ein** Knoten `#organization`. Schema-
+Dateien ohne `ui:idFragment` erhalten unverändert keine `@id`.
+
+**Basis-URL.** Die absolute Basis-URL wird zur Ausgabezeit aus dem aktuellen
+Request abgeleitet (Protokoll + Host + Pfad), analog zur kanonischen URL des
+moziloCMS-Kerns. Das Plugin besitzt **kein** eigenes Domain-Setting; damit die
+`@id` stabil und eindeutig bleibt, sollte die Installation per `.htaccess` auf
+einen kanonischen Host umleiten (z. B. 301 auf den `www`-Host und auf HTTPS).
+Lässt sich kein Host ermitteln, wird **keine** (leere) `@id` ausgegeben.
+
+**De-Dup-Guard.** Würden mehrere ausgegebene Knoten dasselbe Fragment tragen,
+erhält nur der erste in Ausgabereihenfolge die `@id`; die übrigen bleiben ohne
+Anker. Eine einmal gesetzte `@id` wird nie still entfernt — sie steht immer
+direkt hinter `@type` im Output.
+
+> **Künftige Optionen (noch nicht umgesetzt):** ein optionales manuelles
+> Basis-URL-/Domain-Setting (für Reverse-Proxy-/CDN-Szenarien) sowie die
+> Darstellung einer Entität mit mehreren Typen über ein `@type`-Array.
 
 ---
 

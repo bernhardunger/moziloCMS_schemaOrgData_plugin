@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.8-beta';
+    private const PLUGIN_VERSION = '0.4.9-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'de';
@@ -131,17 +131,22 @@ class schemaOrgData extends Plugin {
 
         // JSON-LD-Blöcke der verbleibenden Types ausgeben; bei aktivem
         // Debug-Modus Metadaten je Block für buildDebugWidget() sammeln.
+        // Pro Seite vergebene @id-Fragmente, für den De-Dup-Guard in
+        // resolveNodeId() (siehe README.md, "@id-Anker").
+        $assignedFragments = [];
+
         $debugBlocks = [];
         foreach($scopeConfigs as $scope => $config) {
             foreach($config as $type => $data) {
-                $output .= $this->buildJsonLdScript($type, $data);
+                $nodeId = $this->resolveNodeId($type, $assignedFragments);
+                $output .= $this->buildJsonLdScript($type, $data, $nodeId);
                 if($debugOutput) {
                     $scopeKey = match($scope) {
                         'category' => 'cat_'.(CAT_REQUEST ? (string) CAT_REQUEST : ''),
                         'page'     => 'page_'.(CAT_REQUEST ? (string) CAT_REQUEST : '').'_'.(PAGE_REQUEST ? (string) PAGE_REQUEST : ''),
                         default    => 'global',
                     };
-                    $debugBlocks[] = ['scope' => $scopeKey, 'type' => $type, 'data' => $data];
+                    $debugBlocks[] = ['scope' => $scopeKey, 'type' => $type, 'data' => $data, 'id' => $nodeId];
                 }
             }
         }
@@ -281,6 +286,87 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Ermittelt die absolute Basis-URL der Installation als Quelle
+    * für stabile @id-Anker (siehe README.md, Abschnitt "@id-Anker").
+    *
+    * Gespiegelt wird das Core-Muster der kanonischen URL ({CANONICAL_LINK}):
+    * Protokoll (aus $_SERVER['HTTPS']) + Host (aus $_SERVER['HTTP_HOST'])
+    * + Pfad (Verzeichnis von $_SERVER['SCRIPT_NAME']). Es gibt bewusst
+    * kein eigenes Domain-Setting; die Host-Kanonisierung (z. B. 301 auf
+    * den www-/HTTPS-Host) erfolgt projektseitig per .htaccess.
+    *
+    * @return string absolute Basis-URL mit abschließendem "/" oder ''
+    *                (leer, wenn kein Host ermittelbar ist - dann wird
+    *                kein @id gebildet, siehe resolveNodeId())
+    *
+    ***************************************************************/
+    private function resolveBaseUrl(): string {
+        $host = isset($_SERVER['HTTP_HOST']) ? trim((string) $_SERVER['HTTP_HOST']) : '';
+        if($host === '') {
+            // Ohne Host keine global eindeutige URI - kein @id (siehe README.md).
+            return '';
+        }
+
+        $protocol = (!empty($_SERVER['HTTPS']) and strtolower((string) $_SERVER['HTTPS']) !== 'off')
+            ? 'https://'
+            : 'http://';
+
+        // Pfad-Anteil aus dem Verzeichnis von SCRIPT_NAME ableiten. dirname()
+        // nutzt unter Windows den Backslash als Trenner - daher das Ergebnis
+        // auf "/" normalisieren, damit die @id plattformunabhängig bleibt.
+        $scriptName = isset($_SERVER['SCRIPT_NAME']) ? (string) $_SERVER['SCRIPT_NAME'] : '';
+        $dir = $scriptName !== '' ? str_replace('\\', '/', dirname($scriptName)) : '';
+        $path = $dir !== '' ? rtrim($dir, '/').'/' : '/';
+
+        return $protocol.$host.$path;
+    }
+
+    /***************************************************************
+    *
+    * Bestimmt den @id-Anker für einen auszugebenden Knoten anhand der
+    * Schema-Property "ui:idFragment" (siehe README.md, Abschnitt
+    * "@id-Anker"). Der Mechanismus ist vollständig schema-getrieben -
+    * im PHP stehen keine Type-Namen.
+    *
+    * De-Dup-Guard: Ein Fragment darf pro Seite nur EINEM Knoten
+    * zugewiesen werden. Tragen mehrere Knoten dasselbe Fragment
+    * (z. B. "organization"), erhält nur der erste in Ausgabereihenfolge
+    * den Anker; die übrigen bleiben ohne @id. $assignedFragments wird
+    * dafür je vergebenem Fragment fortgeschrieben.
+    *
+    * Lässt sich die Basis-URL nicht auflösen, wird KEIN (leeres) @id
+    * gebildet - das Fragment bleibt dann unbelegt.
+    *
+    * @param string $type Schema.org-Type des Knotens
+    * @param array  $assignedFragments bereits vergebene Fragmente (per Referenz)
+    * @return string vollständige @id-URI oder '' (kein Anker)
+    *
+    ***************************************************************/
+    private function resolveNodeId(string $type, array &$assignedFragments): string {
+        $schema = $this->loadSchema($type);
+        $fragment = is_array($schema) ? trim((string) ($schema['ui:idFragment'] ?? '')) : '';
+        if($fragment === '') {
+            // Schema ohne ui:idFragment -> kein @id (unverändertes Verhalten).
+            return '';
+        }
+
+        if(in_array($fragment, $assignedFragments, true)) {
+            // Fragment bereits an einen anderen Knoten dieser Seite vergeben.
+            return '';
+        }
+
+        $baseUrl = $this->resolveBaseUrl();
+        if($baseUrl === '') {
+            // Basis-URL nicht auflösbar -> kein leeres @id schlucken.
+            return '';
+        }
+
+        $assignedFragments[] = $fragment;
+        return $baseUrl.'#'.$fragment;
+    }
+
+    /***************************************************************
+    *
     * Liefert alle verfügbaren Schema-Types anhand der .json-Dateien
     * im Verzeichnis schemas/.
     *
@@ -303,10 +389,12 @@ class schemaOrgData extends Plugin {
     *
     * @param string $type Schema.org-Type, z. B. "LocalBusiness"
     * @param array $data  Properties (Formular + Erweiterungsfeld zusammengeführt)
+    * @param string $nodeId optionaler @id-Anker (siehe README.md, "@id-Anker");
+    *               wird - sofern nicht-leer - direkt hinter @type eingefügt
     * @return string fertiger <script>-Block inkl. Zeilenumbruch
     *
     ***************************************************************/
-    private function buildJsonLdScript(string $type, array $data): string {
+    private function buildJsonLdScript(string $type, array $data, string $nodeId = ''): string {
         // Werte wurden beim Speichern mit htmlspecialchars() gesichert -
         // vor dem JSON-Encode wieder in Klartext umwandeln.
         $data = $this->decodeJsonLdValues($data);
@@ -323,10 +411,14 @@ class schemaOrgData extends Plugin {
             }
         }
 
-        $jsonLd = array_merge(
-            ['@context' => 'https://schema.org', '@type' => $type],
-            $data
-        );
+        // @id-Anker erst NACH dem Leerfilter setzen, damit ein gesetzter
+        // Anker nie still getilgt wird (siehe README.md, "@id-Anker").
+        $head = ['@context' => 'https://schema.org', '@type' => $type];
+        if($nodeId !== '') {
+            $head['@id'] = $nodeId;
+        }
+
+        $jsonLd = array_merge($head, $data);
 
         $json = json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         if($json === false) {
@@ -3011,9 +3103,10 @@ class schemaOrgData extends Plugin {
         $html .= '</div></div>'."\n";
 
         foreach($blocks as $i => $block) {
-            $type  = $block['type'];
-            $scope = $block['scope'];
-            $data  = $block['data'];
+            $type   = $block['type'];
+            $scope  = $block['scope'];
+            $data   = $block['data'];
+            $nodeId = (string) ($block['id'] ?? '');
             $preId  = 'schemaOrgData-debug-pre-'.$i;
             $copyId = 'schemaOrgData-debug-copy-'.$i;
 
@@ -3026,7 +3119,11 @@ class schemaOrgData extends Plugin {
                     $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
                 }
             }
-            $jsonLd = array_merge(['@context' => 'https://schema.org', '@type' => $type], $data);
+            $head = ['@context' => 'https://schema.org', '@type' => $type];
+            if($nodeId !== '') {
+                $head['@id'] = $nodeId;
+            }
+            $jsonLd = array_merge($head, $data);
             $prettyJson = json_encode($jsonLd, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
             $html .= '<div style="margin-bottom:1.5em;">'."\n";
