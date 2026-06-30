@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.10-beta';
+    private const PLUGIN_VERSION = '0.4.11-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -1020,16 +1020,21 @@ class schemaOrgData extends Plugin {
     *
     * Zerlegt ein openingHours-Array (schema.org-Notation, z. B.
     * "Mo-Fr 09:00-18:00") in Von/Bis-Zeiten je Wochentag.
+    * Mehrere Einträge für denselben Tag werden gesammelt und nach
+    * from-Zeit sortiert: frühester Eintrag → Hauptzeitraum
+    * (from/to), zweiter Eintrag (falls vorhanden) → zweiter
+    * Zeitraum (from2/to2). Ein dritter Eintrag für denselben Tag
+    * wird ignoriert (außerhalb des Widget-Scopes).
     *
     * @param array $openingHours z. B. ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
     * @param string[] $days Wochentags-Kürzel in Reihenfolge, z. B. ["Mo",...,"Su"]
-    * @return array<string,array{from:string,to:string}> je Tag "from"/"to" (leer = geschlossen)
+    * @return array<string,array{from:string,to:string,from2:string,to2:string}> je Tag (leer = geschlossen)
     *
     ***************************************************************/
     private function parseOpeningHours(array $openingHours, array $days): array {
-        $result = [];
+        $collected = [];
         foreach($days as $day) {
-            $result[$day] = ['from' => '', 'to' => ''];
+            $collected[$day] = [];
         }
 
         foreach($openingHours as $entry) {
@@ -1051,8 +1056,20 @@ class schemaOrgData extends Plugin {
             }
 
             for($i = $startIndex; $i <= $endIndex; $i++) {
-                $result[$days[$i]] = ['from' => $from, 'to' => $to];
+                $collected[$days[$i]][] = ['from' => $from, 'to' => $to];
             }
+        }
+
+        $result = [];
+        foreach($days as $day) {
+            $entries = $collected[$day];
+            usort($entries, fn($a, $b) => strcmp($a['from'], $b['from']));
+            $result[$day] = [
+                'from'  => $entries[0]['from'] ?? '',
+                'to'    => $entries[0]['to'] ?? '',
+                'from2' => $entries[1]['from'] ?? '',
+                'to2'   => $entries[1]['to'] ?? '',
+            ];
         }
 
         return $result;
@@ -1064,14 +1081,17 @@ class schemaOrgData extends Plugin {
     * in schema.org-Notation. Aufeinanderfolgende Tage mit identischen
     * Zeiten werden zu einem Bereich (z. B. "Mo-Fr 09:00-18:00")
     * zusammengefasst. Tage ohne Zeiten ("geschlossen") werden
-    * ausgelassen.
+    * ausgelassen. $fromKey/$toKey wählen das Felderpaar (Hauptzeitraum
+    * "from"/"to" oder zweiter Zeitraum "from2"/"to2").
     *
-    * @param array<string,array{from:string,to:string}> $perDay je Tag "from"/"to"
+    * @param array<string,array> $perDay je Tag Zeitpaare
     * @param string[] $days Wochentags-Kürzel in Reihenfolge, z. B. ["Mo",...,"Su"]
+    * @param string $fromKey Schlüssel für Von-Zeit im $perDay-Eintrag
+    * @param string $toKey   Schlüssel für Bis-Zeit im $perDay-Eintrag
     * @return string[] z. B. ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
     *
     ***************************************************************/
-    private function buildOpeningHoursArray(array $perDay, array $days): array {
+    private function buildOpeningHoursArray(array $perDay, array $days, string $fromKey = 'from', string $toKey = 'to'): array {
         $result = [];
         $rangeStart = null;
         $rangeEnd = null;
@@ -1089,8 +1109,8 @@ class schemaOrgData extends Plugin {
         };
 
         foreach($days as $day) {
-            $from = trim((string) ($perDay[$day]['from'] ?? ''));
-            $to = trim((string) ($perDay[$day]['to'] ?? ''));
+            $from = trim((string) ($perDay[$day][$fromKey] ?? ''));
+            $to = trim((string) ($perDay[$day][$toKey] ?? ''));
 
             if($from === '' or $to === '') {
                 $flush();
@@ -1664,6 +1684,8 @@ class schemaOrgData extends Plugin {
             ? $value
             : $this->parseOpeningHours($value, $days);
 
+        $secondRangeLabel = $lang->getLanguageHtml('label_opening_hours_second_range');
+
         $html = '<table class="schemaOrgData-opening-hours">'."\n";
         $html .= '<thead><tr><th></th><th>'.$lang->getLanguageHtml('label_opening_hours_from').' – '
             .$lang->getLanguageHtml('label_opening_hours_to').'</th></tr></thead>'."\n";
@@ -1673,10 +1695,16 @@ class schemaOrgData extends Plugin {
             $dayLabel = isset($dayLabelKeys[$day]) ? $weekdayLang->getLanguageHtml($dayLabelKeys[$day]) : htmlspecialchars($day, ENT_QUOTES, CHARSET);
             $fromId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_from';
             $toId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_to';
+            $from2Id = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_from2';
+            $to2Id = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_to2';
             $fromName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][from]';
             $toName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][to]';
-            $from = trim((string) ($perDay[$day]['from'] ?? ''));
-            $to = trim((string) ($perDay[$day]['to'] ?? ''));
+            $from2Name = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][from2]';
+            $to2Name = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][to2]';
+            $from  = trim((string) ($perDay[$day]['from']  ?? ''));
+            $to    = trim((string) ($perDay[$day]['to']    ?? ''));
+            $from2 = trim((string) ($perDay[$day]['from2'] ?? ''));
+            $to2   = trim((string) ($perDay[$day]['to2']   ?? ''));
 
             $fromInput = $this->renderTextWidget($fromId, $fromName, ['ui:placeholder' => '09:00'], $from, [
                 'data-validate' => 'opening_hours', 'data-pair' => $toId, 'maxlength' => '5',
@@ -1684,13 +1712,32 @@ class schemaOrgData extends Plugin {
             $toInput = $this->renderTextWidget($toId, $toName, ['ui:placeholder' => '18:00'], $to, [
                 'data-validate' => 'opening_hours', 'data-pair' => $fromId, 'maxlength' => '5',
             ]);
+            $from2Input = $this->renderTextWidget($from2Id, $from2Name, ['ui:placeholder' => '13:00'], $from2, [
+                'data-validate' => 'opening_hours', 'data-pair' => $to2Id, 'maxlength' => '5',
+            ]);
+            $to2Input = $this->renderTextWidget($to2Id, $to2Name, ['ui:placeholder' => '18:00'], $to2, [
+                'data-validate' => 'opening_hours', 'data-pair' => $from2Id, 'maxlength' => '5',
+            ]);
 
             $feedback = $this->renderValidationFeedback($this->validateOpeningHoursTime($from, $to), $fromId.'_feedback');
 
+            $feedback2Result = $this->validateOpeningHoursTime($from2, $to2);
+            if($feedback2Result['status'] === null && $from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
+                $feedback2Result = ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_overlap')];
+            }
+            $feedback2 = $this->renderValidationFeedback($feedback2Result, $from2Id.'_feedback');
+
             $html .= '<tr><td>'.$dayLabel.'</td>'
-                .'<td><div class="schemaOrgData-opening-hours-group">'.$fromInput
+                .'<td>'
+                .'<div class="schemaOrgData-opening-hours-group">'.$fromInput
                 .'<span class="schemaOrgData-opening-hours-sep">–</span>'
-                .$toInput.'</div>'.$feedback.'</td></tr>'."\n";
+                .$toInput.'</div>'.$feedback
+                .'<div class="schemaOrgData-opening-hours-group schemaOrgData-opening-hours-second">'
+                .'<span class="schemaOrgData-opening-hours-range-label">'.$secondRangeLabel.':</span>'
+                .$from2Input
+                .'<span class="schemaOrgData-opening-hours-sep">–</span>'
+                .$to2Input.'</div>'.$feedback2
+                .'</td></tr>'."\n";
         }
 
         $html .= '</tbody></table>'."\n";
@@ -2572,12 +2619,24 @@ class schemaOrgData extends Plugin {
                 $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
                 $perDay = is_array($value) ? $value : [];
                 foreach($days as $day) {
-                    $result = $this->validateOpeningHoursTime(
-                        (string) ($perDay[$day]['from'] ?? ''),
-                        (string) ($perDay[$day]['to'] ?? '')
-                    );
+                    $from  = (string) ($perDay[$day]['from']  ?? '');
+                    $to    = (string) ($perDay[$day]['to']    ?? '');
+                    $from2 = (string) ($perDay[$day]['from2'] ?? '');
+                    $to2   = (string) ($perDay[$day]['to2']   ?? '');
+
+                    $result = $this->validateOpeningHoursTime($from, $to);
                     if($result['status'] === 'error') {
                         $errors[] = $result['message'];
+                    }
+
+                    $result2 = $this->validateOpeningHoursTime($from2, $to2);
+                    if($result2['status'] === 'error') {
+                        $errors[] = $result2['message'];
+                    }
+
+                    // Zweiter Zeitraum darf nicht vor Ende des ersten beginnen
+                    if($from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
+                        $errors[] = $lang->getLanguageValue('error_opening_hours_overlap');
                     }
                 }
                 continue;
@@ -2763,7 +2822,10 @@ class schemaOrgData extends Plugin {
 
             if($widget === 'opening_hours') {
                 $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-                $openingHours = $this->buildOpeningHoursArray(is_array($value) ? $value : [], $days);
+                $perDay = is_array($value) ? $value : [];
+                $primary = $this->buildOpeningHoursArray($perDay, $days);
+                $secondary = $this->buildOpeningHoursArray($perDay, $days, 'from2', 'to2');
+                $openingHours = array_merge($primary, $secondary);
                 if($openingHours !== []) {
                     $result[$name] = $openingHours;
                 }
@@ -3224,6 +3286,8 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-opening-hours-group { display: flex; align-items: center; gap: 4px; }
 .schemaOrgData-admin .schemaOrgData-opening-hours-group input { max-width: 80px; }
 .schemaOrgData-admin .schemaOrgData-opening-hours-sep { color: #999; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-second { margin-top: 2px; opacity: .75; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-range-label { font-size: .85em; color: #666; white-space: nowrap; }
 .schemaOrgData-admin .schemaOrgData-faq-entry { border-top: 1px solid #eee; padding-top: .5em; margin-top: .5em; }
 .schemaOrgData-admin .schemaOrgData-faq-entry:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 .schemaOrgData-admin .schemaOrgData-checkbox { display: inline-block; margin: 0 1em .25em 0; }

@@ -155,6 +155,14 @@ Das Öffnungszeiten-Widget bildet die sieben Wochentage als Zeitraum-Felder ab (
 "openingHours": ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
 ```
 
+Je Wochentag steht zusätzlich ein **optionaler zweiter Zeitraum** (Pause) zur Verfügung. Beide Felder des zweiten Zeitraums müssen gemeinsam befüllt oder gemeinsam leer sein. Der zweite Zeitraum muss nach dem Ende des ersten beginnen (`from2 >= to`). Beispiel mit Mittagspause:
+
+```json
+"openingHours": ["Mo-Fr 08:00-12:00", "Mo-Fr 13:00-17:00"]
+```
+
+Der zweite Zeitraum ist niemals Pflicht — Organisationen ohne Pause bleiben beim Ein-Zeitraum-Modell.
+
 ---
 
 ## Erweiterungsfeld (erweiterte Properties)

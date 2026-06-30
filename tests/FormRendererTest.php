@@ -123,7 +123,35 @@ final class FormRendererTest extends TestCase {
         foreach(['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as $day) {
             $this->assertStringContainsString('schemaOrgData_global_openingHours_'.$day.'_from', $html);
             $this->assertStringContainsString('schemaOrgData_global_openingHours_'.$day.'_to', $html);
+            $this->assertStringContainsString('schemaOrgData_global_openingHours_'.$day.'_from2', $html);
+            $this->assertStringContainsString('schemaOrgData_global_openingHours_'.$day.'_to2', $html);
         }
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest zweiter Zeitraum: Gespeicherte Öffnungszeiten
+    * mit Pause (zwei Einträge je Tag) werden korrekt in das Widget
+    * vorbelegt — from2/to2 zeigen die Pausenzeiten, from/to den
+    * Hauptzeitraum.
+    *
+    ***************************************************************/
+    function testOpeningHoursWidgetPreFillsSecondRange(): void {
+        $plugin = new \schemaOrgData();
+        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+
+        $value = ['Mo-Fr 08:00-12:00', 'Mo-Fr 13:00-17:00'];
+
+        $html = callPluginMethod($plugin, 'renderOpeningHoursWidget', [
+            'global', 'openingHours', $schema['properties']['openingHours'], $value,
+        ]);
+
+        $this->assertStringContainsString('value="08:00"', $html);
+        $this->assertStringContainsString('value="12:00"', $html);
+        $this->assertStringContainsString('value="13:00"', $html);
+        $this->assertStringContainsString('value="17:00"', $html);
+        $this->assertStringContainsString('schemaOrgData_global_openingHours_Mo_from2', $html);
+        $this->assertStringContainsString('schemaOrgData_global_openingHours_Mo_to2', $html);
     }
 
     /***************************************************************

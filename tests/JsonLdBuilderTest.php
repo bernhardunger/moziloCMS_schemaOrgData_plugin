@@ -75,4 +75,16 @@ final class JsonLdBuilderTest extends TestCase {
 
         $this->assertSame(['Mo-Fr 09:00-18:00', 'Sa 10:00-14:00'], $decoded['openingHours']);
     }
+
+    function testOpeningHoursWithSecondRangeProducesTwoEntries(): void {
+        $decoded = $this->build('LocalBusiness', [
+            'name' => 'Muster GmbH',
+            'openingHours' => ['Mo-Fr 08:00-12:00', 'Mo-Fr 13:00-17:00'],
+        ]);
+
+        $this->assertContains('Mo-Fr 08:00-12:00', $decoded['openingHours']);
+        $this->assertContains('Mo-Fr 13:00-17:00', $decoded['openingHours']);
+        $this->assertCount(2, $decoded['openingHours']);
+    }
 }
+
