@@ -129,6 +129,10 @@ button_use_detected_jsonld = Erkannten Block übernehmen
 
 hint_id_reference_auto_link = Wird automatisch verknüpft mit:
 
+label_id_reflit_reference = Verknüpfen mit globalem Knoten
+label_id_reflit_literal = Manuell eintragen
+hint_id_reflit_no_targets = Noch keine globale Identität konfiguriert. Bitte zuerst einen Knoten im Geltungsbereich „Global" anlegen, der ein @id-Fragment besitzt (z. B. NGO, Person).
+
 button_save = Speichern
 
 button_save_global = Globale Konfiguration speichern

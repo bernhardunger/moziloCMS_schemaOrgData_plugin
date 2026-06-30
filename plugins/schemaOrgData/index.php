@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.16-beta';
+    private const PLUGIN_VERSION = '0.4.17-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -401,6 +401,43 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Liefert alle global konfigurierten Knoten mit ui:idFragment als
+    * Fragment → Label-Map für das id_reference_or_literal-Widget.
+    *
+    * Label = Schema-Typbezeichnung + gespeicherter name-Wert (falls vorhanden).
+    * Typen ohne ui:idFragment werden übersprungen.
+    *
+    * @return array<string, string> [fragment => label]
+    *
+    ***************************************************************/
+    private function resolveAvailableGlobalFragments(): array {
+        $globalConfig = $this->loadScopeConfig('global');
+        $lang = $this->loadAdminLanguage();
+        $result = [];
+
+        foreach($globalConfig as $type => $typeData) {
+            if(!is_array($typeData)) {
+                continue;
+            }
+            $schema = $this->loadSchema($type);
+            if(!is_array($schema)) {
+                continue;
+            }
+            $fragment = trim((string) ($schema['ui:idFragment'] ?? ''));
+            if($fragment === '') {
+                continue;
+            }
+            $typeLabelKey = $schema['ui:typeLabel'] ?? $type;
+            $typeLabel = $lang->getLanguageValue($typeLabelKey);
+            $name = trim((string) ($typeData['name'] ?? ''));
+            $result[$fragment] = $name !== '' ? $typeLabel.' — '.$name : $typeLabel;
+        }
+
+        return $result;
+    }
+
+    /***************************************************************
+    *
     * Dangling-Reference-Guard für id_reference-Properties.
     *
     * Wird in getContent() nach resolveTypeInheritance() und vor der
@@ -426,20 +463,30 @@ class schemaOrgData extends Plugin {
     private function applyDanglingReferenceGuard(array $scopeConfigs, bool $globalSuppressedByKeep): array {
         $suppressedIdTargets = [];
 
-        // Alle id_reference-Targets in den aktiven Scopes sammeln.
+        // Alle id_reference- und id_reference_or_literal-Targets sammeln.
         $activeTargets = [];
         foreach($scopeConfigs as $config) {
-            foreach(array_keys($config) as $type) {
+            foreach($config as $type => $typeData) {
                 $schema = $this->loadSchema($type);
                 if(!is_array($schema)) {
                     continue;
                 }
-                foreach($schema['properties'] ?? [] as $propSchema) {
+                foreach($schema['properties'] ?? [] as $propName => $propSchema) {
                     $propSchema = $this->resolveSchemaRef($propSchema, $schema);
-                    if(($propSchema['ui:widget'] ?? '') === 'id_reference') {
+                    $widget = $propSchema['ui:widget'] ?? '';
+                    if($widget === 'id_reference') {
                         $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
                         if($target !== '') {
                             $activeTargets[] = $target;
+                        }
+                    } elseif($widget === 'id_reference_or_literal') {
+                        // Nur Referenz-Modus erzeugt eine @id-Abhängigkeit.
+                        $stored = is_array($typeData[$propName] ?? null) ? $typeData[$propName] : null;
+                        if($stored !== null and ($stored['_mode'] ?? '') === 'reference') {
+                            $fragment = trim((string) ($stored['_fragment'] ?? ''));
+                            if($fragment !== '') {
+                                $activeTargets[] = $fragment;
+                            }
                         }
                     }
                 }
@@ -572,10 +619,39 @@ class schemaOrgData extends Plugin {
             $baseUrl = $this->resolveBaseUrl();
             foreach($schema['properties'] ?? [] as $propName => $propSchema) {
                 $propSchema = $this->resolveSchemaRef($propSchema, $schema);
-                if(($propSchema['ui:widget'] ?? '') === 'id_reference') {
+                $widget = $propSchema['ui:widget'] ?? '';
+                if($widget === 'id_reference') {
                     $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
                     if($target !== '' and $baseUrl !== '' and !in_array($target, $suppressedIdTargets, true)) {
                         $data[$propName] = ['@id' => $baseUrl.'#'.$target];
+                    }
+                } elseif($widget === 'id_reference_or_literal') {
+                    // Gespeicherten Wert (Array mit _mode + _fragment oder Literal-Felder)
+                    // in das fertige JSON-LD-Objekt umwandeln.
+                    $stored = is_array($data[$propName] ?? null) ? $data[$propName] : null;
+                    unset($data[$propName]);
+                    if($stored !== null) {
+                        $mode = (string) ($stored['_mode'] ?? '');
+                        if($mode === 'reference') {
+                            $fragment = trim((string) ($stored['_fragment'] ?? ''));
+                            if($fragment !== '' and $baseUrl !== '' and !in_array($fragment, $suppressedIdTargets, true)) {
+                                $data[$propName] = ['@id' => $baseUrl.'#'.$fragment];
+                            }
+                        } elseif($mode === 'literal') {
+                            $literal = $stored;
+                            unset($literal['_mode']);
+                            // Leere Felder entfernen, bevor @type ergänzt wird,
+                            // damit ein leeres Objekt nicht allein durch @type
+                            // als nicht-leer gilt.
+                            $literal = $this->removeEmptyJsonLdProperties($literal);
+                            if($literal !== []) {
+                                $literalType = trim((string) ($propSchema['ui:literalType'] ?? ''));
+                                if($literalType !== '') {
+                                    $literal = array_merge(['@type' => $literalType], $literal);
+                                }
+                                $data[$propName] = $literal;
+                            }
+                        }
                     }
                 }
             }
@@ -1051,10 +1127,11 @@ class schemaOrgData extends Plugin {
         }
 
         foreach($schema['required'] ?? [] as $requiredProperty) {
-            // id_reference-Properties werden zur Build-Zeit automatisch emittiert
-            // und kommen nie im gespeicherten Daten-Array vor - Pflichtprüfung überspringen.
+            // id_reference wird zur Build-Zeit automatisch emittiert,
+            // id_reference_or_literal verwaltet eigene Pflichtprüfung in validateFormData().
             $propSchema = $this->resolveSchemaRef($schema['properties'][$requiredProperty] ?? [], $schema);
-            if(($propSchema['ui:widget'] ?? '') === 'id_reference') {
+            $widget = $propSchema['ui:widget'] ?? '';
+            if($widget === 'id_reference' or $widget === 'id_reference_or_literal') {
                 continue;
             }
 
@@ -1733,6 +1810,102 @@ class schemaOrgData extends Plugin {
     *        (siehe buildScopeLabel()), für den Badge-Tooltip
     *
     ***************************************************************/
+    /***************************************************************
+    *
+    * Rendert das Widget id_reference_or_literal:
+    * Radio-Auswahl zwischen „Verknüpfen" (Dropdown globaler @id-Knoten)
+    * und „Manuell" (Literal-Felder gemäß ui:literalFields).
+    *
+    * @param string $scope  Geltungsbereich (global/category/page)
+    * @param string $name   Property-Name im Schema
+    * @param array $fieldSchema Schema-Definition der Property
+    * @param array $value   Gespeicherter Wert ['_mode' => ..., ...]
+    * @param string $idPrefix Präfix für HTML-IDs
+    * @return string HTML des Widgets
+    *
+    ***************************************************************/
+    private function renderIdReferenceOrLiteralWidget(string $scope, string $name, array $fieldSchema, array $value, string $idPrefix): string {
+        $lang = $this->loadAdminLanguage();
+        $availableFragments = $this->resolveAvailableGlobalFragments();
+
+        $storedMode = (string) ($value['_mode'] ?? 'reference');
+        $storedFragment = (string) ($value['_fragment'] ?? '');
+        $refChecked = $storedMode !== 'literal' ? ' checked="checked"' : '';
+        $litChecked = $storedMode === 'literal'  ? ' checked="checked"' : '';
+        $refHidden  = $storedMode === 'literal'  ? ' style="display:none"' : '';
+        $litHidden  = $storedMode !== 'literal'  ? ' style="display:none"' : '';
+
+        $fieldNameBase = 'schemaOrgData['.$scope.'][data]['.$name.']';
+        $modeField     = $fieldNameBase.'[_mode]';
+        $fragmentField = $fieldNameBase.'[_fragment]';
+        $containerId   = 'schemaOrgData_'.$idPrefix.'_'.$name.'_idrl';
+
+        $html  = '<div class="schemaOrgData-idrl-container" id="'.htmlspecialchars($containerId, ENT_QUOTES, CHARSET).'">'."\n";
+
+        // Radio: Referenz-Modus
+        $html .= '<label class="schemaOrgData-idrl-radio-label">'
+            .'<input type="radio" class="schemaOrgData-idrl-radio"'
+            .' name="'.htmlspecialchars($modeField, ENT_QUOTES, CHARSET).'" value="reference"'
+            .$refChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
+            .' '.$lang->getLanguageHtml('label_id_reflit_reference')
+            .'</label>'."\n";
+
+        // Referenz-Dropdown
+        $html .= '<div class="schemaOrgData-idrl-section schemaOrgData-idrl-reference"'.$refHidden.'>'."\n";
+        if($availableFragments !== []) {
+            $html .= '<div class="mo-select-div flex"><select name="'.htmlspecialchars($fragmentField, ENT_QUOTES, CHARSET).'" class="mo-select flex-100">'."\n";
+            foreach($availableFragments as $fragment => $fragLabel) {
+                $sel = $fragment === $storedFragment ? ' selected="selected"' : '';
+                $html .= '<option value="'.htmlspecialchars($fragment, ENT_QUOTES, CHARSET).'"'.$sel.'>'
+                    .htmlspecialchars($fragLabel, ENT_QUOTES, CHARSET).'</option>'."\n";
+            }
+            $html .= '</select></div>'."\n";
+        } else {
+            $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_id_reflit_no_targets').'</p>'."\n";
+            $html .= '<input type="hidden" name="'.htmlspecialchars($fragmentField, ENT_QUOTES, CHARSET).'" value="" />'."\n";
+        }
+        $html .= '</div>'."\n";
+
+        // Radio: Literal-Modus
+        $html .= '<label class="schemaOrgData-idrl-radio-label">'
+            .'<input type="radio" class="schemaOrgData-idrl-radio"'
+            .' name="'.htmlspecialchars($modeField, ENT_QUOTES, CHARSET).'" value="literal"'
+            .$litChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
+            .' '.$lang->getLanguageHtml('label_id_reflit_literal')
+            .'</label>'."\n";
+
+        // Literal-Felder
+        $html .= '<div class="schemaOrgData-idrl-section schemaOrgData-idrl-literal"'.$litHidden.'>'."\n";
+        $literalFields      = $fieldSchema['ui:literalFields']      ?? [];
+        $literalFieldLabels = $fieldSchema['ui:literalFieldLabels'] ?? [];
+        foreach($literalFields as $lf) {
+            $lfId    = 'schemaOrgData_'.$idPrefix.'_'.$name.'_lf_'.$lf;
+            $lfName  = $fieldNameBase.'['.$lf.']';
+            $lfValue = (string) ($value[(string) $lf] ?? '');
+            $lfLabelKey = $literalFieldLabels[(string) $lf] ?? 'label_'.$lf;
+            $lfLabel = $lang->getLanguageHtml($lfLabelKey);
+            $html .= '<div class="c-content schemaOrgData-field-row">'."\n"
+                .'<div class="mo-in-li-l"><label for="'.htmlspecialchars($lfId, ENT_QUOTES, CHARSET).'">'.$lfLabel.'</label></div>'."\n"
+                .'<div class="mo-in-li-r"><input type="text" id="'.htmlspecialchars($lfId, ENT_QUOTES, CHARSET).'"'
+                .' name="'.htmlspecialchars($lfName, ENT_QUOTES, CHARSET).'"'
+                .' value="'.htmlspecialchars($lfValue, ENT_QUOTES, CHARSET).'"'
+                .' class="mo-input-text flex-100" /></div>'."\n"
+                .'</div>'."\n";
+        }
+        $html .= '</div>'."\n";
+        $html .= '</div>'."\n";
+
+        // Einmalig definierte Toggle-Funktion (idempotent via window-Guard).
+        $html .= '<script>if(!window.schemaOrgDataIdRlToggle){'
+            .'window.schemaOrgDataIdRlToggle=function(r){'
+            .'var c=r.closest(".schemaOrgData-idrl-container");'
+            .'c.querySelectorAll(".schemaOrgData-idrl-section").forEach(function(s){s.style.display="none";});'
+            .'c.querySelector(".schemaOrgData-idrl-"+r.value).style.display="";'
+            .'};}</script>'."\n";
+
+        return $html;
+    }
+
     private function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix = null, ?array $inheritedValue = null, ?string $inheritedLabel = null): string {
         $idPrefix = $idPrefix ?? $scope;
         $countryFieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_addressCountry';
@@ -2184,6 +2357,16 @@ class schemaOrgData extends Plugin {
                 .$infoText.' <code>'.htmlspecialchars($uri).'</code>'
                 .'</span></div>'
                 .'</div>'."\n";
+        }
+
+        if($widget === 'id_reference_or_literal') {
+            $inner = $this->renderIdReferenceOrLiteralWidget(
+                $scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix
+            );
+            return '<fieldset class="schemaOrgData-fieldset">'."\n"
+                .'<legend>'.$label.$badge.'</legend>'."\n"
+                .$inner
+                .'</fieldset>'."\n";
         }
 
         if(in_array($widget, ['postal_address', 'opening_hours', 'faq_list'], true)) {
@@ -2903,6 +3086,31 @@ class schemaOrgData extends Plugin {
                 continue;
             }
 
+            if($widget === 'id_reference_or_literal') {
+                if($required) {
+                    $stored = is_array($value) ? $value : [];
+                    $mode = (string) ($stored['_mode'] ?? 'reference');
+                    if($mode === 'reference') {
+                        $fragment = trim((string) ($stored['_fragment'] ?? ''));
+                        if($fragment === '') {
+                            $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                        }
+                    } elseif($mode === 'literal') {
+                        $hasValue = false;
+                        foreach($fieldSchema['ui:literalFields'] ?? [] as $lf) {
+                            if(trim((string) ($stored[(string) $lf] ?? '')) !== '') {
+                                $hasValue = true;
+                                break;
+                            }
+                        }
+                        if(!$hasValue) {
+                            $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                        }
+                    }
+                }
+                continue;
+            }
+
             $stringValue = trim((string) ($value ?? ''));
 
             if($stringValue === '') {
@@ -3095,6 +3303,31 @@ class schemaOrgData extends Plugin {
                 }
                 if($entries !== []) {
                     $result[$name] = $entries;
+                }
+                continue;
+            }
+
+            if($widget === 'id_reference_or_literal') {
+                if(!is_array($value)) {
+                    continue;
+                }
+                $mode = (string) ($value['_mode'] ?? '');
+                if($mode === 'reference') {
+                    $fragment = trim(strip_tags((string) ($value['_fragment'] ?? '')));
+                    if($fragment !== '') {
+                        $result[$name] = ['_mode' => 'reference', '_fragment' => $fragment];
+                    }
+                } elseif($mode === 'literal') {
+                    $literal = ['_mode' => 'literal'];
+                    foreach($fieldSchema['ui:literalFields'] ?? [] as $lf) {
+                        $lv = trim(strip_tags((string) ($value[(string) $lf] ?? '')));
+                        if($lv !== '') {
+                            $literal[(string) $lf] = $lv;
+                        }
+                    }
+                    if(count($literal) > 1) {
+                        $result[$name] = $literal;
+                    }
                 }
                 continue;
             }
@@ -3559,6 +3792,9 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
 .schemaOrgData-admin select[id$="_addressCountry"] { max-width: 200px; }
 .schemaOrgData-admin input[id$="_addressRegion"] { max-width: 300px; }
+.schemaOrgData-admin .schemaOrgData-idrl-container { margin-bottom: .25em; }
+.schemaOrgData-admin .schemaOrgData-idrl-radio-label { display: block; margin: .4em 0 .15em; cursor: pointer; }
+.schemaOrgData-admin .schemaOrgData-idrl-section { padding-left: 1.5em; margin-bottom: .25em; }
 ';
     }
 

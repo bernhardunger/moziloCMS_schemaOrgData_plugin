@@ -325,6 +325,92 @@ aktiv, hat dieser ausdrückliche Nutzerwunsch Vorrang — in diesem Fall wird di
 
 ---
 
+### Person-Fragment (`#person`)
+
+`schemas/Person.json` erhält analog zu `NGO` einen eigenen `@id`-Anker mit dem
+Fragment `"person"`. Damit können Seiten-Typen (z. B. `Event.organizer`) auf eine
+global definierte Person verweisen:
+
+```html
+<!-- Global: Person als Identitätsanker -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "@id": "https://www.example.org/#person",
+  "name": "Max Mustermann",
+  "jobTitle": "Vorstand"
+}
+</script>
+```
+
+`Person` ist ausschließlich auf dem **Global-Scope** verfügbar (kein Kategorie-Scope) —
+analog zu `NGO`. De-Dup-Guard und Dangling-Reference-Guard greifen unabhängig von
+`"organization"`: die Fragmente `#person` und `#organization` sind getrennte Anker.
+
+---
+
+### Widget `id_reference_or_literal` (selektierbare Verknüpfung)
+
+Für Properties, bei denen der Organisator wahlweise ein bekannter globaler Knoten
+**oder** eine reine Literal-Angabe sein soll (z. B. `Event.organizer`), steht das
+Widget `id_reference_or_literal` zur Verfügung.
+
+Der Nutzer wählt im Formular zwischen zwei Modi:
+
+**a) Referenz-Modus — Verknüpfen mit globalem Knoten**
+
+Das Dropdown listet automatisch alle aktuell im Global-Scope konfigurierten Typen,
+die ein `ui:idFragment` besitzen (z. B. NGO, Person). Gespeichert werden
+`_mode: "reference"` und `_fragment: "<fragment>"`. Zur Ausgabezeit emittiert das
+Plugin `{"@id": "<Basis-URL>#<fragment>"}` — exakt wie `id_reference`. Der
+Dangling-Reference-Guard greift für Referenz-Modus wie gewohnt.
+
+```json
+{
+  "@type": "Event",
+  "name": "Jahreshauptversammlung",
+  "organizer": { "@id": "https://www.example.org/#person" }
+}
+```
+
+**b) Literal-Modus — Manuell eintragen**
+
+Einfache Textfelder (definiert per `ui:literalFields` im Schema). Das Plugin emittiert
+ein eingebettetes Objekt mit optionalem `@type` (aus `ui:literalType`) — **ohne** `@id`,
+kein Dangling-Guard-Bezug.
+
+```json
+{
+  "@type": "Event",
+  "name": "Jahreshauptversammlung",
+  "organizer": {
+    "@type": "Person",
+    "name": "Max Mustermann",
+    "jobTitle": "Vorstand"
+  }
+}
+```
+
+**Schema-Deklaration:**
+
+```json
+"organizer": {
+  "type": "object",
+  "ui:widget": "id_reference_or_literal",
+  "ui:label": "label_organizer",
+  "ui:literalFields": ["name", "jobTitle"],
+  "ui:literalFieldLabels": { "name": "label_name", "jobTitle": "label_job_title" },
+  "ui:literalType": "Person",
+  "ui:required": true
+}
+```
+
+Bestehende `id_reference`-Properties (z. B. `DonateAction.recipient`) bleiben
+unverändert — das neue Widget ist additiv, kein Breaking Change.
+
+---
+
 ## Tests
 
 Das Plugin verwendet PHPUnit 11.x für Unit-Tests.

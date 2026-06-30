@@ -129,6 +129,10 @@ button_use_detected_jsonld = Use detected block
 
 hint_id_reference_auto_link = Automatically linked to:
 
+label_id_reflit_reference = Link to global node
+label_id_reflit_literal = Enter manually
+hint_id_reflit_no_targets = No global identity configured yet. Please first create a node in the "Global" scope that has an @id fragment (e.g. NGO, Person).
+
 button_save = Save
 
 button_save_global = Save global configuration
