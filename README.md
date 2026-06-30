@@ -68,10 +68,10 @@ plugins/schemaOrgData/
 │   ├── ajv.min.js                   # AJV JSON-Schema-Validator (lokal, kein CDN)
 │   └── validator.js                 # Plugin-eigene Validierungslogik
 └── sprachen/
-    ├── admin_language_de.txt
-    ├── admin_language_en.txt
-    ├── cms_language_de.txt
-    └── cms_language_en.txt
+    ├── admin_language_deDE.txt
+    ├── admin_language_enEN.txt
+    ├── cms_language_deDE.txt
+    └── cms_language_enEN.txt
 ```
 
 ### Geltungsbereiche und Vererbung
@@ -179,11 +179,11 @@ Die Validierung des Erweiterungsfelds erfolgt zweistufig:
 
 Das Plugin nutzt das moziloCMS-eigene Sprachsystem:
 
-- **Admin-UI** (Formular-Labels, Fehlermeldungen, Buttons): `$admin_lang->getLanguageValue()`, Sprachdatei `admin_language_{lang}.txt`
-- **Frontend / CMS-Kontext** (z. B. Wochentag-Labels in openingHours): `$language->getLanguageValue()`, Sprachdatei `cms_language_{lang}.txt`
+- **Admin-UI** (Formular-Labels, Fehlermeldungen, Buttons): `$admin_lang->getLanguageValue()`, Sprachdatei `admin_language_{locale}.txt` (z. B. `admin_language_deDE.txt`)
+- **Frontend / CMS-Kontext** (z. B. Wochentag-Labels in openingHours): `$language->getLanguageValue()`, Sprachdatei `cms_language_{locale}.txt` (z. B. `cms_language_deDE.txt`)
 - JSON-Schema-Dateien enthalten Sprachschlüssel (z. B. `"ui:label": "label_name"`), keine hartcodierten Strings
 
-Initiale Sprachen: **Deutsch** (`de`), **Englisch** (`en`).
+Initiale Sprachen: **Deutsch** (`deDE`), **Englisch** (`enEN`).
 
 ---
 

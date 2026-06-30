@@ -59,7 +59,7 @@
         "DERegisteredAssociationCharity"
       ],
       "ui:enumLabels": {
-        "de": {
+        "deDE": {
           "DECooperativeCharity": "Gemeinnützige Genossenschaft",
           "DEFoundationCharity": "Gemeinnützige Stiftung",
           "DEJointStockCompanyCharity": "Gemeinnützige Aktiengesellschaft (gAG)",
@@ -68,7 +68,7 @@
           "DEPublicCharity": "Gemeinnützige Körperschaft des öffentlichen Rechts",
           "DERegisteredAssociationCharity": "Eingetragener gemeinnütziger Verein (e. V.)"
         },
-        "en": {
+        "enEN": {
           "DECooperativeCharity": "Charitable cooperative",
           "DEFoundationCharity": "Charitable foundation",
           "DEJointStockCompanyCharity": "Charitable joint-stock company (gAG)",
@@ -129,7 +129,7 @@
             "FI", "GB", "IE", "US"
           ],
           "ui:enumLabels": {
-            "de": {
+            "deDE": {
               "DE": "Deutschland",
               "AT": "Österreich",
               "CH": "Schweiz",
@@ -151,7 +151,7 @@
               "IE": "Irland",
               "US": "Vereinigte Staaten"
             },
-            "en": {
+            "enEN": {
               "DE": "Germany",
               "AT": "Austria",
               "CH": "Switzerland",

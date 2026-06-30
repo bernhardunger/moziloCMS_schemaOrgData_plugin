@@ -120,7 +120,7 @@
             "FI", "GB", "IE", "US"
           ],
           "ui:enumLabels": {
-            "de": {
+            "deDE": {
               "DE": "Deutschland",
               "AT": "Österreich",
               "CH": "Schweiz",
@@ -142,7 +142,7 @@
               "IE": "Irland",
               "US": "Vereinigte Staaten"
             },
-            "en": {
+            "enEN": {
               "DE": "Germany",
               "AT": "Austria",
               "CH": "Switzerland",

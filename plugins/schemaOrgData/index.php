@@ -29,13 +29,16 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.9-beta';
+    private const PLUGIN_VERSION = '0.4.10-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
-    private const DEFAULT_LANGUAGE = 'de';
+    private const DEFAULT_LANGUAGE = 'deDE';
 
-    /** Vom Plugin unterstützte Sprachen (sprachen/*_{code}.txt) */
-    private const SUPPORTED_LANGUAGES = ['de', 'en'];
+    /** Explizite Zuordnung: 2-Zeichen-Prefix → Locale-Code. */
+    private const LANGUAGE_PREFIX_MAP = [
+        'de' => 'deDE',
+        'en' => 'enEN',
+    ];
 
     /** Sprachobjekt für Admin-UI (sprachen/admin_language_{lang}.txt) */
     private ?Language $admin_lang = null;
@@ -46,7 +49,7 @@ class schemaOrgData extends Plugin {
     /** Sprachobjekt für Wochentag-Labels (sprachen/cms_language_{lang}.txt, Admin-Sprache) */
     private ?Language $weekday_lang = null;
 
-    /** Aktuell aufgelöste Admin-Sprache (de|en), siehe loadAdminLanguage() */
+    /** Aktuell aufgelöste Admin-Sprache (deDE|enEN), siehe loadAdminLanguage() */
     private string $pluginLang = self::DEFAULT_LANGUAGE;
 
     /***************************************************************
@@ -475,16 +478,25 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
-    * Bildet einen CMS-/Admin-Sprachcode (z. B. "deDE", "enEN")
-    * auf eine der vom Plugin unterstützten Sprachen ab.
-    * Fallback ist DEFAULT_LANGUAGE.
+    * Ermittelt den Sprachcode für die Plugin-Sprachdateien.
+    *
+    * Empfängt den rohen Sprachcode aus $ADMIN_CONF bzw. $CMS_CONF
+    * (z. B. 'deDE', 'enUS', 'de'). Normalisiert auf Kleinschreibung und
+    * prüft via str_starts_with() den 2-Zeichen-Prefix gegen
+    * LANGUAGE_PREFIX_MAP. Liefert beim ersten Treffer den
+    * moziloCMS-Locale-Code (z. B. 'deDE'). Fällt bei unbekannten
+    * Locales auf DEFAULT_LANGUAGE zurück.
+    *
+    * @param string|null $code Sprachcode aus $ADMIN_CONF->get('language')
+    *                          bzw. $CMS_CONF->get('cmslanguage')
+    * @return string           Locale-Code ('deDE' oder 'enEN')
     *
     ***************************************************************/
     private function resolvePluginLanguage(?string $code): string {
-        $code = strtolower((string) $code);
-        foreach(self::SUPPORTED_LANGUAGES as $supported) {
-            if(str_starts_with($code, $supported)) {
-                return $supported;
+        $lower = strtolower((string) $code);
+        foreach(self::LANGUAGE_PREFIX_MAP as $prefix => $locale) {
+            if(str_starts_with($lower, $prefix)) {
+                return $locale;
             }
         }
         return self::DEFAULT_LANGUAGE;
