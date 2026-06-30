@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.12-beta';
+    private const PLUGIN_VERSION = '0.4.13-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -1733,7 +1733,9 @@ class schemaOrgData extends Plugin {
 
             $html .= '<tr><td>'.$dayLabel.'</td>'
                 .'<td>'
-                .'<div class="schemaOrgData-opening-hours-group">'.$fromInput
+                .'<div class="schemaOrgData-opening-hours-group">'
+                .'<span class="schemaOrgData-opening-hours-range-label" aria-hidden="true">'.$secondRangeLabel.':</span>'
+                .$fromInput
                 .'<span class="schemaOrgData-opening-hours-sep">–</span>'
                 .$toInput.'</div>'.$feedback
                 .'<div class="schemaOrgData-opening-hours-group schemaOrgData-opening-hours-second">'
@@ -3292,6 +3294,7 @@ class schemaOrgData extends Plugin {
 .schemaOrgData-admin .schemaOrgData-opening-hours-sep { color: #999; }
 .schemaOrgData-admin .schemaOrgData-opening-hours-second { margin-top: 2px; opacity: .75; }
 .schemaOrgData-admin .schemaOrgData-opening-hours-range-label { font-size: .85em; color: #666; white-space: nowrap; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-range-label[aria-hidden="true"] { visibility: hidden; }
 .schemaOrgData-admin .schemaOrgData-faq-entry { border-top: 1px solid #eee; padding-top: .5em; margin-top: .5em; }
 .schemaOrgData-admin .schemaOrgData-faq-entry:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 .schemaOrgData-admin .schemaOrgData-checkbox { display: inline-block; margin: 0 1em .25em 0; }
