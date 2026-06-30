@@ -100,6 +100,7 @@ error_url_invalid = The entered URL is invalid.
 warning_url_http = HTTPS is recommended for production sites.
 error_email_invalid = The entered email address is invalid.
 error_opening_hours_format = Please use 24-hour format (e.g. 09:00, 18:00).
+error_opening_hours_incomplete = Please fill in both time fields or leave both empty.
 error_opening_hours_order = The start time must be earlier than the end time.
 error_opening_hours_overlap = The second time range must not start before the end of the first.
 error_geo_latitude = Latitude must be between -90 and 90.

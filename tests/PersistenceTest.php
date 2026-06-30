@@ -481,6 +481,35 @@ final class PersistenceTest extends TestCase {
 
     /***************************************************************
     *
+    * Regressionstest für 0.4.12-beta: schlägt das Speichern fehl
+    * (z. B. wegen ungültiger url), müssen from2/to2 des zweiten
+    * Öffnungszeiten-Zeitraums erhalten bleiben — analog zu
+    * testFailedSaveRetainsInvalidOpeningHoursTime().
+    *
+    ***************************************************************/
+    function testFailedSaveRetainsSecondOpeningHoursRange(): void {
+        $plugin = $this->createPlugin();
+
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['url'] = 'nicht-eine-url';
+        $postData['data']['openingHours']['Mo'] = [
+            'from'  => '09:00',
+            'to'    => '12:00',
+            'from2' => '13:00',
+            'to2'   => '17:00',
+        ];
+        $_POST['schemaOrgData'] = ['global' => $postData];
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = callPluginMethod($plugin, 'renderScopeSection', ['global', null, null, true, 'global', true]);
+
+        $this->assertStringContainsString('value="13:00"', $html);
+        $this->assertStringContainsString('value="17:00"', $html);
+    }
+
+    /***************************************************************
+    *
     * Regressionstest 0.3.7-beta: renderAdminPage() ermittelt
     * $selectedCat aus sanitizeScopeIdentifier($_POST['schemaOrgData_cat'])
     * und verglich diesen Wert bislang direkt mit dem UNSANIERTEN

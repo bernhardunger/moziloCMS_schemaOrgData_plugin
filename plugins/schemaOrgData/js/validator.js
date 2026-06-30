@@ -286,6 +286,10 @@
             return { status: null, message: null };
         }
 
+        if ((from === '') !== (to === '')) {
+            return { status: 'error', message: getMessages().openingHoursIncomplete || null };
+        }
+
         var pattern = /^[0-9]{2}:[0-9]{2}$/;
 
         if (!pattern.test(from) || !pattern.test(to)) {

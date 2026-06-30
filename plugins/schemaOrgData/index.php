@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.11-beta';
+    private const PLUGIN_VERSION = '0.4.12-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -1238,6 +1238,10 @@ class schemaOrgData extends Plugin {
 
         if($from === '' and $to === '') {
             return ['status' => null, 'message' => null];
+        }
+
+        if(($from === '') !== ($to === '')) {
+            return ['status' => 'error', 'message' => $this->loadAdminLanguage()->getLanguageValue('error_opening_hours_incomplete')];
         }
 
         if(!preg_match('/^[0-9]{2}:[0-9]{2}$/', $from) or !preg_match('/^[0-9]{2}:[0-9]{2}$/', $to)) {
@@ -3487,8 +3491,9 @@ class schemaOrgData extends Plugin {
             'urlInvalid'         => $lang->getLanguageValue('error_url_invalid'),
             'urlHttpWarning'     => $lang->getLanguageValue('warning_url_http'),
             'emailInvalid'       => $lang->getLanguageValue('error_email_invalid'),
-            'openingHoursFormat' => $lang->getLanguageValue('error_opening_hours_format'),
-            'openingHoursOrder'  => $lang->getLanguageValue('error_opening_hours_order'),
+            'openingHoursFormat'     => $lang->getLanguageValue('error_opening_hours_format'),
+            'openingHoursIncomplete' => $lang->getLanguageValue('error_opening_hours_incomplete'),
+            'openingHoursOrder'      => $lang->getLanguageValue('error_opening_hours_order'),
             // '{PARAM1}' wird hier als Wert übergeben, damit
             // getLanguageValue() den Platzhalter NICHT durch ""
             // ersetzt (Default von $param1) - die Ersetzung mit dem
