@@ -12,10 +12,74 @@ use PHPUnit\Framework\TestCase;
 ***************************************************************/
 final class CollisionDetectorTest extends TestCase {
 
+    private function extract(string $html): array {
+        $plugin = new \schemaOrgData();
+        return callPluginMethod($plugin, 'extractExistingJsonLdBlocks', [$html]);
+    }
+
     private function detect(string $html): bool {
         $plugin = new \schemaOrgData();
         return callPluginMethod($plugin, 'detectExistingJsonLd', [$html]);
     }
+
+    // -----------------------------------------------------------
+    // extractExistingJsonLdBlocks()
+    // -----------------------------------------------------------
+
+    function testExtractReturnsInnerJsonTextOfSingleBlock(): void {
+        $json = '{"@context":"https://schema.org","@type":"LocalBusiness"}';
+        $html = '<head><script type="application/ld+json">'.$json.'</script></head>';
+
+        $blocks = $this->extract($html);
+
+        $this->assertCount(1, $blocks);
+        $this->assertSame($json, $blocks[0]);
+    }
+
+    function testExtractReturnsAllInnerTextsForMultipleBlocks(): void {
+        $json1 = '{"@type":"Organization"}';
+        $json2 = '{"@type":"WebSite"}';
+        $html = '<head>'
+            .'<script type="application/ld+json">'.$json1.'</script>'
+            .'<script type="application/ld+json">'.$json2.'</script>'
+            .'</head>';
+
+        $blocks = $this->extract($html);
+
+        $this->assertCount(2, $blocks);
+        $this->assertSame($json1, $blocks[0]);
+        $this->assertSame($json2, $blocks[1]);
+    }
+
+    function testExtractReturnsEmptyArrayWhenNoBlock(): void {
+        $html = '<head><title>Muster GmbH</title></head>';
+
+        $this->assertSame([], $this->extract($html));
+    }
+
+    function testExtractDoesNotCrashOnMalformedHtml(): void {
+        // Kein </script>-Schließtag — preg_match_all kein Absturz
+        $html = '<script type="application/ld+json">{"broken": true';
+
+        $blocks = $this->extract($html);
+
+        $this->assertIsArray($blocks);
+        $this->assertCount(0, $blocks);
+    }
+
+    function testExtractWorksWithSingleQuotedAttribute(): void {
+        $json = '{"@type":"Person"}';
+        $html = "<script type='application/ld+json'>".$json.'</script>';
+
+        $blocks = $this->extract($html);
+
+        $this->assertCount(1, $blocks);
+        $this->assertSame($json, $blocks[0]);
+    }
+
+    // -----------------------------------------------------------
+    // detectExistingJsonLd() — bestehende Tests bleiben grün
+    // -----------------------------------------------------------
 
     function testExistingJsonLdBlockIsDetected(): void {
         $html = '<head><script type="application/ld+json">{"@context":"https://schema.org"}</script></head>';
@@ -130,7 +194,7 @@ final class CollisionDetectorTest extends TestCase {
         // Kein Template gesetzt - bestehende Content-Prüfung muss weiterhin greifen
         $GLOBALS['TEMPLATE_FILE'] = '';
 
-        $this->assertTrue($this->detect('<script type="application/ld+json">'));
+        $this->assertTrue($this->detect('<script type="application/ld+json">{"@type":"LocalBusiness"}</script>'));
     }
 
     function testNonExistentTemplateFileReturnsFalse(): void {

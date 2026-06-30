@@ -688,4 +688,83 @@ final class JsonLdOutputTest extends TestCase {
 
         $this->assertSame('', $script);
     }
+
+    // -----------------------------------------------------------
+    // existing_jsonld_content: Scope-genaue Inhaltspersistenz
+    // -----------------------------------------------------------
+
+    function testTemplateContentWirdInGlobalScopeGespeichert(): void {
+        // Template enthält JSON-LD → existing_jsonld_content im Global-Scope gesetzt.
+        $plugin = $this->createPlugin();
+
+        $jsonText = '{"@context":"https://schema.org","@type":"LocalBusiness"}';
+        $templateFile = sys_get_temp_dir().'/schemaOrgData_tpl_'.uniqid().'.html';
+        file_put_contents($templateFile, '<script type="application/ld+json">'.$jsonText.'</script>');
+        $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;
+        $GLOBALS['TEMPLATE_FILE'] = $templateFile;
+
+        try {
+            $plugin->getContent('');
+
+            $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+            $this->assertTrue($metaGlobal['existing_jsonld']);
+            $this->assertSame($jsonText, $metaGlobal['existing_jsonld_content'],
+                'Template-JSON-Text muss 1:1 im Global-Scope gespeichert werden');
+        } finally {
+            unlink($templateFile);
+            $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
+        }
+    }
+
+    function testGlobalContentLeerWennKeinTemplateJsonLd(): void {
+        // Kein JSON-LD im Template → existing_jsonld_content im Global-Scope ist leer.
+        $plugin = $this->createPlugin();
+        $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        try {
+            $plugin->getContent('');
+
+            $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+            $this->assertFalse($metaGlobal['existing_jsonld']);
+            $this->assertSame('', $metaGlobal['existing_jsonld_content'],
+                'existing_jsonld_content muss leer sein wenn kein Template-JSON-LD gefunden');
+        } finally {
+            $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
+        }
+    }
+
+    function testMehrereTemplateBlocksWerdenMitZeilenumbruchVerbunden(): void {
+        // Zwei Blöcke im Template → beide Texte werden mit "\n\n" verbunden gespeichert.
+        $plugin = $this->createPlugin();
+
+        $json1 = '{"@type":"Organization"}';
+        $json2 = '{"@type":"WebSite"}';
+        $html = '<script type="application/ld+json">'.$json1.'</script>'
+              . '<script type="application/ld+json">'.$json2.'</script>';
+        $templateFile = sys_get_temp_dir().'/schemaOrgData_tpl_'.uniqid().'.html';
+        file_put_contents($templateFile, $html);
+        $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;
+        $GLOBALS['TEMPLATE_FILE'] = $templateFile;
+
+        try {
+            $plugin->getContent('');
+
+            $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+            $this->assertSame($json1."\n\n".$json2, $metaGlobal['existing_jsonld_content']);
+        } finally {
+            unlink($templateFile);
+            $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
+        }
+    }
+
+    function testExistingJsonLdContentDefaultIstLeerstring(): void {
+        // loadScopeMeta() ohne vorherigen save → existing_jsonld_content hat Default ''.
+        $plugin = $this->createPlugin();
+
+        $meta = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+
+        $this->assertArrayHasKey('existing_jsonld_content', $meta);
+        $this->assertSame('', $meta['existing_jsonld_content']);
+    }
 }

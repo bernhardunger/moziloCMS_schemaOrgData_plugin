@@ -1006,6 +1006,28 @@
     }
 
     /**
+     * Aktiviert den "Erkannten Block übernehmen"-Button
+     * (.schemaOrgData-autofill-btn, siehe index.php
+     * renderExistingJsonLdNotice()). Klick überträgt den Wert aus
+     * dataset.existingContent per direkter DOM-Property-Zuweisung
+     * in das Import-Textarea — kein AJAX, kein Auto-Save.
+     */
+    function initAutofillButton() {
+        var buttons = document.querySelectorAll('.schemaOrgData-autofill-btn');
+
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].addEventListener('click', function (event) {
+                var btn = event.currentTarget;
+                var targetId = btn.getAttribute('data-target');
+                var textarea = targetId ? document.getElementById(targetId) : null;
+                if (textarea) {
+                    textarea.value = btn.dataset.existingContent || '';
+                }
+            });
+        }
+    }
+
+    /**
      * Initialisiert das gesamte Admin-Formular: Scope-Selektor,
      * Type-Umschaltung, Live-Validierung der Formularfelder sowie der
      * Erweiterungsfelder. Wird von renderAdminPage() nach
@@ -1017,6 +1039,7 @@
         initFieldValidation();
         initExtensionFieldValidation();
         initExcludedCatsSelectAll();
+        initAutofillButton();
     }
 
     // Öffentliche API
@@ -1032,6 +1055,7 @@
         validateRequiredField: validateRequiredField,
         validateOpeningHoursTime: validateOpeningHoursTime,
         initExcludedCatsSelectAll: initExcludedCatsSelectAll,
+        initAutofillButton: initAutofillButton,
         initAdminForm: initAdminForm
     };
 

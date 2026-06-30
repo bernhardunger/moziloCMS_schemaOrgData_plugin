@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.14-beta';
+    private const PLUGIN_VERSION = '0.4.15-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -158,28 +158,38 @@ class schemaOrgData extends Plugin {
             $output .= $this->buildDebugWidget($debugBlocks);
         }
 
-        // Kollisionserkennung: vorhandenes JSON-LD scope-genau persistieren.
+        // Kollisionserkennung: vorhandenes JSON-LD scope-genau persistieren
+        // (Flag + Inhalt für den Autofill-Button, siehe ADR autofill).
         // Ein im Layout-Template gefundener Block ist layoutweit — er wird
         // ausschließlich dem Global-Scope zugeordnet (analog Admin-Pfad,
-        // siehe detectExistingJsonLdInTemplateAdmin() / renderAdminPage()).
+        // siehe extractExistingJsonLdBlocksFromTemplateAdmin() / renderAdminPage()).
         // Ein im Seiteninhalt ($value) gefundener Block ist seitenspezifisch —
         // er wird ausschließlich dem Seiten-Scope der aktuell gerenderten
         // Seite zugeordnet, sofern CAT_REQUEST und PAGE_REQUEST gesetzt sind.
         // Kategorie-Scope erhält über diesen Mechanismus keinen Eintrag.
-        $hasJsonLdInTemplate = $this->detectExistingJsonLdInTemplate();
+        $templateBlocks = $this->extractExistingJsonLdBlocksFromTemplate();
+        $hasJsonLdInTemplate = !empty($templateBlocks);
+        $templateContent = implode("\n\n", array_map('trim', $templateBlocks));
         $metaGlobal = $this->loadScopeMeta('global');
-        if($metaGlobal['existing_jsonld'] !== $hasJsonLdInTemplate) {
-            $this->saveScopeMeta('global', ['existing_jsonld' => $hasJsonLdInTemplate]);
+        if($metaGlobal['existing_jsonld'] !== $hasJsonLdInTemplate
+            || $metaGlobal['existing_jsonld_content'] !== $templateContent) {
+            $this->saveScopeMeta('global', [
+                'existing_jsonld' => $hasJsonLdInTemplate,
+                'existing_jsonld_content' => $templateContent,
+            ]);
         }
 
-        $hasJsonLdInContent = (bool) preg_match(
-            '#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i',
-            (string) $value
-        );
+        $contentBlocks = $this->extractExistingJsonLdBlocks((string) $value);
+        $hasJsonLdInContent = !empty($contentBlocks);
+        $pageContent = implode("\n\n", array_map('trim', $contentBlocks));
         if(defined('CAT_REQUEST') and defined('PAGE_REQUEST') and CAT_REQUEST and PAGE_REQUEST) {
             $metaPage = $this->loadScopeMeta('page', CAT_REQUEST, PAGE_REQUEST);
-            if($metaPage['existing_jsonld'] !== $hasJsonLdInContent) {
-                $this->saveScopeMeta('page', ['existing_jsonld' => $hasJsonLdInContent], CAT_REQUEST, PAGE_REQUEST);
+            if($metaPage['existing_jsonld'] !== $hasJsonLdInContent
+                || $metaPage['existing_jsonld_content'] !== $pageContent) {
+                $this->saveScopeMeta('page', [
+                    'existing_jsonld' => $hasJsonLdInContent,
+                    'existing_jsonld_content' => $pageContent,
+                ], CAT_REQUEST, PAGE_REQUEST);
             }
         }
 
@@ -509,15 +519,39 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Extrahiert alle JSON-LD-Blöcke aus einem HTML-String und gibt
+    * deren innere JSON-Texte zurück (ohne <script>-Tags).
+    *
+    * Gemeinsame Hilfsfunktion für detectExistingJsonLd*()-Methoden
+    * sowie für die Inhaltsspeicherung (existing_jsonld_content,
+    * siehe loadScopeMeta()/saveScopeMeta()).
+    * Kein Absturz bei malformed HTML — preg_match_all gibt im
+    * Fehlerfall false zurück, was als leeres Array behandelt wird.
+    *
+    * @param string $html zu prüfendes HTML
+    * @return array innere JSON-Texte aller gefundenen Blöcke
+    *
+    ***************************************************************/
+    private function extractExistingJsonLdBlocks(string $html): array {
+        $result = preg_match_all(
+            '#<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>#is',
+            $html,
+            $matches
+        );
+        return ($result !== false and !empty($matches[1])) ? $matches[1] : [];
+    }
+
+    /***************************************************************
+    *
     * Prüft, ob im gerenderten HTML der Seite bereits ein
     * <script type="application/ld+json">-Block vorhanden ist
     * (kombinierte Prüfung: Inhalt + Template).
     *
     * Hinweis: Für die produktive Scope-Zuordnung in getContent()
     * wird diese kombinierte Methode nicht mehr verwendet — stattdessen
-    * prüfen dort detectExistingJsonLdInTemplate() (→ Global-Scope) und
-    * ein direkter Regex auf $value (→ Seiten-Scope) getrennt. Diese
-    * Methode bleibt erhalten, da CollisionDetectorTest.php das
+    * prüfen dort extractExistingJsonLdBlocksFromTemplate() (→ Global-Scope)
+    * und extractExistingJsonLdBlocks($value) (→ Seiten-Scope) getrennt.
+    * Diese Methode bleibt erhalten, da CollisionDetectorTest.php das
     * kombinierte Verhalten gezielt testet.
     *
     * @param string $html zu prüfendes HTML
@@ -525,12 +559,30 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function detectExistingJsonLd(string $html): bool {
-        // Bestehend: Prüfung im Content-Bereich (unveränderter Regex-Block)
-        if((bool) preg_match('#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i', $html)) {
+        if(!empty($this->extractExistingJsonLdBlocks($html))) {
             return true;
         }
-        // Neu: Prüfung im aktiven Website-Template
         return $this->detectExistingJsonLdInTemplate();
+    }
+
+    /***************************************************************
+    *
+    * Liest das aktiv geladene Website-Template vom Dateisystem und
+    * gibt alle darin enthaltenen JSON-LD-Blöcke zurück.
+    *
+    * $TEMPLATE_FILE zeigt zu getContent()-Zeit bereits auf die
+    * korrekte Datei (template.html oder gallerytemplate.html).
+    *
+    * @return array innere JSON-Texte aller gefundenen Blöcke (leer = keiner)
+    *
+    ***************************************************************/
+    private function extractExistingJsonLdBlocksFromTemplate(): array {
+        global $TEMPLATE_FILE;
+        if(empty($TEMPLATE_FILE) or !file_exists($TEMPLATE_FILE)) {
+            return [];
+        }
+        $content = file_get_contents($TEMPLATE_FILE);
+        return $content !== false ? $this->extractExistingJsonLdBlocks($content) : [];
     }
 
     /***************************************************************
@@ -538,35 +590,23 @@ class schemaOrgData extends Plugin {
     * Prüft, ob das aktiv geladene Website-Template einen
     * <script type="application/ld+json">-Block enthält.
     *
-    * Liest die Template-Datei direkt vom Dateisystem. Die globale
-    * Variable $TEMPLATE_FILE zeigt zu getContent()-Zeit bereits auf
-    * die korrekte Datei (template.html oder gallerytemplate.html).
-    *
     * @return bool true, wenn mindestens ein JSON-LD-Block gefunden wurde
     *
     ***************************************************************/
     private function detectExistingJsonLdInTemplate(): bool {
-        global $TEMPLATE_FILE;
-        if(empty($TEMPLATE_FILE) or !file_exists($TEMPLATE_FILE)) {
-            return false;
-        }
-        $content = file_get_contents($TEMPLATE_FILE);
-        return $content !== false
-            && (bool) preg_match('#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i', $content);
+        return !empty($this->extractExistingJsonLdBlocksFromTemplate());
     }
 
     /***************************************************************
     *
-    * Prüft im Admin-Kontext, ob das aktiv ausgelieferte Layout-Template
-    * einen <script type="application/ld+json">-Block enthält.
+    * Liest im Admin-Kontext die aktiv ausgelieferten Layout-Templates
+    * vom Dateisystem und gibt alle darin enthaltenen JSON-LD-Blöcke
+    * zurück.
     *
-    * Im Gegensatz zu detectExistingJsonLdInTemplate() wird der
-    * Template-Pfad NICHT aus der globalen $TEMPLATE_FILE-Variablen
-    * (die im Admin undefiniert ist) gelesen, sondern aus
-    * $CMS_CONF->get('cmslayout') abgeleitet. Bei aktivem Draftmode
-    * wird zusätzlich das Draftlayout geprüft (mirrors
-    * moziloCMS-Frontend-index.php:87–91). Inaktive Layouts werden
-    * bewusst NICHT geprüft (False-Positive-Schutz).
+    * Der Template-Pfad wird aus $CMS_CONF->get('cmslayout') abgeleitet.
+    * Bei aktivem Draftmode wird zusätzlich das Draftlayout geprüft
+    * (mirrors moziloCMS-Frontend-index.php:87–91). Inaktive Layouts
+    * werden bewusst NICHT geprüft (False-Positive-Schutz).
     *
     * Je ermitteltem Layout werden template.html und
     * gallerytemplate.html geprüft (Pfadbildung analog
@@ -574,20 +614,20 @@ class schemaOrgData extends Plugin {
     * $CMS_CONF / LAYOUT_DIR_NAME / BASE_DIR auf Verfügbarkeit geprüft,
     * file_exists/Lesbarkeit abgesichert.
     *
-    * @return bool true wenn mindestens ein JSON-LD-Block gefunden wurde
+    * @return array innere JSON-Texte aller gefundenen Blöcke (leer = keiner)
     *
     ***************************************************************/
-    private function detectExistingJsonLdInTemplateAdmin(): bool {
+    private function extractExistingJsonLdBlocksFromTemplateAdmin(): array {
         global $CMS_CONF;
 
         if (!defined('BASE_DIR') || !defined('LAYOUT_DIR_NAME')
             || !isset($CMS_CONF) || !is_object($CMS_CONF)) {
-            return false;
+            return [];
         }
 
         $activeLayout = (string) ($CMS_CONF->get('cmslayout') ?? '');
         if ($activeLayout === '' || $activeLayout === 'false') {
-            return false;
+            return [];
         }
 
         // Immer das aktive Layout prüfen; Draftlayout zusätzlich nur
@@ -601,8 +641,7 @@ class schemaOrgData extends Plugin {
             }
         }
 
-        $regex = '#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i';
-
+        $allBlocks = [];
         foreach ($layoutsToCheck as $layout) {
             foreach (['template.html', 'gallerytemplate.html'] as $tplFile) {
                 $path = BASE_DIR . LAYOUT_DIR_NAME . '/' . $layout . '/' . $tplFile;
@@ -610,13 +649,25 @@ class schemaOrgData extends Plugin {
                     continue;
                 }
                 $content = file_get_contents($path);
-                if ($content !== false && (bool) preg_match($regex, $content)) {
-                    return true;
+                if ($content !== false) {
+                    $allBlocks = array_merge($allBlocks, $this->extractExistingJsonLdBlocks($content));
                 }
             }
         }
 
-        return false;
+        return $allBlocks;
+    }
+
+    /***************************************************************
+    *
+    * Prüft im Admin-Kontext, ob das aktiv ausgelieferte Layout-Template
+    * einen <script type="application/ld+json">-Block enthält.
+    *
+    * @return bool true wenn mindestens ein JSON-LD-Block gefunden wurde
+    *
+    ***************************************************************/
+    private function detectExistingJsonLdInTemplateAdmin(): bool {
+        return !empty($this->extractExistingJsonLdBlocksFromTemplateAdmin());
     }
 
     /***************************************************************
@@ -719,7 +770,7 @@ class schemaOrgData extends Plugin {
         ?string $cat  = null,
         ?string $page = null
     ): array {
-        $defaults = ['existing_jsonld' => false, 'jsonld_mode' => 'keep'];
+        $defaults = ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''];
         $key = $this->getScopeSettingsKey($scope, $cat, $page);
         if ($key === null || !$this->settings->keyExists($key)) {
             return $defaults;
@@ -754,7 +805,7 @@ class schemaOrgData extends Plugin {
             $existing = [];
         }
         $existing['_meta'] = array_merge(
-            $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep'],
+            $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
             $meta
         );
         // Schreibfehler protokollieren — saveScopeMeta hat kein Rückgabe-Array,
@@ -939,6 +990,15 @@ class schemaOrgData extends Plugin {
         }
 
         $html .= '<p><label for="schemaOrgData_import_'.$scope.'">'.$lang->getLanguageHtml('label_import_jsonld').'</label><br />'."\n";
+
+        if(!empty($meta['existing_jsonld_content'])) {
+            $escaped = htmlspecialchars((string) $meta['existing_jsonld_content'], ENT_QUOTES, CHARSET);
+            $html .= '<button type="button" class="mo-btn schemaOrgData-autofill-btn"'
+                .' data-target="schemaOrgData_import_'.$scope.'"'
+                .' data-existing-content="'.$escaped.'">'
+                .$lang->getLanguageHtml('button_use_detected_jsonld').'</button><br />'."\n";
+        }
+
         $html .= '<textarea id="schemaOrgData_import_'.$scope.'" name="schemaOrgData_import_'.$scope.'" rows="6"></textarea></p>'."\n";
         $html .= '<p class="schemaOrgData-jsonld-notice__hint">'.$lang->getLanguageHtml('description_import_jsonld').'</p>'."\n";
         $html .= '</div>'."\n";
@@ -2946,7 +3006,7 @@ class schemaOrgData extends Plugin {
         if (!is_array($existing)) {
             $existing = [];
         }
-        $config = ['_meta' => $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep']];
+        $config = ['_meta' => $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => '']];
 
         if($scope === 'global') {
             $config['excluded_cats'] = $existing['excluded_cats'] ?? '';
@@ -3416,13 +3476,20 @@ class schemaOrgData extends Plugin {
         // schreibt im IS_ADMIN-Kontext auf die Platte (im Frontend war
         // set() ein No-Op). Reihenfolge: erst saveScopeMeta(), dann
         // renderScopeSection(), damit renderExistingJsonLdNotice() das
-        // frisch gesetzte Flag sieht.
-        $templateHasJsonLd = $this->detectExistingJsonLdInTemplateAdmin();
+        // frisch gesetzte Flag und den Inhalt (Autofill-Button) sieht.
+        $templateBlocks = $this->extractExistingJsonLdBlocksFromTemplateAdmin();
+        $templateHasJsonLd = !empty($templateBlocks);
+        $templateContent = implode("\n\n", array_map('trim', $templateBlocks));
 
         // Schreib-Guard: nur bei tatsächlicher Änderung persistieren, um
         // nicht bei jedem Admin-Load einen file_put_contents auszulösen.
-        if ($this->loadScopeMeta('global')['existing_jsonld'] !== $templateHasJsonLd) {
-            $this->saveScopeMeta('global', ['existing_jsonld' => $templateHasJsonLd]);
+        $metaGlobal = $this->loadScopeMeta('global');
+        if ($metaGlobal['existing_jsonld'] !== $templateHasJsonLd
+            || $metaGlobal['existing_jsonld_content'] !== $templateContent) {
+            $this->saveScopeMeta('global', [
+                'existing_jsonld' => $templateHasJsonLd,
+                'existing_jsonld_content' => $templateContent,
+            ]);
         }
 
         // Global immer rendern (aktiv wenn keine Kategorie gewählt)

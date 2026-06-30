@@ -570,6 +570,81 @@ final class PersistenceTest extends TestCase {
     ***************************************************************/
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
+    // -----------------------------------------------------------
+    // existing_jsonld_content: Persistenz und Defaults
+    // -----------------------------------------------------------
+
+    function testExistingJsonLdContentDefaultIstLeerstring(): void {
+        $plugin = $this->createPlugin();
+
+        $meta = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+
+        $this->assertArrayHasKey('existing_jsonld_content', $meta);
+        $this->assertSame('', $meta['existing_jsonld_content']);
+    }
+
+    function testExistingJsonLdContentWirdGespeichertUndGeladen(): void {
+        $plugin = $this->createPlugin();
+
+        $content = '{"@context":"https://schema.org","@type":"LocalBusiness"}';
+        callPluginMethod($plugin, 'saveScopeMeta', ['global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => $content,
+        ]]);
+
+        $meta = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+        $this->assertSame($content, $meta['existing_jsonld_content']);
+    }
+
+    function testExistingJsonLdContentInLegacyMetaFaelltAufDefault(): void {
+        // Simuliert Legacy-Daten ohne existing_jsonld_content-Key
+        // → loadScopeMeta() muss '' als Default zurückgeben.
+        $plugin = $this->createPlugin();
+
+        // Nur existing_jsonld und jsonld_mode speichern (ohne existing_jsonld_content)
+        callPluginMethod($plugin, 'saveScopeMeta', ['global', [
+            'existing_jsonld' => true,
+            'jsonld_mode' => 'keep',
+        ]]);
+
+        // existing_jsonld_content direkt aus dem Settings-Store entfernen
+        $key = callPluginMethod($plugin, 'getScopeSettingsKey', ['global']);
+        $stored = $this->settings->get($key);
+        if(isset($stored['_meta']['existing_jsonld_content'])) {
+            unset($stored['_meta']['existing_jsonld_content']);
+            $this->settings->set($key, $stored);
+        }
+
+        $meta = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+        $this->assertSame('', $meta['existing_jsonld_content'],
+            'Fehlender Key in Legacy-Meta muss als Leerstring zurückgegeben werden');
+    }
+
+    function testExistingJsonLdContentWirdProScopeGespeichert(): void {
+        // Global und Seite haben unabhängige existing_jsonld_content-Werte.
+        $plugin = $this->createPlugin();
+
+        $globalContent = '{"@type":"WebSite"}';
+        callPluginMethod($plugin, 'saveScopeMeta', ['global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => $globalContent,
+        ]]);
+
+        $pageContent = '{"@type":"Article"}';
+        callPluginMethod($plugin, 'saveScopeMeta', ['page', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => $pageContent,
+        ], 'blog', 'mein-artikel']);
+
+        $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+        $metaPage = callPluginMethod($plugin, 'loadScopeMeta', ['page', 'blog', 'mein-artikel']);
+
+        $this->assertSame($globalContent, $metaGlobal['existing_jsonld_content']);
+        $this->assertSame($pageContent, $metaPage['existing_jsonld_content']);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
     function testTemplateJsonLdIsPersistedOnlyForGlobalScope(): void {
         define('ADMIN_DIR_NAME', 'admin');
         define('PLUGINADMIN', 'schemaOrgData');

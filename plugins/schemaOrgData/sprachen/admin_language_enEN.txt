@@ -122,6 +122,8 @@ label_import_jsonld = Import existing JSON-LD
 description_import_jsonld = Insert an existing JSON-LD block. Known fields are filled in automatically, unknown properties are moved to the extension field. This overwrites the current configuration.
 button_import = Import
 
+button_use_detected_jsonld = Use detected block
+
 button_save = Save
 
 button_save_global = Save global configuration

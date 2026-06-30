@@ -362,6 +362,63 @@ final class FormRendererTest extends TestCase {
 
         $this->assertStringNotContainsString('debug_output', $html);
     }
+
+    // -----------------------------------------------------------
+    // renderExistingJsonLdNotice(): Autofill-Button (ADR h/i)
+    // -----------------------------------------------------------
+
+    function testAutofillButtonRenderedWhenContentPresent(): void {
+        [$plugin, $settings] = $this->pluginWithInMemorySettings();
+        // existing_jsonld=true + Inhalt gesetzt → Button soll erscheinen
+        callPluginMethod($plugin, 'saveScopeMeta', ['global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
+        ]]);
+
+        $html = callPluginMethod($plugin, 'renderExistingJsonLdNotice', ['global']);
+
+        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
+        $this->assertStringContainsString('data-target="schemaOrgData_import_global"', $html);
+        $this->assertStringContainsString('data-existing-content="{&quot;@type&quot;:&quot;LocalBusiness&quot;}"', $html);
+    }
+
+    function testAutofillButtonEscapesSpecialCharsInDataAttribute(): void {
+        [$plugin, $settings] = $this->pluginWithInMemorySettings();
+        callPluginMethod($plugin, 'saveScopeMeta', ['global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => '{"name":"Müller & Söhne <GmbH>"}',
+        ]]);
+
+        $html = callPluginMethod($plugin, 'renderExistingJsonLdNotice', ['global']);
+
+        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
+        // Sonderzeichen müssen escaped sein (keine rohen <, > oder &amp;-Entities im Attribut)
+        $this->assertStringNotContainsString('data-existing-content="{"', $html);
+        $this->assertStringContainsString('data-existing-content=', $html);
+    }
+
+    function testAutofillButtonAbsentWhenContentEmpty(): void {
+        [$plugin, $settings] = $this->pluginWithInMemorySettings();
+        // existing_jsonld=true, aber kein Inhalt gespeichert → kein Button
+        callPluginMethod($plugin, 'saveScopeMeta', ['global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => '',
+        ]]);
+
+        $html = callPluginMethod($plugin, 'renderExistingJsonLdNotice', ['global']);
+
+        $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
+    }
+
+    function testAutofillButtonAbsentWhenNoExistingJsonLd(): void {
+        [$plugin, $settings] = $this->pluginWithInMemorySettings();
+        // existing_jsonld=false → gesamter Notice-Block fehlt → kein Button
+
+        $html = callPluginMethod($plugin, 'renderExistingJsonLdNotice', ['global']);
+
+        $this->assertSame('', $html);
+        $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
+    }
 }
 
 /***************************************************************

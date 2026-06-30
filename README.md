@@ -354,6 +354,8 @@ Die Einstellung wird pro Geltungsbereich (Global / Kategorie / Seite) gespeicher
 
 Im Admin-Bereich steht ein **Import-Feld** zur Verfügung. Ein bestehender JSON-LD-Block kann dort eingefügt werden — das Plugin parst den Block und befüllt automatisch die bekannten Formularfelder. Properties die das Formular nicht abbildet, werden automatisch ins Erweiterungsfeld übernommen.
 
+Wurde ein JSON-LD-Block im Template oder Seiteninhalt erkannt, erscheint oberhalb des Import-Felds ein **„Erkannten Block übernehmen"**-Button. Ein Klick überträgt den erkannten Block direkt ins Import-Feld — ohne sofortiges Speichern. Anschließend kann der Import über den „Importieren"-Button ausgelöst werden.
+
 > ⚠️ Der Import überschreibt die aktuelle Formularkonfiguration. Es erfolgt kein Merge.
 
 ---

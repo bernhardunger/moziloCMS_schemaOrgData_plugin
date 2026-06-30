@@ -122,6 +122,8 @@ label_import_jsonld = Vorhandenes JSON-LD importieren
 description_import_jsonld = Fügt einen bestehenden JSON-LD-Block ein. Bekannte Felder werden automatisch übernommen, unbekannte Properties wandern ins Erweiterungsfeld. Überschreibt die aktuelle Konfiguration.
 button_import = Importieren
 
+button_use_detected_jsonld = Erkannten Block übernehmen
+
 button_save = Speichern
 
 button_save_global = Globale Konfiguration speichern
