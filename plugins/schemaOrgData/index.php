@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.13-beta';
+    private const PLUGIN_VERSION = '0.4.14-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -158,23 +158,28 @@ class schemaOrgData extends Plugin {
             $output .= $this->buildDebugWidget($debugBlocks);
         }
 
-        // Kollisionserkennung: vorhandenes JSON-LD im gerenderten HTML
-        // erkennen und das Ergebnis je Geltungsebene im jeweiligen
-        // settings-Key persistieren (siehe loadScopeMeta/saveScopeMeta).
-        // detectExistingJsonLd() prüft sowohl $value (Platzhalter-Inhalt)
-        // als auch das aktive Website-Template (detectExistingJsonLdInTemplate()).
-        $hasExistingJsonLd = $this->detectExistingJsonLd((string) $value);
+        // Kollisionserkennung: vorhandenes JSON-LD scope-genau persistieren.
+        // Ein im Layout-Template gefundener Block ist layoutweit — er wird
+        // ausschließlich dem Global-Scope zugeordnet (analog Admin-Pfad,
+        // siehe detectExistingJsonLdInTemplateAdmin() / renderAdminPage()).
+        // Ein im Seiteninhalt ($value) gefundener Block ist seitenspezifisch —
+        // er wird ausschließlich dem Seiten-Scope der aktuell gerenderten
+        // Seite zugeordnet, sofern CAT_REQUEST und PAGE_REQUEST gesetzt sind.
+        // Kategorie-Scope erhält über diesen Mechanismus keinen Eintrag.
+        $hasJsonLdInTemplate = $this->detectExistingJsonLdInTemplate();
+        $metaGlobal = $this->loadScopeMeta('global');
+        if($metaGlobal['existing_jsonld'] !== $hasJsonLdInTemplate) {
+            $this->saveScopeMeta('global', ['existing_jsonld' => $hasJsonLdInTemplate]);
+        }
 
-        foreach($scopeConfigs as $scope => $config) {
-            $scopeArgs = match($scope) {
-                'category' => [CAT_REQUEST],
-                'page'     => [CAT_REQUEST, PAGE_REQUEST],
-                default    => [],
-            };
-
-            $meta = $this->loadScopeMeta($scope, ...$scopeArgs);
-            if($meta['existing_jsonld'] !== $hasExistingJsonLd) {
-                $this->saveScopeMeta($scope, ['existing_jsonld' => $hasExistingJsonLd], ...$scopeArgs);
+        $hasJsonLdInContent = (bool) preg_match(
+            '#<script[^>]+type=["\']application/ld\+json["\'][^>]*>#i',
+            (string) $value
+        );
+        if(defined('CAT_REQUEST') and defined('PAGE_REQUEST') and CAT_REQUEST and PAGE_REQUEST) {
+            $metaPage = $this->loadScopeMeta('page', CAT_REQUEST, PAGE_REQUEST);
+            if($metaPage['existing_jsonld'] !== $hasJsonLdInContent) {
+                $this->saveScopeMeta('page', ['existing_jsonld' => $hasJsonLdInContent], CAT_REQUEST, PAGE_REQUEST);
             }
         }
 
@@ -505,13 +510,15 @@ class schemaOrgData extends Plugin {
     /***************************************************************
     *
     * Prüft, ob im gerenderten HTML der Seite bereits ein
-    * <script type="application/ld+json">-Block vorhanden ist.
+    * <script type="application/ld+json">-Block vorhanden ist
+    * (kombinierte Prüfung: Inhalt + Template).
     *
-    * Hinweis: Wendet man diese Methode auf die vom Plugin selbst
-    * erzeugte Ausgabe an, erkennt sie auch dessen eigene
-    * <script>-Blöcke. Für eine zuverlässige Kollisionserkennung sollte
-    * die Prüfung daher auf den Rohinhalt von Template/Seiteninhalt vor
-    * der Ausgabe dieses Plugins erfolgen.
+    * Hinweis: Für die produktive Scope-Zuordnung in getContent()
+    * wird diese kombinierte Methode nicht mehr verwendet — stattdessen
+    * prüfen dort detectExistingJsonLdInTemplate() (→ Global-Scope) und
+    * ein direkter Regex auf $value (→ Seiten-Scope) getrennt. Diese
+    * Methode bleibt erhalten, da CollisionDetectorTest.php das
+    * kombinierte Verhalten gezielt testet.
     *
     * @param string $html zu prüfendes HTML
     * @return bool true, wenn mindestens ein JSON-LD-Block gefunden wurde

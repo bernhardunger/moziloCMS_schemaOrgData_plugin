@@ -326,7 +326,13 @@ Der Admin-Bereich zeigt oberhalb der Konfigurationsfelder einen allgemein verst�
 
 ## Verhalten bei vorhandenem JSON-LD
 
-Erkennt das Plugin beim Seitenaufbau ein bereits vorhandenes `<script type="application/ld+json">` im Template oder Seiteninhalt, wird dem Benutzer im Admin-Bereich ein Hinweis angezeigt:
+Erkennt das Plugin beim Seitenaufbau ein bereits vorhandenes `<script type="application/ld+json">` im Template oder Seiteninhalt, wird dem Benutzer im Admin-Bereich ein Hinweis angezeigt.
+
+Die Erkennung erfolgt **scope-genau**:
+
+- Ein Block im **Layout-Template** ist layoutweit gültig — der Hinweis erscheint ausschließlich im **Global-Scope**.
+- Ein Block im **Seiteninhalt** (direkt in der Seite hinterlegt) ist seitenspezifisch — der Hinweis erscheint ausschließlich im **Seiten-Scope** der betreffenden Seite.
+- Im **Kategorie-Scope** wird dieser Hinweis grundsätzlich nicht automatisch angezeigt — Kategorie-Ebene ist kein eigenständiges Signal für Template- oder Inhalts-Treffer.
 
 > ⚠️ **Auf dieser Seite wurde bereits ein JSON-LD-Block gefunden.**
 > Bitte wähle wie das Plugin vorgehen soll:
