@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.org/DonateAction",
+  "title": "DonateAction",
+  "type": "object",
+  "ui:typeLabel": "schema_type_donateaction",
+  "ui:scopes": ["page"],
+  "properties": {
+    "description": {
+      "type": "string",
+      "ui:widget": "textarea",
+      "ui:label": "label_description",
+      "ui:required": false
+    },
+    "recipient": {
+      "type": "object",
+      "ui:widget": "id_reference",
+      "ui:label": "label_recipient",
+      "ui:idTarget": "organization",
+      "ui:required": true
+    }
+  }
+}

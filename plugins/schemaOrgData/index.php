@@ -29,7 +29,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.15-beta';
+    private const PLUGIN_VERSION = '0.4.16-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -114,6 +114,9 @@ class schemaOrgData extends Plugin {
         // Ausgabe komplett unterdrückt (siehe loadScopeMeta/
         // renderExistingJsonLdNotice sowie README.md, Abschnitt
         // "Verhalten bei vorhandenem JSON-LD").
+        // $globalSuppressedByKeep wird für den Dangling-Reference-Guard
+        // unten benötigt: keep hat Vorrang vor einem erzwungenen Stub.
+        $globalSuppressedByKeep = false;
         foreach($scopeConfigs as $scope => $config) {
             $scopeArgs = match($scope) {
                 'category' => [CAT_REQUEST],
@@ -123,6 +126,9 @@ class schemaOrgData extends Plugin {
 
             $meta = $this->loadScopeMeta($scope, ...$scopeArgs);
             if($meta['existing_jsonld'] and ($meta['jsonld_mode'] ?? 'override') === 'keep') {
+                if($scope === 'global') {
+                    $globalSuppressedByKeep = true;
+                }
                 unset($scopeConfigs[$scope]);
             }
         }
@@ -131,6 +137,16 @@ class schemaOrgData extends Plugin {
         // Ebenen konfiguriert, werden die Felder zusammengeführt
         // (Global -> Kategorie -> Seite, siehe resolveTypeInheritance()).
         $scopeConfigs = $this->resolveTypeInheritance($scopeConfigs);
+
+        // Dangling-Reference-Guard: prüft, ob eine id_reference auf einen
+        // @id-Knoten verweist, der auf dieser Seite nicht ausgegeben wird,
+        // und erzwingt ggf. einen Minimal-Stub (nur bei excluded_cats-
+        // Unterdrückung). Bei keep-Modus wird die id_reference stattdessen
+        // unterdrückt (siehe applyDanglingReferenceGuard(), README.md,
+        // "@id-Anker").
+        [$scopeConfigs, $suppressedIdTargets] = $this->applyDanglingReferenceGuard(
+            $scopeConfigs, $globalSuppressedByKeep
+        );
 
         // JSON-LD-Blöcke der verbleibenden Types ausgeben; bei aktivem
         // Debug-Modus Metadaten je Block für buildDebugWidget() sammeln.
@@ -142,7 +158,7 @@ class schemaOrgData extends Plugin {
         foreach($scopeConfigs as $scope => $config) {
             foreach($config as $type => $data) {
                 $nodeId = $this->resolveNodeId($type, $assignedFragments);
-                $output .= $this->buildJsonLdScript($type, $data, $nodeId);
+                $output .= $this->buildJsonLdScript($type, $data, $nodeId, $suppressedIdTargets);
                 if($debugOutput) {
                     $scopeKey = match($scope) {
                         'category' => 'cat_'.(CAT_REQUEST ? (string) CAT_REQUEST : ''),
@@ -385,6 +401,120 @@ class schemaOrgData extends Plugin {
 
     /***************************************************************
     *
+    * Dangling-Reference-Guard für id_reference-Properties.
+    *
+    * Wird in getContent() nach resolveTypeInheritance() und vor der
+    * Ausgabeschleife aufgerufen. Prüft, ob eine aktive id_reference
+    * auf einen @id-Knoten verweist, der im finalen Graph fehlt, und
+    * reagiert entsprechend:
+    *
+    * - Zielknoten bereits im Graph → No-op.
+    * - Zielknoten fehlt, weil Global durch keep-Modus unterdrückt
+    *   wurde → id_reference unterdrücken ($suppressedIdTargets), damit
+    *   kein Dangling-@id gegen den ausdrücklichen Nutzerwunsch erzeugt
+    *   wird (keep hat explizit Vorrang).
+    * - Zielknoten fehlt aus anderem Grund (z. B. excluded_cats) →
+    *   Minimal-Stub des Zielknotens synthetisch in $scopeConfigs['global']
+    *   einfügen (nur @type, @id und name). Der Stub durchläuft denselben
+    *   resolveNodeId()-Mechanismus wie reguläre Knoten.
+    *
+    * @param array $scopeConfigs finale Scope-Konfiguration (nach resolveTypeInheritance)
+    * @param bool $globalSuppressedByKeep true, wenn Global durch keep unterdrückt wurde
+    * @return array{0: array, 1: array<string>} [$scopeConfigs, $suppressedIdTargets]
+    *
+    ***************************************************************/
+    private function applyDanglingReferenceGuard(array $scopeConfigs, bool $globalSuppressedByKeep): array {
+        $suppressedIdTargets = [];
+
+        // Alle id_reference-Targets in den aktiven Scopes sammeln.
+        $activeTargets = [];
+        foreach($scopeConfigs as $config) {
+            foreach(array_keys($config) as $type) {
+                $schema = $this->loadSchema($type);
+                if(!is_array($schema)) {
+                    continue;
+                }
+                foreach($schema['properties'] ?? [] as $propSchema) {
+                    $propSchema = $this->resolveSchemaRef($propSchema, $schema);
+                    if(($propSchema['ui:widget'] ?? '') === 'id_reference') {
+                        $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
+                        if($target !== '') {
+                            $activeTargets[] = $target;
+                        }
+                    }
+                }
+            }
+        }
+
+        if($activeTargets === []) {
+            return [$scopeConfigs, $suppressedIdTargets];
+        }
+
+        // Bereits im Graph vorhandene @id-Fragmente bestimmen.
+        $presentFragments = [];
+        foreach($scopeConfigs as $config) {
+            foreach(array_keys($config) as $type) {
+                $schema = $this->loadSchema($type);
+                if(!is_array($schema)) {
+                    continue;
+                }
+                $fragment = trim((string) ($schema['ui:idFragment'] ?? ''));
+                if($fragment !== '') {
+                    $presentFragments[] = $fragment;
+                }
+            }
+        }
+
+        foreach(array_unique($activeTargets) as $target) {
+            if(in_array($target, $presentFragments, true)) {
+                // Zielknoten vorhanden - kein Eingriff nötig.
+                continue;
+            }
+
+            if($globalSuppressedByKeep) {
+                // keep-Modus hat Vorrang: id_reference nicht emittieren,
+                // damit kein Dangling-@id gegen die Nutzerwahl erzeugt wird.
+                $suppressedIdTargets[] = $target;
+                continue;
+            }
+
+            // Zielknoten fehlt (z. B. excluded_cats): Minimal-Stub erzwingen.
+            // Aus der globalen Konfiguration den Type mit dem passenden
+            // ui:idFragment laden und als Stub mit @type, @id und name einfügen.
+            $globalConfig = $this->loadScopeConfig('global');
+            unset($globalConfig['_meta'], $globalConfig['excluded_cats'], $globalConfig['debug_output']);
+
+            foreach($globalConfig as $globalType => $globalData) {
+                $schema = $this->loadSchema($globalType);
+                if(!is_array($schema)) {
+                    continue;
+                }
+                if(trim((string) ($schema['ui:idFragment'] ?? '')) !== $target) {
+                    continue;
+                }
+
+                // Stub-Inhalt: nur name als Pflicht-Identifikator;
+                // @type und @id werden durch die reguläre Ausgabeschleife
+                // (buildJsonLdScript + resolveNodeId) ergänzt.
+                $stub = [];
+                $nameValue = is_array($globalData) ? ($globalData['name'] ?? '') : '';
+                if(is_string($nameValue) and $nameValue !== '') {
+                    $stub['name'] = $nameValue;
+                }
+
+                if(!isset($scopeConfigs['global'])) {
+                    $scopeConfigs['global'] = [];
+                }
+                $scopeConfigs['global'][$globalType] = $stub;
+                break;
+            }
+        }
+
+        return [$scopeConfigs, $suppressedIdTargets];
+    }
+
+    /***************************************************************
+    *
     * Liefert alle verfügbaren Schema-Types anhand der .json-Dateien
     * im Verzeichnis schemas/.
     *
@@ -412,7 +542,7 @@ class schemaOrgData extends Plugin {
     * @return string fertiger <script>-Block inkl. Zeilenumbruch
     *
     ***************************************************************/
-    private function buildJsonLdScript(string $type, array $data, string $nodeId = ''): string {
+    private function buildJsonLdScript(string $type, array $data, string $nodeId = '', array $suppressedIdTargets = []): string {
         // Werte wurden beim Speichern mit htmlspecialchars() gesichert -
         // vor dem JSON-Encode wieder in Klartext umwandeln.
         $data = $this->decodeJsonLdValues($data);
@@ -426,6 +556,28 @@ class schemaOrgData extends Plugin {
         foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person'] as $property => $nestedType) {
             if(isset($data[$property]) and is_array($data[$property])) {
                 $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
+            }
+        }
+
+        // id_reference-Properties aus dem Schema einsetzen (Build-Zeit-Emitter).
+        // Diese Properties haben keinen gespeicherten Wert - ihr Wert wird hier
+        // zur Ausgabezeit als {"@id": "<Basis-URL>#<Fragment>"} aufgelöst.
+        // Einfügung NACH removeEmptyJsonLdProperties(), damit ein gesetzter
+        // @id-Verweis nie still getilgt wird (analoges Muster zum @id-Anker,
+        // siehe README.md, "@id-Anker"). Bei keep-Modus auf der Zielebene wird
+        // das Target in $suppressedIdTargets übergeben - dann unterbleibt die
+        // Emission, um kein Dangling-@id gegen den Nutzerwunsch zu erzeugen.
+        $schema = $this->loadSchema($type);
+        if(is_array($schema)) {
+            $baseUrl = $this->resolveBaseUrl();
+            foreach($schema['properties'] ?? [] as $propName => $propSchema) {
+                $propSchema = $this->resolveSchemaRef($propSchema, $schema);
+                if(($propSchema['ui:widget'] ?? '') === 'id_reference') {
+                    $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
+                    if($target !== '' and $baseUrl !== '' and !in_array($target, $suppressedIdTargets, true)) {
+                        $data[$propName] = ['@id' => $baseUrl.'#'.$target];
+                    }
+                }
             }
         }
 
@@ -899,6 +1051,13 @@ class schemaOrgData extends Plugin {
         }
 
         foreach($schema['required'] ?? [] as $requiredProperty) {
+            // id_reference-Properties werden zur Build-Zeit automatisch emittiert
+            // und kommen nie im gespeicherten Daten-Array vor - Pflichtprüfung überspringen.
+            $propSchema = $this->resolveSchemaRef($schema['properties'][$requiredProperty] ?? [], $schema);
+            if(($propSchema['ui:widget'] ?? '') === 'id_reference') {
+                continue;
+            }
+
             $value = $data[$requiredProperty] ?? null;
             if($value === null or $value === '' or $value === []) {
                 $errors[] = $requiredProperty;
@@ -2009,6 +2168,23 @@ class schemaOrgData extends Plugin {
         $badge = $this->renderRequiredBadge($required);
         $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name;
         $isEmpty = ($value === null or $value === '' or $value === []);
+
+        // id_reference: rein deklaratives Widget ohne Eingabefeld.
+        // Der Wert wird zur Build-Zeit in buildJsonLdScript() emittiert;
+        // im Formular genügt eine schreibgeschützte Info-Anzeige mit der
+        // aufgelösten Ziel-URI.
+        if($widget === 'id_reference') {
+            $target = trim((string) ($fieldSchema['ui:idTarget'] ?? ''));
+            $baseUrl = $this->resolveBaseUrl();
+            $uri = $baseUrl !== '' ? $baseUrl.'#'.$target : '#'.$target;
+            $infoText = $lang->getLanguageHtml('hint_id_reference_auto_link');
+            return '<div class="c-content schemaOrgData-field-row">'
+                .'<div class="mo-in-li-l">'.$label.$badge.'</div>'
+                .'<div class="mo-in-li-r"><span class="schemaOrgData-id-reference-info">'
+                .$infoText.' <code>'.htmlspecialchars($uri).'</code>'
+                .'</span></div>'
+                .'</div>'."\n";
+        }
 
         if(in_array($widget, ['postal_address', 'opening_hours', 'faq_list'], true)) {
             $inner = match($widget) {

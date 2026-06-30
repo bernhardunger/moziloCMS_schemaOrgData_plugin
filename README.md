@@ -43,6 +43,7 @@ Das Plugin ist **vollständig eigenständig** und setzt kein anderes Plugin (z. 
 | `Person` | Einzelperson | Global / Kategorie |
 | `WebSite` | Website-Metadaten | Global |
 | `FAQPage` | Häufig gestellte Fragen | Kategorie / Seite |
+| `DonateAction` | Spendenaufruf (verknüpft per `@id` mit dem globalen Org-Knoten) | Seite |
 
 ---
 
@@ -264,6 +265,59 @@ Lässt sich kein Host ermitteln, wird **keine** (leere) `@id` ausgegeben.
 erhält nur der erste in Ausgabereihenfolge die `@id`; die übrigen bleiben ohne
 Anker. Eine einmal gesetzte `@id` wird nie still entfernt — sie steht immer
 direkt hinter `@type` im Output.
+
+---
+
+### Widget `id_reference` und Dangling-Reference-Guard
+
+Das Widget `id_reference` ermöglicht es Seiten-Typen (z. B. `DonateAction`), per
+`@id` auf den global definierten Organisationsknoten zu verweisen, ohne ihn auf
+jeder Seite zu wiederholen. Die Deklaration erfolgt ausschließlich im Schema:
+
+```json
+"recipient": {
+  "ui:widget": "id_reference",
+  "ui:idTarget": "organization",
+  "ui:required": true
+}
+```
+
+Zur Ausgabezeit fügt das Plugin dafür automatisch `{"@id": "<Basis-URL>#organization"}`
+ein — kein Eingabefeld, kein gespeicherter Wert.
+
+**Ausgabe-Beispiel (`DonateAction` auf einer Spenden-Seite, `NGO` global):**
+
+```html
+<!-- Auf jeder Seite (Global): -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "NGO",
+  "@id": "https://www.example.org/#organization",
+  "name": "Beispiel-Hilfe e. V."
+}
+</script>
+
+<!-- Nur auf der Spenden-Seite (Seite): -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "DonateAction",
+  "description": "Jetzt spenden und helfen!",
+  "recipient": { "@id": "https://www.example.org/#organization" }
+}
+</script>
+```
+
+**Dangling-Reference-Guard.** Verweist eine `id_reference` auf einen Knoten, der
+auf dieser Seite nicht ausgegeben würde (z. B. weil die Kategorie in der
+Ausschlussliste steht), erzwingt das Plugin automatisch einen Minimal-Stub des
+Zielknotens (`@type`, `@id`, `name`) — damit der Graph stets valide bleibt.
+Der Stub enthält nur den nötigsten Identifikator, keinen vollständigen Datensatz.
+
+Ausnahme: Ist für den globalen Scope „Vorhandenes JSON-LD beibehalten" (keep)
+aktiv, hat dieser ausdrückliche Nutzerwunsch Vorrang — in diesem Fall wird die
+`id_reference` **nicht** emittiert (kein Dangling-`@id` gegen den Nutzerwillen).
 
 > **Künftige Optionen (noch nicht umgesetzt):** ein optionales manuelles
 > Basis-URL-/Domain-Setting (für Reverse-Proxy-/CDN-Szenarien) sowie die

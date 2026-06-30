@@ -37,6 +37,9 @@ schema_type_legalservice = ⚖️ Kanzlei / Rechtliche Beratung (LegalService)
 schema_type_medicalbusiness = 🩺 Arztpraxis / Gesundheit (MedicalBusiness)
 schema_type_article = 📰 Artikel / Blogbeitrag (Article)
 schema_type_jobposting = 💼 Stellenanzeige (JobPosting)
+schema_type_donateaction = 💝 Spendenaufruf / Spende (DonateAction)
+
+label_recipient = Empfänger (Organisation)
 
 label_name = Name
 label_description = Beschreibung
@@ -123,6 +126,8 @@ description_import_jsonld = Fügt einen bestehenden JSON-LD-Block ein. Bekannte 
 button_import = Importieren
 
 button_use_detected_jsonld = Erkannten Block übernehmen
+
+hint_id_reference_auto_link = Wird automatisch verknüpft mit:
 
 button_save = Speichern
 
