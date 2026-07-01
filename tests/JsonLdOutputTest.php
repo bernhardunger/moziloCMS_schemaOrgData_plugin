@@ -159,7 +159,17 @@ final class JsonLdOutputTest extends TestCase {
 
     function testConfiguredScopeProducesScriptBlock(): void {
         $plugin = $this->createPlugin();
-        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $this->validLocalBusinessData(),
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         $output = $plugin->getContent('');
 
@@ -171,7 +181,17 @@ final class JsonLdOutputTest extends TestCase {
 
     function testContextIsAlwaysSchemaOrg(): void {
         $plugin = $this->createPlugin();
-        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $this->validLocalBusinessData(),
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
 
@@ -180,7 +200,17 @@ final class JsonLdOutputTest extends TestCase {
 
     function testTypeMatchesConfiguredSchemaType(): void {
         $plugin = $this->createPlugin();
-        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $this->validLocalBusinessData(),
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
 
@@ -212,7 +242,17 @@ final class JsonLdOutputTest extends TestCase {
 
     function testAddressIsNestedAsPostalAddress(): void {
         $plugin = $this->createPlugin();
-        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $this->validLocalBusinessData(),
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
 
@@ -223,7 +263,17 @@ final class JsonLdOutputTest extends TestCase {
 
     function testAddressCountryContainsIsoCode(): void {
         $plugin = $this->createPlugin();
-        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $this->validLocalBusinessData(),
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
 
@@ -236,7 +286,17 @@ final class JsonLdOutputTest extends TestCase {
 
     function testOpeningHoursIsOutputAsArray(): void {
         $plugin = $this->createPlugin();
-        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $this->validLocalBusinessData(),
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
 
@@ -252,7 +312,17 @@ final class JsonLdOutputTest extends TestCase {
         $postData = $this->validLocalBusinessData();
         $postData['extension']['LocalBusiness'] = json_encode(['foundingDate' => '2020-01-01']);
 
-        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $postData,
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
 
@@ -265,7 +335,17 @@ final class JsonLdOutputTest extends TestCase {
         $postData['data']['telephone'] = '+4989111111';
         $postData['extension']['LocalBusiness'] = json_encode(['telephone' => '+4989222222']);
 
-        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $postData,
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
 
@@ -281,7 +361,17 @@ final class JsonLdOutputTest extends TestCase {
         $postData = $this->validLocalBusinessData();
         $postData['excluded_cats'] = ['impressum', 'datenschutz'];
 
-        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $postData,
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         $blocks = $this->getJsonLdBlocks($plugin);
 
@@ -306,7 +396,17 @@ final class JsonLdOutputTest extends TestCase {
 
     function testJsonldModeKeepSuppressesOutput(): void {
         $plugin = $this->createPlugin();
-        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $this->validLocalBusinessData(),
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
         (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($this->settings, 'global', ['existing_jsonld' => true, 'jsonld_mode' => 'keep']);
 
         $output = $plugin->getContent('');
@@ -316,7 +416,17 @@ final class JsonLdOutputTest extends TestCase {
 
     function testJsonldModeOverrideProducesOutput(): void {
         $plugin = $this->createPlugin();
-        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $this->validLocalBusinessData(),
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
         (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($this->settings, 'global', ['existing_jsonld' => true, 'jsonld_mode' => 'override']);
 
         $blocks = $this->getJsonLdBlocks($plugin);
@@ -481,7 +591,17 @@ final class JsonLdOutputTest extends TestCase {
 
     function testDebugOutputFalseProducesNoDebugWidget(): void {
         $plugin = $this->createPlugin();
-        callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $this->validLocalBusinessData(),
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         $output = $plugin->getContent('');
 
@@ -493,7 +613,17 @@ final class JsonLdOutputTest extends TestCase {
         $plugin = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';
-        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $postData,
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         $output = $plugin->getContent('');
 
@@ -505,7 +635,17 @@ final class JsonLdOutputTest extends TestCase {
         $plugin = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';
-        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $postData,
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         $output = $plugin->getContent('');
 
@@ -517,7 +657,17 @@ final class JsonLdOutputTest extends TestCase {
         $plugin = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';
-        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $postData,
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         $output = $plugin->getContent('');
 
@@ -531,7 +681,17 @@ final class JsonLdOutputTest extends TestCase {
         $plugin = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';
-        callPluginMethod($plugin, 'saveConfig', ['global', $postData]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $postData,
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
 
         $output = $plugin->getContent('');
 
@@ -541,14 +701,34 @@ final class JsonLdOutputTest extends TestCase {
     function testScriptBlocksIdenticalRegardlessOfDebugOutput(): void {
         // Ohne Debug
         $plugin1 = $this->createPlugin();
-        callPluginMethod($plugin1, 'saveConfig', ['global', $this->validLocalBusinessData()]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $this->validLocalBusinessData(),
+            $this->settings,
+            callPluginMethod($plugin1, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin1->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
         $output1 = $plugin1->getContent('');
 
         // Mit Debug
         $plugin2 = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';
-        callPluginMethod($plugin2, 'saveConfig', ['global', $postData]);
+        (new \SchemaOrgData_AdminController())->saveConfig(
+            'global',
+            $postData,
+            $this->settings,
+            callPluginMethod($plugin2, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin2->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper()
+        );
         $output2 = $plugin2->getContent('');
 
         preg_match_all('#<script type="application/ld\+json">.*?</script>#s', $output1, $m1);
