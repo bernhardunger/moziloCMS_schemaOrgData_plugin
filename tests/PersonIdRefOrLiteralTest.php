@@ -121,7 +121,7 @@ final class PersonIdRefOrLiteralTest extends TestCase {
 
     function testPersonSchemaHasIdFragment(): void {
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['Person']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'Person');
 
         $this->assertIsArray($schema);
         $this->assertSame('person', $schema['ui:idFragment'],
@@ -130,7 +130,7 @@ final class PersonIdRefOrLiteralTest extends TestCase {
 
     function testPersonSchemaIsGlobalOnly(): void {
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['Person']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'Person');
 
         $this->assertSame(['global'], $schema['ui:scopes'],
             'Person.json muss ausschließlich den Scope "global" haben');
@@ -138,7 +138,7 @@ final class PersonIdRefOrLiteralTest extends TestCase {
 
     function testPersonSchemaRequiresName(): void {
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['Person']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'Person');
 
         $this->assertContains('name', $schema['required'],
             'Person.json muss "name" als Pflichtfeld deklarieren');
@@ -146,7 +146,7 @@ final class PersonIdRefOrLiteralTest extends TestCase {
 
     function testPersonSchemaJobTitleIsOptional(): void {
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['Person']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'Person');
 
         $this->assertArrayHasKey('jobTitle', $schema['properties']);
         $this->assertNotContains('jobTitle', $schema['required'] ?? []);
@@ -257,7 +257,7 @@ final class PersonIdRefOrLiteralTest extends TestCase {
 
     function testValidateAgainstSchemaSkipsIdRefOrLiteralInRequired(): void {
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['TestIdRefType']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'TestIdRefType');
 
         // Leere Daten — würde ohne Skip einen required-Fehler für "organizer" erzeugen
         $result = callPluginMethod($plugin, 'validateAgainstSchema', [[], $schema]);

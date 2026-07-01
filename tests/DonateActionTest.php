@@ -101,7 +101,7 @@ final class DonateActionTest extends TestCase {
 
     function testDonateActionSchemaLoadsCorrectly(): void {
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['DonateAction']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'DonateAction');
 
         $this->assertIsArray($schema, 'DonateAction.json muss ladbar sein');
         $this->assertSame('DonateAction', $schema['title']);
@@ -112,7 +112,7 @@ final class DonateActionTest extends TestCase {
 
     function testDonateActionRecipientIsIdReferenceWidget(): void {
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['DonateAction']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'DonateAction');
         $recipient = $schema['properties']['recipient'];
 
         $this->assertSame('id_reference', $recipient['ui:widget']);
@@ -122,7 +122,7 @@ final class DonateActionTest extends TestCase {
 
     function testDonateActionDescriptionIsTextareaAndOptional(): void {
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['DonateAction']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'DonateAction');
         $description = $schema['properties']['description'];
 
         $this->assertSame('textarea', $description['ui:widget']);
@@ -181,7 +181,7 @@ final class DonateActionTest extends TestCase {
 
     function testValidateAgainstSchemaStillEnforcesNormalRequired(): void {
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['DonateAction']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'DonateAction');
 
         // description ist optional, kein Fehler erwartet.
         $result = callPluginMethod($plugin, 'validateAgainstSchema', [[], $schema]);
@@ -200,7 +200,7 @@ final class DonateActionTest extends TestCase {
         $_SERVER['SCRIPT_NAME'] = '/index.php';
 
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['DonateAction']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'DonateAction');
 
         $html = callPluginMethod($plugin, 'renderField', [
             'page', 'recipient', $schema['properties']['recipient'], null, $schema, [],
@@ -220,7 +220,7 @@ final class DonateActionTest extends TestCase {
         unset($_SERVER['HTTP_HOST']);
 
         $plugin = $this->createPlugin();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['DonateAction']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'DonateAction');
 
         $html = callPluginMethod($plugin, 'renderField', [
             'page', 'recipient', $schema['properties']['recipient'], null, $schema, [],

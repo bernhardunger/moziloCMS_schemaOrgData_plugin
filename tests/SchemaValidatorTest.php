@@ -21,7 +21,7 @@ final class SchemaValidatorTest extends TestCase {
 
     private function validate(array $data): array {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
 
         return callPluginMethod($plugin, 'validateAgainstSchema', [$data, $schema]);
     }
@@ -65,7 +65,7 @@ final class SchemaValidatorTest extends TestCase {
 
     function testEmptyRequiredFieldWithInheritedValueProducesNoError(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
 
         // name, url und address (addressLocality, addressCountry) sind Pflichtfelder;
         // alle leer, aber durch geerbte Werte abgedeckt → kein Fehler erwartet.
@@ -96,7 +96,7 @@ final class SchemaValidatorTest extends TestCase {
 
     function testEmptyRequiredFieldWithoutInheritedValueProducesError(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
 
         // name leer, kein geerbter Wert → Fehler erwartet
         $errors = callPluginMethod($plugin, 'validateFormData', [
@@ -111,11 +111,11 @@ final class SchemaValidatorTest extends TestCase {
 
     function testEmptyRequiredAddressSubFieldWithInheritedValueProducesNoError(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-        $addressSchema = callPluginMethod($plugin, 'resolveSchemaRef', [
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
+        $addressSchema = (new \SchemaOrgData_SchemaRepository())->resolveSchemaRef(
             $schema['properties']['address'],
-            $schema,
-        ]);
+            $schema
+        );
 
         // addressLocality ist als ui:required markiert; leer, aber geerbt → kein Fehler
         $inheritableAddress = ['addressLocality' => 'Musterstadt', 'addressCountry' => 'DE'];
@@ -132,11 +132,11 @@ final class SchemaValidatorTest extends TestCase {
 
     function testEmptyRequiredAddressSubFieldWithoutInheritedValueProducesError(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-        $addressSchema = callPluginMethod($plugin, 'resolveSchemaRef', [
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
+        $addressSchema = (new \SchemaOrgData_SchemaRepository())->resolveSchemaRef(
             $schema['properties']['address'],
-            $schema,
-        ]);
+            $schema
+        );
 
         // streetAddress ausgefüllt (Adresse gilt als "provided"), addressLocality
         // leer, kein geerbter Wert → Fehler für das required Ort-Feld erwartet.
@@ -152,7 +152,7 @@ final class SchemaValidatorTest extends TestCase {
 
     function testCompletelyEmptyAddressWithNameUrlProducesNoError(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
 
         // name + url gefüllt, address nur mit Default addressCountry=DE (kein
         // Adressfeld manuell ausgefüllt) → validateFormData() darf keinen Fehler liefern.
@@ -172,11 +172,11 @@ final class SchemaValidatorTest extends TestCase {
 
     function testAddressPartialFillMissingLocalityProducesError(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-        $addressSchema = callPluginMethod($plugin, 'resolveSchemaRef', [
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
+        $addressSchema = (new \SchemaOrgData_SchemaRepository())->resolveSchemaRef(
             $schema['properties']['address'],
-            $schema,
-        ]);
+            $schema
+        );
 
         // streetAddress gesetzt → Adresse gilt als "provided";
         // addressLocality fehlt, kein geerbter Wert → Fehler erwartet (Regressionsschutz).

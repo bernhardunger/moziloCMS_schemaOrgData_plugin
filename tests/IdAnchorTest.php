@@ -133,7 +133,7 @@ final class IdAnchorTest extends TestCase {
 
     function testNgoSchemaIsGlobalScopeWithOrganizationFragment(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['NGO']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'NGO');
 
         $this->assertContains('global', $schema['ui:scopes']);
         $this->assertSame('organization', $schema['ui:idFragment']);
@@ -143,7 +143,7 @@ final class IdAnchorTest extends TestCase {
 
     function testNonprofitStatusEnumContainsExpectedTerms(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['NGO']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'NGO');
         $field = $schema['properties']['nonprofitStatus'];
 
         $expected = [

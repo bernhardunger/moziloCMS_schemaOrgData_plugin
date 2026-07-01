@@ -26,7 +26,7 @@ final class FormRendererTest extends TestCase {
 
     function testKnownSchemaTypeRendersExpectedWidgetTypes(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
 
         $this->assertNotNull($schema);
         $this->assertSame('text', $schema['properties']['name']['ui:widget']);
@@ -42,7 +42,7 @@ final class FormRendererTest extends TestCase {
 
     function testOptionalFieldGetsNoBadge(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
 
         $html = callPluginMethod($plugin, 'renderField', [
             'global', 'description', $schema['properties']['description'], '', $schema, [],
@@ -62,8 +62,8 @@ final class FormRendererTest extends TestCase {
     ***************************************************************/
     function testAddressLocalityFieldHasRequiredValidationAttributes(): void {
         $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-        $addressSchema = callPluginMethod($plugin, 'resolveSchemaRef', [$schema['properties']['address'], $schema]);
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
+        $addressSchema = (new \SchemaOrgData_SchemaRepository())->resolveSchemaRef($schema['properties']['address'], $schema);
 
         $html = callPluginMethod($plugin, 'renderPostalAddressWidget', ['global', 'address', $addressSchema, []]);
 
