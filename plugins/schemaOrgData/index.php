@@ -13,6 +13,7 @@ require_once __DIR__.'/lib/SchemaOrgData_Validator.php';
 require_once __DIR__.'/lib/SchemaOrgData_FormRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_ImportService.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminController.php';
+require_once __DIR__.'/lib/SchemaOrgData_FrontendRenderer.php';
 
 /***************************************************************
 *
@@ -43,7 +44,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminController.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.30-beta';
+    private const PLUGIN_VERSION = '0.4.31-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -56,9 +57,6 @@ class schemaOrgData extends Plugin {
 
     /** Sprachobjekt für Admin-UI (sprachen/admin_language_{lang}.txt) */
     private ?Language $admin_lang = null;
-
-    /** Sprachobjekt für Frontend/CMS-Kontext (sprachen/cms_language_{lang}.txt) */
-    private ?Language $cms_lang = null;
 
     /** Sprachobjekt für Wochentag-Labels (sprachen/cms_language_{lang}.txt, Admin-Sprache) */
     private ?Language $weekday_lang = null;
@@ -105,6 +103,9 @@ class schemaOrgData extends Plugin {
     /** Lazy-Instanz von SchemaOrgData_AdminController (siehe adminController()) */
     private ?SchemaOrgData_AdminController $adminControllerInstance = null;
 
+    /** Lazy-Instanz von SchemaOrgData_FrontendRenderer (siehe frontendRenderer()) */
+    private ?SchemaOrgData_FrontendRenderer $frontendRendererInstance = null;
+
     function __construct() {
         parent::__construct();
         // Komponenten werden lazy verdrahtet (siehe urlHelper(), languageService(), schemaRepository()).
@@ -125,149 +126,11 @@ class schemaOrgData extends Plugin {
             return $this->renderAdminPage();
         }
 
-        global $CMS_CONF;
-
-        $this->cms_lang = $this->languageService()->loadCmsLanguageFile(
-            $this->PLUGIN_SELF_DIR,
-            $this->resolvePluginLanguage($CMS_CONF->get('cmslanguage'))
+        return $this->frontendRenderer()->renderFrontend(
+            $value, $this->settings, $this->PLUGIN_SELF_DIR,
+            $this->scopeResolver(), $this->schemaRepository(), $this->jsonLdBuilder(),
+            $this->idReferenceService(), $this->collisionDetector(), $this->urlHelper()
         );
-
-        $output = '';
-
-        // Konfiguration je Geltungsebene laden (sofern vorhanden)
-        $scopeConfigs = ['global' => $this->loadScopeConfig('global')];
-
-        if(defined('CAT_REQUEST') and CAT_REQUEST) {
-            $scopeConfigs['category'] = $this->loadScopeConfig('category', CAT_REQUEST);
-        }
-        if(defined('CAT_REQUEST') and defined('PAGE_REQUEST') and CAT_REQUEST and PAGE_REQUEST) {
-            $scopeConfigs['page'] = $this->loadScopeConfig('page', CAT_REQUEST, PAGE_REQUEST);
-        }
-
-        // Ausschlussliste prüfen (nur global): die globale Ausgabe wird
-        // unterdrückt, wenn die aktive Kategorie in excluded_cats steht
-        // (siehe README.md, Abschnitt "Ausschlussliste").
-        $excludedCats = !empty($scopeConfigs['global']['excluded_cats'])
-            ? explode(',', (string) $scopeConfigs['global']['excluded_cats'])
-            : [];
-
-        if(defined('CAT_REQUEST') and CAT_REQUEST and in_array(CAT_REQUEST, $excludedCats, true)) {
-            unset($scopeConfigs['global']);
-        }
-
-        // Debug-Modus: Flag aus config_global lesen, bevor die Verwaltungsdaten
-        // entfernt werden (debug_output ist kein Schema-Type, sondern ein
-        // Meta-Schlüssel analog zu excluded_cats).
-        $debugOutput = !empty($scopeConfigs['global']['debug_output'] ?? false);
-
-        // Verwaltungsdaten (_meta, excluded_cats, debug_output) entfernen -
-        // übrig bleiben je Ebene nur noch die Schema-Type-Konfigurationen.
-        foreach($scopeConfigs as $scope => $config) {
-            unset($scopeConfigs[$scope]['_meta'], $scopeConfigs[$scope]['excluded_cats'], $scopeConfigs[$scope]['debug_output']);
-        }
-
-        // jsonld_mode prüfen: wurde bereits vorhandenes JSON-LD erkannt
-        // und für diese Ebene "Vorhandenes beibehalten" gewählt (Standard,
-        // solange der Admin keine Wahl getroffen hat), wird die eigene
-        // Ausgabe komplett unterdrückt (siehe loadScopeMeta/
-        // renderExistingJsonLdNotice sowie README.md, Abschnitt
-        // "Verhalten bei vorhandenem JSON-LD").
-        // $globalSuppressedByKeep wird für den Dangling-Reference-Guard
-        // unten benötigt: keep hat Vorrang vor einem erzwungenen Stub.
-        $globalSuppressedByKeep = false;
-        foreach($scopeConfigs as $scope => $config) {
-            $scopeArgs = match($scope) {
-                'category' => [CAT_REQUEST],
-                'page'     => [CAT_REQUEST, PAGE_REQUEST],
-                default    => [],
-            };
-
-            $meta = $this->loadScopeMeta($scope, ...$scopeArgs);
-            if($meta['existing_jsonld'] and ($meta['jsonld_mode'] ?? 'override') === 'keep') {
-                if($scope === 'global') {
-                    $globalSuppressedByKeep = true;
-                }
-                unset($scopeConfigs[$scope]);
-            }
-        }
-
-        // Feldweise Vererbung: ist derselbe Schema-Type auf mehreren
-        // Ebenen konfiguriert, werden die Felder zusammengeführt
-        // (Global -> Kategorie -> Seite, siehe resolveTypeInheritance()).
-        $scopeConfigs = $this->resolveTypeInheritance($scopeConfigs);
-
-        // Dangling-Reference-Guard: prüft, ob eine id_reference auf einen
-        // @id-Knoten verweist, der auf dieser Seite nicht ausgegeben wird,
-        // und erzwingt ggf. einen Minimal-Stub (nur bei excluded_cats-
-        // Unterdrückung). Bei keep-Modus wird die id_reference stattdessen
-        // unterdrückt (siehe applyDanglingReferenceGuard(), README.md,
-        // "@id-Anker").
-        [$scopeConfigs, $suppressedIdTargets] = $this->applyDanglingReferenceGuard(
-            $scopeConfigs, $globalSuppressedByKeep
-        );
-
-        // JSON-LD-Blöcke der verbleibenden Types ausgeben; bei aktivem
-        // Debug-Modus Metadaten je Block für buildDebugWidget() sammeln.
-        // Pro Seite vergebene @id-Fragmente, für den De-Dup-Guard in
-        // resolveNodeId() (siehe README.md, "@id-Anker").
-        $assignedFragments = [];
-
-        $debugBlocks = [];
-        foreach($scopeConfigs as $scope => $config) {
-            foreach($config as $type => $data) {
-                $nodeId = $this->resolveNodeId($type, $assignedFragments);
-                $output .= $this->buildJsonLdScript($type, $data, $nodeId, $suppressedIdTargets);
-                if($debugOutput) {
-                    $scopeKey = match($scope) {
-                        'category' => 'cat_'.(CAT_REQUEST ? (string) CAT_REQUEST : ''),
-                        'page'     => 'page_'.(CAT_REQUEST ? (string) CAT_REQUEST : '').'_'.(PAGE_REQUEST ? (string) PAGE_REQUEST : ''),
-                        default    => 'global',
-                    };
-                    $debugBlocks[] = ['scope' => $scopeKey, 'type' => $type, 'data' => $data, 'id' => $nodeId];
-                }
-            }
-        }
-
-        if($debugOutput and $debugBlocks !== []) {
-            $output .= $this->buildDebugWidget($debugBlocks);
-        }
-
-        // Kollisionserkennung: vorhandenes JSON-LD scope-genau persistieren
-        // (Flag + Inhalt für den Autofill-Button, siehe ADR autofill).
-        // Ein im Layout-Template gefundener Block ist layoutweit — er wird
-        // ausschließlich dem Global-Scope zugeordnet (analog Admin-Pfad,
-        // siehe extractExistingJsonLdBlocksFromTemplateAdmin() / renderAdminPage()).
-        // Ein im Seiteninhalt ($value) gefundener Block ist seitenspezifisch —
-        // er wird ausschließlich dem Seiten-Scope der aktuell gerenderten
-        // Seite zugeordnet, sofern CAT_REQUEST und PAGE_REQUEST gesetzt sind.
-        // Kategorie-Scope erhält über diesen Mechanismus keinen Eintrag.
-        $templateBlocks = $this->extractExistingJsonLdBlocksFromTemplate();
-        $hasJsonLdInTemplate = !empty($templateBlocks);
-        $templateContent = implode("\n\n", array_map('trim', $templateBlocks));
-        $metaGlobal = $this->loadScopeMeta('global');
-        if($metaGlobal['existing_jsonld'] !== $hasJsonLdInTemplate
-            || $metaGlobal['existing_jsonld_content'] !== $templateContent) {
-            $this->saveScopeMeta('global', [
-                'existing_jsonld' => $hasJsonLdInTemplate,
-                'existing_jsonld_content' => $templateContent,
-            ]);
-        }
-
-        $contentBlocks = $this->extractExistingJsonLdBlocks((string) $value);
-        $hasJsonLdInContent = !empty($contentBlocks);
-        $pageContent = implode("\n\n", array_map('trim', $contentBlocks));
-        if(defined('CAT_REQUEST') and defined('PAGE_REQUEST') and CAT_REQUEST and PAGE_REQUEST) {
-            $metaPage = $this->loadScopeMeta('page', CAT_REQUEST, PAGE_REQUEST);
-            if($metaPage['existing_jsonld'] !== $hasJsonLdInContent
-                || $metaPage['existing_jsonld_content'] !== $pageContent) {
-                $this->saveScopeMeta('page', [
-                    'existing_jsonld' => $hasJsonLdInContent,
-                    'existing_jsonld_content' => $pageContent,
-                ], CAT_REQUEST, PAGE_REQUEST);
-            }
-        }
-
-        return $output;
     }
 
     /***************************************************************
@@ -395,6 +258,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_AdminController. */
     private function adminController(): SchemaOrgData_AdminController {
         return $this->adminControllerInstance ??= new SchemaOrgData_AdminController();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_FrontendRenderer. */
+    private function frontendRenderer(): SchemaOrgData_FrontendRenderer {
+        return $this->frontendRendererInstance ??= new SchemaOrgData_FrontendRenderer();
     }
 
     /***************************************************************
@@ -1822,118 +1690,14 @@ class schemaOrgData extends Plugin {
     * sowie einem Link auf validator.schema.org.
     *
     * Wird von getContent() angehängt, wenn debug_output aktiv ist
-    * und mindestens ein Block ausgegeben wurde. Alle Styles sind
-    * inline, alle IDs mit "schemaOrgData-debug-" präfixiert — keine
-    * globalen CSS-Klassen, da dies auf der echten Frontend-Seite
-    * landet.
+    * und mindestens ein Block ausgegeben wurde.
     *
     * @param array $blocks [['scope' => 'global'|'cat_x'|'page_x_y', 'type' => '...', 'data' => [...]], ...]
     * @return string HTML-Snippet inkl. <script>
     *
     ***************************************************************/
     private function buildDebugWidget(array $blocks): string {
-        $count = count($blocks);
-        $plural = $count !== 1 ? 'Blöcke' : 'Block';
-
-        $html  = '<button id="schemaOrgData-debug-trigger" type="button" '
-            .'style="position:fixed;bottom:1em;right:1em;z-index:9999;background:#1a73e8;color:#fff;'
-            .'border:none;border-radius:4px;padding:.5em 1em;font-size:14px;cursor:pointer;'
-            .'box-shadow:0 2px 8px rgba(0,0,0,.3);">'
-            .'🔧 Debug: '.$count.' JSON-LD-'.$plural.'</button>'."\n";
-
-        $html .= '<dialog id="schemaOrgData-debug-dialog" '
-            .'style="max-width:800px;width:90vw;max-height:85vh;overflow:auto;border-radius:6px;'
-            .'border:1px solid #ccc;box-shadow:0 4px 24px rgba(0,0,0,.2);padding:1.5em;">'."\n";
-
-        // Kopfzeile mit Validator-Link und Schließen-Button
-        $html .= '<div style="display:flex;justify-content:space-between;align-items:center;'
-            .'margin-bottom:1em;border-bottom:1px solid #eee;padding-bottom:.75em;">'."\n";
-        $html .= '<strong style="font-size:1.1em;">🔧 Schema.org JSON-LD Debug</strong>'."\n";
-        $html .= '<div style="display:flex;gap:.5em;align-items:center;">'."\n";
-        $html .= '<a href="https://validator.schema.org" target="_blank" rel="noopener" '
-            .'style="font-size:.85em;color:#1a73e8;text-decoration:none;border:1px solid #1a73e8;'
-            .'border-radius:3px;padding:.2em .6em;">validator.schema.org öffnen ↗</a>'."\n";
-        $html .= '<button id="schemaOrgData-debug-close" type="button" '
-            .'style="background:none;border:none;font-size:1.3em;cursor:pointer;color:#666;'
-            .'padding:.1em .4em;" aria-label="Schlie&szlig;en">&#x2715;</button>'."\n";
-        $html .= '</div></div>'."\n";
-
-        foreach($blocks as $i => $block) {
-            $type   = $block['type'];
-            $scope  = $block['scope'];
-            $data   = $block['data'];
-            $nodeId = (string) ($block['id'] ?? '');
-            $preId  = 'schemaOrgData-debug-pre-'.$i;
-            $copyId = 'schemaOrgData-debug-copy-'.$i;
-
-            // Dieselben Transformationen wie buildJsonLdScript(), damit die
-            // Vorschau byte-identisch mit dem echten <script>-Block ist.
-            $data = $this->decodeJsonLdValues($data);
-            $data = $this->removeEmptyJsonLdProperties($data);
-            foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person'] as $property => $nestedType) {
-                if(isset($data[$property]) and is_array($data[$property])) {
-                    $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
-                }
-            }
-            $head = ['@context' => 'https://schema.org', '@type' => $type];
-            if($nodeId !== '') {
-                $head['@id'] = $nodeId;
-            }
-            $jsonLd = array_merge($head, $data);
-            $prettyJson = json_encode($jsonLd, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-            $html .= '<div style="margin-bottom:1.5em;">'."\n";
-            $html .= '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4em;">'."\n";
-            $html .= '<h3 style="margin:0;font-size:.95em;color:#333;">'
-                .htmlspecialchars($scope, ENT_QUOTES, CHARSET).' &mdash; '
-                .htmlspecialchars($type, ENT_QUOTES, CHARSET).'</h3>'."\n";
-            $html .= '<button id="'.$copyId.'" type="button" data-pre="'.$preId.'" '
-                .'style="font-size:.8em;background:#f5f5f5;border:1px solid #ccc;border-radius:3px;'
-                .'padding:.2em .6em;cursor:pointer;">JSON kopieren</button>'."\n";
-            $html .= '</div>'."\n";
-            $html .= '<pre id="'.$preId.'" '
-                .'style="background:#f8f8f8;border:1px solid #ddd;border-radius:4px;padding:.75em;'
-                .'overflow:auto;font-size:.8em;white-space:pre-wrap;margin:0;">'
-                .htmlspecialchars($prettyJson !== false ? $prettyJson : '', ENT_QUOTES, CHARSET)
-                .'</pre>'."\n";
-            $html .= '</div>'."\n";
-        }
-
-        $html .= '</dialog>'."\n";
-
-        $html .= '<script>(function(){'."\n";
-        $html .= 'var trigger=document.getElementById("schemaOrgData-debug-trigger");'."\n";
-        $html .= 'var dialog=document.getElementById("schemaOrgData-debug-dialog");'."\n";
-        $html .= 'var closeBtn=document.getElementById("schemaOrgData-debug-close");'."\n";
-        $html .= 'if(trigger&&dialog&&dialog.showModal){'."\n";
-        $html .= '  trigger.addEventListener("click",function(){dialog.showModal();});'."\n";
-        $html .= '}'."\n";
-        $html .= 'if(closeBtn&&dialog){'."\n";
-        $html .= '  closeBtn.addEventListener("click",function(){dialog.close();});'."\n";
-        $html .= '}'."\n";
-        $html .= 'function fallbackCopy(text){'."\n";
-        $html .= '  var ta=document.createElement("textarea");'."\n";
-        $html .= '  ta.value=text;ta.style.position="fixed";ta.style.opacity="0";'."\n";
-        $html .= '  document.body.appendChild(ta);ta.focus();ta.select();'."\n";
-        $html .= '  try{document.execCommand("copy");}catch(e){}'."\n";
-        $html .= '  document.body.removeChild(ta);'."\n";
-        $html .= '}'."\n";
-        $html .= 'var copyBtns=document.querySelectorAll("[id^=\'schemaOrgData-debug-copy-\']");'."\n";
-        $html .= 'copyBtns.forEach(function(btn){'."\n";
-        $html .= '  btn.addEventListener("click",function(){'."\n";
-        $html .= '    var pre=document.getElementById(btn.getAttribute("data-pre"));'."\n";
-        $html .= '    if(!pre)return;'."\n";
-        $html .= '    var text=pre.textContent||pre.innerText;'."\n";
-        $html .= '    var orig=btn.textContent;'."\n";
-        $html .= '    function ok(){btn.textContent="Kopiert!";setTimeout(function(){btn.textContent=orig;},1500);}'."\n";
-        $html .= '    if(navigator.clipboard&&window.isSecureContext){'."\n";
-        $html .= '      navigator.clipboard.writeText(text).then(ok).catch(function(){fallbackCopy(text);ok();});'."\n";
-        $html .= '    }else{fallbackCopy(text);ok();}'."\n";
-        $html .= '  });'."\n";
-        $html .= '});'."\n";
-        $html .= '})();</script>'."\n";
-
-        return $html;
+        return $this->frontendRenderer()->buildDebugWidget($blocks, $this->jsonLdBuilder());
     }
 
     /***************************************************************
