@@ -38,11 +38,12 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * FakeCatPageWithPages ist in PersistenceTest.php deklariert (nicht
-    * PSR-4-autoloadbar unter eigenem Dateinamen). Im normalen
-    * Suite-Lauf ist die Klasse durch das Laden von PersistenceTest.php
-    * bereits verfügbar; in #[RunInSeparateProcess]-isolierten Prozessen
-    * (siehe testFailedCategorySaveWithSpecialCharsRetainsPostValuesInActiveSection(),
+    * FakeCatPageWithPages ist in tests/Fixtures/FakeCatPageWithPages.php
+    * deklariert (nicht PSR-4-autoloadbar unter eigenem Dateinamen). Im
+    * normalen Suite-Lauf ist die Klasse durch das Laden von
+    * PersistenceTest.php bereits verfügbar; in
+    * #[RunInSeparateProcess]-isolierten Prozessen (siehe
+    * testFailedCategorySaveWithSpecialCharsRetainsPostValuesInActiveSection(),
     * testTemplateJsonLdIsPersistedOnlyForGlobalScope()) greift dort nur
     * der Composer-Autoloader, der die Klasse mangels PSR-4-Konformität
     * nicht findet - deshalb hier bei Bedarf explizit nachladen.
@@ -50,22 +51,23 @@ final class AdminControllerTest extends TestCase {
     ***************************************************************/
     private function ensureFakeCatPageWithPagesLoaded(): void {
         if (!class_exists(FakeCatPageWithPages::class)) {
-            require_once __DIR__ . '/PersistenceTest.php';
+            require_once __DIR__ . '/Fixtures/FakeCatPageWithPages.php';
         }
     }
 
     /***************************************************************
     *
-    * FakeCatPage ist in FormRendererTest.php deklariert (nicht
+    * FakeCatPage ist in tests/Fixtures/FakeCatPage.php deklariert (nicht
     * PSR-4-autoloadbar unter eigenem Dateinamen) - nicht identisch mit
-    * FakeCatPageWithPages aus PersistenceTest.php. Im normalen
-    * Suite-Lauf ist die Klasse durch das Laden von FormRendererTest.php
-    * bereits verfügbar; hier bei Bedarf explizit nachladen.
+    * FakeCatPageWithPages aus tests/Fixtures/FakeCatPageWithPages.php. Im
+    * normalen Suite-Lauf ist die Klasse durch das Laden von
+    * FormRendererTest.php bereits verfügbar; hier bei Bedarf explizit
+    * nachladen.
     *
     ***************************************************************/
     private function ensureFakeCatPageLoaded(): void {
         if (!class_exists(FakeCatPage::class)) {
-            require_once __DIR__ . '/FormRendererTest.php';
+            require_once __DIR__ . '/Fixtures/FakeCatPage.php';
         }
     }
 

@@ -4,6 +4,8 @@ namespace SchemaOrgData\Tests;
 
 use PHPUnit\Framework\TestCase;
 
+require_once __DIR__ . '/Fixtures/FakeCatPage.php';
+
 /***************************************************************
 *
 * Tests für das schema-getriebene Rendering des Admin-Formulars:
@@ -418,21 +420,5 @@ final class FormRendererTest extends TestCase {
 
         $this->assertSame('', $html);
         $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
-    }
-}
-
-/***************************************************************
-*
-* Minimaler Ersatz für die moziloCMS-Klasse CatPage, ausschließlich
-* für renderExcludedCatsField() (get_CatArray()).
-*
-***************************************************************/
-final class FakeCatPage {
-
-    function __construct(private array $cats) {
-    }
-
-    function get_CatArray(bool $all = false): array {
-        return $this->cats;
     }
 }

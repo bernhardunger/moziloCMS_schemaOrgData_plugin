@@ -6,6 +6,8 @@ use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 
+require_once __DIR__ . '/Fixtures/FakeCatPageWithPages.php';
+
 /***************************************************************
 *
 * Tests für die Persistenz-Logik: handlePostRequest(),
@@ -681,26 +683,5 @@ final class PersistenceTest extends TestCase {
 
         $this->assertTrue($globalMeta['existing_jsonld']);
         $this->assertFalse($categoryMeta['existing_jsonld']);
-    }
-}
-
-/***************************************************************
-*
-* Minimaler Ersatz für die moziloCMS-Klasse CatPage, ausschließlich
-* für renderAdminPage()/renderScopeSelector() (get_CatArray() und
-* get_PageArray()).
-*
-***************************************************************/
-final class FakeCatPageWithPages {
-
-    function __construct(private array $cats, private array $pages = []) {
-    }
-
-    function get_CatArray(bool $all = false, $showlink = false, $containspage = null): array {
-        return $this->cats;
-    }
-
-    function get_PageArray(string $cat, $extensions = null, $showlink = true): array {
-        return $this->pages[$cat] ?? [];
     }
 }
