@@ -87,6 +87,35 @@ final class ValidatorTest extends TestCase {
         $this->assertNull($result['status']);
     }
 
+    // migriert aus Validation/PostalCodeValidatorTest
+    function testValidatePostalCodeOkMitFuehrenderNull(): void {
+        $result = (new \SchemaOrgData_Validator())->validatePostalCode('01067', 'DE', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    // migriert aus Validation/PostalCodeValidatorTest
+    function testValidatePostalCodeErrorZuLang(): void {
+        $result = (new \SchemaOrgData_Validator())->validatePostalCode('123456', 'DE', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    // migriert aus Validation/PostalCodeValidatorTest
+    function testValidatePostalCodeErrorNichtNumerisch(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $lang = $this->adminLang();
+
+        $this->assertSame('error', $validator->validatePostalCode('A1234', 'DE', $lang)['status']);
+        $this->assertSame('error', $validator->validatePostalCode('8033A', 'DE', $lang)['status']);
+    }
+
+    // migriert aus Validation/PostalCodeValidatorTest
+    function testValidatePostalCodeWirdAuchFuerUsNichtGeprueft(): void {
+        // testValidatePostalCodeWirdNurFuerDePrueft() (Bestand) deckt AT ab -
+        // hier zusätzlich ein zweites Nicht-DE-Land (US) mit anderer PLZ-Länge.
+        $result = (new \SchemaOrgData_Validator())->validatePostalCode('123456', 'US', $this->adminLang());
+        $this->assertNull($result['status']);
+    }
+
     // -----------------------------------------------------------
     // validateTelephone()
     // -----------------------------------------------------------
@@ -103,6 +132,56 @@ final class ValidatorTest extends TestCase {
         $result = $validator->validateTelephone('keine-nummer', 'DE', $this->adminLang());
 
         $this->assertSame('error', $result['status']);
+    }
+
+    // migriert aus Validation/TelephoneValidatorTest
+    function testValidateTelephoneOkBeiDoppelterNullPraefix(): void {
+        $result = (new \SchemaOrgData_Validator())->validateTelephone('0049 89 123456', 'DE', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    // migriert aus Validation/TelephoneValidatorTest
+    function testValidateTelephoneNormalisierungEntferntBindestriche(): void {
+        $result = (new \SchemaOrgData_Validator())->validateTelephone('+49 89 123-456', 'DE', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    // migriert aus Validation/TelephoneValidatorTest
+    function testValidateTelephoneNormalisierungEntferntKlammern(): void {
+        $result = (new \SchemaOrgData_Validator())->validateTelephone('+49 (89) 123 456', 'DE', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    // migriert aus Validation/TelephoneValidatorTest
+    function testValidateTelephoneErrorOhnePlusOderDoppelteNull(): void {
+        $result = (new \SchemaOrgData_Validator())->validateTelephone('49 89 123456', 'DE', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    // migriert aus Validation/TelephoneValidatorTest
+    function testValidateTelephoneErrorZuKurzeNummer(): void {
+        $result = (new \SchemaOrgData_Validator())->validateTelephone('+49 1', 'DE', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    // migriert aus Validation/TelephoneValidatorTest
+    function testValidateTelephoneErrorZuLangeNummer(): void {
+        // 16 Ziffern nach dem "+" -> mehr als die zulässigen 1 + 14 Ziffern
+        $result = (new \SchemaOrgData_Validator())->validateTelephone('+4123456789012345', 'DE', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    // migriert aus Validation/TelephoneValidatorTest
+    function testValidateTelephoneNullBeiLeeremWert(): void {
+        $result = (new \SchemaOrgData_Validator())->validateTelephone('', 'DE', $this->adminLang());
+        $this->assertNull($result['status']);
+        $this->assertNull($result['message']);
+    }
+
+    // migriert aus Validation/TelephoneValidatorTest
+    function testValidateTelephoneOkFuerAnderesLand(): void {
+        $result = (new \SchemaOrgData_Validator())->validateTelephone('+33 1 23 45 67 89', 'FR', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
     }
 
     // -----------------------------------------------------------
@@ -130,6 +209,28 @@ final class ValidatorTest extends TestCase {
         $this->assertSame('error', $result['status']);
     }
 
+    // migriert aus Validation/UrlValidatorTest
+    function testValidateUrlNullBeiLeeremWert(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $result = $validator->validateUrl('', $this->adminLang());
+
+        $this->assertNull($result['status']);
+        $this->assertNull($result['message']);
+    }
+
+    // migriert aus Validation/UrlValidatorTest
+    function testValidateUrlWarningMeldungstextBeiHttp(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $lang = $this->adminLang();
+        $expectedMessage = $lang->getLanguageValue('warning_url_http');
+
+        $result = $validator->validateUrl('http://example.com', $lang);
+
+        $this->assertSame('warning', $result['status']);
+        $this->assertSame($expectedMessage, $result['message']);
+        $this->assertStringContainsString('HTTPS empfohlen', $result['message']);
+    }
+
     // -----------------------------------------------------------
     // validateEmail()
     // -----------------------------------------------------------
@@ -146,6 +247,15 @@ final class ValidatorTest extends TestCase {
         $result = $validator->validateEmail('keine-email', $this->adminLang());
 
         $this->assertSame('error', $result['status']);
+    }
+
+    // migriert aus Validation/EmailValidatorTest
+    function testValidateEmailNullBeiLeeremWert(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $result = $validator->validateEmail('', $this->adminLang());
+
+        $this->assertNull($result['status']);
+        $this->assertNull($result['message']);
     }
 
     // -----------------------------------------------------------
@@ -173,6 +283,20 @@ final class ValidatorTest extends TestCase {
         $this->assertNull($result['status']);
     }
 
+    // migriert aus Validation/OpeningHoursValidatorTest
+    // (nur validateOpeningHoursTime() - parseOpeningHours()/buildOpeningHoursArray()
+    // aus derselben Datei gehören zu SchemaOrgData_OpeningHoursHelper, bereits
+    // über OpeningHoursHelperTest abgedeckt)
+    function testValidateOpeningHoursTimeErrorBeiNurEinemGesetztenFeld(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $lang = $this->adminLang();
+
+        // from gesetzt, to leer -> Format-Fehler
+        $this->assertSame('error', $validator->validateOpeningHoursTime('13:00', '', $lang)['status']);
+        // from leer, to gesetzt -> Format-Fehler
+        $this->assertSame('error', $validator->validateOpeningHoursTime('', '17:00', $lang)['status']);
+    }
+
     // -----------------------------------------------------------
     // validateGeoCoordinate() / validateGeoLatitude() / validateGeoLongitude()
     // -----------------------------------------------------------
@@ -189,6 +313,38 @@ final class ValidatorTest extends TestCase {
         $result = $validator->validateGeoLongitude('-179.9', $this->adminLang());
 
         $this->assertSame('ok', $result['status']);
+    }
+
+    // migriert aus Validation/GeoCoordinatesValidatorTest
+    function testValidateGeoLatitudeErrorUnterschreitetWertebereich(): void {
+        $result = (new \SchemaOrgData_Validator())->validateGeoLatitude('-91', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    // migriert aus Validation/GeoCoordinatesValidatorTest
+    function testValidateGeoLongitudeErrorUnterschreitetWertebereich(): void {
+        $result = (new \SchemaOrgData_Validator())->validateGeoLongitude('-181', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    // migriert aus Validation/GeoCoordinatesValidatorTest
+    function testValidateGeoKoordinatenErrorBeiNichtNumerischemWert(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $lang = $this->adminLang();
+
+        $this->assertSame('error', $validator->validateGeoLatitude('abc', $lang)['status']);
+        $this->assertSame('error', $validator->validateGeoLongitude('abc', $lang)['status']);
+    }
+
+    // migriert aus Validation/GeoCoordinatesValidatorTest
+    function testValidateGeoKoordinatenOkFuerBeideRichtungenKombiniert(): void {
+        // Bestand deckt je Richtung nur einen Fall ab (Latitude: Fehler,
+        // Longitude: gültig) - hier beide Richtungen gemeinsam im gültigen Bereich.
+        $validator = new \SchemaOrgData_Validator();
+        $lang = $this->adminLang();
+
+        $this->assertSame('ok', $validator->validateGeoLatitude('48.137', $lang)['status']);
+        $this->assertSame('ok', $validator->validateGeoLongitude('11.575', $lang)['status']);
     }
 
     // -----------------------------------------------------------
