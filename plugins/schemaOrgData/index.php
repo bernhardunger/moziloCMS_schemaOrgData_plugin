@@ -43,7 +43,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminController.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.29-beta';
+    private const PLUGIN_VERSION = '0.4.30-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -1617,132 +1617,13 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderScopeSection(string $scope, ?string $cat, ?string $page, bool $active = true, ?string $idPrefix = null, bool $saveFailed = false): string {
-        $idPrefix = $idPrefix ?? $scope;
-        $lang = $this->loadAdminLanguage();
-        $config = $this->loadScopeConfig($scope, $cat, $page);
-
-        // Bei fehlgeschlagenem Speichern: die aktive Sektion mit den
-        // POST-Daten statt mit dem gespeicherten Konfigurations-Stand
-        // befüllen, damit fehlerhafte Eingaben nicht verloren gehen
-        // (siehe renderAdminPage()).
-        $postScope = null;
-        if($active and $saveFailed and is_array($_POST['schemaOrgData'][$scope] ?? null)) {
-            $postScope = $_POST['schemaOrgData'][$scope];
-        }
-
-        // verfügbare Schema-Types für diesen Geltungsbereich ermitteln
-        $availableTypes = [];
-        foreach($this->getAvailableSchemaTypes() as $type) {
-            $schema = $this->loadSchema($type);
-            if($schema !== null and in_array($scope, $schema['ui:scopes'] ?? [], true)) {
-                $availableTypes[$type] = $schema;
-            }
-        }
-
-        // aktuell konfigurierten Type ermitteln: nach fehlgeschlagenem
-        // Speichern der vom Nutzer im Formular gewählte Type (POST), sonst
-        // der erste bekannte Type in $config
-        $selectedType = null;
-        if($postScope !== null) {
-            $postedType = (string) ($postScope['type'] ?? '');
-            if(isset($availableTypes[$postedType])) {
-                $selectedType = $postedType;
-            }
-        }
-        if($selectedType === null) {
-            foreach(array_keys($config) as $type) {
-                if(isset($availableTypes[$type])) {
-                    $selectedType = $type;
-                    break;
-                }
-            }
-        }
-
-        $catAttr       = htmlspecialchars($cat ?? '', ENT_QUOTES, CHARSET);
-        $pageAttr      = htmlspecialchars($page ?? '', ENT_QUOTES, CHARSET);
-        $labelAttr     = htmlspecialchars($this->buildScopeLabel($scope, $cat, $page), ENT_QUOTES, CHARSET);
-        $saveLabelAttr = htmlspecialchars($this->buildSaveButtonLabel(
-            $scope === 'global' ? null : $cat,
-            $scope === 'page'   ? $page : null
-        ), ENT_QUOTES, CHARSET);
-        $displayStyle = $active ? '' : ' style="display:none"';
-        $html = '<div class="schemaOrgData-scope card mb" data-scope="'.$scope.'"'
-              . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'"'
-              . ' data-scope-label="'.$labelAttr.'" data-save-label="'.$saveLabelAttr.'"'.$displayStyle.'>'."\n";
-        $html .= '<h3>'.$lang->getLanguageHtml('scope_'.$scope).'</h3>'."\n";
-        $html .= $this->renderInfoBlock($scope);
-        $html .= $this->renderExistingJsonLdNotice($scope, $cat, $page);
-
-        if($selectedType !== null) {
-            $html .= $this->renderCollisionNotice($scope, $cat, $page, $selectedType);
-        }
-
-        $html .= '<div class="c-content schemaOrgData-field-row schemaOrgData-type-selector-row">'
-            .'<div class="mo-in-li-l"><label for="schemaOrgData_'.$idPrefix.'_type">'.$lang->getLanguageHtml('label_schema_type').'</label></div>'
-            .'<div class="mo-in-li-r">'.$this->renderTypeSelector($scope, $availableTypes, $selectedType, $idPrefix).'</div>'
-            .'</div>'."\n";
-
-        foreach($availableTypes as $type => $schema) {
-            $display = ($type === $selectedType) ? '' : ' style="display:none"';
-            $extensionOverride = null;
-
-            if($postScope !== null and $type === $selectedType) {
-                $postData = is_array($postScope['data'] ?? null) ? $postScope['data'] : [];
-                $data = $this->sanitizePostData($postData, $schema);
-                $extensionOverride = (string) ($postScope['extension'][$type] ?? '');
-
-                // Öffnungszeiten: die rohen Pro-Tag-Werte aus dem POST statt
-                // des verlustbehafteten Roundtrips über buildOpeningHoursArray()/
-                // parseOpeningHours() verwenden, damit Felder mit ungültigem
-                // Zeitformat beim Re-Display nicht geleert werden (siehe
-                // renderOpeningHoursWidget).
-                foreach($schema['properties'] ?? [] as $propName => $propSchema) {
-                    $propSchema = $this->resolveSchemaRef($propSchema, $schema);
-                    if(($propSchema['ui:widget'] ?? '') === 'opening_hours' and is_array($postData[$propName] ?? null)) {
-                        $data[$propName] = $postData[$propName];
-                    }
-                }
-            } else {
-                $data = is_array($config[$type] ?? null) ? $config[$type] : [];
-            }
-
-            $typeIdPrefix = $idPrefix.'_'.$type;
-            $inheritable = $this->resolveInheritableFields($scope, $cat, $page, $type);
-
-            $html .= '<div class="schemaOrgData-type-fields" data-schema-type="'.htmlspecialchars($type, ENT_QUOTES, CHARSET).'"'.$display.'>'."\n";
-            $html .= $this->renderTypeFields($scope, $type, $schema, $data, $typeIdPrefix, $extensionOverride, $inheritable);
-            $html .= '</div>'."\n";
-        }
-
-        if($scope === 'global') {
-            if($postScope !== null) {
-                $excludedCats = [];
-                foreach((array) ($postScope['excluded_cats'] ?? []) as $excludedCat) {
-                    $excludedCat = $this->sanitizeScopeIdentifier(trim((string) $excludedCat));
-                    if($excludedCat !== '') {
-                        $excludedCats[] = $excludedCat;
-                    }
-                }
-                $debugOutput = !empty($postScope['debug_output']);
-            } else {
-                $excludedCats = !empty($config['excluded_cats'])
-                    ? array_map('trim', explode(',', (string) $config['excluded_cats']))
-                    : [];
-                $debugOutput = !empty($config['debug_output']);
-            }
-            $html .= $this->renderExcludedCatsField($excludedCats, $debugOutput);
-        }
-
-        $html .= '</div>'."\n";
-
-        // Inaktive Sektionen werden vorgerendert, aber deaktiviert,
-        // damit beim Speichern nur die aktive Sektion übertragen wird
-        // (initScopeSelector aktiviert/deaktiviert beim Umschalten erneut)
-        if(!$active) {
-            $html = (string) preg_replace('/<(input|select|textarea)(\s)/i', '<$1 disabled="disabled"$2', $html);
-        }
-
-        return $html;
+        return $this->adminController()->renderScopeSection(
+            $scope, $cat, $page, $active, $idPrefix, $saveFailed,
+            $this->loadAdminLanguage(), $this->scopeResolver(), $this->settings, $this->schemaRepository(),
+            $this->PLUGIN_SELF_DIR, $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
+            $this->pluginLang, $this->PLUGIN_SELF_URL, $this->loadWeekdayLanguage(), $this->idReferenceService(),
+            $this->openingHoursHelper(), $this->validator()
+        );
     }
 
     /***************************************************************
@@ -1837,97 +1718,9 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function sanitizePostData(array $formData, array $schema): array {
-        $result = [];
-
-        foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
-            if(!array_key_exists($name, $formData)) {
-                continue;
-            }
-
-            $fieldSchema = $this->resolveSchemaRef($fieldSchema, $schema);
-            $widget = $fieldSchema['ui:widget'] ?? 'text';
-            $value = $formData[$name];
-
-            if($widget === 'postal_address') {
-                $address = $this->sanitizeAddressData(is_array($value) ? $value : [], $fieldSchema);
-                if($address !== []) {
-                    $result[$name] = $address;
-                }
-                continue;
-            }
-
-            if($widget === 'opening_hours') {
-                $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-                $perDay = is_array($value) ? $value : [];
-                $primary = $this->buildOpeningHoursArray($perDay, $days);
-                $secondary = $this->buildOpeningHoursArray($perDay, $days, 'from2', 'to2');
-                $openingHours = array_merge($primary, $secondary);
-                if($openingHours !== []) {
-                    $result[$name] = $openingHours;
-                }
-                continue;
-            }
-
-            if($widget === 'faq_list') {
-                $entries = [];
-                foreach((is_array($value) ? $value : []) as $entry) {
-                    $question = trim(strip_tags((string) ($entry['name'] ?? '')));
-                    $answer = trim(strip_tags((string) ($entry['acceptedAnswer']['text'] ?? '')));
-
-                    if($question === '' or $answer === '') {
-                        continue;
-                    }
-
-                    $entries[] = ['name' => $question, 'acceptedAnswer' => ['text' => $answer]];
-                }
-                if($entries !== []) {
-                    $result[$name] = $entries;
-                }
-                continue;
-            }
-
-            if($widget === 'id_reference_or_literal') {
-                if(!is_array($value)) {
-                    continue;
-                }
-                $mode = (string) ($value['_mode'] ?? '');
-                if($mode === 'reference') {
-                    $fragment = trim(strip_tags((string) ($value['_fragment'] ?? '')));
-                    if($fragment !== '') {
-                        $result[$name] = ['_mode' => 'reference', '_fragment' => $fragment];
-                    }
-                } elseif($mode === 'literal') {
-                    $literal = ['_mode' => 'literal'];
-                    foreach($fieldSchema['ui:literalFields'] ?? [] as $lf) {
-                        $lv = trim(strip_tags((string) ($value[(string) $lf] ?? '')));
-                        if($lv !== '') {
-                            $literal[(string) $lf] = $lv;
-                        }
-                    }
-                    if(count($literal) > 1) {
-                        $result[$name] = $literal;
-                    }
-                }
-                continue;
-            }
-
-            if(!is_scalar($value)) {
-                continue;
-            }
-
-            $stringValue = trim(strip_tags((string) $value));
-            if($stringValue === '') {
-                continue;
-            }
-
-            if($name === 'telephone') {
-                $stringValue = preg_replace('/[^0-9+]/', '', $stringValue);
-            }
-
-            $result[$name] = $stringValue;
-        }
-
-        return $result;
+        return $this->adminController()->sanitizePostData(
+            $formData, $schema, $this->schemaRepository(), $this->openingHoursHelper(), $this->validator()
+        );
     }
 
     /***************************************************************
@@ -1942,21 +1735,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function sanitizeAddressData(array $address, array $fieldSchema): array {
-        $subProperties = $fieldSchema['properties'] ?? [];
-
-        if(!$this->isAddressProvided($address, $subProperties)) {
-            return [];
-        }
-
-        $result = [];
-        foreach($subProperties as $subName => $subSchema) {
-            $subValue = trim(strip_tags((string) ($address[$subName] ?? '')));
-            if($subValue !== '') {
-                $result[$subName] = $subValue;
-            }
-        }
-
-        return $result;
+        return $this->adminController()->sanitizeAddressData($address, $fieldSchema, $this->validator());
     }
 
     /***************************************************************
@@ -1981,91 +1760,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function saveConfig(string $scope, array $postData): array {
-        $lang = $this->loadAdminLanguage();
-        [$cat, $page] = $this->resolveScopeIdentifiers($scope);
-        $key = $this->getScopeSettingsKey($scope, $cat, $page);
-
-        if ($key === null) {
-            return ['success' => false, 'errors' => []];
-        }
-
-        $existing = $this->settings->keyExists($key)
-            ? $this->settings->get($key) : [];
-        if (!is_array($existing)) {
-            $existing = [];
-        }
-        $config = ['_meta' => $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => '']];
-
-        if($scope === 'global') {
-            $config['excluded_cats'] = $existing['excluded_cats'] ?? '';
-            $config['debug_output'] = !empty($existing['debug_output']);
-        }
-
-        $type = (string) ($postData['type'] ?? '');
-        $errors = [];
-
-        if($type !== '') {
-            $schema = $this->loadSchema($type);
-
-            if($schema === null or !in_array($scope, $schema['ui:scopes'] ?? [], true)) {
-                $errors[] = $lang->getLanguageValue('error_invalid_schema_type', $type);
-            } else {
-                $formData = is_array($postData['data'] ?? null) ? $postData['data'] : [];
-                $extensionRaw = trim((string) ($postData['extension'][$type] ?? ''));
-                $extensionData = [];
-
-                $inheritable = $this->resolveInheritableFields($scope, $cat, $page, $type);
-                $errors = $this->validateFormData($formData, $schema, $inheritable);
-
-                if($extensionRaw !== '') {
-                    $decoded = json_decode($extensionRaw, true);
-
-                    if(json_last_error() !== JSON_ERROR_NONE or !is_array($decoded)) {
-                        $errors[] = $lang->getLanguageValue('error_json_invalid');
-                    } else {
-                        $extensionData = $decoded;
-                        $errors = array_merge($errors, $this->validateExtensionGeo($extensionData));
-                    }
-                }
-
-                if($errors === []) {
-                    $config[$type] = array_merge($extensionData, $this->sanitizePostData($formData, $schema));
-                }
-            }
-        }
-
-        if($errors !== []) {
-            return ['success' => false, 'errors' => $errors];
-        }
-
-        if($scope === 'global') {
-            $excludedCats = [];
-            foreach((array) ($postData['excluded_cats'] ?? []) as $excludedCat) {
-                $excludedCat = $this->sanitizeScopeIdentifier(trim((string) $excludedCat));
-                if($excludedCat !== '') {
-                    $excludedCats[] = $excludedCat;
-                }
-            }
-            $config['excluded_cats'] = implode(',', $excludedCats);
-            $config['debug_output'] = !empty($postData['debug_output']);
-        }
-
-        $jsonldMode = $_POST['schemaOrgData_jsonld_mode_'.$scope] ?? null;
-        if(in_array($jsonldMode, ['keep', 'override'], true)) {
-            $config['_meta']['jsonld_mode'] = $jsonldMode;
-        }
-
-        // Konfiguration über moziloCMS-settings-API speichern
-        try {
-            $this->settings->set($key, $config);
-        } catch (\Throwable $e) {
-            error_log('schemaOrgData: saveConfig fehlgeschlagen: ' . $e->getMessage());
-            return ['success' => false, 'errors' => [
-                $lang->getLanguageValue('error_config_write_failed')
-            ]];
-        }
-
-        return ['success' => true, 'errors' => []];
+        return $this->adminController()->saveConfig(
+            $scope, $postData, $this->settings, $this->loadAdminLanguage(), $this->scopeResolver(),
+            $this->schemaRepository(), $this->PLUGIN_SELF_DIR, $this->validator(), $this->openingHoursHelper()
+        );
     }
 
     /***************************************************************
@@ -2097,58 +1795,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function handlePostRequest(): ?array {
-        $scopes = $_POST['schemaOrgData'] ?? null;
-
-        // Keine schemaOrgData-Formulardaten im POST - kein Speichervorgang,
-        // kein Ergebnis zurückgeben (verhindert falsche Erfolgsmeldung).
-        if(!is_array($scopes)) {
-            return null;
-        }
-
-        $success = true;
-        $errors = [];
-
-        // Globaler Geltungsbereich (Sonderfall): schemaOrgData_cat und
-        // schemaOrgData_page sind beide leer, wenn "Global" der aktive
-        // Scope ist (siehe renderAdminPage()). saveConfig('global', ...)
-        // wird ausschließlich hier ausgeführt, mit den tatsächlichen
-        // POST-Daten - auch wenn $scopes['global'] aus dem POST nicht
-        // als Array vorliegt (dann mit leerem Array). Der Scope-Loop
-        // unten iteriert nur noch über 'category' und 'page', damit
-        // Global nicht zusätzlich (mit ggf. leeren Daten) erneut
-        // gespeichert wird.
-        $catParam  = $this->sanitizeScopeIdentifier((string) ($_POST['schemaOrgData_cat']  ?? ''));
-        $pageParam = $this->sanitizeScopeIdentifier((string) ($_POST['schemaOrgData_page'] ?? ''));
-        $isGlobalScope = ($catParam === '' && $pageParam === '');
-
-        if($isGlobalScope) {
-            $globalData = (isset($scopes['global']) and is_array($scopes['global']))
-                ? $scopes['global'] : [];
-
-            $result = !empty($_POST['schemaOrgData_delete_global'])
-                ? $this->deleteConfig('global')
-                : $this->saveConfig('global', $globalData);
-
-            $success = $success && $result['success'];
-            $errors = array_merge($errors, $result['errors']);
-        }
-
-        foreach(['category', 'page'] as $scope) {
-            $hasData = isset($scopes[$scope]) and is_array($scopes[$scope]);
-
-            if(!$hasData) {
-                continue;
-            }
-
-            $result = !empty($_POST['schemaOrgData_delete_'.$scope])
-                ? $this->deleteConfig($scope)
-                : $this->saveConfig($scope, $scopes[$scope]);
-
-            $success = $success && $result['success'];
-            $errors = array_merge($errors, $result['errors']);
-        }
-
-        return ['success' => $success, 'errors' => $errors];
+        return $this->adminController()->handlePostRequest(
+            $this->settings, $this->loadAdminLanguage(), $this->scopeResolver(), $this->schemaRepository(),
+            $this->PLUGIN_SELF_DIR, $this->validator(), $this->openingHoursHelper()
+        );
     }
 
     /***************************************************************
@@ -2332,182 +1982,12 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderAdminPage(): string {
-        global $CatPage;
-        $lang = $this->loadAdminLanguage();
-
-        $saveResult = ($_POST !== []) ? $this->handlePostRequest() : null;
-
-        // Bei fehlgeschlagenem Speichern wird die aktive Sektion in
-        // renderScopeSection() mit den POST-Daten statt mit dem
-        // gespeicherten Konfigurations-Stand befüllt (siehe dort).
-        $saveFailed = ($saveResult !== null and $saveResult['success'] === false);
-
-        // Aktiven Scope ermitteln: $_POST (Formular wurde abgeschickt) hat
-        // Vorrang vor $_GET (initialer Aufruf der Admin-Seite)
-        $selectedCat = null;
-        $selectedPage = null;
-        if (isset($_POST['schemaOrgData_cat'])) {
-            $selectedCat = $this->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_cat']) ?: null;
-        } elseif (isset($_GET['schemaOrgData_cat'])) {
-            $selectedCat = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_cat']) ?: null;
-        }
-        if (isset($_POST['schemaOrgData_page'])) {
-            $selectedPage = $this->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_page']) ?: null;
-        } elseif (isset($_GET['schemaOrgData_page'])) {
-            $selectedPage = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_page']) ?: null;
-        }
-
-        $formAction = URL_BASE . ADMIN_DIR_NAME . '/index.php';
-        $saveButtonLabel = $this->buildSaveButtonLabel($selectedCat, $selectedPage);
-
-        $html = '<style>'.$this->getAdminCss().'</style>'."\n";
-        $html .= '<form method="POST" action="'.htmlspecialchars($formAction, ENT_QUOTES, CHARSET).'">'."\n";
-        $html .= '<input type="hidden" name="pluginadmin" value="'.PLUGINADMIN.'" />'."\n";
-        $html .= '<input type="hidden" name="action" value="'.ACTION.'" />'."\n";
-        $html .= '<div class="schemaOrgData-admin">'."\n";
-
-        if($saveResult !== null) {
-            $html .= $this->renderSaveResultNotice($saveResult);
-        }
-
-        // Zusätzlicher Speichern-Button am Formularanfang (oben rechts) -
-        // derselbe Submit wie der Button am Formularende, damit lange
-        // Formulare nicht erst bis zum Ende gescrollt werden müssen
-        $html .= '<div class="schemaOrgData-save-bar schemaOrgData-save-bar--top">'."\n";
-        $html .= '<button type="submit" class="mo-btn mo-btn--primary">'
-               . $saveButtonLabel.'</button>'."\n";
-        $html .= '</div>'."\n";
-
-        // Scope-Selektor rendern
-        $html .= $this->renderScopeSelector($selectedCat, $selectedPage);
-
-        // Template-Kollisionserkennung: im Admin-Kontext (IS_ADMIN) live prüfen.
-        // Ein im Layout-Template eingebundener JSON-LD-Block ist layoutweit
-        // und damit kein seiten-/kategoriespezifisches Signal - das Ergebnis
-        // wird deshalb unabhängig vom aktiven Scope ausschließlich dem
-        // Global-Scope zugeordnet (siehe README.md). Properties::set()
-        // schreibt im IS_ADMIN-Kontext auf die Platte (im Frontend war
-        // set() ein No-Op). Reihenfolge: erst saveScopeMeta(), dann
-        // renderScopeSection(), damit renderExistingJsonLdNotice() das
-        // frisch gesetzte Flag und den Inhalt (Autofill-Button) sieht.
-        $templateBlocks = $this->extractExistingJsonLdBlocksFromTemplateAdmin();
-        $templateHasJsonLd = !empty($templateBlocks);
-        $templateContent = implode("\n\n", array_map('trim', $templateBlocks));
-
-        // Schreib-Guard: nur bei tatsächlicher Änderung persistieren, um
-        // nicht bei jedem Admin-Load einen file_put_contents auszulösen.
-        $metaGlobal = $this->loadScopeMeta('global');
-        if ($metaGlobal['existing_jsonld'] !== $templateHasJsonLd
-            || $metaGlobal['existing_jsonld_content'] !== $templateContent) {
-            $this->saveScopeMeta('global', [
-                'existing_jsonld' => $templateHasJsonLd,
-                'existing_jsonld_content' => $templateContent,
-            ]);
-        }
-
-        // Global immer rendern (aktiv wenn keine Kategorie gewählt)
-        $html .= $this->renderScopeSection(
-            'global', null, null,
-            active: $selectedCat === null,
-            idPrefix: 'global',
-            saveFailed: $saveFailed
+        return $this->adminController()->renderAdminPage(
+            $this->settings, $this->loadAdminLanguage(), $this->scopeResolver(), $this->schemaRepository(),
+            $this->PLUGIN_SELF_DIR, $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
+            $this->pluginLang, $this->PLUGIN_SELF_URL, $this->loadWeekdayLanguage(), $this->idReferenceService(),
+            $this->validator(), $this->openingHoursHelper(), $this->collisionDetector()
         );
-
-        // Alle Kategorien vorrendern
-        $allCats = (isset($CatPage) && is_object($CatPage))
-            ? $CatPage->get_CatArray(false, false, [EXT_PAGE, EXT_HIDDEN])
-            : [];
-
-        foreach ($allCats as $cat) {
-            // $selectedCat/$selectedPage stammen aus sanitizeScopeIdentifier()
-            // (siehe oben) - $cat/$page von get_CatArray()/get_PageArray()
-            // müssen für den Vergleich ebenso sanitiert werden, sonst bleibt
-            // die gerade gespeicherte Kategorie/Seite bei Bezeichnern mit
-            // Zeichen außerhalb [a-zA-Z0-9_\-%] inaktiv (display:none,
-            // disabled) und renderScopeSection() füllt das Formular aus
-            // $config statt aus den POST-Daten - bei fehlgeschlagenem Save
-            // einer neuen Kategorie/Seite wirkt das wie geleerte Feldwerte.
-            $safeCat   = $this->sanitizeScopeIdentifier($cat);
-            $catActive = ($safeCat === $selectedCat && $selectedPage === null);
-            $html .= $this->renderScopeSection(
-                'category', $cat, null,
-                active: $catActive,
-                idPrefix: 'cat_' . $safeCat,
-                saveFailed: $saveFailed
-            );
-
-            // Seiten aller Kategorien vorrendern - inaktive erhalten display:none
-            if (isset($CatPage) && is_object($CatPage)
-                && method_exists($CatPage, 'get_PageArray')) {
-                $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
-                foreach ($pages as $page) {
-                    $safePage   = $this->sanitizeScopeIdentifier($page);
-                    $pageActive = ($safeCat === $selectedCat && $safePage === $selectedPage);
-                    $html .= $this->renderScopeSection(
-                        'page', $cat, $page,
-                        active: $pageActive,
-                        idPrefix: 'page_' . $safeCat . '_' . $safePage,
-                        saveFailed: $saveFailed
-                    );
-                }
-            }
-        }
-
-        // Scope-Hidden-Inputs immer rendern - JS aktualisiert value beim
-        // Scope-Wechsel (initScopeSelector); resolveScopeIdentifiers()
-        // wertet sie für den POST-Geltungsbereich aus.
-        $html .= '<input type="hidden" id="schemaOrgData_hidden_cat"'
-               . ' name="schemaOrgData_cat"'
-               . ' value="'.htmlspecialchars($selectedCat ?? '', ENT_QUOTES, CHARSET).'" />'."\n";
-        $html .= '<input type="hidden" id="schemaOrgData_hidden_page"'
-               . ' name="schemaOrgData_page"'
-               . ' value="'.htmlspecialchars($selectedPage ?? '', ENT_QUOTES, CHARSET).'" />'."\n";
-
-        // Speichern-Button: echter Submit-Button innerhalb des
-        // umgebenden <form> - kein verschachteltes Formular und kein
-        // JS-Workaround mehr nötig
-        $html .= '<div class="schemaOrgData-save-bar">'."\n";
-        $html .= '<button type="submit" class="mo-btn mo-btn--primary">'
-               . $saveButtonLabel.'</button>'."\n";
-        $html .= '</div>'."\n";
-
-        $html .= '</div>'."\n";
-        $html .= '</form>'."\n";
-
-        // Lokalisierte Texte für die clientseitige Validierung (validator.js)
-        $messages = [
-            'postalCode'         => $lang->getLanguageValue('error_postal_code_format'),
-            'telephone'          => $lang->getLanguageValue('error_telephone_format'),
-            'urlInvalid'         => $lang->getLanguageValue('error_url_invalid'),
-            'urlHttpWarning'     => $lang->getLanguageValue('warning_url_http'),
-            'emailInvalid'       => $lang->getLanguageValue('error_email_invalid'),
-            'openingHoursFormat'     => $lang->getLanguageValue('error_opening_hours_format'),
-            'openingHoursIncomplete' => $lang->getLanguageValue('error_opening_hours_incomplete'),
-            'openingHoursOrder'      => $lang->getLanguageValue('error_opening_hours_order'),
-            // '{PARAM1}' wird hier als Wert übergeben, damit
-            // getLanguageValue() den Platzhalter NICHT durch ""
-            // ersetzt (Default von $param1) - die Ersetzung mit dem
-            // Property-Namen erfolgt erst clientseitig in
-            // initExtensionFieldValidation() (validator.js).
-            'unknownProperty'    => $lang->getLanguageValue('warning_unknown_property', '{PARAM1}'),
-            'jsonInvalid'        => $lang->getLanguageValue('error_json_invalid'),
-            // '{PARAM1}' wird hier als Wert übergeben, damit
-            // getLanguageValue() den Platzhalter NICHT durch ""
-            // ersetzt (Default von $param1) - die Ersetzung mit dem
-            // tatsächlichen Bereichsnamen erfolgt erst clientseitig
-            // in showUnsavedNotice() (validator.js).
-            'unsavedChanges'     => $lang->getLanguageValue('notice_unsaved_changes', '{PARAM1}'),
-        ];
-
-        $html .= '<script>window.schemaOrgDataMessages = '
-            .json_encode($messages, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).';</script>'."\n";
-        $html .= '<script src="'.$this->PLUGIN_SELF_URL.'js/ajv.min.js"></script>'."\n";
-        $html .= '<script src="'.$this->PLUGIN_SELF_URL.'js/validator.js"></script>'."\n";
-        $html .= '<script>document.addEventListener("DOMContentLoaded", function () {'
-            .' if(window.schemaOrgDataValidator) { window.schemaOrgDataValidator.initAdminForm(); }'
-            .' });</script>'."\n";
-
-        return $html;
     }
 
     /***************************************************************
