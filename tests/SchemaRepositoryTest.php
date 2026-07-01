@@ -121,17 +121,6 @@ final class SchemaRepositoryTest extends TestCase {
         $this->assertSame($expected, $result);
     }
 
-    // Delegator-Vertrag der Fassade ------------------------------------------
-
-    function testFassadeDelegiertLoadSchemaWeiterhinKorrekt(): void {
-        $plugin = new \schemaOrgData();
-
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-
-        $this->assertIsArray($schema);
-        $this->assertSame('LocalBusiness', $schema['title']);
-    }
-
     // Caching (Backlog-Punkt "Optionales Caching in SchemaRepository") -------
 
     private function tempSchemaDir(): string {

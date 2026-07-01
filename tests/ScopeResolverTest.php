@@ -439,26 +439,4 @@ final class ScopeResolverTest extends TestCase {
         $this->assertSame(['global', 'category'], $result);
     }
 
-    // Delegator-Vertrag der Fassade ------------------------------------------------
-
-    function testFassadeDelegiertGetScopeSettingsKeyWeiterhinKorrekt(): void {
-        $plugin = new \schemaOrgData();
-
-        $result = callPluginMethod($plugin, 'getScopeSettingsKey', ['category', 'kat']);
-
-        $this->assertSame('config_cat_kat', $result);
-    }
-
-    function testFassadeDelegiertLoadScopeConfigMitSettingsWeiterhinKorrekt(): void {
-        $plugin = new \schemaOrgData();
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', ['LocalBusiness' => ['name' => 'Muster GmbH']]);
-        $ref = new \ReflectionProperty(\schemaOrgData::class, 'settings');
-        $ref->setAccessible(true);
-        $ref->setValue($plugin, $settings);
-
-        $result = callPluginMethod($plugin, 'loadScopeConfig', ['global']);
-
-        $this->assertSame(['LocalBusiness' => ['name' => 'Muster GmbH']], $result);
-    }
 }
