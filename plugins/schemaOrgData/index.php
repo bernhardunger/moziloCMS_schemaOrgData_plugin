@@ -3,6 +3,7 @@
 require_once __DIR__.'/lib/SchemaOrgData_UrlHelper.php';
 require_once __DIR__.'/lib/SchemaOrgData_LanguageService.php';
 require_once __DIR__.'/lib/SchemaOrgData_SchemaRepository.php';
+require_once __DIR__.'/lib/SchemaOrgData_ScopeResolver.php';
 
 /***************************************************************
 *
@@ -33,7 +34,7 @@ require_once __DIR__.'/lib/SchemaOrgData_SchemaRepository.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.20-beta';
+    private const PLUGIN_VERSION = '0.4.21-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -64,6 +65,9 @@ class schemaOrgData extends Plugin {
 
     /** Lazy-Instanz von SchemaOrgData_SchemaRepository (siehe schemaRepository()) */
     private ?SchemaOrgData_SchemaRepository $schemaRepositoryInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_ScopeResolver (siehe scopeResolver()) */
+    private ?SchemaOrgData_ScopeResolver $scopeResolverInstance = null;
 
     function __construct() {
         parent::__construct();
@@ -245,12 +249,7 @@ class schemaOrgData extends Plugin {
         ?string $cat  = null,
         ?string $page = null
     ): array {
-        $key = $this->getScopeSettingsKey($scope, $cat, $page);
-        if ($key === null || !$this->settings->keyExists($key)) {
-            return [];
-        }
-        $data = $this->settings->get($key);
-        return is_array($data) ? $data : [];
+        return $this->scopeResolver()->loadScopeConfig($this->settings, $scope, $cat, $page);
     }
 
     /***************************************************************
@@ -264,13 +263,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function mergeConfigs(array ...$configs): array {
-        $result = [];
-        foreach($configs as $config) {
-            foreach($config as $type => $properties) {
-                $result[$type] = array_merge($result[$type] ?? [], $properties);
-            }
-        }
-        return $result;
+        return $this->scopeResolver()->mergeConfigs(...$configs);
     }
 
     /***************************************************************
@@ -293,30 +286,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function resolveTypeInheritance(array $scopeConfigs): array {
-        $typeScopes = [];
-        foreach(['global', 'category', 'page'] as $scope) {
-            if(!isset($scopeConfigs[$scope])) {
-                continue;
-            }
-            foreach($scopeConfigs[$scope] as $type => $data) {
-                $typeScopes[$type] = $scope;
-            }
-        }
-
-        $merged = $this->mergeConfigs(
-            $scopeConfigs['global'] ?? [],
-            $scopeConfigs['category'] ?? [],
-            $scopeConfigs['page'] ?? []
-        );
-
-        foreach($scopeConfigs as $scope => $config) {
-            $scopeConfigs[$scope] = [];
-        }
-        foreach($merged as $type => $data) {
-            $scopeConfigs[$typeScopes[$type]][$type] = $data;
-        }
-
-        return $scopeConfigs;
+        return $this->scopeResolver()->resolveTypeInheritance($scopeConfigs);
     }
 
     /***************************************************************
@@ -339,6 +309,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_SchemaRepository. */
     private function schemaRepository(): SchemaOrgData_SchemaRepository {
         return $this->schemaRepositoryInstance ??= new SchemaOrgData_SchemaRepository();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_ScopeResolver. */
+    private function scopeResolver(): SchemaOrgData_ScopeResolver {
+        return $this->scopeResolverInstance ??= new SchemaOrgData_ScopeResolver();
     }
 
     /***************************************************************
@@ -915,16 +890,7 @@ class schemaOrgData extends Plugin {
         ?string $cat  = null,
         ?string $page = null
     ): ?string {
-        return match($scope) {
-            'global'   => 'config_global',
-            'category' => $cat !== null
-                ? 'config_cat_' . $cat
-                : null,
-            'page'     => ($cat !== null && $page !== null)
-                ? 'config_page_' . $cat . '_' . $page
-                : null,
-            default    => null,
-        };
+        return $this->scopeResolver()->getScopeSettingsKey($scope, $cat, $page);
     }
 
     /***************************************************************
@@ -938,10 +904,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function sanitizeScopeIdentifier(string $value): string {
-        // Buchstaben, Ziffern, Bindestriche, Unterstriche und Prozentzeichen
-        // (URL-Encoding moziloCMS) erhalten. Path-Traversal-Zeichen (.,/,\,NUL)
-        // werden entfernt — % allein stellt kein Traversal-Risiko dar.
-        return preg_replace('/[^a-zA-Z0-9_\-%]/', '', $value);
+        return $this->scopeResolver()->sanitizeScopeIdentifier($value);
     }
 
     /***************************************************************
@@ -954,36 +917,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function resolveScopeIdentifiers(string $scope): array {
-        $cat = (defined('CAT_REQUEST') and CAT_REQUEST) ? $this->sanitizeScopeIdentifier((string) CAT_REQUEST) : null;
-        $page = (defined('PAGE_REQUEST') and PAGE_REQUEST) ? $this->sanitizeScopeIdentifier((string) PAGE_REQUEST) : null;
-
-        // Fallback auf Plugin-eigene Parameter im Admin-Kontext
-        // (CAT_REQUEST/PAGE_REQUEST sind im moziloCMS-Admin nicht gesetzt).
-        // Fallback-Reihenfolge: CMS-Konstanten → POST → GET. POST hat
-        // Vorrang vor GET, da das Speichern-Formular ohne Query-String
-        // an die admin/index.php sendet (siehe getConfig()).
-        if ($cat === null && isset($_POST['schemaOrgData_cat'])) {
-            $cat = $this->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_cat']);
-            if ($cat === '') $cat = null;
-        }
-        if ($cat === null && isset($_GET['schemaOrgData_cat'])) {
-            $cat = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_cat']);
-            if ($cat === '') $cat = null;
-        }
-        if ($page === null && isset($_POST['schemaOrgData_page'])) {
-            $page = $this->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_page']);
-            if ($page === '') $page = null;
-        }
-        if ($page === null && isset($_GET['schemaOrgData_page'])) {
-            $page = $this->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_page']);
-            if ($page === '') $page = null;
-        }
-
-        return match($scope) {
-            'category' => [$cat, null],
-            'page'     => [$cat, $page],
-            default    => [null, null],
-        };
+        return $this->scopeResolver()->resolveScopeIdentifiers($scope);
     }
 
     /***************************************************************
@@ -1000,13 +934,7 @@ class schemaOrgData extends Plugin {
         ?string $cat  = null,
         ?string $page = null
     ): array {
-        $defaults = ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''];
-        $key = $this->getScopeSettingsKey($scope, $cat, $page);
-        if ($key === null || !$this->settings->keyExists($key)) {
-            return $defaults;
-        }
-        $data = $this->settings->get($key);
-        return array_merge($defaults, is_array($data) ? ($data['_meta'] ?? []) : []);
+        return $this->scopeResolver()->loadScopeMeta($this->settings, $scope, $cat, $page);
     }
 
     /***************************************************************
@@ -1025,26 +953,7 @@ class schemaOrgData extends Plugin {
         ?string $cat  = null,
         ?string $page = null
     ): void {
-        $key = $this->getScopeSettingsKey($scope, $cat, $page);
-        if ($key === null) {
-            return;
-        }
-        $existing = $this->settings->keyExists($key)
-            ? $this->settings->get($key) : [];
-        if (!is_array($existing)) {
-            $existing = [];
-        }
-        $existing['_meta'] = array_merge(
-            $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
-            $meta
-        );
-        // Schreibfehler protokollieren — saveScopeMeta hat kein Rückgabe-Array,
-        // daher error_log als stilles Fallback
-        try {
-            $this->settings->set($key, $existing);
-        } catch (\Throwable $e) {
-            error_log('schemaOrgData: saveScopeMeta fehlgeschlagen: ' . $e->getMessage());
-        }
+        $this->scopeResolver()->saveScopeMeta($this->settings, $scope, $meta, $cat, $page);
     }
 
     /***************************************************************
@@ -2538,23 +2447,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function detectTypeCollision(string $scope, ?string $cat, ?string $page, string $selectedType): array {
-        $higherScopes = match($scope) {
-            'category' => ['global' => $this->loadScopeConfig('global')],
-            'page'     => [
-                'global'   => $this->loadScopeConfig('global'),
-                'category' => $this->loadScopeConfig('category', $cat),
-            ],
-            default => [],
-        };
-
-        $collisions = [];
-        foreach($higherScopes as $higherScope => $higherConfig) {
-            if(array_key_exists($selectedType, $higherConfig)) {
-                $collisions[] = $higherScope;
-            }
-        }
-
-        return $collisions;
+        return $this->scopeResolver()->detectTypeCollision($this->settings, $scope, $cat, $page, $selectedType);
     }
 
     /***************************************************************
@@ -3484,18 +3377,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function deleteConfig(string $scope): array {
-        [$cat, $page] = $this->resolveScopeIdentifiers($scope);
-        $key = $this->getScopeSettingsKey($scope, $cat, $page);
-
-        if ($key === null) {
-            return ['success' => false, 'errors' => []];
-        }
-
-        if ($this->settings->keyExists($key)) {
-            $this->settings->delete($key);
-        }
-
-        return ['success' => true, 'errors' => []];
+        return $this->scopeResolver()->deleteConfig($this->settings, $scope);
     }
 
     /***************************************************************
