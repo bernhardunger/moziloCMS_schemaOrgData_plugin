@@ -620,6 +620,31 @@ final class AdminControllerTest extends TestCase {
         $this->assertSame('Muster GmbH', $settings->get('config_global')['LocalBusiness']['name']);
     }
 
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testRoundTripViaLoadScopeConfig().
+    * Round-Trip saveConfig() -> loadScopeConfig() mit realer
+    * Datenkonvertierung (Öffnungszeiten-Widget-Struktur ->
+    * schema.org-Notation). Abweichend vom Original: die hiesige
+    * validLocalBusinessData() füllt nur Montag aus (09:00-18:00,
+    * übrige Wochentage leer) statt Mo-Fr durchgehend — die
+    * openingHours-Erwartung ist entsprechend auf ['Mo 09:00-18:00']
+    * angepasst, nicht 1:1 aus PersistenceTest.php übernommen.
+    *
+    ***************************************************************/
+    function testRoundTripViaLoadScopeConfig(): void {
+        $settings = new \InMemorySettings();
+        $this->callSaveConfig('global', $this->validLocalBusinessData(), $settings);
+
+        $loaded = $this->scopeResolver()->loadScopeConfig($settings, 'global');
+
+        $this->assertSame('Muster GmbH', $loaded['LocalBusiness']['name']);
+        $this->assertSame('https://www.example.com', $loaded['LocalBusiness']['url']);
+        $this->assertSame('Musterstadt', $loaded['LocalBusiness']['address']['addressLocality']);
+        $this->assertSame('DE', $loaded['LocalBusiness']['address']['addressCountry']);
+        $this->assertSame(['Mo 09:00-18:00'], $loaded['LocalBusiness']['openingHours']);
+    }
+
     function testSaveConfigLehntUngueltigesErweiterungsJsonAb(): void {
         $settings = new \InMemorySettings();
         $postData = $this->validLocalBusinessData();

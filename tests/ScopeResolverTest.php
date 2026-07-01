@@ -85,6 +85,26 @@ final class ScopeResolverTest extends TestCase {
         $this->assertSame($global, $this->resolver()->mergeConfigs($global, [], []));
     }
 
+    /***************************************************************
+    *
+    * Migriert aus ScopeConfigTest::testPageOverridesCategory().
+    * Dreistufige Kaskade Global -> Kategorie -> Seite: die
+    * spezifischere Ebene überschreibt feldweise, nicht ausgefüllte
+    * Felder werden von der jeweils allgemeineren Ebene übernommen.
+    *
+    ***************************************************************/
+    function testMergeConfigsDreistufigeKaskadeSeiteUeberschreibtKategorieUndGlobal(): void {
+        $global = ['LocalBusiness' => ['name' => 'Global', 'email' => 'global@example.com']];
+        $category = ['LocalBusiness' => ['name' => 'Kategorie', 'telephone' => '+49 89 11111111']];
+        $page = ['LocalBusiness' => ['name' => 'Seite']];
+
+        $result = $this->resolver()->mergeConfigs($global, $category, $page);
+
+        $this->assertSame('Seite', $result['LocalBusiness']['name']);
+        $this->assertSame('global@example.com', $result['LocalBusiness']['email']);
+        $this->assertSame('+49 89 11111111', $result['LocalBusiness']['telephone']);
+    }
+
     // resolveTypeInheritance() --------------------------------------------------
 
     function testResolveTypeInheritanceMergtAufSpezifischsteEbene(): void {
@@ -114,12 +134,106 @@ final class ScopeResolverTest extends TestCase {
         $this->assertSame(['FAQPage' => ['mainEntity' => []]], $result['category']);
     }
 
+    /***************************************************************
+    *
+    * Migriert aus JsonLdOutputTest::testSameTypeOnCategoryAndPageMergesFieldsOnPage().
+    * "name" ist auf Seiten-Ebene leer und damit (siehe
+    * sanitizePostData()) gar nicht im gespeicherten Array enthalten.
+    *
+    ***************************************************************/
+    function testResolveTypeInheritanceGleicherTypeAufKategorieUndSeiteMergtFelderAufSeite(): void {
+        $scopeConfigs = [
+            'global' => [],
+            'category' => [
+                'LocalBusiness' => [
+                    'name' => 'Steuerkanzlei',
+                    'telephone' => '+49891234567',
+                ],
+            ],
+            'page' => [
+                'LocalBusiness' => [
+                    'telephone' => '+498987654321',
+                ],
+            ],
+        ];
+
+        $result = $this->resolver()->resolveTypeInheritance($scopeConfigs);
+
+        $this->assertSame([], $result['category']);
+        $this->assertSame('Steuerkanzlei', $result['page']['LocalBusiness']['name']);
+        $this->assertSame('+498987654321', $result['page']['LocalBusiness']['telephone']);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus JsonLdOutputTest::testNestedFieldOverridesWithoutMergingProperties().
+    * Wichtigster Fall: Verhalten bei verschachtelten Objekten
+    * (address) — die spezifischere Ebene überschreibt das gesamte
+    * Sub-Objekt, es findet kein Feld-Merge innerhalb von address
+    * statt (streetAddress aus global bleibt daher nicht erhalten).
+    *
+    ***************************************************************/
+    function testResolveTypeInheritanceVerschachtelteFelderUeberschreibenOhneFeldMerge(): void {
+        $scopeConfigs = [
+            'global' => [
+                'LocalBusiness' => [
+                    'name' => 'Beispiel GmbH',
+                    'address' => [
+                        'streetAddress' => 'Globalweg 1',
+                        'addressLocality' => 'Globalstadt',
+                        'addressCountry' => 'DE',
+                    ],
+                ],
+            ],
+            'category' => [
+                'LocalBusiness' => [
+                    'address' => [
+                        'addressLocality' => 'Filialstadt',
+                        'addressCountry' => 'DE',
+                    ],
+                ],
+            ],
+        ];
+
+        $result = $this->resolver()->resolveTypeInheritance($scopeConfigs);
+        $address = $result['category']['LocalBusiness']['address'];
+
+        $this->assertSame('Beispiel GmbH', $result['category']['LocalBusiness']['name']);
+        $this->assertSame('Filialstadt', $address['addressLocality']);
+        $this->assertArrayNotHasKey('streetAddress', $address);
+    }
+
     // loadScopeConfig() ---------------------------------------------------------
 
     function testLoadScopeConfigLiefertLeeresArrayFuerFehlendenKey(): void {
         $settings = new \InMemorySettings();
 
         $this->assertSame([], $this->resolver()->loadScopeConfig($settings, 'global'));
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus ScopeConfigTest::testLoadScopeConfigReturnsEmptyArrayForMissingFiles()
+    * (nur der category-Fall — der global-Fall ist bereits durch
+    * testLoadScopeConfigLiefertLeeresArrayFuerFehlendenKey() abgedeckt).
+    *
+    ***************************************************************/
+    function testLoadScopeConfigLiefertLeeresArrayFuerFehlendenCategoryKey(): void {
+        $settings = new \InMemorySettings();
+
+        $this->assertSame([], $this->resolver()->loadScopeConfig($settings, 'category', 'nicht-vorhanden'));
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus ScopeConfigTest::testLoadScopeConfigReturnsEmptyArrayForMissingFiles()
+    * (page-Fall).
+    *
+    ***************************************************************/
+    function testLoadScopeConfigLiefertLeeresArrayFuerFehlendenPageKey(): void {
+        $settings = new \InMemorySettings();
+
+        $this->assertSame([], $this->resolver()->loadScopeConfig($settings, 'page', 'nicht-vorhanden', 'auch-nicht'));
     }
 
     function testLoadScopeConfigLiefertGespeichertesArray(): void {
@@ -183,6 +297,81 @@ final class ScopeResolverTest extends TestCase {
         $this->assertSame(['name' => 'Muster GmbH'], $data['LocalBusiness']);
         $this->assertTrue($data['_meta']['existing_jsonld']);
         $this->assertSame('override', $data['_meta']['jsonld_mode']);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testExistingJsonLdContentWirdGespeichertUndGeladen().
+    * existing_jsonld_content wird bislang nur implizit über die
+    * komplette Default-Struktur mitgetestet (siehe
+    * testLoadScopeMetaLiefertDefaultsFuerFehlendenKey()) — hier
+    * gezielt der Round-Trip über saveScopeMeta()/loadScopeMeta().
+    *
+    ***************************************************************/
+    function testExistingJsonLdContentWirdGespeichertUndGeladen(): void {
+        $settings = new \InMemorySettings();
+        $content = '{"@context":"https://schema.org","@type":"LocalBusiness"}';
+        $this->resolver()->saveScopeMeta($settings, 'global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => $content,
+        ]);
+        $meta = $this->resolver()->loadScopeMeta($settings, 'global');
+        $this->assertSame($content, $meta['existing_jsonld_content']);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testExistingJsonLdContentInLegacyMetaFaelltAufDefault().
+    * Fehlt der Key existing_jsonld_content in einem bereits
+    * gespeicherten (älteren) _meta-Array, muss loadScopeMeta() ihn
+    * als Leerstring nachliefern statt einen fehlenden Array-Key zu
+    * werfen.
+    *
+    ***************************************************************/
+    function testExistingJsonLdContentInLegacyMetaFaelltAufDefault(): void {
+        $settings = new \InMemorySettings();
+        $resolver = $this->resolver();
+        $resolver->saveScopeMeta($settings, 'global', [
+            'existing_jsonld' => true,
+            'jsonld_mode' => 'keep',
+        ]);
+        $key = $resolver->getScopeSettingsKey('global');
+        $stored = $settings->get($key);
+        unset($stored['_meta']['existing_jsonld_content']);
+        $settings->set($key, $stored);
+
+        $meta = $resolver->loadScopeMeta($settings, 'global');
+        $this->assertSame('', $meta['existing_jsonld_content'],
+            'Fehlender Key in Legacy-Meta muss als Leerstring zurückgegeben werden');
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testExistingJsonLdContentWirdProScopeGespeichert().
+    * Global und Seite speichern existing_jsonld_content unabhängig
+    * voneinander unter ihrem jeweiligen Settings-Key.
+    *
+    ***************************************************************/
+    function testExistingJsonLdContentWirdProScopeGespeichert(): void {
+        $settings = new \InMemorySettings();
+        $resolver = $this->resolver();
+
+        $globalContent = '{"@type":"WebSite"}';
+        $resolver->saveScopeMeta($settings, 'global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => $globalContent,
+        ]);
+        $pageContent = '{"@type":"Article"}';
+        $resolver->saveScopeMeta($settings, 'page', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => $pageContent,
+        ], 'blog', 'mein-artikel');
+
+        $metaGlobal = $resolver->loadScopeMeta($settings, 'global');
+        $metaPage = $resolver->loadScopeMeta($settings, 'page', 'blog', 'mein-artikel');
+
+        $this->assertSame($globalContent, $metaGlobal['existing_jsonld_content']);
+        $this->assertSame($pageContent, $metaPage['existing_jsonld_content']);
     }
 
     // deleteConfig() -------------------------------------------------------------
