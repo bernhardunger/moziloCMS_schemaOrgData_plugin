@@ -10,6 +10,7 @@ require_once __DIR__.'/lib/SchemaOrgData_CollisionDetector.php';
 require_once __DIR__.'/lib/SchemaOrgData_OpeningHoursHelper.php';
 require_once __DIR__.'/lib/SchemaOrgData_DataSplitHelper.php';
 require_once __DIR__.'/lib/SchemaOrgData_Validator.php';
+require_once __DIR__.'/lib/SchemaOrgData_FormRenderer.php';
 
 /***************************************************************
 *
@@ -40,7 +41,7 @@ require_once __DIR__.'/lib/SchemaOrgData_Validator.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.26-beta';
+    private const PLUGIN_VERSION = '0.4.27-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -92,6 +93,9 @@ class schemaOrgData extends Plugin {
 
     /** Lazy-Instanz von SchemaOrgData_Validator (siehe validator()) */
     private ?SchemaOrgData_Validator $validatorInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_FormRenderer (siehe formRenderer()) */
+    private ?SchemaOrgData_FormRenderer $formRendererInstance = null;
 
     function __construct() {
         parent::__construct();
@@ -368,6 +372,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_Validator. */
     private function validator(): SchemaOrgData_Validator {
         return $this->validatorInstance ??= new SchemaOrgData_Validator();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_FormRenderer. */
+    private function formRenderer(): SchemaOrgData_FormRenderer {
+        return $this->formRendererInstance ??= new SchemaOrgData_FormRenderer();
     }
 
     /***************************************************************
@@ -1108,22 +1117,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderValidationFeedback(array $result, ?string $feedbackId = null): string {
-        $icons = ['ok' => '&#9989;', 'warning' => '&#9888;&#65039;', 'error' => '&#10060;'];
-
-        if($result['status'] === null or !isset($icons[$result['status']])) {
-            return '';
-        }
-
-        $message = $result['message'] !== null
-            ? ' '.htmlspecialchars($result['message'], ENT_QUOTES, CHARSET)
-            : '';
-
-        $idAttr = $feedbackId !== null
-            ? ' id="'.htmlspecialchars($feedbackId, ENT_QUOTES, CHARSET).'"'
-            : '';
-
-        return '<span'.$idAttr.' class="schemaOrgData-feedback schemaOrgData-feedback--'.$result['status'].'">'
-            .$icons[$result['status']].$message.'</span>';
+        return $this->formRenderer()->renderValidationFeedback($result, $feedbackId);
     }
 
     /***************************************************************
@@ -1136,14 +1130,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderRequiredBadge(bool $required): string {
-        if(!$required) {
-            return '';
-        }
-
-        $lang = $this->loadAdminLanguage();
-
-        return ' <span class="schemaOrgData-required" title="'
-            .$lang->getLanguageHtml('label_required_field').'">*</span>';
+        return $this->formRenderer()->renderRequiredBadge($required, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1161,15 +1148,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderInheritedBadge(?string $originLabel): string {
-        if($originLabel === null) {
-            return '';
-        }
-
-        $lang = $this->loadAdminLanguage();
-
-        return ' <span class="schemaOrgData-inherited" title="'
-            .$lang->getLanguageHtml('tooltip_inherited_from', $originLabel).'">'
-            .$lang->getLanguageHtml('badge_inherited').'</span>';
+        return $this->formRenderer()->renderInheritedBadge($originLabel, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1185,16 +1164,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderTextWidget(string $id, string $name, array $fieldSchema, mixed $value, array $extraAttrs = []): string {
-        $valueAttr = htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, CHARSET);
-        $placeholder = htmlspecialchars((string) ($fieldSchema['ui:placeholder'] ?? ''), ENT_QUOTES, CHARSET);
-
-        $attrs = '';
-        foreach($extraAttrs as $attrName => $attrValue) {
-            $attrs .= ' '.$attrName.'="'.htmlspecialchars((string) $attrValue, ENT_QUOTES, CHARSET).'"';
-        }
-
-        return '<input type="text" id="'.$id.'" name="'.$name.'" class="mo-input-text" '
-            .'value="'.$valueAttr.'" placeholder="'.$placeholder.'"'.$attrs.' />';
+        return $this->formRenderer()->renderTextWidget($id, $name, $fieldSchema, $value, $extraAttrs);
     }
 
     /***************************************************************
@@ -1203,11 +1173,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderTextareaWidget(string $id, string $name, array $fieldSchema, mixed $value): string {
-        $valueText = htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, CHARSET);
-        $placeholder = htmlspecialchars((string) ($fieldSchema['ui:placeholder'] ?? ''), ENT_QUOTES, CHARSET);
-
-        return '<textarea id="'.$id.'" name="'.$name.'" class="mo-input-text" rows="4" placeholder="'.$placeholder.'">'
-            .$valueText.'</textarea>';
+        return $this->formRenderer()->renderTextareaWidget($id, $name, $fieldSchema, $value);
     }
 
     /***************************************************************
@@ -1222,37 +1188,7 @@ class schemaOrgData extends Plugin {
     ***************************************************************/
     private function renderSelectWidget(string $id, string $name, array $fieldSchema, mixed $value): string {
         $lang = $this->loadAdminLanguage();
-        $options = [];
-
-        if(isset($fieldSchema['ui:options']) and is_array($fieldSchema['ui:options'])) {
-            foreach($fieldSchema['ui:options'] as $option) {
-                $options[(string) $option] = (string) $option;
-            }
-        } elseif(isset($fieldSchema['enum']) and is_array($fieldSchema['enum'])) {
-            $enumLabels = $fieldSchema['ui:enumLabels'][$this->pluginLang] ?? [];
-            foreach($fieldSchema['enum'] as $enumValue) {
-                $options[(string) $enumValue] = (string) ($enumLabels[$enumValue] ?? $enumValue);
-            }
-        }
-
-        $current = ($value !== null and $value !== '') ? (string) $value : (string) ($fieldSchema['default'] ?? '');
-        $required = (bool) ($fieldSchema['ui:required'] ?? false);
-
-        $html = '<div class="mo-select-div flex"><select id="'.$id.'" name="'.$name.'" class="mo-select flex-100">';
-
-        if($current === '' and !$required) {
-            $html .= '<option value="">'.$lang->getLanguageHtml('label_select_placeholder').'</option>';
-        }
-
-        foreach($options as $optionValue => $optionLabel) {
-            $selected = ($optionValue === $current) ? ' selected="selected"' : '';
-            $html .= '<option value="'.htmlspecialchars($optionValue, ENT_QUOTES, CHARSET).'"'.$selected.'>'
-                .htmlspecialchars($optionLabel, ENT_QUOTES, CHARSET).'</option>';
-        }
-
-        $html .= '</select></div>';
-
-        return $html;
+        return $this->formRenderer()->renderSelectWidget($id, $name, $fieldSchema, $value, $lang, $this->pluginLang);
     }
 
     /***************************************************************
@@ -1290,121 +1226,17 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderIdReferenceOrLiteralWidget(string $scope, string $name, array $fieldSchema, array $value, string $idPrefix): string {
-        $lang = $this->loadAdminLanguage();
-        $availableFragments = $this->resolveAvailableGlobalFragments();
-
-        $storedMode = (string) ($value['_mode'] ?? 'reference');
-        $storedFragment = (string) ($value['_fragment'] ?? '');
-        $refChecked = $storedMode !== 'literal' ? ' checked="checked"' : '';
-        $litChecked = $storedMode === 'literal'  ? ' checked="checked"' : '';
-        $refHidden  = $storedMode === 'literal'  ? ' style="display:none"' : '';
-        $litHidden  = $storedMode !== 'literal'  ? ' style="display:none"' : '';
-
-        $fieldNameBase = 'schemaOrgData['.$scope.'][data]['.$name.']';
-        $modeField     = $fieldNameBase.'[_mode]';
-        $fragmentField = $fieldNameBase.'[_fragment]';
-        $containerId   = 'schemaOrgData_'.$idPrefix.'_'.$name.'_idrl';
-
-        $html  = '<div class="schemaOrgData-idrl-container" id="'.htmlspecialchars($containerId, ENT_QUOTES, CHARSET).'">'."\n";
-
-        // Radio: Referenz-Modus
-        $html .= '<label class="schemaOrgData-idrl-radio-label">'
-            .'<input type="radio" class="schemaOrgData-idrl-radio"'
-            .' name="'.htmlspecialchars($modeField, ENT_QUOTES, CHARSET).'" value="reference"'
-            .$refChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
-            .' '.$lang->getLanguageHtml('label_id_reflit_reference')
-            .'</label>'."\n";
-
-        // Referenz-Dropdown
-        $html .= '<div class="schemaOrgData-idrl-section schemaOrgData-idrl-reference"'.$refHidden.'>'."\n";
-        if($availableFragments !== []) {
-            $html .= '<div class="mo-select-div flex"><select name="'.htmlspecialchars($fragmentField, ENT_QUOTES, CHARSET).'" class="mo-select flex-100">'."\n";
-            foreach($availableFragments as $fragment => $fragLabel) {
-                $sel = $fragment === $storedFragment ? ' selected="selected"' : '';
-                $html .= '<option value="'.htmlspecialchars($fragment, ENT_QUOTES, CHARSET).'"'.$sel.'>'
-                    .htmlspecialchars($fragLabel, ENT_QUOTES, CHARSET).'</option>'."\n";
-            }
-            $html .= '</select></div>'."\n";
-        } else {
-            $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_id_reflit_no_targets').'</p>'."\n";
-            $html .= '<input type="hidden" name="'.htmlspecialchars($fragmentField, ENT_QUOTES, CHARSET).'" value="" />'."\n";
-        }
-        $html .= '</div>'."\n";
-
-        // Radio: Literal-Modus
-        $html .= '<label class="schemaOrgData-idrl-radio-label">'
-            .'<input type="radio" class="schemaOrgData-idrl-radio"'
-            .' name="'.htmlspecialchars($modeField, ENT_QUOTES, CHARSET).'" value="literal"'
-            .$litChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
-            .' '.$lang->getLanguageHtml('label_id_reflit_literal')
-            .'</label>'."\n";
-
-        // Literal-Felder
-        $html .= '<div class="schemaOrgData-idrl-section schemaOrgData-idrl-literal"'.$litHidden.'>'."\n";
-        $literalFields      = $fieldSchema['ui:literalFields']      ?? [];
-        $literalFieldLabels = $fieldSchema['ui:literalFieldLabels'] ?? [];
-        foreach($literalFields as $lf) {
-            $lfId    = 'schemaOrgData_'.$idPrefix.'_'.$name.'_lf_'.$lf;
-            $lfName  = $fieldNameBase.'['.$lf.']';
-            $lfValue = (string) ($value[(string) $lf] ?? '');
-            $lfLabelKey = $literalFieldLabels[(string) $lf] ?? 'label_'.$lf;
-            $lfLabel = $lang->getLanguageHtml($lfLabelKey);
-            $html .= '<div class="c-content schemaOrgData-field-row">'."\n"
-                .'<div class="mo-in-li-l"><label for="'.htmlspecialchars($lfId, ENT_QUOTES, CHARSET).'">'.$lfLabel.'</label></div>'."\n"
-                .'<div class="mo-in-li-r"><input type="text" id="'.htmlspecialchars($lfId, ENT_QUOTES, CHARSET).'"'
-                .' name="'.htmlspecialchars($lfName, ENT_QUOTES, CHARSET).'"'
-                .' value="'.htmlspecialchars($lfValue, ENT_QUOTES, CHARSET).'"'
-                .' class="mo-input-text flex-100" /></div>'."\n"
-                .'</div>'."\n";
-        }
-        $html .= '</div>'."\n";
-        $html .= '</div>'."\n";
-
-        // Einmalig definierte Toggle-Funktion (idempotent via window-Guard).
-        $html .= '<script>if(!window.schemaOrgDataIdRlToggle){'
-            .'window.schemaOrgDataIdRlToggle=function(r){'
-            .'var c=r.closest(".schemaOrgData-idrl-container");'
-            .'c.querySelectorAll(".schemaOrgData-idrl-section").forEach(function(s){s.style.display="none";});'
-            .'c.querySelector(".schemaOrgData-idrl-"+r.value).style.display="";'
-            .'};}</script>'."\n";
-
-        return $html;
+        return $this->formRenderer()->renderIdReferenceOrLiteralWidget(
+            $scope, $name, $fieldSchema, $value, $idPrefix,
+            $this->loadAdminLanguage(), $this->resolveAvailableGlobalFragments(),
+        );
     }
 
     private function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix = null, ?array $inheritedValue = null, ?string $inheritedLabel = null): string {
-        $idPrefix = $idPrefix ?? $scope;
-        $countryFieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_addressCountry';
-        $properties = $fieldSchema['properties'] ?? [];
-        $html = '';
-
-        // Straße und Hausnummer: schema.org kennt kein eigenes
-        // Hausnummer-Feld - "Straße und Hausnummer" ist ein
-        // kombiniertes streetAddress-Feld und erhält eine eigene,
-        // volle Zeile.
-        if(isset($properties['streetAddress'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'streetAddress', $properties['streetAddress'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel);
-            $html .= $this->renderAddressFullRow($field);
-        }
-
-        // PLZ + Ort kompakt in einer Zeile (PLZ schmal, Ort flexibel)
-        $html .= $this->renderAddressFieldGroup($scope, $name, $properties, $value, $countryFieldId, $idPrefix, [
-            'postalCode'      => true,
-            'addressLocality' => false,
-        ], $inheritedValue, $inheritedLabel);
-
-        // Land: eigene Zeile, Select ~200px breit (siehe getAdminCss)
-        if(isset($properties['addressCountry'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'addressCountry', $properties['addressCountry'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel);
-            $html .= $this->renderAddressFullRow($field);
-        }
-
-        // Region/Bundesland: eigene Zeile, ~300px breit (siehe getAdminCss)
-        if(isset($properties['addressRegion'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'addressRegion', $properties['addressRegion'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel);
-            $html .= $this->renderAddressFullRow($field);
-        }
-
-        return $html;
+        return $this->formRenderer()->renderPostalAddressWidget(
+            $scope, $name, $fieldSchema, $value, $idPrefix, $inheritedValue, $inheritedLabel,
+            $this->loadAdminLanguage(), $this->validator(), $this->pluginLang,
+        );
     }
 
     /***************************************************************
@@ -1415,10 +1247,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderAddressFullRow(array $field): string {
-        return '<div class="c-content schemaOrgData-field-row">'
-            .'<div class="mo-in-li-l"><label for="'.$field['fieldId'].'">'.$field['label'].'</label>'.$field['badge'].'</div>'
-            .'<div class="mo-in-li-r">'.$field['widget'].$field['feedback'].'</div>'
-            .'</div>'."\n";
+        return $this->formRenderer()->renderAddressFullRow($field);
     }
 
     /***************************************************************
@@ -1439,48 +1268,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderAddressSubField(string $scope, string $name, string $subName, array $subSchema, array $value, string $countryFieldId, string $idPrefix, ?array $inheritedValue = null, ?string $inheritedLabel = null): array {
-        $lang = $this->loadAdminLanguage();
-        $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$subName;
-        $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$subName.']';
-        $subValue = $value[$subName] ?? ($subSchema['default'] ?? null);
-        $required = (bool) ($subSchema['ui:required'] ?? false);
-        $label = $lang->getLanguageHtml($subSchema['ui:label'] ?? $subName);
-        $badge = $this->renderRequiredBadge($required);
-
-        // Placeholder + "ü"-Badge für ein leeres Sub-Feld, dessen Wert von
-        // einer übergeordneten Ebene geerbt würde (siehe Task 1,
-        // resolveInheritableFields()) - das Feld selbst bleibt leer.
-        $isEmpty = !isset($value[$subName]) or $value[$subName] === '';
-        $inheritedSubValue = $inheritedValue[$subName] ?? null;
-        if($isEmpty and is_scalar($inheritedSubValue) and (string) $inheritedSubValue !== '') {
-            if(($subSchema['ui:widget'] ?? 'text') !== 'select') {
-                $subSchema['ui:placeholder'] = (string) $inheritedSubValue;
-            }
-            $badge .= $this->renderInheritedBadge($inheritedLabel);
-        }
-
-        if(($subSchema['ui:widget'] ?? 'text') === 'select') {
-            $widgetHtml = $this->renderSelectWidget($fieldId, $fieldName, $subSchema, $subValue);
-        } else {
-            $extraAttrs = [];
-            if($subName === 'postalCode') {
-                $extraAttrs = ['data-validate' => 'postal_code', 'data-country-field' => $countryFieldId];
-            } elseif($required) {
-                $extraAttrs = [
-                    'data-validate' => 'required',
-                    'data-required-message' => $lang->getLanguageValue('error_required_field', $lang->getLanguageValue($subSchema['ui:label'] ?? $subName)),
-                ];
-            }
-            $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $subSchema, $subValue, $extraAttrs);
-        }
-
-        $feedback = '';
-        if($subName === 'postalCode' and $subValue !== null and $subValue !== '') {
-            $countryCode = (string) ($value['addressCountry'] ?? 'DE');
-            $feedback = $this->renderValidationFeedback($this->validatePostalCode((string) $subValue, $countryCode), $fieldId.'_feedback');
-        }
-
-        return ['fieldId' => $fieldId, 'label' => $label, 'badge' => $badge, 'widget' => $widgetHtml, 'feedback' => $feedback];
+        return $this->formRenderer()->renderAddressSubField(
+            $scope, $name, $subName, $subSchema, $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel,
+            $this->loadAdminLanguage(), $this->validator(), $this->pluginLang,
+        );
     }
 
     /***************************************************************
@@ -1500,25 +1291,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderAddressFieldGroup(string $scope, string $name, array $properties, array $value, string $countryFieldId, string $idPrefix, array $subNames, ?array $inheritedValue = null, ?string $inheritedLabel = null): string {
-        $html = '<div class="c-content schemaOrgData-field-row">'
-            .'<div class="mo-in-li-l"></div>'
-            .'<div class="mo-in-li-r"><div class="schemaOrgData-address-row">'."\n";
-
-        foreach($subNames as $subName => $narrow) {
-            if(!isset($properties[$subName])) {
-                continue;
-            }
-            $field = $this->renderAddressSubField($scope, $name, $subName, $properties[$subName], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel);
-            $narrowClass = $narrow ? ' schemaOrgData-address-field--narrow' : '';
-            $html .= '<div class="schemaOrgData-address-field'.$narrowClass.'">'
-                .'<label for="'.$field['fieldId'].'">'.$field['label'].$field['badge'].'</label>'
-                .$field['widget'].$field['feedback']
-                .'</div>'."\n";
-        }
-
-        $html .= '</div></div></div>'."\n";
-
-        return $html;
+        return $this->formRenderer()->renderAddressFieldGroup(
+            $scope, $name, $properties, $value, $countryFieldId, $idPrefix, $subNames, $inheritedValue, $inheritedLabel,
+            $this->loadAdminLanguage(), $this->validator(), $this->pluginLang,
+        );
     }
 
     /***************************************************************
@@ -1537,84 +1313,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderOpeningHoursWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix = null): string {
-        $lang = $this->loadAdminLanguage();
-        $idPrefix = $idPrefix ?? $scope;
-        $weekdayLang = $this->loadWeekdayLanguage();
-        $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-        $dayLabelKeys = $fieldSchema['ui:dayLabelKeys'] ?? [];
-
-        // $value liegt entweder als openingHours-Array in schema.org-Notation
-        // vor (gespeicherte Konfiguration / sanitizePostData) oder als rohe
-        // Pro-Tag-Werte aus dem POST (Re-Display nach fehlgeschlagenem Save,
-        // siehe renderScopeSection) - im zweiten Fall die Werte unverändert
-        // übernehmen, um auch ungültige Zeitformate anzuzeigen.
-        $perDay = $this->isPerDayOpeningHoursValue($value)
-            ? $value
-            : $this->parseOpeningHours($value, $days);
-
-        $secondRangeLabel = $lang->getLanguageHtml('label_opening_hours_second_range');
-
-        $html = '<table class="schemaOrgData-opening-hours">'."\n";
-        $html .= '<thead><tr><th></th><th>'.$lang->getLanguageHtml('label_opening_hours_from').' – '
-            .$lang->getLanguageHtml('label_opening_hours_to').'</th></tr></thead>'."\n";
-        $html .= '<tbody>'."\n";
-
-        foreach($days as $day) {
-            $dayLabel = isset($dayLabelKeys[$day]) ? $weekdayLang->getLanguageHtml($dayLabelKeys[$day]) : htmlspecialchars($day, ENT_QUOTES, CHARSET);
-            $fromId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_from';
-            $toId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_to';
-            $from2Id = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_from2';
-            $to2Id = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_to2';
-            $fromName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][from]';
-            $toName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][to]';
-            $from2Name = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][from2]';
-            $to2Name = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][to2]';
-            $from  = trim((string) ($perDay[$day]['from']  ?? ''));
-            $to    = trim((string) ($perDay[$day]['to']    ?? ''));
-            $from2 = trim((string) ($perDay[$day]['from2'] ?? ''));
-            $to2   = trim((string) ($perDay[$day]['to2']   ?? ''));
-
-            $fromInput = $this->renderTextWidget($fromId, $fromName, ['ui:placeholder' => '09:00'], $from, [
-                'data-validate' => 'opening_hours', 'data-pair' => $toId, 'maxlength' => '5',
-            ]);
-            $toInput = $this->renderTextWidget($toId, $toName, ['ui:placeholder' => '18:00'], $to, [
-                'data-validate' => 'opening_hours', 'data-pair' => $fromId, 'maxlength' => '5',
-            ]);
-            $from2Input = $this->renderTextWidget($from2Id, $from2Name, ['ui:placeholder' => '13:00'], $from2, [
-                'data-validate' => 'opening_hours', 'data-pair' => $to2Id, 'maxlength' => '5',
-            ]);
-            $to2Input = $this->renderTextWidget($to2Id, $to2Name, ['ui:placeholder' => '18:00'], $to2, [
-                'data-validate' => 'opening_hours', 'data-pair' => $from2Id, 'maxlength' => '5',
-            ]);
-
-            $feedback = $this->renderValidationFeedback($this->validateOpeningHoursTime($from, $to), $fromId.'_feedback');
-
-            $feedback2Result = $this->validateOpeningHoursTime($from2, $to2);
-            if($feedback2Result['status'] === null && $from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
-                $feedback2Result = ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_overlap')];
-            }
-            $feedback2 = $this->renderValidationFeedback($feedback2Result, $from2Id.'_feedback');
-
-            $html .= '<tr><td>'.$dayLabel.'</td>'
-                .'<td>'
-                .'<div class="schemaOrgData-opening-hours-group">'
-                .'<span class="schemaOrgData-opening-hours-range-label" aria-hidden="true">'.$secondRangeLabel.':</span>'
-                .$fromInput
-                .'<span class="schemaOrgData-opening-hours-sep">–</span>'
-                .$toInput.'</div>'.$feedback
-                .'<div class="schemaOrgData-opening-hours-group schemaOrgData-opening-hours-second">'
-                .'<span class="schemaOrgData-opening-hours-range-label">'.$secondRangeLabel.':</span>'
-                .$from2Input
-                .'<span class="schemaOrgData-opening-hours-sep">–</span>'
-                .$to2Input.'</div>'.$feedback2
-                .'</td></tr>'."\n";
-        }
-
-        $html .= '</tbody></table>'."\n";
-        $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_opening_hours').' '
-            .$lang->getLanguageHtml('label_opening_hours_closed').'</p>'."\n";
-
-        return $html;
+        return $this->formRenderer()->renderOpeningHoursWidget(
+            $scope, $name, $fieldSchema, $value, $idPrefix,
+            $this->loadAdminLanguage(), $this->loadWeekdayLanguage(), $this->openingHoursHelper(), $this->validator(),
+        );
     }
 
     /***************************************************************
@@ -1631,42 +1333,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderFaqListWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix = null): string {
-        $lang = $this->loadAdminLanguage();
-        $idPrefix = $idPrefix ?? $scope;
-        $itemSchema = $fieldSchema['items'] ?? [];
-        $questionSchema = $itemSchema['properties']['name'] ?? [];
-        $answerSchema = $itemSchema['properties']['acceptedAnswer']['properties']['text'] ?? [];
-
-        // bestehende Einträge plus eine leere Zeile zum Anlegen eines neuen Eintrags
-        $entries = array_values($value);
-        $entries[] = ['name' => '', 'acceptedAnswer' => ['text' => '']];
-
-        $html = '';
-        foreach($entries as $index => $entry) {
-            $questionId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$index.'_name';
-            $answerId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$index.'_answer';
-            $questionName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$index.'][name]';
-            $answerName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$index.'][acceptedAnswer][text]';
-            $question = $entry['name'] ?? '';
-            $answer = $entry['acceptedAnswer']['text'] ?? '';
-
-            $questionLabel = $lang->getLanguageHtml($questionSchema['ui:label'] ?? 'label_faq_question');
-            $answerLabel = $lang->getLanguageHtml($answerSchema['ui:label'] ?? 'label_faq_answer');
-            $badge = $this->renderRequiredBadge((bool) ($questionSchema['ui:required'] ?? false));
-
-            $html .= '<div class="schemaOrgData-faq-entry">'."\n";
-            $html .= '<div class="c-content schemaOrgData-field-row">'
-                .'<div class="mo-in-li-l"><label for="'.$questionId.'">'.$questionLabel.'</label>'.$badge.'</div>'
-                .'<div class="mo-in-li-r">'.$this->renderTextWidget($questionId, $questionName, $questionSchema, $question).'</div>'
-                .'</div>'."\n";
-            $html .= '<div class="c-content schemaOrgData-field-row">'
-                .'<div class="mo-in-li-l"><label for="'.$answerId.'">'.$answerLabel.'</label></div>'
-                .'<div class="mo-in-li-r">'.$this->renderTextareaWidget($answerId, $answerName, $answerSchema, $answer).'</div>'
-                .'</div>'."\n";
-            $html .= '</div>'."\n";
-        }
-
-        return $html;
+        return $this->formRenderer()->renderFaqListWidget($scope, $name, $fieldSchema, $value, $idPrefix, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1683,22 +1350,9 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderExtensionFieldWidget(string $scope, string $type, string $extensionJson, ?string $idPrefix = null): string {
-        $lang = $this->loadAdminLanguage();
-        $idPrefix = $idPrefix ?? $scope;
-        $fieldId = 'schemaOrgData_'.$idPrefix.'_extension';
-        $fieldName = 'schemaOrgData['.$scope.'][extension]['.$type.']';
-        $schemaUrl = $this->PLUGIN_SELF_URL.'schemas/'.$type.'.json';
-
-        $html = '<fieldset class="schemaOrgData-fieldset">'."\n";
-        $html .= '<legend>'.$lang->getLanguageHtml('label_extension_field').'</legend>'."\n";
-        $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_extension_field').'</p>'."\n";
-        $html .= '<textarea id="'.$fieldId.'" name="'.$fieldName.'" class="mo-input-text schemaOrgData-extension-field" '
-            .'rows="6" data-schema-url="'.htmlspecialchars($schemaUrl, ENT_QUOTES, CHARSET).'">'
-            .htmlspecialchars($extensionJson, ENT_QUOTES, CHARSET).'</textarea>'."\n";
-        $html .= '<div id="'.$fieldId.'_feedback" class="schemaOrgData-extension-feedback"></div>'."\n";
-        $html .= '</fieldset>'."\n";
-
-        return $html;
+        return $this->formRenderer()->renderExtensionFieldWidget(
+            $scope, $type, $extensionJson, $idPrefix, $this->loadAdminLanguage(), $this->PLUGIN_SELF_URL,
+        );
     }
 
     /***************************************************************
@@ -1715,32 +1369,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function buildValidationAttrs(string $scope, string $name, array $fieldSchema, ?string $idPrefix = null): array {
-        $idPrefix = $idPrefix ?? $scope;
-        $format = $fieldSchema['format'] ?? null;
-        $required = (bool) ($fieldSchema['ui:required'] ?? false);
-
-        if($format === 'uri') {
-            $attrs = ['data-validate' => 'url'];
-        } elseif($format === 'email') {
-            $attrs = ['data-validate' => 'email'];
-        } elseif($name === 'telephone') {
-            $attrs = [
-                'data-validate' => 'telephone',
-                'data-country-field' => 'schemaOrgData_'.$idPrefix.'_address_addressCountry',
-            ];
-        } elseif($required) {
-            $attrs = ['data-validate' => 'required'];
-        } else {
-            $attrs = [];
-        }
-
-        if($required) {
-            $lang = $this->loadAdminLanguage();
-            $label = $lang->getLanguageValue($fieldSchema['ui:label'] ?? $name);
-            $attrs['data-required-message'] = $lang->getLanguageValue('error_required_field', $label);
-        }
-
-        return $attrs;
+        return $this->formRenderer()->buildValidationAttrs($scope, $name, $fieldSchema, $idPrefix, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1756,22 +1385,9 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderFieldFeedback(string $name, array $fieldSchema, string $value, array $allData, string $feedbackId): string {
-        $format = $fieldSchema['format'] ?? null;
-
-        if($format === 'uri') {
-            return $this->renderValidationFeedback($this->validateUrl($value), $feedbackId);
-        }
-
-        if($format === 'email') {
-            return $this->renderValidationFeedback($this->validateEmail($value), $feedbackId);
-        }
-
-        if($name === 'telephone') {
-            $countryCode = (string) ($allData['address']['addressCountry'] ?? 'DE');
-            return $this->renderValidationFeedback($this->validateTelephone($value, $countryCode), $feedbackId);
-        }
-
-        return '';
+        return $this->formRenderer()->renderFieldFeedback(
+            $name, $fieldSchema, $value, $allData, $feedbackId, $this->validator(), $this->loadAdminLanguage(),
+        );
     }
 
     /***************************************************************
@@ -1797,89 +1413,12 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderField(string $scope, string $name, array $fieldSchema, mixed $value, array $rootSchema, array $allData, ?string $idPrefix = null, mixed $inheritedValue = null, ?string $inheritedLabel = null): string {
-        $idPrefix = $idPrefix ?? $scope;
-        $fieldSchema = $this->resolveSchemaRef($fieldSchema, $rootSchema);
-        $widget = $fieldSchema['ui:widget'] ?? 'text';
-        $lang = $this->loadAdminLanguage();
-        $label = $lang->getLanguageHtml($fieldSchema['ui:label'] ?? $name);
-        $required = (bool) ($fieldSchema['ui:required'] ?? false);
-        $badge = $this->renderRequiredBadge($required);
-        $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name;
-        $isEmpty = ($value === null or $value === '' or $value === []);
-
-        // id_reference: rein deklaratives Widget ohne Eingabefeld.
-        // Der Wert wird zur Build-Zeit in buildJsonLdScript() emittiert;
-        // im Formular genügt eine schreibgeschützte Info-Anzeige mit der
-        // aufgelösten Ziel-URI.
-        if($widget === 'id_reference') {
-            $target = trim((string) ($fieldSchema['ui:idTarget'] ?? ''));
-            $baseUrl = $this->resolveBaseUrl();
-            $uri = $baseUrl !== '' ? $baseUrl.'#'.$target : '#'.$target;
-            $infoText = $lang->getLanguageHtml('hint_id_reference_auto_link');
-            return '<div class="c-content schemaOrgData-field-row">'
-                .'<div class="mo-in-li-l">'.$label.$badge.'</div>'
-                .'<div class="mo-in-li-r"><span class="schemaOrgData-id-reference-info">'
-                .$infoText.' <code>'.htmlspecialchars($uri).'</code>'
-                .'</span></div>'
-                .'</div>'."\n";
-        }
-
-        if($widget === 'id_reference_or_literal') {
-            $inner = $this->renderIdReferenceOrLiteralWidget(
-                $scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix
-            );
-            return '<fieldset class="schemaOrgData-fieldset">'."\n"
-                .'<legend>'.$label.$badge.'</legend>'."\n"
-                .$inner
-                .'</fieldset>'."\n";
-        }
-
-        if(in_array($widget, ['postal_address', 'opening_hours', 'faq_list'], true)) {
-            $inner = match($widget) {
-                'postal_address' => $this->renderPostalAddressWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, is_array($inheritedValue) ? $inheritedValue : null, $inheritedLabel),
-                'opening_hours'  => $this->renderOpeningHoursWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix),
-                'faq_list'       => $this->renderFaqListWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix),
-                default          => '',
-            };
-
-            if($widget === 'postal_address') {
-                $inner = '<p class="schemaOrgData-hint">'
-                    .$lang->getLanguageHtml('hint_address_conditional_required')
-                    .'</p>'."\n".$inner;
-            }
-
-            return '<fieldset class="schemaOrgData-fieldset">'."\n"
-                .'<legend>'.$label.$badge.'</legend>'."\n"
-                .$inner
-                .'</fieldset>'."\n";
-        }
-
-        // Placeholder + "ü"-Badge für ein leeres Feld, dessen Wert von einer
-        // übergeordneten Ebene geerbt würde (siehe Task 1,
-        // resolveInheritableFields()) - das Feld selbst bleibt leer.
-        if($isEmpty and is_scalar($inheritedValue) and (string) $inheritedValue !== '') {
-            if($widget !== 'select') {
-                $fieldSchema['ui:placeholder'] = (string) $inheritedValue;
-            }
-            $badge .= $this->renderInheritedBadge($inheritedLabel);
-        }
-
-        $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.']';
-
-        $widgetHtml = match($widget) {
-            'select'   => $this->renderSelectWidget($fieldId, $fieldName, $fieldSchema, $value),
-            'textarea' => $this->renderTextareaWidget($fieldId, $fieldName, $fieldSchema, $value),
-            default    => $this->renderTextWidget($fieldId, $fieldName, $fieldSchema, $value, $this->buildValidationAttrs($scope, $name, $fieldSchema, $idPrefix)),
-        };
-
-        $feedback = ($value !== null and $value !== '' and is_scalar($value))
-            ? $this->renderFieldFeedback($name, $fieldSchema, (string) $value, $allData, $fieldId.'_feedback')
-            : '';
-
-        return '<div class="c-content schemaOrgData-field-row">'
-            .'<div class="mo-in-li-l"><label for="'.$fieldId.'">'.$label.'</label>'.$badge.'</div>'
-            .'<div class="mo-in-li-r">'.$widgetHtml.$feedback.'</div>'
-            .'</div>'."\n";
+        return $this->formRenderer()->renderField(
+            $scope, $name, $fieldSchema, $value, $rootSchema, $allData, $idPrefix, $inheritedValue, $inheritedLabel,
+            $this->loadAdminLanguage(), $this->schemaRepository(), $this->urlHelper(), $this->pluginLang,
+            $this->openingHoursHelper(), $this->validator(), $this->loadWeekdayLanguage(),
+            $this->resolveAvailableGlobalFragments(),
+        );
     }
 
     /***************************************************************
@@ -1904,29 +1443,12 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderTypeFields(string $scope, string $type, array $schema, array $data, ?string $idPrefix = null, ?string $extensionJsonOverride = null, array $inheritable = ['data' => [], 'originLabel' => []]): string {
-        $idPrefix = $idPrefix ?? $scope;
-        $split = $this->splitDataForRendering($data, $schema);
-        $formData = $split['form'];
-
-        if($extensionJsonOverride !== null) {
-            $extensionJson = $extensionJsonOverride;
-        } else {
-            $extensionJson = $split['extension'] !== []
-                ? json_encode($split['extension'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
-                : '';
-        }
-
-        $html = '';
-        foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
-            $html .= $this->renderField(
-                $scope, $name, $fieldSchema, $formData[$name] ?? null, $schema, $formData, $idPrefix,
-                $inheritable['data'][$name] ?? null, $inheritable['originLabel'][$name] ?? null,
-            );
-        }
-
-        $html .= $this->renderExtensionFieldWidget($scope, $type, $extensionJson, $idPrefix);
-
-        return $html;
+        return $this->formRenderer()->renderTypeFields(
+            $scope, $type, $schema, $data, $idPrefix, $extensionJsonOverride, $inheritable,
+            $this->dataSplitHelper(), $this->loadAdminLanguage(), $this->schemaRepository(), $this->urlHelper(),
+            $this->pluginLang, $this->PLUGIN_SELF_URL, $this->openingHoursHelper(), $this->validator(),
+            $this->loadWeekdayLanguage(), $this->resolveAvailableGlobalFragments(),
+        );
     }
 
     /***************************************************************
@@ -1943,26 +1465,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderTypeSelector(string $scope, array $availableTypes, ?string $selectedType, ?string $idPrefix = null): string {
-        $lang = $this->loadAdminLanguage();
-        $idPrefix = $idPrefix ?? $scope;
-        $fieldId = 'schemaOrgData_'.$idPrefix.'_type';
-        $fieldName = 'schemaOrgData['.$scope.'][type]';
-
-        $html = '<div class="mo-select-div flex">';
-        $html .= '<select id="'.$fieldId.'" name="'.$fieldName.'" class="mo-select flex-100 schemaOrgData-type-select">';
-
-        $noneSelected = ($selectedType === null) ? ' selected="selected"' : '';
-        $html .= '<option value=""'.$noneSelected.'>'.$lang->getLanguageHtml('schema_type_none').'</option>';
-
-        foreach($availableTypes as $type => $schema) {
-            $selected = ($selectedType === $type) ? ' selected="selected"' : '';
-            $typeLabel = $lang->getLanguageHtml($schema['ui:typeLabel'] ?? $type);
-            $html .= '<option value="'.htmlspecialchars($type, ENT_QUOTES, CHARSET).'"'.$selected.'>'.$typeLabel.'</option>';
-        }
-
-        $html .= '</select></div>';
-
-        return $html;
+        return $this->formRenderer()->renderTypeSelector($scope, $availableTypes, $selectedType, $idPrefix, $this->loadAdminLanguage());
     }
 
     /***************************************************************
