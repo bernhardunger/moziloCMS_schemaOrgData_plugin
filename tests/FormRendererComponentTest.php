@@ -258,6 +258,138 @@ final class FormRendererComponentTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // renderField() - Required-/Inherited-Badge-Integration
+    // migriert aus FormRendererTest.php
+    // -----------------------------------------------------------
+
+    function testRenderFieldPflichtfeldZeigtRequiredBadgeDirekt(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+
+        $html = $renderer->renderField(
+            'global', 'name', $schema['properties']['name'], '', $schema, [], null, null, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('schemaOrgData-required', $html);
+        $this->assertStringNotContainsString('schemaOrgData-optional', $html);
+    }
+
+    /***************************************************************
+    *
+    * Geerbtes Feld (Feature 0.4.1-beta): renderField() rendert für
+    * ein leeres Feld, dessen Wert von einer übergeordneten Ebene
+    * geerbt würde, einen grauen Placeholder mit dem geerbten Wert
+    * und ein "ü"-Badge mit Herkunfts-Tooltip - das Feld selbst
+    * bleibt leer (value=""), damit die feldweise Vererbung aus
+    * 0.2.4-beta beim Speichern unverändert bleibt.
+    *
+    ***************************************************************/
+    function testRenderFieldGeerbtesFeldBleibtLeerZeigtPlatzhalterUndBadgeDirekt(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+
+        $html = $renderer->renderField(
+            'category', 'telephone', $schema['properties']['telephone'], '', $schema, [], null,
+            '+49 89 12345678', 'Global',
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('value=""', $html);
+        $this->assertStringContainsString('placeholder="+49 89 12345678"', $html);
+        $this->assertStringContainsString('schemaOrgData-inherited', $html);
+        $this->assertStringContainsString('&Uuml;bernommen von: Global', $html);
+    }
+
+    function testRenderFieldEigenerWertZeigtKeinInheritedBadgeDirekt(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+
+        $html = $renderer->renderField(
+            'category', 'telephone', $schema['properties']['telephone'], '+49 30 99999999', $schema, [], null,
+            '+49 89 12345678', 'Global',
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('value="+49 30 99999999"', $html);
+        $this->assertStringNotContainsString('schemaOrgData-inherited', $html);
+    }
+
+    // -----------------------------------------------------------
+    // renderField() - bedingter Pflichtfeld-Hinweis am Adress-Fieldset
+    // migriert aus FormRendererTest.php
+    // -----------------------------------------------------------
+
+    function testRenderFieldAdresseZeigtBedingtenPflichtfeldHinweisDirekt(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+
+        $html = $renderer->renderField(
+            'global', 'address', $schema['properties']['address'], [], $schema, [], null, null, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('schemaOrgData-hint', $html);
+        $this->assertStringContainsString('Adressfeld', $html);
+    }
+
+    // -----------------------------------------------------------
+    // renderOpeningHoursWidget() - Vorbefüllung zweiter Zeitraum
+    // migriert aus FormRendererTest.php (Regressionstest zweiter Zeitraum)
+    // -----------------------------------------------------------
+
+    function testRenderOpeningHoursWidgetVorbefuelltZweitenZeitraumDirekt(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+        $value = ['Mo-Fr 08:00-12:00', 'Mo-Fr 13:00-17:00'];
+
+        $html = $renderer->renderOpeningHoursWidget(
+            'global', 'openingHours', $schema['properties']['openingHours'], $value, null,
+            $this->adminLang(), $this->weekdayLang(), new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(),
+        );
+
+        $this->assertStringContainsString('value="08:00"', $html);
+        $this->assertStringContainsString('value="12:00"', $html);
+        $this->assertStringContainsString('value="13:00"', $html);
+        $this->assertStringContainsString('value="17:00"', $html);
+        $this->assertStringContainsString('schemaOrgData_global_openingHours_Mo_from2', $html);
+        $this->assertStringContainsString('schemaOrgData_global_openingHours_Mo_to2', $html);
+    }
+
+    // -----------------------------------------------------------
+    // renderSelectWidget() - bekannter/unbekannter Enum-Wert (NGO)
+    // migriert aus IdAnchorTest.php
+    // -----------------------------------------------------------
+
+    function testRenderSelectWidgetBekannterEnumWertIstSelectedDirekt(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'NGO');
+        $field = $schema['properties']['nonprofitStatus'];
+
+        $html = $renderer->renderSelectWidget('ngo_status', 'ngo[status]', $field, 'DEFoundationCharity', $this->adminLang(), 'deDE');
+
+        $this->assertStringContainsString(
+            '<option value="DEFoundationCharity" selected="selected">Gemeinnützige Stiftung</option>',
+            $html
+        );
+    }
+
+    function testRenderSelectWidgetUnbekannterEnumWertIstNichtSelectedDirekt(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'NGO');
+        $field = $schema['properties']['nonprofitStatus'];
+
+        $html = $renderer->renderSelectWidget('ngo_status', 'ngo[status]', $field, 'NichtVorhandenerStatus', $this->adminLang(), 'deDE');
+
+        $this->assertStringNotContainsString('NichtVorhandenerStatus', $html);
+        $this->assertStringNotContainsString('selected="selected"', $html);
+    }
+
+    // -----------------------------------------------------------
     // renderTypeSelector()
     // -----------------------------------------------------------
 

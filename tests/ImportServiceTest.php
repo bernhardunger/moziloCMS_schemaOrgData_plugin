@@ -54,4 +54,21 @@ final class ImportServiceTest extends TestCase {
         $this->assertSame([], $result['formData']);
         $this->assertSame([], $result['extensionData']);
     }
+
+    /***************************************************************
+    *
+    * Migriert aus ImportParserTest::testEmptyBlockIsHandledCorrectly().
+    *
+    ***************************************************************/
+    function testLeererJsonLdBlockWirdKorrektBehandelt(): void {
+        $service = new \SchemaOrgData_ImportService();
+        $dataSplitHelper = new \SchemaOrgData_DataSplitHelper();
+
+        $result = $service->importJsonLd('{}', $this->schema(), $dataSplitHelper);
+
+        $this->assertTrue($result['success']);
+        $this->assertNull($result['type']);
+        $this->assertSame([], $result['formData']);
+        $this->assertSame([], $result['extensionData']);
+    }
 }

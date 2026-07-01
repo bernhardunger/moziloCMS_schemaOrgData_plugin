@@ -130,4 +130,65 @@ final class IdReferenceServiceTest extends TestCase {
         $this->assertSame(['name' => 'Beispiel e. V.'], $result['global']['NGO'],
             'Stub darf ausschließlich name enthalten - @type/@id folgen erst über die Ausgabeschleife');
     }
+
+    /***************************************************************
+    *
+    * Migriert aus PersonIdRefOrLiteralTest::testGuardNoOpForLiteralMode().
+    * Abweichend vom Original: applyDanglingReferenceGuard() lädt in
+    * seiner ersten Schleife für JEDEN Type in $scopeConfigs zunächst
+    * dessen eigenes Schema per loadSchema($pluginSelfDir, $type) -
+    * unabhängig vom späteren _mode-Zweig. "TestIdRefType" existiert
+    * nicht unter den echten Plugin-Schemas; mit $this->pluginSelfDir()
+    * würde loadSchema() bereits null liefern und die Schleife den Typ
+    * überspringen, bevor der _mode-Zweig überhaupt geprüft wird - der
+    * Test wäre dann nur zufällig grün. Deshalb hier das Hilfsschema
+    * TestIdRefType.json analog PersonIdRefOrLiteralTest::createPlugin()
+    * in einem eigenen Temp-Verzeichnis nachgebaut.
+    *
+    ***************************************************************/
+    private function createTempPluginDirWithTestIdRefTypeSchema(): string {
+        $pluginSelfDir = sys_get_temp_dir().'/schemaOrgData_idreftest_'.uniqid().'/';
+        mkdir($pluginSelfDir.'schemas', 0777, true);
+        file_put_contents($pluginSelfDir.'schemas/TestIdRefType.json', json_encode([
+            'title' => 'TestIdRefType',
+            'type' => 'object',
+            'ui:scopes' => ['page'],
+            'required' => ['organizer'],
+            'properties' => [
+                'organizer' => [
+                    'type' => 'object',
+                    'ui:widget' => 'id_reference_or_literal',
+                    'ui:literalFields' => ['name'],
+                    'ui:literalType' => 'Person',
+                ],
+            ],
+        ]));
+        return $pluginSelfDir;
+    }
+
+    private function removeTempPluginDir(string $pluginSelfDir): void {
+        unlink($pluginSelfDir.'schemas/TestIdRefType.json');
+        rmdir($pluginSelfDir.'schemas');
+        rmdir($pluginSelfDir);
+    }
+
+    function testNoOpFuerLiteralModusBeiIdReferenceOrLiteral(): void {
+        $service = new \SchemaOrgData_IdReferenceService();
+        $settings = new \InMemorySettings();
+        $pluginSelfDir = $this->createTempPluginDirWithTestIdRefTypeSchema();
+
+        $scopeConfigs = [
+            'page' => ['TestIdRefType' => ['organizer' => ['_mode' => 'literal', 'name' => 'Max']]],
+        ];
+
+        [$result, $suppressed] = $service->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
+            $settings, $pluginSelfDir, $scopeConfigs, false
+        );
+
+        $this->removeTempPluginDir($pluginSelfDir);
+
+        $this->assertSame([], $suppressed, 'Literal-Modus darf keinen Dangling-Guard auslösen');
+        $this->assertSame($scopeConfigs, $result, 'scopeConfigs darf bei Literal-Modus nicht verändert werden');
+    }
 }

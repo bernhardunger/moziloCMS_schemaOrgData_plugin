@@ -54,6 +54,21 @@ final class AdminControllerTest extends TestCase {
         }
     }
 
+    /***************************************************************
+    *
+    * FakeCatPage ist in FormRendererTest.php deklariert (nicht
+    * PSR-4-autoloadbar unter eigenem Dateinamen) - nicht identisch mit
+    * FakeCatPageWithPages aus PersistenceTest.php. Im normalen
+    * Suite-Lauf ist die Klasse durch das Laden von FormRendererTest.php
+    * bereits verfügbar; hier bei Bedarf explizit nachladen.
+    *
+    ***************************************************************/
+    private function ensureFakeCatPageLoaded(): void {
+        if (!class_exists(FakeCatPage::class)) {
+            require_once __DIR__ . '/FormRendererTest.php';
+        }
+    }
+
     private function pluginSelfDir(): string {
         return \BASE_DIR.'plugins/schemaOrgData/';
     }
@@ -308,6 +323,32 @@ final class AdminControllerTest extends TestCase {
         $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
     }
 
+    /***************************************************************
+    *
+    * Migriert aus FormRendererTest::testAutofillButtonEscapesSpecialCharsInDataAttribute().
+    * XSS-relevant: Sonderzeichen im gespeicherten existing_jsonld_content
+    * dürfen nicht roh in das data-Attribut des Autofill-Buttons gelangen.
+    *
+    ***************************************************************/
+    function testRenderExistingJsonLdNoticeEscaptSonderzeichenImDataAttributDirekt(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '{"name":"Müller & Söhne <GmbH>"}',
+            ],
+        ]);
+
+        $html = $this->controller()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
+        $this->assertStringNotContainsString('data-existing-content="{"', $html);
+        $this->assertStringContainsString('data-existing-content=', $html);
+    }
+
     // -----------------------------------------------------------
     // renderCollisionNotice()
     // -----------------------------------------------------------
@@ -388,6 +429,69 @@ final class AdminControllerTest extends TestCase {
         $html = $this->controller()->renderExcludedCatsField([], true, $this->adminLang());
 
         $this->assertStringContainsString('schemaOrgData_global_debug_output" name="schemaOrgData[global][debug_output]" value="1" checked="checked"', $html);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus FormRendererTest::testExcludedCatsFieldOmitsKategorienRootEntry().
+    * get_CatArray(true) liefert auch das Wurzelverzeichnis "kategorien"
+    * selbst als Eintrag zurück - das ist keine echte Kategorie und
+    * darf in der Ausschlussliste nicht als Checkbox erscheinen (nur
+    * echte Kategorien + "Alle Kategorien"-Toggle). Nutzt FakeCatPage
+    * aus FormRendererTest.php (nicht FakeCatPageWithPages).
+    *
+    ***************************************************************/
+    function testRenderExcludedCatsFieldOmitsKategorienRootEntryDirekt(): void {
+        $this->ensureFakeCatPageLoaded();
+        global $CatPage;
+        $CatPage = new FakeCatPage(['kategorien', 'ueber-uns', 'impressum']);
+
+        $html = $this->controller()->renderExcludedCatsField([], false, $this->adminLang());
+
+        // unset($CatPage) würde nur die lokale global-Bindung lösen, nicht
+        // den Eintrag in $GLOBALS selbst - echtes Aufräumen erfordert
+        // unset($GLOBALS['CatPage']), sonst leakt die FakeCatPage-Instanz in
+        // spätere Tests derselben Klasse (z. B. testRenderScopeSelectorOhneCatPageLiefertLeerenString).
+        unset($GLOBALS['CatPage']);
+
+        $this->assertStringContainsString('value="ueber-uns"', $html);
+        $this->assertStringContainsString('value="impressum"', $html);
+        $this->assertStringNotContainsString('value="kategorien"', $html);
+        $this->assertStringContainsString('data-select-all="schemaOrgData[global][excluded_cats][]"', $html);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus FormRendererTest::testDebugOutputCheckboxIsAlwaysRendered()
+    * und ::testDebugOutputCheckboxHasLabelAndHint() (zusammengefasst,
+    * da beide auf denselben Aufruf prüfen).
+    *
+    ***************************************************************/
+    function testRenderExcludedCatsFieldDebugCheckboxImmerMitLabelUndHintDirekt(): void {
+        $html = $this->controller()->renderExcludedCatsField([], false, $this->adminLang());
+
+        $this->assertStringContainsString('name="schemaOrgData[global][debug_output]"', $html);
+        $this->assertStringContainsString('Debug', $html);
+        $this->assertStringContainsString('validator.schema.org', $html);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus FormRendererTest::testDebugOutputCheckboxAbsentForNonGlobalScope().
+    * Das Original testete indirekt über renderTypeFields(), weil
+    * renderScopeSection() zum damaligen Zeitpunkt privat war. Diese
+    * Prämisse gilt nicht mehr: renderScopeSection() ist inzwischen
+    * eine öffentliche Methode und ruft renderExcludedCatsField() laut
+    * lib/SchemaOrgData_AdminController.php ausschließlich innerhalb
+    * von "if($scope === 'global')" auf - deshalb hier direkt über
+    * renderScopeSection() mit scope='category' geprüft, statt die
+    * überholte Indirektion über renderTypeFields() zu reproduzieren.
+    *
+    ***************************************************************/
+    function testRenderScopeSectionOhneDebugOutputFeldFuerNichtGlobalenScopeDirekt(): void {
+        $html = $this->callRenderScopeSection('category', 'ueber-uns', null, true, 'category', false, new \InMemorySettings());
+
+        $this->assertStringNotContainsString('debug_output', $html);
     }
 
     // -----------------------------------------------------------
