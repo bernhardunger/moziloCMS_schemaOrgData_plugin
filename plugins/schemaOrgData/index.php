@@ -11,6 +11,7 @@ require_once __DIR__.'/lib/SchemaOrgData_OpeningHoursHelper.php';
 require_once __DIR__.'/lib/SchemaOrgData_DataSplitHelper.php';
 require_once __DIR__.'/lib/SchemaOrgData_Validator.php';
 require_once __DIR__.'/lib/SchemaOrgData_FormRenderer.php';
+require_once __DIR__.'/lib/SchemaOrgData_ImportService.php';
 
 /***************************************************************
 *
@@ -41,7 +42,7 @@ require_once __DIR__.'/lib/SchemaOrgData_FormRenderer.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.27-beta';
+    private const PLUGIN_VERSION = '0.4.28-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -96,6 +97,9 @@ class schemaOrgData extends Plugin {
 
     /** Lazy-Instanz von SchemaOrgData_FormRenderer (siehe formRenderer()) */
     private ?SchemaOrgData_FormRenderer $formRendererInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_ImportService (siehe importService()) */
+    private ?SchemaOrgData_ImportService $importServiceInstance = null;
 
     function __construct() {
         parent::__construct();
@@ -377,6 +381,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_FormRenderer. */
     private function formRenderer(): SchemaOrgData_FormRenderer {
         return $this->formRendererInstance ??= new SchemaOrgData_FormRenderer();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_ImportService. */
+    private function importService(): SchemaOrgData_ImportService {
+        return $this->importServiceInstance ??= new SchemaOrgData_ImportService();
     }
 
     /***************************************************************
@@ -778,30 +787,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function importJsonLd(string $jsonLdText, ?array $schema): array {
-        $data = json_decode($jsonLdText, true);
-
-        if(json_last_error() !== JSON_ERROR_NONE or !is_array($data)) {
-            return [
-                'success' => false,
-                'error' => json_last_error_msg(),
-                'type' => null,
-                'formData' => [],
-                'extensionData' => [],
-            ];
-        }
-
-        $type = $data['@type'] ?? null;
-        unset($data['@context'], $data['@type']);
-
-        $split = $this->splitDataForRendering($data, $schema);
-
-        return [
-            'success' => true,
-            'error' => null,
-            'type' => $type,
-            'formData' => $split['form'],
-            'extensionData' => $split['extension'],
-        ];
+        return $this->importService()->importJsonLd($jsonLdText, $schema, $this->dataSplitHelper());
     }
 
     /***************************************************************
