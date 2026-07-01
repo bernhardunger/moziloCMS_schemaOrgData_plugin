@@ -1,5 +1,8 @@
 <?php if(!defined('IS_CMS')) die();
 
+require_once __DIR__.'/lib/SchemaOrgData_UrlHelper.php';
+require_once __DIR__.'/lib/SchemaOrgData_LanguageService.php';
+
 /***************************************************************
 *
 * schemaOrgData
@@ -29,7 +32,7 @@
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.17-beta';
+    private const PLUGIN_VERSION = '0.4.18-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -51,6 +54,17 @@ class schemaOrgData extends Plugin {
 
     /** Aktuell aufgelöste Admin-Sprache (deDE|enEN), siehe loadAdminLanguage() */
     private string $pluginLang = self::DEFAULT_LANGUAGE;
+
+    /** Lazy-Instanz von SchemaOrgData_UrlHelper (siehe urlHelper()) */
+    private ?SchemaOrgData_UrlHelper $urlHelperInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_LanguageService (siehe languageService()) */
+    private ?SchemaOrgData_LanguageService $languageServiceInstance = null;
+
+    function __construct() {
+        parent::__construct();
+        // Komponenten werden lazy verdrahtet (siehe urlHelper(), languageService()).
+    }
 
     /***************************************************************
     *
@@ -318,6 +332,11 @@ class schemaOrgData extends Plugin {
         return is_array($schema) ? $schema : null;
     }
 
+    /** Lazy-Accessor für SchemaOrgData_UrlHelper. */
+    private function urlHelper(): SchemaOrgData_UrlHelper {
+        return $this->urlHelperInstance ??= new SchemaOrgData_UrlHelper();
+    }
+
     /***************************************************************
     *
     * Ermittelt die absolute Basis-URL der Installation als Quelle
@@ -335,24 +354,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function resolveBaseUrl(): string {
-        $host = isset($_SERVER['HTTP_HOST']) ? trim((string) $_SERVER['HTTP_HOST']) : '';
-        if($host === '') {
-            // Ohne Host keine global eindeutige URI - kein @id (siehe README.md).
-            return '';
-        }
-
-        $protocol = (!empty($_SERVER['HTTPS']) and strtolower((string) $_SERVER['HTTPS']) !== 'off')
-            ? 'https://'
-            : 'http://';
-
-        // Pfad-Anteil aus dem Verzeichnis von SCRIPT_NAME ableiten. dirname()
-        // nutzt unter Windows den Backslash als Trenner - daher das Ergebnis
-        // auf "/" normalisieren, damit die @id plattformunabhängig bleibt.
-        $scriptName = isset($_SERVER['SCRIPT_NAME']) ? (string) $_SERVER['SCRIPT_NAME'] : '';
-        $dir = $scriptName !== '' ? str_replace('\\', '/', dirname($scriptName)) : '';
-        $path = $dir !== '' ? rtrim($dir, '/').'/' : '/';
-
-        return $protocol.$host.$path;
+        return $this->urlHelper()->resolveBaseUrl();
     }
 
     /***************************************************************
@@ -735,14 +737,15 @@ class schemaOrgData extends Plugin {
     * @return string           Locale-Code ('deDE' oder 'enEN')
     *
     ***************************************************************/
+    /** Lazy-Accessor für SchemaOrgData_LanguageService. */
+    private function languageService(): SchemaOrgData_LanguageService {
+        return $this->languageServiceInstance ??= new SchemaOrgData_LanguageService(
+            self::LANGUAGE_PREFIX_MAP, self::DEFAULT_LANGUAGE
+        );
+    }
+
     private function resolvePluginLanguage(?string $code): string {
-        $lower = strtolower((string) $code);
-        foreach(self::LANGUAGE_PREFIX_MAP as $prefix => $locale) {
-            if(str_starts_with($lower, $prefix)) {
-                return $locale;
-            }
-        }
-        return self::DEFAULT_LANGUAGE;
+        return $this->languageService()->resolvePluginLanguage($code);
     }
 
     /***************************************************************
