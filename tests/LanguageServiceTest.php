@@ -6,12 +6,19 @@ use PHPUnit\Framework\TestCase;
 
 /***************************************************************
 *
-* Tests für SchemaOrgData_LanguageService::resolvePluginLanguage():
+* Tests für SchemaOrgData_LanguageService:
 *
+* resolvePluginLanguage():
 *   - 'deDE' / 'de'  -> deDE
 *   - 'enEN' / 'en'  -> enEN
 *   - unbekannter Code -> DEFAULT_LANGUAGE (deDE)
 *   - null             -> DEFAULT_LANGUAGE (deDE)
+*
+* loadAdminLanguageFile() / loadCmsLanguageFile():
+*   - bauen für (pluginSelfDir, locale) den korrekten Dateipfad
+*     (sprachen/admin_language_{locale}.txt bzw.
+*     sprachen/cms_language_{locale}.txt) und liefern ein
+*     funktionsfähiges Language-Objekt (deDE und enEN)
 *
 ***************************************************************/
 final class LanguageServiceTest extends TestCase {
@@ -50,5 +57,33 @@ final class LanguageServiceTest extends TestCase {
     function testGrossSchreibungWirdIgnoriert(): void {
         $this->assertSame('deDE', $this->service()->resolvePluginLanguage('DE'));
         $this->assertSame('enEN', $this->service()->resolvePluginLanguage('EN'));
+    }
+
+    private function pluginSelfDir(): string {
+        return BASE_DIR.'plugins/schemaOrgData/';
+    }
+
+    function testLoadAdminLanguageFileLaedtDeDeDatei(): void {
+        $lang = $this->service()->loadAdminLanguageFile($this->pluginSelfDir(), 'deDE');
+
+        $this->assertSame('Einstellungen', $lang->getLanguageValue('admin_button'));
+    }
+
+    function testLoadAdminLanguageFileLaedtEnEnDatei(): void {
+        $lang = $this->service()->loadAdminLanguageFile($this->pluginSelfDir(), 'enEN');
+
+        $this->assertSame('Settings', $lang->getLanguageValue('admin_button'));
+    }
+
+    function testLoadCmsLanguageFileLaedtDeDeDatei(): void {
+        $lang = $this->service()->loadCmsLanguageFile($this->pluginSelfDir(), 'deDE');
+
+        $this->assertSame('Montag', $lang->getLanguageValue('weekday_monday'));
+    }
+
+    function testLoadCmsLanguageFileLaedtEnEnDatei(): void {
+        $lang = $this->service()->loadCmsLanguageFile($this->pluginSelfDir(), 'enEN');
+
+        $this->assertSame('Monday', $lang->getLanguageValue('weekday_monday'));
     }
 }

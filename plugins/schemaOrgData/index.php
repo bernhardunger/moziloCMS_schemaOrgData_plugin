@@ -32,7 +32,7 @@ require_once __DIR__.'/lib/SchemaOrgData_LanguageService.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.18-beta';
+    private const PLUGIN_VERSION = '0.4.19-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -83,9 +83,9 @@ class schemaOrgData extends Plugin {
 
         global $CMS_CONF;
 
-        $this->cms_lang = new Language(
-            $this->PLUGIN_SELF_DIR.'sprachen/cms_language_'
-                .$this->resolvePluginLanguage($CMS_CONF->get('cmslanguage')).'.txt'
+        $this->cms_lang = $this->languageService()->loadCmsLanguageFile(
+            $this->PLUGIN_SELF_DIR,
+            $this->resolvePluginLanguage($CMS_CONF->get('cmslanguage'))
         );
 
         $output = '';
@@ -1165,7 +1165,7 @@ class schemaOrgData extends Plugin {
         $this->pluginLang = $this->resolvePluginLanguage($ADMIN_CONF->get('language') ?? self::DEFAULT_LANGUAGE);
 
         if($this->admin_lang === null) {
-            $this->admin_lang = new Language($this->PLUGIN_SELF_DIR.'sprachen/admin_language_'.$this->pluginLang.'.txt');
+            $this->admin_lang = $this->languageService()->loadAdminLanguageFile($this->PLUGIN_SELF_DIR, $this->pluginLang);
         }
         return $this->admin_lang;
     }
@@ -1182,7 +1182,7 @@ class schemaOrgData extends Plugin {
         $this->loadAdminLanguage();
 
         if($this->weekday_lang === null) {
-            $this->weekday_lang = new Language($this->PLUGIN_SELF_DIR.'sprachen/cms_language_'.$this->pluginLang.'.txt');
+            $this->weekday_lang = $this->languageService()->loadCmsLanguageFile($this->PLUGIN_SELF_DIR, $this->pluginLang);
         }
         return $this->weekday_lang;
     }
@@ -4046,7 +4046,7 @@ class schemaOrgData extends Plugin {
         global $ADMIN_CONF;
 
         $lang = $this->resolvePluginLanguage($ADMIN_CONF->get('language') ?? self::DEFAULT_LANGUAGE);
-        $this->admin_lang = new Language($this->PLUGIN_SELF_DIR.'sprachen/admin_language_'.$lang.'.txt');
+        $this->admin_lang = $this->languageService()->loadAdminLanguageFile($this->PLUGIN_SELF_DIR, $lang);
 
         return [
             // Plugin-Name + Version — Konvention der Core-Plugins: "Version X.Y.Z"

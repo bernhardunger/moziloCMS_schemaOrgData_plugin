@@ -44,4 +44,37 @@ class SchemaOrgData_LanguageService {
         }
         return $this->defaultLanguage;
     }
+
+    /***************************************************************
+    *
+    * Instanziiert das Sprachobjekt für die Admin-UI
+    * (sprachen/admin_language_{locale}.txt). Zustandslos - Caching
+    * und $pluginLang-Seiteneffekt bleiben auf der Fassade
+    * (siehe README.md, Abschnitt "Sprachunterstützung").
+    *
+    * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
+    * @param string $locale        Locale-Code ('deDE' oder 'enEN')
+    * @return Language
+    *
+    ***************************************************************/
+    public function loadAdminLanguageFile(string $pluginSelfDir, string $locale): Language {
+        return new Language($pluginSelfDir.'sprachen/admin_language_'.$locale.'.txt');
+    }
+
+    /***************************************************************
+    *
+    * Instanziiert ein Sprachobjekt aus dem CMS-Sprachbestand
+    * (sprachen/cms_language_{locale}.txt). Wird sowohl für den
+    * Frontend-Kontext (cms_lang) als auch für die Wochentag-Labels
+    * im Admin-Formular (weekday_lang, dort mit der Admin-Sprache)
+    * verwendet.
+    *
+    * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
+    * @param string $locale        Locale-Code ('deDE' oder 'enEN')
+    * @return Language
+    *
+    ***************************************************************/
+    public function loadCmsLanguageFile(string $pluginSelfDir, string $locale): Language {
+        return new Language($pluginSelfDir.'sprachen/cms_language_'.$locale.'.txt');
+    }
 }
