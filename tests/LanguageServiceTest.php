@@ -86,4 +86,22 @@ final class LanguageServiceTest extends TestCase {
 
         $this->assertSame('Monday', $lang->getLanguageValue('weekday_monday'));
     }
+
+    // Facade-Methode loadAdminLanguage() (index.php): Cache-Guard für
+    // $admin_lang (nur beim ersten Aufruf instanziiert) und
+    // Seiteneffekt $pluginLang (bei jedem Aufruf neu aus $ADMIN_CONF
+    // aufgelöst, kein Cache-Guard). $ADMIN_CONF-Mock in bootstrap.php:
+    // 'language' => 'de' -> aufgelöst zu 'deDE'.
+    function testLoadAdminLanguageCachtInstanzUndAktualisiertPluginLangBeiJedemAufruf(): void {
+        $plugin = new \schemaOrgData();
+
+        $first = callPluginMethod($plugin, 'loadAdminLanguage');
+        $second = callPluginMethod($plugin, 'loadAdminLanguage');
+
+        $this->assertSame($first, $second);
+
+        $ref = new \ReflectionProperty(\schemaOrgData::class, 'pluginLang');
+        $ref->setAccessible(true);
+        $this->assertSame('deDE', $ref->getValue($plugin));
+    }
 }

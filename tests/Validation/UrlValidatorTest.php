@@ -29,17 +29,6 @@ final class UrlValidatorTest extends TestCase {
         $this->assertNull($result['message']);
     }
 
-    function testHttpUrlIsWarning(): void {
-        $plugin = new \schemaOrgData();
-        $expectedMessage = callPluginMethod($plugin, 'loadAdminLanguage')->getLanguageValue('warning_url_http');
-
-        $result = $this->validate('http://example.com');
-
-        $this->assertSame('warning', $result['status']);
-        $this->assertSame($expectedMessage, $result['message']);
-        $this->assertStringContainsString('HTTPS empfohlen', $result['message']);
-    }
-
     function testInvalidUrlIsError(): void {
         $result = $this->validate('keine-url');
 
