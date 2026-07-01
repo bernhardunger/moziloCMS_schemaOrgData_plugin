@@ -8,10 +8,19 @@
 * der Fassade schemaOrgData über einen Lazy-Accessor verdrahtet
 * (siehe README.md, Abschnitt "Schema-getriebenes Formular").
 *
-* Zustandslos - kein Caching (siehe README.md).
+* Zustandslos gegenüber der Fassade; cacht Schema-Lesevorgänge für
+* die Lebensdauer der Instanz (siehe README.md, Abschnitt
+* "Schema-getriebenes Formular", und doc/adr_komponenten_refactoring.md,
+* Entscheidung (k)).
 *
 ***************************************************************/
 class SchemaOrgData_SchemaRepository {
+
+    /** Cache für loadSchema(), Key: "{pluginSelfDir}|{type}". Siehe Backlog-Eintrag Caching. */
+    private array $schemaCache = [];
+
+    /** Cache für getAvailableSchemaTypes(), Key: pluginSelfDir. */
+    private array $availableTypesCache = [];
 
     /***************************************************************
     *
@@ -23,12 +32,17 @@ class SchemaOrgData_SchemaRepository {
     *
     ***************************************************************/
     public function loadSchema(string $pluginSelfDir, string $type): ?array {
+        $cacheKey = $pluginSelfDir.'|'.$type;
+        if(array_key_exists($cacheKey, $this->schemaCache)) {
+            return $this->schemaCache[$cacheKey];
+        }
+
         $file = $pluginSelfDir.'schemas/'.basename($type).'.json';
         if(!file_exists($file)) {
-            return null;
+            return $this->schemaCache[$cacheKey] = null;
         }
         $schema = json_decode(file_get_contents($file), true);
-        return is_array($schema) ? $schema : null;
+        return $this->schemaCache[$cacheKey] = (is_array($schema) ? $schema : null);
     }
 
     /***************************************************************
@@ -74,11 +88,15 @@ class SchemaOrgData_SchemaRepository {
     *
     ***************************************************************/
     public function getAvailableSchemaTypes(string $pluginSelfDir): array {
+        if(array_key_exists($pluginSelfDir, $this->availableTypesCache)) {
+            return $this->availableTypesCache[$pluginSelfDir];
+        }
+
         $types = [];
         foreach(glob($pluginSelfDir.'schemas/*.json') as $file) {
             $types[] = basename($file, '.json');
         }
         sort($types);
-        return $types;
+        return $this->availableTypesCache[$pluginSelfDir] = $types;
     }
 }

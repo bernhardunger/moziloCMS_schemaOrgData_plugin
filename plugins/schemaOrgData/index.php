@@ -44,7 +44,7 @@ require_once __DIR__.'/lib/SchemaOrgData_FrontendRenderer.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.31-beta';
+    private const PLUGIN_VERSION = '0.4.32-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';

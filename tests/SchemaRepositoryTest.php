@@ -131,4 +131,85 @@ final class SchemaRepositoryTest extends TestCase {
         $this->assertIsArray($schema);
         $this->assertSame('LocalBusiness', $schema['title']);
     }
+
+    // Caching (Backlog-Punkt "Optionales Caching in SchemaRepository") -------
+
+    private function tempSchemaDir(): string {
+        $dir = sys_get_temp_dir().'/schemaOrgData_repocache_'.uniqid().'/schemas/';
+        mkdir($dir, 0777, true);
+        return dirname($dir).'/';
+    }
+
+    private function removeDirectory(string $dir): void {
+        foreach(glob(rtrim($dir, '/').'/*') as $file) {
+            is_dir($file) ? $this->removeDirectory($file) : unlink($file);
+        }
+        rmdir($dir);
+    }
+
+    function testLoadSchemaCachtErgebnisInnerhalbDerInstanz(): void {
+        $pluginSelfDir = $this->tempSchemaDir();
+        file_put_contents($pluginSelfDir.'schemas/Cached.json', json_encode(['title' => 'Original']));
+
+        $repository = $this->repository();
+        $first = $repository->loadSchema($pluginSelfDir, 'Cached');
+
+        file_put_contents($pluginSelfDir.'schemas/Cached.json', json_encode(['title' => 'Geaendert']));
+        $second = $repository->loadSchema($pluginSelfDir, 'Cached');
+
+        $this->assertSame('Original', $first['title']);
+        $this->assertSame('Original', $second['title'],
+            'Zweiter Aufruf auf derselben Instanz muss das gecachte Ergebnis liefern, nicht den geänderten Disk-Zustand.');
+
+        $this->removeDirectory($pluginSelfDir);
+    }
+
+    function testLoadSchemaCachtAuchNullErgebnis(): void {
+        $pluginSelfDir = $this->tempSchemaDir();
+
+        $repository = $this->repository();
+        $first = $repository->loadSchema($pluginSelfDir, 'NochNichtVorhanden');
+        $this->assertNull($first);
+
+        file_put_contents($pluginSelfDir.'schemas/NochNichtVorhanden.json', json_encode(['title' => 'JetztDa']));
+        $second = $repository->loadSchema($pluginSelfDir, 'NochNichtVorhanden');
+
+        $this->assertNull($second,
+            'Ein gecachtes null-Ergebnis darf durch nachträgliches Anlegen der Datei nicht überschrieben werden.');
+
+        $this->removeDirectory($pluginSelfDir);
+    }
+
+    function testGetAvailableSchemaTypesCachtErgebnisInnerhalbDerInstanz(): void {
+        $pluginSelfDir = $this->tempSchemaDir();
+        file_put_contents($pluginSelfDir.'schemas/Alpha.json', json_encode(['title' => 'Alpha']));
+
+        $repository = $this->repository();
+        $first = $repository->getAvailableSchemaTypes($pluginSelfDir);
+
+        file_put_contents($pluginSelfDir.'schemas/Beta.json', json_encode(['title' => 'Beta']));
+        $second = $repository->getAvailableSchemaTypes($pluginSelfDir);
+
+        $this->assertSame(['Alpha'], $first);
+        $this->assertSame(['Alpha'], $second,
+            'Zweiter Aufruf auf derselben Instanz muss die gecachte Liste liefern, nicht den erweiterten Disk-Zustand.');
+
+        $this->removeDirectory($pluginSelfDir);
+    }
+
+    function testCacheGiltNichtInstanzUebergreifend(): void {
+        $pluginSelfDir = $this->tempSchemaDir();
+        file_put_contents($pluginSelfDir.'schemas/Cached.json', json_encode(['title' => 'Original']));
+
+        $first = $this->repository()->loadSchema($pluginSelfDir, 'Cached');
+
+        file_put_contents($pluginSelfDir.'schemas/Cached.json', json_encode(['title' => 'Geaendert']));
+        $second = $this->repository()->loadSchema($pluginSelfDir, 'Cached');
+
+        $this->assertSame('Original', $first['title']);
+        $this->assertSame('Geaendert', $second['title'],
+            'Eine neue Instanz darf keinen von einer anderen Instanz geteilten Cache-Zustand sehen.');
+
+        $this->removeDirectory($pluginSelfDir);
+    }
 }
