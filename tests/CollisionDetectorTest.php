@@ -320,4 +320,155 @@ final class CollisionDetectorTest extends TestCase {
 
         $this->assertFalse($this->detectAdmin());
     }
+
+    // ---------------------------------------------------------------------------
+    // Direkt-Tests der Komponente SchemaOrgData_CollisionDetector
+    // (Refactoring-Schritt 7, siehe doc/adr_komponenten_refactoring.md).
+    // $TEMPLATE_FILE/$CMS_CONF werden hier als explizite Parameter übergeben
+    // statt aus globalem Scope gelesen - die Fassaden-Delegator-Verträge
+    // (callPluginMethod) sind bereits durch die Tests oberhalb abgedeckt.
+    // ---------------------------------------------------------------------------
+
+    function testComponentExtractFromTemplateReturnsEmptyArrayForEmptyPath(): void {
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromTemplate(''));
+    }
+
+    function testComponentExtractFromTemplateReturnsEmptyArrayForNonExistentFile(): void {
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromTemplate(
+            '/tmp/does-not-exist-schemaorgdata-component.html'
+        ));
+    }
+
+    function testComponentExtractFromTemplateReturnsBlockOfExistingFile(): void {
+        $this->templateFile = sys_get_temp_dir().'/schemaOrgData_component_template_'.uniqid().'.html';
+        $json = '{"@context":"https://schema.org"}';
+        file_put_contents($this->templateFile, '<head><script type="application/ld+json">'.$json.'</script></head>');
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+        $blocks = $detector->extractExistingJsonLdBlocksFromTemplate($this->templateFile);
+
+        $this->assertCount(1, $blocks);
+        $this->assertSame($json, $blocks[0]);
+    }
+
+    function testComponentExtractFromTemplateReturnsEmptyArrayWithoutBlock(): void {
+        $this->templateFile = sys_get_temp_dir().'/schemaOrgData_component_template_'.uniqid().'.html';
+        file_put_contents($this->templateFile, '<head><title>Kein JSON-LD</title></head>');
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromTemplate($this->templateFile));
+    }
+
+    function testComponentExtractFromTemplateAdminReturnsEmptyArrayForNull(): void {
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromTemplateAdmin(null));
+    }
+
+    function testComponentExtractFromTemplateAdminReturnsEmptyArrayWithoutCmslayout(): void {
+        $detector = new \SchemaOrgData_CollisionDetector();
+        $cmsConf = new \MockConf(['cmslanguage' => 'de']);
+
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromTemplateAdmin($cmsConf));
+    }
+
+    function testComponentExtractFromTemplateAdminReturnsEmptyArrayForFalseCmslayout(): void {
+        $detector = new \SchemaOrgData_CollisionDetector();
+        $cmsConf = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => 'false']);
+
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromTemplateAdmin($cmsConf));
+    }
+
+    function testComponentExtractFromTemplateAdminChecksBothLayoutsWhenDraftmodeActive(): void {
+        $draftLayout = 'schemaOrgData_component_draft_' . uniqid();
+        $this->createLayoutTemplate($draftLayout, 'template.html',
+            '<head><script type="application/ld+json">{"@type":"WebSite"}</script></head>'
+        );
+
+        $activeLayout = 'schemaOrgData_component_active_' . uniqid();
+        $this->createLayoutTemplate($activeLayout, 'template.html',
+            '<head><script type="application/ld+json">{"@type":"Organization"}</script></head>'
+        );
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+        $cmsConf = new \MockConf([
+            'cmslanguage' => 'de',
+            'cmslayout'   => $activeLayout,
+            'draftmode'   => 'true',
+            'draftlayout' => $draftLayout,
+        ]);
+
+        $blocks = $detector->extractExistingJsonLdBlocksFromTemplateAdmin($cmsConf);
+
+        $this->assertCount(2, $blocks);
+    }
+
+    function testComponentExtractFromTemplateAdminChecksOnlyActiveLayoutWhenDraftmodeInactive(): void {
+        $draftLayout = 'schemaOrgData_component_draftoff_' . uniqid();
+        $this->createLayoutTemplate($draftLayout, 'template.html',
+            '<head><script type="application/ld+json">{"@type":"WebSite"}</script></head>'
+        );
+
+        $activeLayout = 'schemaOrgData_component_activeoff_' . uniqid();
+        $this->createLayoutTemplate($activeLayout, 'template.html',
+            '<head><title>Kein JSON-LD</title></head>'
+        );
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+        $cmsConf = new \MockConf([
+            'cmslanguage' => 'de',
+            'cmslayout'   => $activeLayout,
+            'draftmode'   => 'false',
+            'draftlayout' => $draftLayout,
+        ]);
+
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromTemplateAdmin($cmsConf));
+    }
+
+    function testComponentDetectExistingJsonLdInTemplateDelegatesToExtract(): void {
+        $this->templateFile = sys_get_temp_dir().'/schemaOrgData_component_template_'.uniqid().'.html';
+        file_put_contents($this->templateFile, '<head><script type="application/ld+json">{}</script></head>');
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertTrue($detector->detectExistingJsonLdInTemplate($this->templateFile));
+        $this->assertFalse($detector->detectExistingJsonLdInTemplate(''));
+    }
+
+    function testComponentDetectExistingJsonLdInTemplateAdminDelegatesToExtract(): void {
+        $layout = 'schemaOrgData_component_delegate_' . uniqid();
+        $this->createLayoutTemplate($layout, 'template.html',
+            '<head><script type="application/ld+json">{}</script></head>'
+        );
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+        $cmsConf = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
+
+        $this->assertTrue($detector->detectExistingJsonLdInTemplateAdmin($cmsConf));
+        $this->assertFalse($detector->detectExistingJsonLdInTemplateAdmin(null));
+    }
+
+    function testComponentDetectExistingJsonLdCombinesContentAndTemplate(): void {
+        $this->templateFile = sys_get_temp_dir().'/schemaOrgData_component_template_'.uniqid().'.html';
+        file_put_contents($this->templateFile, '<head><title>Kein JSON-LD</title></head>');
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        // Weder Content noch Template enthalten einen Block → false.
+        $this->assertFalse($detector->detectExistingJsonLd('<title>x</title>', $this->templateFile));
+
+        // Block im Content, Template ohne Block → true (Content-Pfad greift).
+        $this->assertTrue($detector->detectExistingJsonLd(
+            '<script type="application/ld+json">{}</script>', $this->templateFile
+        ));
+
+        // Kein Block im Content, aber im Template → true (Template-Pfad greift).
+        file_put_contents($this->templateFile, '<head><script type="application/ld+json">{}</script></head>');
+        $this->assertTrue($detector->detectExistingJsonLd('<title>x</title>', $this->templateFile));
+    }
 }

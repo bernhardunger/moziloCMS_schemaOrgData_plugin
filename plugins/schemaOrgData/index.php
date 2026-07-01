@@ -6,6 +6,7 @@ require_once __DIR__.'/lib/SchemaOrgData_SchemaRepository.php';
 require_once __DIR__.'/lib/SchemaOrgData_ScopeResolver.php';
 require_once __DIR__.'/lib/SchemaOrgData_JsonLdBuilder.php';
 require_once __DIR__.'/lib/SchemaOrgData_IdReferenceService.php';
+require_once __DIR__.'/lib/SchemaOrgData_CollisionDetector.php';
 
 /***************************************************************
 *
@@ -36,7 +37,7 @@ require_once __DIR__.'/lib/SchemaOrgData_IdReferenceService.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.23-beta';
+    private const PLUGIN_VERSION = '0.4.24-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -76,6 +77,9 @@ class schemaOrgData extends Plugin {
 
     /** Lazy-Instanz von SchemaOrgData_IdReferenceService (siehe idReferenceService()) */
     private ?SchemaOrgData_IdReferenceService $idReferenceServiceInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_CollisionDetector (siehe collisionDetector()) */
+    private ?SchemaOrgData_CollisionDetector $collisionDetectorInstance = null;
 
     function __construct() {
         parent::__construct();
@@ -334,6 +338,11 @@ class schemaOrgData extends Plugin {
         return $this->idReferenceServiceInstance ??= new SchemaOrgData_IdReferenceService();
     }
 
+    /** Lazy-Accessor für SchemaOrgData_CollisionDetector. */
+    private function collisionDetector(): SchemaOrgData_CollisionDetector {
+        return $this->collisionDetectorInstance ??= new SchemaOrgData_CollisionDetector();
+    }
+
     /***************************************************************
     *
     * Ermittelt die absolute Basis-URL der Installation als Quelle
@@ -532,12 +541,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function extractExistingJsonLdBlocks(string $html): array {
-        $result = preg_match_all(
-            '#<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>#is',
-            $html,
-            $matches
-        );
-        return ($result !== false and !empty($matches[1])) ? $matches[1] : [];
+        return $this->collisionDetector()->extractExistingJsonLdBlocks($html);
     }
 
     /***************************************************************
@@ -558,10 +562,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function detectExistingJsonLd(string $html): bool {
-        if(!empty($this->extractExistingJsonLdBlocks($html))) {
-            return true;
-        }
-        return $this->detectExistingJsonLdInTemplate();
+        global $TEMPLATE_FILE;
+        return $this->collisionDetector()->detectExistingJsonLd(
+            $html, (string) ($TEMPLATE_FILE ?? '')
+        );
     }
 
     /***************************************************************
@@ -577,11 +581,9 @@ class schemaOrgData extends Plugin {
     ***************************************************************/
     private function extractExistingJsonLdBlocksFromTemplate(): array {
         global $TEMPLATE_FILE;
-        if(empty($TEMPLATE_FILE) or !file_exists($TEMPLATE_FILE)) {
-            return [];
-        }
-        $content = file_get_contents($TEMPLATE_FILE);
-        return $content !== false ? $this->extractExistingJsonLdBlocks($content) : [];
+        return $this->collisionDetector()->extractExistingJsonLdBlocksFromTemplate(
+            (string) ($TEMPLATE_FILE ?? '')
+        );
     }
 
     /***************************************************************
@@ -593,7 +595,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function detectExistingJsonLdInTemplate(): bool {
-        return !empty($this->extractExistingJsonLdBlocksFromTemplate());
+        global $TEMPLATE_FILE;
+        return $this->collisionDetector()->detectExistingJsonLdInTemplate(
+            (string) ($TEMPLATE_FILE ?? '')
+        );
     }
 
     /***************************************************************
@@ -618,43 +623,7 @@ class schemaOrgData extends Plugin {
     ***************************************************************/
     private function extractExistingJsonLdBlocksFromTemplateAdmin(): array {
         global $CMS_CONF;
-
-        if (!defined('BASE_DIR') || !defined('LAYOUT_DIR_NAME')
-            || !isset($CMS_CONF) || !is_object($CMS_CONF)) {
-            return [];
-        }
-
-        $activeLayout = (string) ($CMS_CONF->get('cmslayout') ?? '');
-        if ($activeLayout === '' || $activeLayout === 'false') {
-            return [];
-        }
-
-        // Immer das aktive Layout prüfen; Draftlayout zusätzlich nur
-        // wenn Draftmode aktiviert und Draftlayout gültig gesetzt ist.
-        $layoutsToCheck = [$activeLayout];
-
-        if ($CMS_CONF->get('draftmode') === 'true') {
-            $draftLayout = (string) ($CMS_CONF->get('draftlayout') ?? '');
-            if ($draftLayout !== '' && $draftLayout !== 'false') {
-                $layoutsToCheck[] = $draftLayout;
-            }
-        }
-
-        $allBlocks = [];
-        foreach ($layoutsToCheck as $layout) {
-            foreach (['template.html', 'gallerytemplate.html'] as $tplFile) {
-                $path = BASE_DIR . LAYOUT_DIR_NAME . '/' . $layout . '/' . $tplFile;
-                if (!file_exists($path) || !is_readable($path)) {
-                    continue;
-                }
-                $content = file_get_contents($path);
-                if ($content !== false) {
-                    $allBlocks = array_merge($allBlocks, $this->extractExistingJsonLdBlocks($content));
-                }
-            }
-        }
-
-        return $allBlocks;
+        return $this->collisionDetector()->extractExistingJsonLdBlocksFromTemplateAdmin($CMS_CONF);
     }
 
     /***************************************************************
@@ -666,7 +635,8 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function detectExistingJsonLdInTemplateAdmin(): bool {
-        return !empty($this->extractExistingJsonLdBlocksFromTemplateAdmin());
+        global $CMS_CONF;
+        return $this->collisionDetector()->detectExistingJsonLdInTemplateAdmin($CMS_CONF);
     }
 
     /***************************************************************
