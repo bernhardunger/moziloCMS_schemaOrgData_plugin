@@ -7,6 +7,8 @@ require_once __DIR__.'/lib/SchemaOrgData_ScopeResolver.php';
 require_once __DIR__.'/lib/SchemaOrgData_JsonLdBuilder.php';
 require_once __DIR__.'/lib/SchemaOrgData_IdReferenceService.php';
 require_once __DIR__.'/lib/SchemaOrgData_CollisionDetector.php';
+require_once __DIR__.'/lib/SchemaOrgData_OpeningHoursHelper.php';
+require_once __DIR__.'/lib/SchemaOrgData_DataSplitHelper.php';
 
 /***************************************************************
 *
@@ -37,7 +39,7 @@ require_once __DIR__.'/lib/SchemaOrgData_CollisionDetector.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.24-beta';
+    private const PLUGIN_VERSION = '0.4.25-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -80,6 +82,12 @@ class schemaOrgData extends Plugin {
 
     /** Lazy-Instanz von SchemaOrgData_CollisionDetector (siehe collisionDetector()) */
     private ?SchemaOrgData_CollisionDetector $collisionDetectorInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_OpeningHoursHelper (siehe openingHoursHelper()) */
+    private ?SchemaOrgData_OpeningHoursHelper $openingHoursHelperInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_DataSplitHelper (siehe dataSplitHelper()) */
+    private ?SchemaOrgData_DataSplitHelper $dataSplitHelperInstance = null;
 
     function __construct() {
         parent::__construct();
@@ -341,6 +349,16 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_CollisionDetector. */
     private function collisionDetector(): SchemaOrgData_CollisionDetector {
         return $this->collisionDetectorInstance ??= new SchemaOrgData_CollisionDetector();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_OpeningHoursHelper. */
+    private function openingHoursHelper(): SchemaOrgData_OpeningHoursHelper {
+        return $this->openingHoursHelperInstance ??= new SchemaOrgData_OpeningHoursHelper();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_DataSplitHelper. */
+    private function dataSplitHelper(): SchemaOrgData_DataSplitHelper {
+        return $this->dataSplitHelperInstance ??= new SchemaOrgData_DataSplitHelper();
     }
 
     /***************************************************************
@@ -757,24 +775,14 @@ class schemaOrgData extends Plugin {
         $type = $data['@type'] ?? null;
         unset($data['@context'], $data['@type']);
 
-        $knownProperties = $schema['properties'] ?? [];
-        $formData = [];
-        $extensionData = [];
-
-        foreach($data as $property => $value) {
-            if(array_key_exists($property, $knownProperties)) {
-                $formData[$property] = $value;
-            } else {
-                $extensionData[$property] = $value;
-            }
-        }
+        $split = $this->splitDataForRendering($data, $schema);
 
         return [
             'success' => true,
             'error' => null,
             'type' => $type,
-            'formData' => $formData,
-            'extensionData' => $extensionData,
+            'formData' => $split['form'],
+            'extensionData' => $split['extension'],
         ];
     }
 
@@ -945,19 +953,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function splitDataForRendering(array $data, ?array $schema): array {
-        $knownProperties = array_keys($schema['properties'] ?? []);
-        $form = [];
-        $extension = [];
-
-        foreach($data as $property => $value) {
-            if(in_array($property, $knownProperties, true)) {
-                $form[$property] = $value;
-            } else {
-                $extension[$property] = $value;
-            }
-        }
-
-        return ['form' => $form, 'extension' => $extension];
+        return $this->dataSplitHelper()->splitDataForRendering($data, $schema);
     }
 
     /***************************************************************
@@ -969,11 +965,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function isPerDayOpeningHoursValue(array $value): bool {
-        foreach($value as $entry) {
-            return is_array($entry);
-        }
-
-        return false;
+        return $this->openingHoursHelper()->isPerDayOpeningHoursValue($value);
     }
 
     /***************************************************************
@@ -992,47 +984,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function parseOpeningHours(array $openingHours, array $days): array {
-        $collected = [];
-        foreach($days as $day) {
-            $collected[$day] = [];
-        }
-
-        foreach($openingHours as $entry) {
-            if(!is_string($entry)) {
-                continue;
-            }
-
-            if(!preg_match('/^([A-Za-z]{2})(?:-([A-Za-z]{2}))? ([0-9]{2}:[0-9]{2})-([0-9]{2}:[0-9]{2})$/', trim($entry), $matches)) {
-                continue;
-            }
-
-            [, $startDay, $endDay, $from, $to] = $matches;
-            $endDay = $endDay !== '' ? $endDay : $startDay;
-
-            $startIndex = array_search($startDay, $days, true);
-            $endIndex = array_search($endDay, $days, true);
-            if($startIndex === false or $endIndex === false) {
-                continue;
-            }
-
-            for($i = $startIndex; $i <= $endIndex; $i++) {
-                $collected[$days[$i]][] = ['from' => $from, 'to' => $to];
-            }
-        }
-
-        $result = [];
-        foreach($days as $day) {
-            $entries = $collected[$day];
-            usort($entries, fn($a, $b) => strcmp($a['from'], $b['from']));
-            $result[$day] = [
-                'from'  => $entries[0]['from'] ?? '',
-                'to'    => $entries[0]['to'] ?? '',
-                'from2' => $entries[1]['from'] ?? '',
-                'to2'   => $entries[1]['to'] ?? '',
-            ];
-        }
-
-        return $result;
+        return $this->openingHoursHelper()->parseOpeningHours($openingHours, $days);
     }
 
     /***************************************************************
@@ -1052,45 +1004,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function buildOpeningHoursArray(array $perDay, array $days, string $fromKey = 'from', string $toKey = 'to'): array {
-        $result = [];
-        $rangeStart = null;
-        $rangeEnd = null;
-        $rangeFrom = '';
-        $rangeTo = '';
-
-        $flush = function () use (&$result, &$rangeStart, &$rangeEnd, &$rangeFrom, &$rangeTo) {
-            if($rangeStart === null) {
-                return;
-            }
-            $dayPart = ($rangeStart === $rangeEnd) ? $rangeStart : $rangeStart.'-'.$rangeEnd;
-            $result[] = $dayPart.' '.$rangeFrom.'-'.$rangeTo;
-            $rangeStart = null;
-            $rangeEnd = null;
-        };
-
-        foreach($days as $day) {
-            $from = trim((string) ($perDay[$day][$fromKey] ?? ''));
-            $to = trim((string) ($perDay[$day][$toKey] ?? ''));
-
-            if($from === '' or $to === '') {
-                $flush();
-                continue;
-            }
-
-            if($rangeStart !== null and $from === $rangeFrom and $to === $rangeTo) {
-                $rangeEnd = $day;
-                continue;
-            }
-
-            $flush();
-            $rangeStart = $day;
-            $rangeEnd = $day;
-            $rangeFrom = $from;
-            $rangeTo = $to;
-        }
-        $flush();
-
-        return $result;
+        return $this->openingHoursHelper()->buildOpeningHoursArray($perDay, $days, $fromKey, $toKey);
     }
 
     /***************************************************************
