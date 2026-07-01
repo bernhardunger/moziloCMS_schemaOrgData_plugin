@@ -12,6 +12,7 @@ require_once __DIR__.'/lib/SchemaOrgData_DataSplitHelper.php';
 require_once __DIR__.'/lib/SchemaOrgData_Validator.php';
 require_once __DIR__.'/lib/SchemaOrgData_FormRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_ImportService.php';
+require_once __DIR__.'/lib/SchemaOrgData_AdminController.php';
 
 /***************************************************************
 *
@@ -42,7 +43,7 @@ require_once __DIR__.'/lib/SchemaOrgData_ImportService.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.28-beta';
+    private const PLUGIN_VERSION = '0.4.29-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -100,6 +101,9 @@ class schemaOrgData extends Plugin {
 
     /** Lazy-Instanz von SchemaOrgData_ImportService (siehe importService()) */
     private ?SchemaOrgData_ImportService $importServiceInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_AdminController (siehe adminController()) */
+    private ?SchemaOrgData_AdminController $adminControllerInstance = null;
 
     function __construct() {
         parent::__construct();
@@ -386,6 +390,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_ImportService. */
     private function importService(): SchemaOrgData_ImportService {
         return $this->importServiceInstance ??= new SchemaOrgData_ImportService();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_AdminController. */
+    private function adminController(): SchemaOrgData_AdminController {
+        return $this->adminControllerInstance ??= new SchemaOrgData_AdminController();
     }
 
     /***************************************************************
@@ -863,41 +872,9 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderExistingJsonLdNotice(string $scope, ?string $cat = null, ?string $page = null): string {
-        $meta = $this->loadScopeMeta($scope, $cat, $page);
-
-        if(!$meta['existing_jsonld']) {
-            return '';
-        }
-
-        $lang = $this->loadAdminLanguage();
-        $fieldName = 'schemaOrgData_jsonld_mode_'.$scope;
-        $options = ['keep' => 'option_keep_existing_jsonld', 'override' => 'option_override_existing_jsonld'];
-
-        $html  = '<div class="schemaOrgData-jsonld-notice">'."\n";
-        $html .= '<p class="schemaOrgData-jsonld-notice__title"><strong>'.$lang->getLanguageHtml('notice_existing_jsonld_title').'</strong></p>'."\n";
-        $html .= '<p>'.$lang->getLanguageHtml('notice_existing_jsonld_text').'</p>'."\n";
-
-        foreach($options as $value => $labelKey) {
-            $checked = ($meta['jsonld_mode'] === $value) ? ' checked="checked"' : '';
-            $html .= '<label><input type="radio" name="'.$fieldName.'" value="'.$value.'"'.$checked.' /> '
-                  .$lang->getLanguageHtml($labelKey).'</label><br />'."\n";
-        }
-
-        $html .= '<p><label for="schemaOrgData_import_'.$scope.'">'.$lang->getLanguageHtml('label_import_jsonld').'</label><br />'."\n";
-
-        if(!empty($meta['existing_jsonld_content'])) {
-            $escaped = htmlspecialchars((string) $meta['existing_jsonld_content'], ENT_QUOTES, CHARSET);
-            $html .= '<button type="button" class="mo-btn schemaOrgData-autofill-btn"'
-                .' data-target="schemaOrgData_import_'.$scope.'"'
-                .' data-existing-content="'.$escaped.'">'
-                .$lang->getLanguageHtml('button_use_detected_jsonld').'</button><br />'."\n";
-        }
-
-        $html .= '<textarea id="schemaOrgData_import_'.$scope.'" name="schemaOrgData_import_'.$scope.'" rows="6"></textarea></p>'."\n";
-        $html .= '<p class="schemaOrgData-jsonld-notice__hint">'.$lang->getLanguageHtml('description_import_jsonld').'</p>'."\n";
-        $html .= '</div>'."\n";
-
-        return $html;
+        return $this->adminController()->renderExistingJsonLdNotice(
+            $scope, $cat, $page, $this->loadAdminLanguage(), $this->scopeResolver(), $this->settings
+        );
     }
 
     /***************************************************************
@@ -1468,30 +1445,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderInfoBlock(string $scope): string {
-        $lang = $this->loadAdminLanguage();
-        $key = match($scope) {
-            'global'   => 'info_text_global',
-            'category' => 'info_text_category',
-            'page'     => 'info_text_page',
-            default    => '',
-        };
-
-        if($key === '') {
-            return '';
-        }
-
-        // Im Global-Scope zusätzlicher Hinweis, dass eine im Layout-Template
-        // erkannte JSON-LD-Kollision ausschließlich hier angezeigt wird
-        // (siehe renderAdminPage(), Template-Detection ist layoutweit).
-        $templateNotice = ($scope === 'global')
-            ? '<p>'.$lang->getLanguageHtml('info_text_template_global').'</p>'
-            : '';
-
-        return '<div class="schemaOrgData-info">'
-            .'<p>'.$lang->getLanguageHtml($key).'</p>'
-            .$templateNotice
-            .'<p>'.$lang->getLanguageHtml('info_text_general').'</p>'
-            .'</div>'."\n";
+        return $this->adminController()->renderInfoBlock($scope, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1533,31 +1487,9 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function resolveInheritableFields(string $scope, ?string $cat, ?string $page, string $type): array {
-        $higherScopes = match($scope) {
-            'category' => [
-                ['global', $this->loadScopeConfig('global'), null, null],
-            ],
-            'page' => [
-                ['global', $this->loadScopeConfig('global'), null, null],
-                ['category', $this->loadScopeConfig('category', $cat), $cat, null],
-            ],
-            default => [],
-        };
-
-        $data = [];
-        $originLabel = [];
-        foreach($higherScopes as [$higherScope, $higherConfig, $higherCat, $higherPage]) {
-            if(!is_array($higherConfig[$type] ?? null)) {
-                continue;
-            }
-            $label = $this->buildScopeLabel($higherScope, $higherCat, $higherPage);
-            foreach($higherConfig[$type] as $field => $value) {
-                $data[$field] = $value;
-                $originLabel[$field] = $label;
-            }
-        }
-
-        return ['data' => $data, 'originLabel' => $originLabel];
+        return $this->adminController()->resolveInheritableFields(
+            $scope, $cat, $page, $type, $this->loadAdminLanguage(), $this->scopeResolver(), $this->settings
+        );
     }
 
     /***************************************************************
@@ -1569,21 +1501,9 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderCollisionNotice(string $scope, ?string $cat, ?string $page, string $selectedType): string {
-        $collisions = $this->detectTypeCollision($scope, $cat, $page, $selectedType);
-
-        if($collisions === []) {
-            return '';
-        }
-
-        $lang = $this->loadAdminLanguage();
-        $scopeNames = implode(', ', array_map(
-            fn($higherScope) => $lang->getLanguageValue('scope_'.$higherScope),
-            $collisions
-        ));
-
-        return '<div class="schemaOrgData-notice schemaOrgData-notice--info">'
-            .$lang->getLanguageHtml('notice_type_collision', $selectedType, $scopeNames)
-            .'</div>'."\n";
+        return $this->adminController()->renderCollisionNotice(
+            $scope, $cat, $page, $selectedType, $this->loadAdminLanguage(), $this->scopeResolver(), $this->settings
+        );
     }
 
     /***************************************************************
@@ -1600,61 +1520,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderExcludedCatsField(array $excludedCats, bool $debugOutput = false): string {
-        global $CatPage;
-        $lang = $this->loadAdminLanguage();
-        $html = '';
-
-        // Ausschlussliste nur wenn Kategorienliste verfügbar
-        if(isset($CatPage) and is_object($CatPage)) {
-            $cats = $CatPage->get_CatArray(true);
-
-            $html .= '<fieldset class="schemaOrgData-fieldset">'."\n";
-            $html .= '<legend>'.$lang->getLanguageHtml('label_excluded_cats').'</legend>'."\n";
-            $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_excluded_cats').'</p>'."\n";
-
-            foreach($cats as $cat) {
-                // get_CatArray(true) liefert auch das Wurzelverzeichnis
-                // "kategorien" selbst zurück - das ist keine echte Kategorie
-                // und wird daher nicht als Checkbox angeboten.
-                if(strtolower(rawurldecode($cat)) === 'kategorien') {
-                    continue;
-                }
-
-                $checked = in_array($cat, $excludedCats, true) ? ' checked="checked"' : '';
-                $catLabel = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
-                // rawurldecode() dekodiert den moziloCMS-Bezeichner nur für die
-                // Anzeige - der value-Attributwert bleibt roh (% erhalten),
-                // damit excluded_cats weiterhin zu CAT_REQUEST passt.
-                $catDisplayLabel = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
-                $fieldId = 'schemaOrgData_global_excluded_cats_'.md5($cat);
-                $html .= '<label class="schemaOrgData-checkbox" for="'.$fieldId.'">'
-                    .'<input type="checkbox" id="'.$fieldId.'" name="schemaOrgData[global][excluded_cats][]" value="'.$catLabel.'"'.$checked.' /> '
-                    .$catDisplayLabel.'</label>'."\n";
-            }
-
-            // "Alle Kategorien"-Select-All-Toggle: rein clientseitig (kein
-            // name-Attribut, daher kein Einfluss auf saveConfig()/excluded_cats).
-            // initExcludedCatsSelectAll() (validator.js) setzt/leert beim
-            // Anklicken alle Kategorie-Checkboxen oben und zeigt bei
-            // Teilauswahl einen indeterminate-Zustand.
-            $html .= '<label class="schemaOrgData-checkbox schemaOrgData-checkbox--all" for="schemaOrgData_global_excluded_cats_all">'
-                .'<input type="checkbox" id="schemaOrgData_global_excluded_cats_all" data-select-all="schemaOrgData[global][excluded_cats][]" /> '
-                .$lang->getLanguageHtml('label_excluded_cats_all').'</label>'."\n";
-
-            $html .= '</fieldset>'."\n";
-        }
-
-        // Debug-Modus-Checkbox (immer sichtbar, unabhängig von $CatPage)
-        $checkedAttr = $debugOutput ? ' checked="checked"' : '';
-        $html .= '<fieldset class="schemaOrgData-fieldset">'."\n";
-        $html .= '<legend>'.$lang->getLanguageHtml('label_debug_output').'</legend>'."\n";
-        $html .= '<label class="schemaOrgData-checkbox" for="schemaOrgData_global_debug_output">'
-            .'<input type="checkbox" id="schemaOrgData_global_debug_output" name="schemaOrgData[global][debug_output]" value="1"'.$checkedAttr.' /> '
-            .$lang->getLanguageHtml('label_debug_output').'</label>'."\n";
-        $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_debug_output').'</p>'."\n";
-        $html .= '</fieldset>'."\n";
-
-        return $html;
+        return $this->adminController()->renderExcludedCatsField($excludedCats, $debugOutput, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1681,55 +1547,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderScopeSelector(?string $selectedCat, ?string $selectedPage): string {
-        global $CatPage;
-        $lang = $this->loadAdminLanguage();
-
-        if (!isset($CatPage) || !is_object($CatPage)) {
-            return '';
-        }
-
-        $cats = $CatPage->get_CatArray(false, false, [EXT_PAGE, EXT_HIDDEN]);
-
-        $html  = '<div class="schemaOrgData-scope-selector">'."\n";
-        $html .= '<label class="schemaOrgData-scope-selector__label" for="schemaOrgData_scope_cat">'
-               . $lang->getLanguageHtml('label_scope_selector') . '</label>'."\n";
-
-        // Stufe 1: Global + alle Kategorien
-        $html .= '<select id="schemaOrgData_scope_cat" class="mo-select schemaOrgData-scope-selector__select">'."\n";
-        $html .= '<option value="">'.$lang->getLanguageHtml('scope_global').'</option>'."\n";
-
-        // Seiten je Kategorie als JSON-Map für Stufe 2 sammeln - rawurldecode()
-        // dekodiert den moziloCMS-URL-kodierten Bezeichner ("%C3%9CBer..." →
-        // "Über...") nur für die Anzeige, der value-Attributwert bleibt roh.
-        $pagesByCat = [];
-
-        foreach ($cats as $cat) {
-            $catAttr  = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
-            $catLabel = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
-            $html .= '<option value="'.$catAttr.'">'.$catLabel.'</option>'."\n";
-
-            $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
-            $pagesByCat[$cat] = array_map(
-                fn($page) => ['value' => $page, 'label' => rawurldecode($page)],
-                $pages
-            );
-        }
-
-        $html .= '</select>'."\n";
-
-        // Stufe 2: Seiten der gewählten Kategorie - wird von
-        // initScopeSelector() (validator.js) anhand von data-pages befüllt,
-        // initial nur sichtbar wenn bereits eine Kategorie aktiv ist
-        $pagesJson = json_encode($pagesByCat, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $pageStyle = ($selectedCat === null) ? ' style="display:none"' : '';
-        $html .= '<select id="schemaOrgData_scope_page" class="mo-select schemaOrgData-scope-selector__select"'
-               . ' data-pages="'.htmlspecialchars($pagesJson, ENT_QUOTES, CHARSET).'"'.$pageStyle.'>'."\n";
-        $html .= '<option value="">— '.$lang->getLanguageHtml('scope_category').' —</option>'."\n";
-        $html .= '</select>'."\n";
-
-        $html .= '</div>'."\n";
-
-        return $html;
+        return $this->adminController()->renderScopeSelector($selectedCat, $selectedPage, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1747,14 +1565,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function buildScopeLabel(string $scope, ?string $cat, ?string $page): string {
-        $lang = $this->loadAdminLanguage();
-
-        return match($scope) {
-            'global'   => $lang->getLanguageValue('scope_global'),
-            'category' => $lang->getLanguageValue('scope_category').' '.rawurldecode((string) $cat),
-            'page'     => $lang->getLanguageValue('scope_page').' '.rawurldecode((string) $page),
-            default    => $lang->getLanguageValue('scope_'.$scope),
-        };
+        return $this->adminController()->buildScopeLabel($scope, $cat, $page, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1775,17 +1586,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function buildSaveButtonLabel(?string $selectedCat, ?string $selectedPage): string {
-        $lang = $this->loadAdminLanguage();
-
-        if($selectedCat === null) {
-            return $lang->getLanguageHtml('button_save_global');
-        }
-
-        if($selectedPage === null) {
-            return $lang->getLanguageHtml('button_save_category', rawurldecode($selectedCat));
-        }
-
-        return $lang->getLanguageHtml('button_save_page', rawurldecode($selectedPage));
+        return $this->adminController()->buildSaveButtonLabel($selectedCat, $selectedPage, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -2360,25 +2161,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function renderSaveResultNotice(array $result): string {
-        $lang = $this->loadAdminLanguage();
-
-        if($result['success']) {
-            return '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--success">'
-                .$lang->getLanguageHtml('notice_config_saved')
-                .'</div>'."\n";
-        }
-
-        $html = '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--error">'."\n";
-        $html .= '<p>'.$lang->getLanguageHtml('notice_config_save_error').'</p>'."\n";
-        $html .= '<ul>'."\n";
-
-        foreach($result['errors'] as $error) {
-            $html .= '<li>'.htmlspecialchars($error, ENT_QUOTES, CHARSET).'</li>'."\n";
-        }
-
-        $html .= '</ul></div>'."\n";
-
-        return $html;
+        return $this->adminController()->renderSaveResultNotice($result, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -2513,56 +2296,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function getAdminCss(): string {
-        return '
-.schemaOrgData-admin .schemaOrgData-info { background: #eef6ff; border: 1px solid #b6d4f5; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
-.schemaOrgData-admin .schemaOrgData-notice--info, .schemaOrgData-admin .schemaOrgData-notice--unsaved { background: #fff8e1; border: 1px solid #ffe082; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
-.schemaOrgData-admin .schemaOrgData-notice--success { background: #e8f5e9; border: 1px solid #a5d6a7; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
-.schemaOrgData-admin .schemaOrgData-notice--error { background: #fdecea; border: 1px solid #f5c6c2; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
-.schemaOrgData-admin .schemaOrgData-notice--error ul { margin: .25em 0 0; padding-left: 1.5em; }
-.schemaOrgData-admin .schemaOrgData-required { color: #c0392b; font-weight: bold; }
-.schemaOrgData-admin .schemaOrgData-inherited { color: #888; font-weight: normal; font-style: italic; cursor: help; }
-.schemaOrgData-admin input.mo-input-text::placeholder,
-.schemaOrgData-admin textarea.mo-input-text::placeholder { color: #aaa; }
-.schemaOrgData-admin .schemaOrgData-fieldset { border: 1px solid #ddd; border-radius: 4px; padding: 1em; margin-bottom: 1em; }
-.schemaOrgData-admin .schemaOrgData-fieldset legend { font-weight: bold; padding: 0 .5em; }
-.schemaOrgData-admin .schemaOrgData-hint { color: #666; font-size: .85em; margin: 0 0 .5em; }
-.schemaOrgData-admin .schemaOrgData-feedback { display: block; margin-top: .25em; font-size: .9em; }
-.schemaOrgData-admin .schemaOrgData-feedback--ok { color: #2e7d32; }
-.schemaOrgData-admin .schemaOrgData-feedback--warning { color: #b8860b; }
-.schemaOrgData-admin .schemaOrgData-feedback--error { color: #c0392b; }
-.schemaOrgData-admin .schemaOrgData-opening-hours { border-collapse: collapse; }
-.schemaOrgData-admin .schemaOrgData-opening-hours th, .schemaOrgData-admin .schemaOrgData-opening-hours td { padding: .25em .5em; text-align: left; }
-.schemaOrgData-admin .schemaOrgData-opening-hours-group { display: flex; align-items: center; gap: 4px; }
-.schemaOrgData-admin .schemaOrgData-opening-hours-group input { max-width: 80px; }
-.schemaOrgData-admin .schemaOrgData-opening-hours-sep { color: #999; }
-.schemaOrgData-admin .schemaOrgData-opening-hours-second { margin-top: 2px; opacity: .75; }
-.schemaOrgData-admin .schemaOrgData-opening-hours-range-label { font-size: .85em; color: #666; white-space: nowrap; }
-.schemaOrgData-admin .schemaOrgData-opening-hours-range-label[aria-hidden="true"] { visibility: hidden; }
-.schemaOrgData-admin .schemaOrgData-faq-entry { border-top: 1px solid #eee; padding-top: .5em; margin-top: .5em; }
-.schemaOrgData-admin .schemaOrgData-faq-entry:first-child { border-top: none; padding-top: 0; margin-top: 0; }
-.schemaOrgData-admin .schemaOrgData-checkbox { display: inline-block; margin: 0 1em .25em 0; }
-.schemaOrgData-admin .schemaOrgData-checkbox--all { font-weight: bold; border-left: 1px solid #ccc; padding-left: 1em; }
-.schemaOrgData-admin .schemaOrgData-scope-selector { display: flex; align-items: center; gap: .75em; flex-wrap: wrap; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .6em 1em; margin-bottom: 1.25em; }
-.schemaOrgData-admin .schemaOrgData-scope-selector__label { font-weight: bold; white-space: nowrap; }
-.schemaOrgData-admin .schemaOrgData-scope-selector__select { min-width: 200px; }
-.schemaOrgData-admin .schemaOrgData-save-bar { margin-top: 1.5em; padding: .75em 0; border-top: 1px solid #ddd; text-align: right; }
-.schemaOrgData-admin .schemaOrgData-save-bar--top { margin: 0 0 1.25em; padding: 0 0 .75em; border-top: none; border-bottom: 1px solid #ddd; }
-.schemaOrgData-admin .schemaOrgData-field-row { display: grid !important; grid-template-columns: 200px 1fr !important; align-items: baseline !important; gap: 4px 12px !important; margin-bottom: .5em; }
-.schemaOrgData-admin .schemaOrgData-field-row .mo-in-li-l, .schemaOrgData-admin .schemaOrgData-field-row .mo-in-li-r { float: none !important; width: auto !important; padding: 0; margin: 0; }
-.schemaOrgData-admin .schemaOrgData-type-selector-row { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .75em 1em; margin-bottom: 1.25em; }
-.schemaOrgData-admin .schemaOrgData-type-selector-row .mo-in-li-l label { font-weight: bold; font-size: 1.05em; }
-.schemaOrgData-admin .schemaOrgData-address-row { display: flex !important; flex-wrap: wrap; gap: 8px 12px; }
-.schemaOrgData-admin .schemaOrgData-address-field { display: flex !important; flex-direction: column; flex: 1 1 160px !important; }
-.schemaOrgData-admin .schemaOrgData-address-field label { font-size: .85em; color: #666; margin-bottom: 2px; }
-.schemaOrgData-admin .schemaOrgData-address-field--narrow { flex: 0 0 80px !important; }
-.schemaOrgData-admin .schemaOrgData-address-field--narrow input { max-width: 80px; }
-.schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
-.schemaOrgData-admin select[id$="_addressCountry"] { max-width: 200px; }
-.schemaOrgData-admin input[id$="_addressRegion"] { max-width: 300px; }
-.schemaOrgData-admin .schemaOrgData-idrl-container { margin-bottom: .25em; }
-.schemaOrgData-admin .schemaOrgData-idrl-radio-label { display: block; margin: .4em 0 .15em; cursor: pointer; }
-.schemaOrgData-admin .schemaOrgData-idrl-section { padding-left: 1.5em; margin-bottom: .25em; }
-';
+        return $this->adminController()->getAdminCss();
     }
 
     /***************************************************************
