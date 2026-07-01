@@ -36,6 +36,24 @@ final class AdminControllerTest extends TestCase {
         $_POST = [];
     }
 
+    /***************************************************************
+    *
+    * FakeCatPageWithPages ist in PersistenceTest.php deklariert (nicht
+    * PSR-4-autoloadbar unter eigenem Dateinamen). Im normalen
+    * Suite-Lauf ist die Klasse durch das Laden von PersistenceTest.php
+    * bereits verfügbar; in #[RunInSeparateProcess]-isolierten Prozessen
+    * (siehe testFailedCategorySaveWithSpecialCharsRetainsPostValuesInActiveSection(),
+    * testTemplateJsonLdIsPersistedOnlyForGlobalScope()) greift dort nur
+    * der Composer-Autoloader, der die Klasse mangels PSR-4-Konformität
+    * nicht findet - deshalb hier bei Bedarf explizit nachladen.
+    *
+    ***************************************************************/
+    private function ensureFakeCatPageWithPagesLoaded(): void {
+        if (!class_exists(FakeCatPageWithPages::class)) {
+            require_once __DIR__ . '/PersistenceTest.php';
+        }
+    }
+
     private function pluginSelfDir(): string {
         return \BASE_DIR.'plugins/schemaOrgData/';
     }
@@ -118,6 +136,24 @@ final class AdminControllerTest extends TestCase {
                 ],
             ],
             'extension' => ['LocalBusiness' => ''],
+        ];
+    }
+
+    /***************************************************************
+    *
+    * Minimale, gültige Formulardaten für den Type "FAQPage"
+    * (analog PersistenceTest::validFaqPageData()).
+    *
+    ***************************************************************/
+    private function validFaqPageData(): array {
+        return [
+            'type' => 'FAQPage',
+            'data' => [
+                'mainEntity' => [
+                    ['name' => 'Wie erreiche ich euch?', 'acceptedAnswer' => ['text' => 'Per Telefon oder E-Mail.']],
+                ],
+            ],
+            'extension' => ['FAQPage' => ''],
         ];
     }
 
@@ -207,6 +243,37 @@ final class AdminControllerTest extends TestCase {
 
         $this->assertStringContainsString('schemaOrgData-notice--error', $html);
         $this->assertStringContainsString('Feld X ist ungültig', $html);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testRequiredFieldErrorWithAmpersandLabelIsSingleEncoded().
+    * Bug 2 (0.3.6-beta): Pflichtfeld-Fehlermeldungen mit Sonderzeichen
+    * im Label (FAQPage-Label "Fragen & Antworten", siehe
+    * admin_language_deDE.txt: label_faq_entries) dürfen nicht doppelt
+    * HTML-kodiert werden. renderSaveResultNotice() kodiert die Meldung
+    * einmal via htmlspecialchars(); der Label-Wert selbst muss daher
+    * unkodiert aus der Sprachdatei kommen, sodass exakt "&amp;" (statt
+    * "&amp;amp;") im gerenderten Hinweisblock erscheint. Hier über den
+    * echten Pfad (saveConfig() mit leerem mainEntity) statt mit einer
+    * synthetischen Fehlerstring-Eingabe geprüft.
+    *
+    ***************************************************************/
+    function testRequiredFieldErrorWithAmpersandLabelIsSingleEncoded(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'faq';
+        $_POST['schemaOrgData_page'] = 'allgemein';
+
+        $postData = $this->validFaqPageData();
+        $postData['data']['mainEntity'] = [];
+
+        $result = $this->callSaveConfig('page', $postData, $settings);
+        $this->assertFalse($result['success']);
+
+        $html = $this->controller()->renderSaveResultNotice($result, $this->adminLang());
+
+        $this->assertStringContainsString('Fragen &amp; Antworten', $html);
+        $this->assertStringNotContainsString('&amp;amp;', $html);
     }
 
     // -----------------------------------------------------------
@@ -445,6 +512,93 @@ final class AdminControllerTest extends TestCase {
         $this->assertStringContainsString('disabled="disabled"', $html);
     }
 
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testFailedSaveRetainsPostedScalarValuesInActiveSection().
+    * Regressionstest für 0.2.2-beta: schlägt das Speichern fehl
+    * (z. B. wegen ungültiger url), müssen die vom Nutzer
+    * eingegebenen POST-Werte erhalten bleiben - auch wenn bereits
+    * eine andere, gespeicherte Konfiguration existiert.
+    *
+    ***************************************************************/
+    function testFailedSaveRetainsPostedScalarValuesInActiveSection(): void {
+        $settings = new \InMemorySettings();
+
+        $oldData = $this->validLocalBusinessData('Alte Firma');
+        $this->callSaveConfig('global', $oldData, $settings);
+
+        $newData = $this->validLocalBusinessData('Neue Firma');
+        $newData['data']['url'] = 'nicht-eine-url';
+        $newData['data']['address']['addressLocality'] = 'Neustadt';
+        $_POST['schemaOrgData'] = ['global' => $newData];
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', true, $settings);
+
+        $this->assertStringContainsString('Neue Firma', $html);
+        $this->assertStringContainsString('Neustadt', $html);
+        $this->assertStringContainsString('nicht-eine-url', $html);
+        $this->assertStringNotContainsString('Alte Firma', $html);
+        $this->assertStringNotContainsString('Altstadt', $html);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testFailedSaveRetainsInvalidOpeningHoursTime().
+    * Ein ungültiges Zeitformat (z. B. "8:00" statt "08:00") in einem
+    * Öffnungszeiten-Feld darf beim Re-Display nach fehlgeschlagenem
+    * Save nicht zu leeren Von/Bis-Feldern führen. buildOpeningHoursArray()/
+    * parseOpeningHours() würden den Eintrag sonst verlustbehaftet
+    * verwerfen (siehe renderScopeSection / renderOpeningHoursWidget).
+    *
+    ***************************************************************/
+    function testFailedSaveRetainsInvalidOpeningHoursTime(): void {
+        $settings = new \InMemorySettings();
+
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['url'] = 'nicht-eine-url';
+        $postData['data']['openingHours']['Mo'] = ['from' => '8:00', 'to' => '18:00'];
+        $_POST['schemaOrgData'] = ['global' => $postData];
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', true, $settings);
+
+        $this->assertStringContainsString('value="8:00"', $html);
+        $this->assertStringContainsString('value="18:00"', $html);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testFailedSaveRetainsSecondOpeningHoursRange().
+    * Regressionstest für 0.4.12-beta: schlägt das Speichern fehl
+    * (z. B. wegen ungültiger url), müssen from2/to2 des zweiten
+    * Öffnungszeiten-Zeitraums erhalten bleiben — analog zu
+    * testFailedSaveRetainsInvalidOpeningHoursTime().
+    *
+    ***************************************************************/
+    function testFailedSaveRetainsSecondOpeningHoursRange(): void {
+        $settings = new \InMemorySettings();
+
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['url'] = 'nicht-eine-url';
+        $postData['data']['openingHours']['Mo'] = [
+            'from'  => '09:00',
+            'to'    => '12:00',
+            'from2' => '13:00',
+            'to2'   => '17:00',
+        ];
+        $_POST['schemaOrgData'] = ['global' => $postData];
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', true, $settings);
+
+        $this->assertStringContainsString('value="13:00"', $html);
+        $this->assertStringContainsString('value="17:00"', $html);
+    }
+
     // -----------------------------------------------------------
     // saveConfig() (Schritt 12b)
     // -----------------------------------------------------------
@@ -487,6 +641,127 @@ final class AdminControllerTest extends TestCase {
 
         $this->assertFalse($result['success']);
         $this->assertNotEmpty($result['errors']);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testCategoryConfigIsSavedUnderOwnSettingsKey().
+    * Eigenständiger, von config_global getrennter settings-Key gemäß
+    * getScopeSettingsKey()-Konvention.
+    *
+    ***************************************************************/
+    function testCategoryConfigIsSavedUnderOwnSettingsKey(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'ueber-uns';
+
+        $result = $this->callSaveConfig('category', $this->validLocalBusinessData('Filiale Nord'), $settings);
+        $this->assertTrue($result['success']);
+
+        $this->assertTrue($settings->keyExists('config_cat_ueber-uns'));
+        $this->assertFalse($settings->keyExists('config_global'));
+
+        $config = $settings->get('config_cat_ueber-uns');
+        $this->assertSame('Filiale Nord', $config['LocalBusiness']['name']);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testPageConfigIsSavedUnderOwnSettingsKey().
+    *
+    ***************************************************************/
+    function testPageConfigIsSavedUnderOwnSettingsKey(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'ueber-uns';
+        $_POST['schemaOrgData_page'] = 'team';
+
+        $result = $this->callSaveConfig('page', $this->validFaqPageData(), $settings);
+        $this->assertTrue($result['success']);
+
+        $this->assertTrue($settings->keyExists('config_page_ueber-uns_team'));
+
+        $config = $settings->get('config_page_ueber-uns_team');
+        $this->assertSame('Wie erreiche ich euch?', $config['FAQPage']['mainEntity'][0]['name']);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testExistingConfigIsOverwrittenOnResave().
+    *
+    ***************************************************************/
+    function testExistingConfigIsOverwrittenOnResave(): void {
+        $settings = new \InMemorySettings();
+
+        $this->callSaveConfig('global', $this->validLocalBusinessData('Erste Version'), $settings);
+        $result = $this->callSaveConfig('global', $this->validLocalBusinessData('Zweite Version'), $settings);
+
+        $this->assertTrue($result['success']);
+
+        $config = $settings->get('config_global');
+        $this->assertSame('Zweite Version', $config['LocalBusiness']['name']);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testGlobalSaveWithCompletelyEmptyAddressSucceeds().
+    * Fix 0.4.3-beta: Eine komplett leere Adresse (nur Default-Wert
+    * addressCountry=DE aus der Select-Box, alle anderen Felder leer)
+    * darf das Speichern nicht blockieren — die Adresse als Ganzes ist
+    * optional. isAddressProvided() liefert false → validatePostalAddressData()
+    * überspringt alle Pflichtfeld-Prüfungen → saveConfig() erfolgreich.
+    * Zuvor (0.3.6-beta) erzwang der Pflichtfeld-Check für addressLocality
+    * einen Fehler, obwohl die Adresse gar nicht ausgefüllt wurde.
+    *
+    ***************************************************************/
+    function testGlobalSaveWithCompletelyEmptyAddressSucceeds(): void {
+        $settings = new \InMemorySettings();
+
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['address'] = [
+            'streetAddress' => '',
+            'postalCode' => '',
+            'addressLocality' => '',
+            'addressRegion' => '',
+            'addressCountry' => 'DE',
+        ];
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'],
+            'Speichern mit komplett leerer Adresse (nur Default DE) muss erfolgreich sein.');
+        $this->assertSame([], $result['errors']);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testExcludedCatsIsSavedAndLoadedAsArray().
+    *
+    ***************************************************************/
+    function testExcludedCatsIsSavedAndLoadedAsArray(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['excluded_cats'] = ['impressum', 'datenschutz'];
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+        $this->assertTrue($result['success']);
+
+        $config = $settings->get('config_global');
+        $this->assertSame(['impressum', 'datenschutz'], explode(',', $config['excluded_cats']));
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testJsonldModeIsSavedAndLoaded().
+    *
+    ***************************************************************/
+    function testJsonldModeIsSavedAndLoaded(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_jsonld_mode_global'] = 'override';
+
+        $result = $this->callSaveConfig('global', $this->validLocalBusinessData(), $settings);
+        $this->assertTrue($result['success']);
+
+        $meta = $this->scopeResolver()->loadScopeMeta($settings, 'global');
+        $this->assertSame('override', $meta['jsonld_mode']);
     }
 
     // -----------------------------------------------------------
@@ -572,5 +847,105 @@ final class AdminControllerTest extends TestCase {
         $html = $this->callRenderAdminPage(new \InMemorySettings());
 
         $this->assertStringContainsString('schemaOrgData-notice--success', $html);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testFailedCategorySaveWithSpecialCharsRetainsPostValuesInActiveSection().
+    * Regressionstest 0.3.7-beta: renderAdminPage() ermittelt
+    * $selectedCat aus sanitizeScopeIdentifier($_POST['schemaOrgData_cat'])
+    * und verglich diesen Wert bislang direkt mit dem UNSANIERTEN
+    * Kategorie-Bezeichner aus get_CatArray(). Enthält dieser
+    * Zeichen, die sanitizeScopeIdentifier() entfernt (z. B. Umlaute),
+    * blieb die gerade bearbeitete Kategorie-Sektion inaktiv
+    * (display:none, disabled) und renderScopeSection() füllte das
+    * Formular aus $config statt aus den POST-Daten. Bei einer noch
+    * nie gespeicherten Kategorie (erster Speicherversuch, der wegen
+    * der seit 0.3.6-beta bedingungslosen addressLocality-Prüfung
+    * fehlschlägt) ist $config leer - alle Feldwerte erschienen
+    * dadurch als geleert.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testFailedCategorySaveWithSpecialCharsRetainsPostValuesInActiveSection(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        global $CatPage;
+        $rawCat = 'Über-uns';
+        $CatPage = new FakeCatPageWithPages([$rawCat]);
+
+        $postData = $this->validLocalBusinessData('Filiale Nord');
+        $postData['data']['address']['streetAddress'] = 'Musterstrasse 5';
+        $postData['data']['address']['addressLocality'] = '';
+
+        $_POST['schemaOrgData'] = ['category' => $postData];
+        $_POST['schemaOrgData_cat'] = $rawCat;
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = $this->callRenderAdminPage(new \InMemorySettings());
+
+        unset($CatPage);
+
+        $this->assertStringContainsString('Filiale Nord', $html);
+        $this->assertStringContainsString('Musterstrasse 5', $html);
+    }
+
+    /***************************************************************
+    *
+    * Migriert aus PersistenceTest::testTemplateJsonLdIsPersistedOnlyForGlobalScope().
+    * Regressionstest 0.4.8-beta: Ein im Layout-Template gefundener
+    * JSON-LD-Block ist layoutweit und damit kein seiten-/kategorie-
+    * spezifisches Signal. renderAdminPage() darf das existing_jsonld-
+    * Flag deshalb nur für 'global' setzen, nicht für die gerade
+    * aktive Kategorie (siehe README.md).
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testTemplateJsonLdIsPersistedOnlyForGlobalScope(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $layout = 'schemaOrgData_test_' . uniqid();
+        $layoutDir = \BASE_DIR . \LAYOUT_DIR_NAME . '/' . $layout;
+        mkdir($layoutDir, 0777, true);
+        file_put_contents(
+            $layoutDir . '/template.html',
+            '<head><script type="application/ld+json">{"@context":"https://schema.org"}</script></head>'
+        );
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        global $CatPage;
+        $cat = 'unterseite';
+        $CatPage = new FakeCatPageWithPages([$cat]);
+
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = $cat;
+        $_POST['schemaOrgData_page'] = '';
+
+        $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+        unlink($layoutDir . '/template.html');
+        rmdir($layoutDir);
+
+        $globalMeta = $this->scopeResolver()->loadScopeMeta($settings, 'global');
+        $categoryMeta = $this->scopeResolver()->loadScopeMeta($settings, 'category', $cat);
+
+        $this->assertTrue($globalMeta['existing_jsonld']);
+        $this->assertFalse($categoryMeta['existing_jsonld']);
     }
 }
