@@ -86,5 +86,60 @@ final class JsonLdBuilderTest extends TestCase {
         $this->assertContains('Mo-Fr 13:00-17:00', $decoded['openingHours']);
         $this->assertCount(2, $decoded['openingHours']);
     }
+
+    /***************************************************************
+    *
+    * Direkt-Tests der Komponente SchemaOrgData_JsonLdBuilder
+    * (Refactoring-Schritt 5, siehe doc/adr_komponenten_refactoring.md).
+    * Echte, zustandslose SchemaRepository-/UrlHelper-Instanzen,
+    * $pluginSelfDir zeigt auf die realen Schema-Fixtures des Plugins.
+    *
+    ***************************************************************/
+
+    private function pluginSelfDir(): string {
+        return BASE_DIR.'plugins/schemaOrgData/';
+    }
+
+    function testResolveNodeIdDeDupliziertGeteiltesFragmentUeberZweiAufrufe(): void {
+        $builder = new \SchemaOrgData_JsonLdBuilder();
+        $schemaRepo = new \SchemaOrgData_SchemaRepository();
+        $urlHelper = new \SchemaOrgData_UrlHelper();
+
+        $_SERVER['HTTP_HOST'] = 'example.com';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $assignedFragments = [];
+
+        $firstId = $builder->resolveNodeId(
+            $schemaRepo, $urlHelper, $this->pluginSelfDir(), 'NGO', $assignedFragments
+        );
+        $secondId = $builder->resolveNodeId(
+            $schemaRepo, $urlHelper, $this->pluginSelfDir(), 'NGO', $assignedFragments
+        );
+
+        $this->assertSame('http://example.com/#organization', $firstId);
+        $this->assertSame('', $secondId);
+        $this->assertSame(['organization'], $assignedFragments);
+    }
+
+    function testBuildJsonLdScriptGibtLeerenKnotenNichtAllenDurchIdOderTypeAlsNichtleerAus(): void {
+        $builder = new \SchemaOrgData_JsonLdBuilder();
+        $schemaRepo = new \SchemaOrgData_SchemaRepository();
+        $urlHelper = new \SchemaOrgData_UrlHelper();
+
+        $script = $builder->buildJsonLdScript(
+            $schemaRepo, $urlHelper, $this->pluginSelfDir(),
+            'Organization', [], 'https://example.com/#organization'
+        );
+
+        preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
+        $decoded = json_decode($matches[1], true);
+
+        $this->assertSame([
+            '@context' => 'https://schema.org',
+            '@type' => 'Organization',
+            '@id' => 'https://example.com/#organization',
+        ], $decoded);
+    }
 }
 

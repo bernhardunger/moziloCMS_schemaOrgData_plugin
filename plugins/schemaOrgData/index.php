@@ -4,6 +4,7 @@ require_once __DIR__.'/lib/SchemaOrgData_UrlHelper.php';
 require_once __DIR__.'/lib/SchemaOrgData_LanguageService.php';
 require_once __DIR__.'/lib/SchemaOrgData_SchemaRepository.php';
 require_once __DIR__.'/lib/SchemaOrgData_ScopeResolver.php';
+require_once __DIR__.'/lib/SchemaOrgData_JsonLdBuilder.php';
 
 /***************************************************************
 *
@@ -34,7 +35,7 @@ require_once __DIR__.'/lib/SchemaOrgData_ScopeResolver.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.21-beta';
+    private const PLUGIN_VERSION = '0.4.22-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -68,6 +69,9 @@ class schemaOrgData extends Plugin {
 
     /** Lazy-Instanz von SchemaOrgData_ScopeResolver (siehe scopeResolver()) */
     private ?SchemaOrgData_ScopeResolver $scopeResolverInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_JsonLdBuilder (siehe jsonLdBuilder()) */
+    private ?SchemaOrgData_JsonLdBuilder $jsonLdBuilderInstance = null;
 
     function __construct() {
         parent::__construct();
@@ -316,6 +320,11 @@ class schemaOrgData extends Plugin {
         return $this->scopeResolverInstance ??= new SchemaOrgData_ScopeResolver();
     }
 
+    /** Lazy-Accessor für SchemaOrgData_JsonLdBuilder. */
+    private function jsonLdBuilder(): SchemaOrgData_JsonLdBuilder {
+        return $this->jsonLdBuilderInstance ??= new SchemaOrgData_JsonLdBuilder();
+    }
+
     /***************************************************************
     *
     * Ermittelt die absolute Basis-URL der Installation als Quelle
@@ -358,26 +367,9 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function resolveNodeId(string $type, array &$assignedFragments): string {
-        $schema = $this->loadSchema($type);
-        $fragment = is_array($schema) ? trim((string) ($schema['ui:idFragment'] ?? '')) : '';
-        if($fragment === '') {
-            // Schema ohne ui:idFragment -> kein @id (unverändertes Verhalten).
-            return '';
-        }
-
-        if(in_array($fragment, $assignedFragments, true)) {
-            // Fragment bereits an einen anderen Knoten dieser Seite vergeben.
-            return '';
-        }
-
-        $baseUrl = $this->resolveBaseUrl();
-        if($baseUrl === '') {
-            // Basis-URL nicht auflösbar -> kein leeres @id schlucken.
-            return '';
-        }
-
-        $assignedFragments[] = $fragment;
-        return $baseUrl.'#'.$fragment;
+        return $this->jsonLdBuilder()->resolveNodeId(
+            $this->schemaRepository(), $this->urlHelper(), $this->PLUGIN_SELF_DIR, $type, $assignedFragments
+        );
     }
 
     /***************************************************************
@@ -566,88 +558,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function buildJsonLdScript(string $type, array $data, string $nodeId = '', array $suppressedIdTargets = []): string {
-        // Werte wurden beim Speichern mit htmlspecialchars() gesichert -
-        // vor dem JSON-Encode wieder in Klartext umwandeln.
-        $data = $this->decodeJsonLdValues($data);
-
-        // Leere Properties (null, '', []) entfernen, auch verschachtelt
-        // (z. B. unvollständige PostalAddress/GeoCoordinates-Angaben).
-        $data = $this->removeEmptyJsonLdProperties($data);
-
-        // Adresse, Geokoordinaten und Mitarbeiter als verschachtelte,
-        // typisierte schema.org-Objekte ausgeben.
-        foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person'] as $property => $nestedType) {
-            if(isset($data[$property]) and is_array($data[$property])) {
-                $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
-            }
-        }
-
-        // id_reference-Properties aus dem Schema einsetzen (Build-Zeit-Emitter).
-        // Diese Properties haben keinen gespeicherten Wert - ihr Wert wird hier
-        // zur Ausgabezeit als {"@id": "<Basis-URL>#<Fragment>"} aufgelöst.
-        // Einfügung NACH removeEmptyJsonLdProperties(), damit ein gesetzter
-        // @id-Verweis nie still getilgt wird (analoges Muster zum @id-Anker,
-        // siehe README.md, "@id-Anker"). Bei keep-Modus auf der Zielebene wird
-        // das Target in $suppressedIdTargets übergeben - dann unterbleibt die
-        // Emission, um kein Dangling-@id gegen den Nutzerwunsch zu erzeugen.
-        $schema = $this->loadSchema($type);
-        if(is_array($schema)) {
-            $baseUrl = $this->resolveBaseUrl();
-            foreach($schema['properties'] ?? [] as $propName => $propSchema) {
-                $propSchema = $this->resolveSchemaRef($propSchema, $schema);
-                $widget = $propSchema['ui:widget'] ?? '';
-                if($widget === 'id_reference') {
-                    $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
-                    if($target !== '' and $baseUrl !== '' and !in_array($target, $suppressedIdTargets, true)) {
-                        $data[$propName] = ['@id' => $baseUrl.'#'.$target];
-                    }
-                } elseif($widget === 'id_reference_or_literal') {
-                    // Gespeicherten Wert (Array mit _mode + _fragment oder Literal-Felder)
-                    // in das fertige JSON-LD-Objekt umwandeln.
-                    $stored = is_array($data[$propName] ?? null) ? $data[$propName] : null;
-                    unset($data[$propName]);
-                    if($stored !== null) {
-                        $mode = (string) ($stored['_mode'] ?? '');
-                        if($mode === 'reference') {
-                            $fragment = trim((string) ($stored['_fragment'] ?? ''));
-                            if($fragment !== '' and $baseUrl !== '' and !in_array($fragment, $suppressedIdTargets, true)) {
-                                $data[$propName] = ['@id' => $baseUrl.'#'.$fragment];
-                            }
-                        } elseif($mode === 'literal') {
-                            $literal = $stored;
-                            unset($literal['_mode']);
-                            // Leere Felder entfernen, bevor @type ergänzt wird,
-                            // damit ein leeres Objekt nicht allein durch @type
-                            // als nicht-leer gilt.
-                            $literal = $this->removeEmptyJsonLdProperties($literal);
-                            if($literal !== []) {
-                                $literalType = trim((string) ($propSchema['ui:literalType'] ?? ''));
-                                if($literalType !== '') {
-                                    $literal = array_merge(['@type' => $literalType], $literal);
-                                }
-                                $data[$propName] = $literal;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // @id-Anker erst NACH dem Leerfilter setzen, damit ein gesetzter
-        // Anker nie still getilgt wird (siehe README.md, "@id-Anker").
-        $head = ['@context' => 'https://schema.org', '@type' => $type];
-        if($nodeId !== '') {
-            $head['@id'] = $nodeId;
-        }
-
-        $jsonLd = array_merge($head, $data);
-
-        $json = json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        if($json === false) {
-            return '';
-        }
-
-        return '<script type="application/ld+json">'."\n".$json."\n".'</script>'."\n";
+        return $this->jsonLdBuilder()->buildJsonLdScript(
+            $this->schemaRepository(), $this->urlHelper(), $this->PLUGIN_SELF_DIR,
+            $type, $data, $nodeId, $suppressedIdTargets
+        );
     }
 
     /***************************************************************
@@ -661,14 +575,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function decodeJsonLdValues(array $data): array {
-        foreach($data as $key => $value) {
-            if(is_array($value)) {
-                $data[$key] = $this->decodeJsonLdValues($value);
-            } elseif(is_string($value)) {
-                $data[$key] = htmlspecialchars_decode($value, ENT_QUOTES);
-            }
-        }
-        return $data;
+        return $this->jsonLdBuilder()->decodeJsonLdValues($data);
     }
 
     /***************************************************************
@@ -682,17 +589,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function removeEmptyJsonLdProperties(array $data): array {
-        foreach($data as $key => $value) {
-            if(is_array($value)) {
-                $value = $this->removeEmptyJsonLdProperties($value);
-            }
-            if($value === null or $value === '' or $value === []) {
-                unset($data[$key]);
-            } else {
-                $data[$key] = $value;
-            }
-        }
-        return $data;
+        return $this->jsonLdBuilder()->removeEmptyJsonLdProperties($data);
     }
 
     /***************************************************************
