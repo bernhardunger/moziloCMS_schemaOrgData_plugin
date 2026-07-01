@@ -307,7 +307,7 @@ final class JsonLdOutputTest extends TestCase {
     function testJsonldModeKeepSuppressesOutput(): void {
         $plugin = $this->createPlugin();
         callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
-        callPluginMethod($plugin, 'saveScopeMeta', ['global', ['existing_jsonld' => true, 'jsonld_mode' => 'keep']]);
+        (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($this->settings, 'global', ['existing_jsonld' => true, 'jsonld_mode' => 'keep']);
 
         $output = $plugin->getContent('');
 
@@ -317,7 +317,7 @@ final class JsonLdOutputTest extends TestCase {
     function testJsonldModeOverrideProducesOutput(): void {
         $plugin = $this->createPlugin();
         callPluginMethod($plugin, 'saveConfig', ['global', $this->validLocalBusinessData()]);
-        callPluginMethod($plugin, 'saveScopeMeta', ['global', ['existing_jsonld' => true, 'jsonld_mode' => 'override']]);
+        (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($this->settings, 'global', ['existing_jsonld' => true, 'jsonld_mode' => 'override']);
 
         $blocks = $this->getJsonLdBlocks($plugin);
 
@@ -342,17 +342,17 @@ final class JsonLdOutputTest extends TestCase {
         try {
             $plugin->getContent('');
 
-            $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+            $metaGlobal = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'global');
             $this->assertTrue($metaGlobal['existing_jsonld'],
                 'Template-Treffer muss Global-Scope auf existing_jsonld=true setzen');
 
             // Kategorie-Scope: getScopeSettingsKey('category', null) = null → Standardwert false
-            $metaCat = callPluginMethod($plugin, 'loadScopeMeta', ['category', null]);
+            $metaCat = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'category', null);
             $this->assertFalse($metaCat['existing_jsonld'],
                 'Kategorie-Scope darf bei Template-Treffer nicht beschrieben werden');
 
             // Seiten-Scope: CAT_REQUEST/PAGE_REQUEST = false → Schreib-Guard greift → Standardwert false
-            $metaPage = callPluginMethod($plugin, 'loadScopeMeta', ['page', null, null]);
+            $metaPage = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'page', null, null);
             $this->assertFalse($metaPage['existing_jsonld'],
                 'Seiten-Scope darf bei Template-Treffer nicht direkt beschrieben werden');
         } finally {
@@ -373,7 +373,7 @@ final class JsonLdOutputTest extends TestCase {
         try {
             $plugin->getContent('<script type="application/ld+json">{"@context":"https://schema.org"}</script>');
 
-            $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+            $metaGlobal = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'global');
             $this->assertFalse($metaGlobal['existing_jsonld'],
                 'Inhalts-Treffer darf Global-Scope nicht auf existing_jsonld=true setzen');
         } finally {
@@ -394,11 +394,11 @@ final class JsonLdOutputTest extends TestCase {
         try {
             $plugin->getContent('<script type="application/ld+json">{"@context":"https://schema.org"}</script>');
 
-            $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+            $metaGlobal = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'global');
             $this->assertTrue($metaGlobal['existing_jsonld'],
                 'Template-Treffer muss Global-Scope auf existing_jsonld=true setzen');
 
-            $metaCat = callPluginMethod($plugin, 'loadScopeMeta', ['category', null]);
+            $metaCat = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'category', null);
             $this->assertFalse($metaCat['existing_jsonld'],
                 'Kategorie-Scope darf bei Template- und Inhalts-Treffer nicht beschrieben werden');
         } finally {
@@ -416,13 +416,13 @@ final class JsonLdOutputTest extends TestCase {
         try {
             $plugin->getContent('');
 
-            $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+            $metaGlobal = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'global');
             $this->assertFalse($metaGlobal['existing_jsonld'], 'Global muss false bleiben');
 
-            $metaCat = callPluginMethod($plugin, 'loadScopeMeta', ['category', null]);
+            $metaCat = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'category', null);
             $this->assertFalse($metaCat['existing_jsonld'], 'Kategorie muss false bleiben');
 
-            $metaPage = callPluginMethod($plugin, 'loadScopeMeta', ['page', null, null]);
+            $metaPage = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'page', null, null);
             $this->assertFalse($metaPage['existing_jsonld'], 'Seite muss false bleiben');
         } finally {
             $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
@@ -603,7 +603,7 @@ final class JsonLdOutputTest extends TestCase {
         try {
             $plugin->getContent('');
 
-            $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+            $metaGlobal = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'global');
             $this->assertTrue($metaGlobal['existing_jsonld']);
             $this->assertSame($jsonText, $metaGlobal['existing_jsonld_content'],
                 'Template-JSON-Text muss 1:1 im Global-Scope gespeichert werden');
@@ -622,7 +622,7 @@ final class JsonLdOutputTest extends TestCase {
         try {
             $plugin->getContent('');
 
-            $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+            $metaGlobal = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'global');
             $this->assertFalse($metaGlobal['existing_jsonld']);
             $this->assertSame('', $metaGlobal['existing_jsonld_content'],
                 'existing_jsonld_content muss leer sein wenn kein Template-JSON-LD gefunden');
@@ -647,7 +647,7 @@ final class JsonLdOutputTest extends TestCase {
         try {
             $plugin->getContent('');
 
-            $metaGlobal = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+            $metaGlobal = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'global');
             $this->assertSame($json1."\n\n".$json2, $metaGlobal['existing_jsonld_content']);
         } finally {
             unlink($templateFile);
@@ -659,7 +659,7 @@ final class JsonLdOutputTest extends TestCase {
         // loadScopeMeta() ohne vorherigen save → existing_jsonld_content hat Default ''.
         $plugin = $this->createPlugin();
 
-        $meta = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+        $meta = (new \SchemaOrgData_ScopeResolver())->loadScopeMeta($this->settings, 'global');
 
         $this->assertArrayHasKey('existing_jsonld_content', $meta);
         $this->assertSame('', $meta['existing_jsonld_content']);
