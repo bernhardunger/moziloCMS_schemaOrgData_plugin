@@ -13,13 +13,13 @@ use PHPUnit\Framework\TestCase;
 final class CollisionDetectorTest extends TestCase {
 
     private function extract(string $html): array {
-        $plugin = new \schemaOrgData();
-        return callPluginMethod($plugin, 'extractExistingJsonLdBlocks', [$html]);
+        return (new \SchemaOrgData_CollisionDetector())->extractExistingJsonLdBlocks($html);
     }
 
     private function detect(string $html): bool {
-        $plugin = new \schemaOrgData();
-        return callPluginMethod($plugin, 'detectExistingJsonLd', [$html]);
+        return (new \SchemaOrgData_CollisionDetector())->detectExistingJsonLd(
+            $html, (string) ($GLOBALS['TEMPLATE_FILE'] ?? '')
+        );
     }
 
     // -----------------------------------------------------------
@@ -152,8 +152,9 @@ final class CollisionDetectorTest extends TestCase {
     // ---------------------------------------------------------------------------
 
     private function detectAdmin(): bool {
-        $plugin = new \schemaOrgData();
-        return callPluginMethod($plugin, 'detectExistingJsonLdInTemplateAdmin', []);
+        return (new \SchemaOrgData_CollisionDetector())->detectExistingJsonLdInTemplateAdmin(
+            $GLOBALS['CMS_CONF'] ?? null
+        );
     }
 
     /**
@@ -224,7 +225,7 @@ final class CollisionDetectorTest extends TestCase {
         $settingsProp->setAccessible(true);
         $settingsProp->setValue($plugin, new \InMemorySettings());
 
-        $detected = callPluginMethod($plugin, 'detectExistingJsonLdInTemplateAdmin', []);
+        $detected = (new \SchemaOrgData_CollisionDetector())->detectExistingJsonLdInTemplateAdmin($GLOBALS['CMS_CONF'] ?? null);
         $this->assertTrue($detected);
 
         // Persistenz prüfen: saveScopeMeta() speichert, loadScopeMeta() liest korrekt
