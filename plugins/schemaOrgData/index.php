@@ -2,6 +2,7 @@
 
 require_once __DIR__.'/lib/SchemaOrgData_UrlHelper.php';
 require_once __DIR__.'/lib/SchemaOrgData_LanguageService.php';
+require_once __DIR__.'/lib/SchemaOrgData_SchemaRepository.php';
 
 /***************************************************************
 *
@@ -32,7 +33,7 @@ require_once __DIR__.'/lib/SchemaOrgData_LanguageService.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.19-beta';
+    private const PLUGIN_VERSION = '0.4.20-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -61,9 +62,12 @@ class schemaOrgData extends Plugin {
     /** Lazy-Instanz von SchemaOrgData_LanguageService (siehe languageService()) */
     private ?SchemaOrgData_LanguageService $languageServiceInstance = null;
 
+    /** Lazy-Instanz von SchemaOrgData_SchemaRepository (siehe schemaRepository()) */
+    private ?SchemaOrgData_SchemaRepository $schemaRepositoryInstance = null;
+
     function __construct() {
         parent::__construct();
-        // Komponenten werden lazy verdrahtet (siehe urlHelper(), languageService()).
+        // Komponenten werden lazy verdrahtet (siehe urlHelper(), languageService(), schemaRepository()).
     }
 
     /***************************************************************
@@ -324,17 +328,17 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function loadSchema(string $type): ?array {
-        $file = $this->PLUGIN_SELF_DIR.'schemas/'.basename($type).'.json';
-        if(!file_exists($file)) {
-            return null;
-        }
-        $schema = json_decode(file_get_contents($file), true);
-        return is_array($schema) ? $schema : null;
+        return $this->schemaRepository()->loadSchema($this->PLUGIN_SELF_DIR, $type);
     }
 
     /** Lazy-Accessor für SchemaOrgData_UrlHelper. */
     private function urlHelper(): SchemaOrgData_UrlHelper {
         return $this->urlHelperInstance ??= new SchemaOrgData_UrlHelper();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_SchemaRepository. */
+    private function schemaRepository(): SchemaOrgData_SchemaRepository {
+        return $this->schemaRepositoryInstance ??= new SchemaOrgData_SchemaRepository();
     }
 
     /***************************************************************
@@ -571,12 +575,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function getAvailableSchemaTypes(): array {
-        $types = [];
-        foreach(glob($this->PLUGIN_SELF_DIR.'schemas/*.json') as $file) {
-            $types[] = basename($file, '.json');
-        }
-        sort($types);
-        return $types;
+        return $this->schemaRepository()->getAvailableSchemaTypes($this->PLUGIN_SELF_DIR);
     }
 
     /***************************************************************
@@ -1257,25 +1256,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function resolveSchemaRef(array $fieldSchema, array $rootSchema): array {
-        if(!isset($fieldSchema['$ref']) or !is_string($fieldSchema['$ref'])) {
-            return $fieldSchema;
-        }
-
-        $ref = $fieldSchema['$ref'];
-        if(!str_starts_with($ref, '#/')) {
-            return $fieldSchema;
-        }
-
-        $resolved = $rootSchema;
-        foreach(explode('/', substr($ref, 2)) as $segment) {
-            if(!is_array($resolved) or !array_key_exists($segment, $resolved)) {
-                return $fieldSchema;
-            }
-            $resolved = $resolved[$segment];
-        }
-
-        unset($fieldSchema['$ref']);
-        return is_array($resolved) ? array_merge($resolved, $fieldSchema) : $fieldSchema;
+        return $this->schemaRepository()->resolveSchemaRef($fieldSchema, $rootSchema);
     }
 
     /***************************************************************
