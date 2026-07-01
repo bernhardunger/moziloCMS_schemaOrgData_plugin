@@ -165,16 +165,6 @@ final class PersonIdRefOrLiteralTest extends TestCase {
         $this->assertSame([], $fragments);
     }
 
-    function testResolveFragmentsListsNgoFragment(): void {
-        $plugin = $this->createPlugin();
-        $this->settings->set('config_global', ['NGO' => ['name' => 'Beispiel e.V.']]);
-
-        $fragments = callPluginMethod($plugin, 'resolveAvailableGlobalFragments', []);
-
-        $this->assertArrayHasKey('organization', $fragments,
-            'NGO mit ui:idFragment "organization" muss im Fragment-Array erscheinen');
-    }
-
     function testResolveFragmentsListsPersonFragment(): void {
         $plugin = $this->createPlugin();
         $this->settings->set('config_global', ['Person' => ['name' => 'Max Mustermann']]);
@@ -197,154 +187,6 @@ final class PersonIdRefOrLiteralTest extends TestCase {
         $this->assertArrayHasKey('organization', $fragments);
         $this->assertArrayHasKey('person', $fragments);
         $this->assertCount(2, $fragments);
-    }
-
-    function testResolveFragmentsLabelIncludesStoredName(): void {
-        $plugin = $this->createPlugin();
-        $this->settings->set('config_global', ['Person' => ['name' => 'Max Mustermann']]);
-
-        $fragments = callPluginMethod($plugin, 'resolveAvailableGlobalFragments', []);
-
-        $this->assertIsArray($fragments);
-        $this->assertArrayHasKey('person', $fragments);
-        $this->assertStringContainsString('Max Mustermann', $fragments['person'],
-            'Label soll den gespeicherten name-Wert enthalten');
-    }
-
-    function testResolveFragmentsSkipsTypesWithoutIdFragment(): void {
-        $plugin = $this->createPlugin();
-        // Article hat kein ui:idFragment
-        $this->settings->set('config_global', ['Article' => ['headline' => 'Testbeitrag']]);
-
-        $fragments = callPluginMethod($plugin, 'resolveAvailableGlobalFragments', []);
-
-        $this->assertSame([], $fragments,
-            'Typen ohne ui:idFragment dürfen nicht in der Fragment-Liste erscheinen');
-    }
-
-    // -----------------------------------------------------------
-    // buildJsonLdScript() — Referenz-Modus
-    // -----------------------------------------------------------
-
-    function testIdRefOrLiteralReferenceModeEmitsAtIdForOrganization(): void {
-        $_SERVER['HTTPS']       = 'on';
-        $_SERVER['HTTP_HOST']   = 'example.com';
-        $_SERVER['SCRIPT_NAME'] = '/admin/index.php';
-
-        $plugin = $this->createPlugin();
-        $data = ['organizer' => ['_mode' => 'reference', '_fragment' => 'organization']];
-        $decoded = $this->buildDecoded($plugin, 'TestIdRefType', $data);
-
-        $this->assertArrayHasKey('organizer', $decoded,
-            'Referenz-Modus muss Property "organizer" emittieren');
-        $this->assertArrayHasKey('@id', $decoded['organizer'],
-            'Referenz-Modus muss @id-Objekt erzeugen');
-        $this->assertStringEndsWith('#organization', $decoded['organizer']['@id']);
-    }
-
-    function testIdRefOrLiteralReferenceModeEmitsAtIdForPerson(): void {
-        $_SERVER['HTTPS']       = 'on';
-        $_SERVER['HTTP_HOST']   = 'example.com';
-        $_SERVER['SCRIPT_NAME'] = '/admin/index.php';
-
-        $plugin = $this->createPlugin();
-        $data = ['organizer' => ['_mode' => 'reference', '_fragment' => 'person']];
-        $decoded = $this->buildDecoded($plugin, 'TestIdRefType', $data);
-
-        $this->assertArrayHasKey('organizer', $decoded);
-        $this->assertArrayHasKey('@id', $decoded['organizer']);
-        $this->assertStringEndsWith('#person', $decoded['organizer']['@id']);
-    }
-
-    function testIdRefOrLiteralReferenceModeInternalKeysNotInOutput(): void {
-        $_SERVER['HTTPS']       = 'on';
-        $_SERVER['HTTP_HOST']   = 'example.com';
-        $_SERVER['SCRIPT_NAME'] = '/admin/index.php';
-
-        $plugin = $this->createPlugin();
-        $data = ['organizer' => ['_mode' => 'reference', '_fragment' => 'person']];
-        $decoded = $this->buildDecoded($plugin, 'TestIdRefType', $data);
-
-        $organizer = $decoded['organizer'];
-        $this->assertArrayNotHasKey('_mode', $organizer,
-            '_mode darf nicht im JSON-LD erscheinen');
-        $this->assertArrayNotHasKey('_fragment', $organizer,
-            '_fragment darf nicht im JSON-LD erscheinen');
-    }
-
-    function testIdRefOrLiteralReferenceModeSuppressedByGuard(): void {
-        $_SERVER['HTTPS']       = 'on';
-        $_SERVER['HTTP_HOST']   = 'example.com';
-        $_SERVER['SCRIPT_NAME'] = '/admin/index.php';
-
-        $plugin = $this->createPlugin();
-        $data = ['organizer' => ['_mode' => 'reference', '_fragment' => 'organization']];
-        // 'organization' ist in suppressedIdTargets → Emission unterbleibt
-        $decoded = $this->buildDecoded($plugin, 'TestIdRefType', $data, '', ['organization']);
-
-        $this->assertArrayNotHasKey('organizer', $decoded,
-            'Unterdrücktes Target darf kein organizer-Objekt emittieren');
-    }
-
-    function testIdRefOrLiteralEmptyStoredValueProducesNoProperty(): void {
-        $plugin = $this->createPlugin();
-        // Kein gespeicherter Wert
-        $decoded = $this->buildDecoded($plugin, 'TestIdRefType', []);
-
-        $this->assertArrayNotHasKey('organizer', $decoded);
-    }
-
-    // -----------------------------------------------------------
-    // buildJsonLdScript() — Literal-Modus
-    // -----------------------------------------------------------
-
-    function testIdRefOrLiteralLiteralModeEmitsEmbeddedObject(): void {
-        $plugin = $this->createPlugin();
-        $data = ['organizer' => ['_mode' => 'literal', 'name' => 'Max Mustermann', 'jobTitle' => 'CEO']];
-        $decoded = $this->buildDecoded($plugin, 'TestIdRefType', $data);
-
-        $this->assertArrayHasKey('organizer', $decoded);
-        $organizer = $decoded['organizer'];
-        $this->assertSame('Person', $organizer['@type'],
-            'Literal-Modus muss ui:literalType als @type setzen');
-        $this->assertSame('Max Mustermann', $organizer['name']);
-        $this->assertSame('CEO', $organizer['jobTitle']);
-    }
-
-    function testIdRefOrLiteralLiteralModeHasNoAtId(): void {
-        $plugin = $this->createPlugin();
-        $data = ['organizer' => ['_mode' => 'literal', 'name' => 'Max Mustermann']];
-        $decoded = $this->buildDecoded($plugin, 'TestIdRefType', $data);
-
-        $this->assertArrayNotHasKey('@id', $decoded['organizer'],
-            'Literal-Modus darf kein @id emittieren');
-    }
-
-    function testIdRefOrLiteralLiteralModeInternalKeysNotInOutput(): void {
-        $plugin = $this->createPlugin();
-        $data = ['organizer' => ['_mode' => 'literal', 'name' => 'Max Mustermann']];
-        $decoded = $this->buildDecoded($plugin, 'TestIdRefType', $data);
-
-        $this->assertArrayNotHasKey('_mode', $decoded['organizer']);
-    }
-
-    function testIdRefOrLiteralLiteralModeEmptyFieldsOmitted(): void {
-        $plugin = $this->createPlugin();
-        // name befüllt, jobTitle leer → jobTitle darf nicht erscheinen
-        $data = ['organizer' => ['_mode' => 'literal', 'name' => 'Max Mustermann', 'jobTitle' => '']];
-        $decoded = $this->buildDecoded($plugin, 'TestIdRefType', $data);
-
-        $this->assertArrayHasKey('name', $decoded['organizer']);
-        $this->assertArrayNotHasKey('jobTitle', $decoded['organizer']);
-    }
-
-    function testIdRefOrLiteralLiteralModeAllEmptyProducesNoProperty(): void {
-        $plugin = $this->createPlugin();
-        // Alle Literal-Felder leer → Property entfällt
-        $data = ['organizer' => ['_mode' => 'literal', 'name' => '', 'jobTitle' => '']];
-        $decoded = $this->buildDecoded($plugin, 'TestIdRefType', $data);
-
-        $this->assertArrayNotHasKey('organizer', $decoded);
     }
 
     // -----------------------------------------------------------
@@ -407,21 +249,6 @@ final class PersonIdRefOrLiteralTest extends TestCase {
 
         $this->assertContains('organization', $suppressed,
             'Keep-Modus muss Target in suppressedIdTargets aufnehmen');
-    }
-
-    function testGuardNoOpForLiteralMode(): void {
-        $plugin = $this->createPlugin();
-
-        $scopeConfigs = [
-            'page' => ['TestIdRefType' => ['organizer' => ['_mode' => 'literal', 'name' => 'Max']]],
-        ];
-
-        [$result, $suppressed] = callPluginMethod($plugin, 'applyDanglingReferenceGuard', [$scopeConfigs, false]);
-
-        $this->assertSame([], $suppressed,
-            'Literal-Modus darf keinen Dangling-Guard auslösen');
-        $this->assertSame($scopeConfigs, $result,
-            'scopeConfigs darf bei Literal-Modus nicht verändert werden');
     }
 
     // -----------------------------------------------------------

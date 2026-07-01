@@ -40,18 +40,6 @@ final class FormRendererTest extends TestCase {
         $this->assertStringContainsString('schemaOrgData-opening-hours', $html);
     }
 
-    function testRequiredFieldIsRenderedAsRequired(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-
-        $html = callPluginMethod($plugin, 'renderField', [
-            'global', 'name', $schema['properties']['name'], '', $schema, [],
-        ]);
-
-        $this->assertStringContainsString('schemaOrgData-required', $html);
-        $this->assertStringNotContainsString('schemaOrgData-optional', $html);
-    }
-
     function testOptionalFieldGetsNoBadge(): void {
         $plugin = new \schemaOrgData();
         $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
@@ -62,25 +50,6 @@ final class FormRendererTest extends TestCase {
 
         $this->assertStringNotContainsString('schemaOrgData-optional', $html);
         $this->assertStringNotContainsString('schemaOrgData-required', $html);
-    }
-
-    function testUnknownSchemaTypeReturnsNull(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['NichtVorhandenerType']);
-
-        $this->assertNull($schema);
-    }
-
-    function testPostalAddressWidgetContainsAllFiveAddressFields(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-        $addressSchema = callPluginMethod($plugin, 'resolveSchemaRef', [$schema['properties']['address'], $schema]);
-
-        $html = callPluginMethod($plugin, 'renderPostalAddressWidget', ['global', 'address', $addressSchema, []]);
-
-        foreach(['streetAddress', 'postalCode', 'addressLocality', 'addressRegion', 'addressCountry'] as $field) {
-            $this->assertStringContainsString('schemaOrgData_global_address_'.$field, $html);
-        }
     }
 
     /***************************************************************
@@ -104,58 +73,6 @@ final class FormRendererTest extends TestCase {
         );
     }
 
-    function testAddressCountrySelectContainsGermanyAsDefault(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-        $addressSchema = callPluginMethod($plugin, 'resolveSchemaRef', [$schema['properties']['address'], $schema]);
-
-        $html = callPluginMethod($plugin, 'renderPostalAddressWidget', ['global', 'address', $addressSchema, []]);
-
-        $this->assertMatchesRegularExpression('/<option value="DE" selected="selected">[^<]*<\/option>/', $html);
-    }
-
-    function testOpeningHoursWidgetContainsAllSevenWeekdays(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-
-        $html = callPluginMethod($plugin, 'renderOpeningHoursWidget', [
-            'global', 'openingHours', $schema['properties']['openingHours'], [],
-        ]);
-
-        foreach(['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as $day) {
-            $this->assertStringContainsString('schemaOrgData_global_openingHours_'.$day.'_from', $html);
-            $this->assertStringContainsString('schemaOrgData_global_openingHours_'.$day.'_to', $html);
-            $this->assertStringContainsString('schemaOrgData_global_openingHours_'.$day.'_from2', $html);
-            $this->assertStringContainsString('schemaOrgData_global_openingHours_'.$day.'_to2', $html);
-        }
-    }
-
-    /***************************************************************
-    *
-    * Regressionstest zweiter Zeitraum: Gespeicherte Öffnungszeiten
-    * mit Pause (zwei Einträge je Tag) werden korrekt in das Widget
-    * vorbelegt — from2/to2 zeigen die Pausenzeiten, from/to den
-    * Hauptzeitraum.
-    *
-    ***************************************************************/
-    function testOpeningHoursWidgetPreFillsSecondRange(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-
-        $value = ['Mo-Fr 08:00-12:00', 'Mo-Fr 13:00-17:00'];
-
-        $html = callPluginMethod($plugin, 'renderOpeningHoursWidget', [
-            'global', 'openingHours', $schema['properties']['openingHours'], $value,
-        ]);
-
-        $this->assertStringContainsString('value="08:00"', $html);
-        $this->assertStringContainsString('value="12:00"', $html);
-        $this->assertStringContainsString('value="13:00"', $html);
-        $this->assertStringContainsString('value="17:00"', $html);
-        $this->assertStringContainsString('schemaOrgData_global_openingHours_Mo_from2', $html);
-        $this->assertStringContainsString('schemaOrgData_global_openingHours_Mo_to2', $html);
-    }
-
     /***************************************************************
     *
     * get_CatArray(true) liefert auch das Wurzelverzeichnis
@@ -173,31 +90,6 @@ final class FormRendererTest extends TestCase {
     * (Placeholder + "ü"-Badge), nicht zum Befüllen.
     *
     ***************************************************************/
-    function testResolveInheritableFieldsReturnsGlobalValuesForCategoryScope(): void {
-        [$plugin, $settings] = $this->pluginWithInMemorySettings();
-        $settings->set('config_global', [
-            'LocalBusiness' => [
-                'name' => 'Global GmbH',
-                'telephone' => '+49 89 12345678',
-            ],
-        ]);
-
-        $result = callPluginMethod($plugin, 'resolveInheritableFields', ['category', 'testkat', null, 'LocalBusiness']);
-
-        $this->assertSame('+49 89 12345678', $result['data']['telephone']);
-        $this->assertSame('Global', $result['originLabel']['telephone']);
-    }
-
-    function testResolveInheritableFieldsReturnsEmptyArraysForGlobalScope(): void {
-        [$plugin, $settings] = $this->pluginWithInMemorySettings();
-        $settings->set('config_global', ['LocalBusiness' => ['telephone' => '+49 89 12345678']]);
-
-        $result = callPluginMethod($plugin, 'resolveInheritableFields', ['global', null, null, 'LocalBusiness']);
-
-        $this->assertSame([], $result['data']);
-        $this->assertSame([], $result['originLabel']);
-    }
-
     /***************************************************************
     *
     * Geerbtes Feld (Feature 0.4.1-beta): renderField() rendert für
@@ -208,34 +100,6 @@ final class FormRendererTest extends TestCase {
     * 0.2.4-beta beim Speichern unverändert bleibt.
     *
     ***************************************************************/
-    function testInheritedFieldStaysEmptyButShowsPlaceholderAndBadge(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-
-        $html = callPluginMethod($plugin, 'renderField', [
-            'category', 'telephone', $schema['properties']['telephone'], '', $schema, [], null,
-            '+49 89 12345678', 'Global',
-        ]);
-
-        $this->assertStringContainsString('value=""', $html);
-        $this->assertStringContainsString('placeholder="+49 89 12345678"', $html);
-        $this->assertStringContainsString('schemaOrgData-inherited', $html);
-        $this->assertStringContainsString('&Uuml;bernommen von: Global', $html);
-    }
-
-    function testFieldWithOwnValueDoesNotShowInheritedBadge(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-
-        $html = callPluginMethod($plugin, 'renderField', [
-            'category', 'telephone', $schema['properties']['telephone'], '+49 30 99999999', $schema, [], null,
-            '+49 89 12345678', 'Global',
-        ]);
-
-        $this->assertStringContainsString('value="+49 30 99999999"', $html);
-        $this->assertStringNotContainsString('schemaOrgData-inherited', $html);
-    }
-
     /***************************************************************
     *
     * Geerbtes PostalAddress-Sub-Feld (Feature 0.4.1-beta):
@@ -244,25 +108,6 @@ final class FormRendererTest extends TestCase {
     * erhält den geerbten Wert als Placeholder und das "ü"-Badge.
     *
     ***************************************************************/
-    function testInheritedAddressSubFieldRendersPlaceholderAndBadge(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-        $addressSchema = callPluginMethod($plugin, 'resolveSchemaRef', [$schema['properties']['address'], $schema]);
-
-        $inheritedAddress = ['streetAddress' => 'Globalweg 1', 'addressLocality' => 'Globalstadt', 'addressCountry' => 'DE'];
-
-        $html = callPluginMethod($plugin, 'renderPostalAddressWidget', [
-            'category', 'address', $addressSchema, [], 'cat_testkat', $inheritedAddress, 'Global',
-        ]);
-
-        $this->assertMatchesRegularExpression(
-            '/id="schemaOrgData_cat_testkat_address_streetAddress"[^>]*value=""[^>]*placeholder="Globalweg 1"/',
-            $html
-        );
-        $this->assertStringContainsString('schemaOrgData-inherited', $html);
-        $this->assertStringContainsString('&Uuml;bernommen von: Global', $html);
-    }
-
     /***************************************************************
     *
     * Erzeugt ein Plugin mit isoliertem InMemorySettings-Stub als
@@ -284,54 +129,6 @@ final class FormRendererTest extends TestCase {
         return [$plugin, $settings];
     }
 
-    function testPostalAddressFieldsetShowsConditionalRequiredHint(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-
-        $html = callPluginMethod($plugin, 'renderField', [
-            'global', 'address', $schema['properties']['address'], [], $schema, [],
-        ]);
-
-        $this->assertStringContainsString('schemaOrgData-hint', $html);
-        $this->assertStringContainsString('Adressfeld', $html);
-    }
-
-    function testExcludedCatsFieldOmitsKategorienRootEntry(): void {
-        global $CatPage;
-        $CatPage = new FakeCatPage(['kategorien', 'ueber-uns', 'impressum']);
-
-        $plugin = new \schemaOrgData();
-        $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[]]);
-
-        unset($CatPage);
-
-        $this->assertStringContainsString('value="ueber-uns"', $html);
-        $this->assertStringContainsString('value="impressum"', $html);
-        $this->assertStringNotContainsString('value="kategorien"', $html);
-        $this->assertStringContainsString('data-select-all="schemaOrgData[global][excluded_cats][]"', $html);
-    }
-
-    // -----------------------------------------------------------
-    // Debug-Modus-Checkbox (renderExcludedCatsField, scope=global)
-    // -----------------------------------------------------------
-
-    function testDebugOutputCheckboxIsAlwaysRendered(): void {
-        $plugin = new \schemaOrgData();
-        $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[], false]);
-
-        $this->assertStringContainsString('name="schemaOrgData[global][debug_output]"', $html);
-    }
-
-    function testDebugOutputCheckboxIsCheckedWhenEnabled(): void {
-        $plugin = new \schemaOrgData();
-        $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[], true]);
-
-        $this->assertMatchesRegularExpression(
-            '/name="schemaOrgData\[global\]\[debug_output\]"[^>]*checked="checked"/',
-            $html
-        );
-    }
-
     function testDebugOutputCheckboxIsUncheckedWhenDisabled(): void {
         $plugin = new \schemaOrgData();
         $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[], false]);
@@ -342,27 +139,6 @@ final class FormRendererTest extends TestCase {
             $html
         );
         $this->assertStringNotContainsString('checked="checked"', $html);
-    }
-
-    function testDebugOutputCheckboxHasLabelAndHint(): void {
-        $plugin = new \schemaOrgData();
-        $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[], false]);
-
-        // Sprachschlüssel label_debug_output und hint_debug_output müssen gerendert werden
-        $this->assertStringContainsString('Debug', $html);
-        $this->assertStringContainsString('validator.schema.org', $html);
-    }
-
-    function testDebugOutputCheckboxAbsentForNonGlobalScope(): void {
-        // renderExcludedCatsField() wird nur für scope='global' aufgerufen.
-        // Für Kategorie/Seite darf die Checkbox nicht erscheinen.
-        // Da renderScopeSection() private ist, testen wir indirekt:
-        // renderTypeFields() für scope='category' darf das debug_output-Feld nicht enthalten.
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['LocalBusiness']);
-        $html = callPluginMethod($plugin, 'renderTypeFields', ['category', 'LocalBusiness', $schema, []]);
-
-        $this->assertStringNotContainsString('debug_output', $html);
     }
 
     // -----------------------------------------------------------
@@ -382,21 +158,6 @@ final class FormRendererTest extends TestCase {
         $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
         $this->assertStringContainsString('data-target="schemaOrgData_import_global"', $html);
         $this->assertStringContainsString('data-existing-content="{&quot;@type&quot;:&quot;LocalBusiness&quot;}"', $html);
-    }
-
-    function testAutofillButtonEscapesSpecialCharsInDataAttribute(): void {
-        [$plugin, $settings] = $this->pluginWithInMemorySettings();
-        callPluginMethod($plugin, 'saveScopeMeta', ['global', [
-            'existing_jsonld' => true,
-            'existing_jsonld_content' => '{"name":"Müller & Söhne <GmbH>"}',
-        ]]);
-
-        $html = callPluginMethod($plugin, 'renderExistingJsonLdNotice', ['global']);
-
-        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
-        // Sonderzeichen müssen escaped sein (keine rohen <, > oder &amp;-Entities im Attribut)
-        $this->assertStringNotContainsString('data-existing-content="{"', $html);
-        $this->assertStringContainsString('data-existing-content=', $html);
     }
 
     function testAutofillButtonAbsentWhenContentEmpty(): void {

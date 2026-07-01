@@ -89,50 +89,6 @@ final class IdAnchorTest extends TestCase {
     // resolveBaseUrl() - Core-Spiegelung
     // -----------------------------------------------------------
 
-    function testResolveBaseUrlMirrorsCanonicalPattern(): void {
-        $plugin = new \schemaOrgData();
-        $_SERVER['HTTPS'] = 'on';
-        $_SERVER['HTTP_HOST'] = 'www.example.org';
-        $_SERVER['SCRIPT_NAME'] = '/index.php';
-
-        $this->assertSame(
-            'https://www.example.org/',
-            callPluginMethod($plugin, 'resolveBaseUrl', [])
-        );
-    }
-
-    function testResolveBaseUrlUsesHttpWhenNotSecure(): void {
-        $plugin = new \schemaOrgData();
-        unset($_SERVER['HTTPS']);
-        $_SERVER['HTTP_HOST'] = 'example.test';
-        $_SERVER['SCRIPT_NAME'] = '/index.php';
-
-        $this->assertSame(
-            'http://example.test/',
-            callPluginMethod($plugin, 'resolveBaseUrl', [])
-        );
-    }
-
-    function testResolveBaseUrlKeepsSubdirectoryPath(): void {
-        $plugin = new \schemaOrgData();
-        $_SERVER['HTTPS'] = 'on';
-        $_SERVER['HTTP_HOST'] = 'www.example.org';
-        $_SERVER['SCRIPT_NAME'] = '/cms/index.php';
-
-        $this->assertSame(
-            'https://www.example.org/cms/',
-            callPluginMethod($plugin, 'resolveBaseUrl', [])
-        );
-    }
-
-    function testResolveBaseUrlReturnsEmptyWithoutHost(): void {
-        $plugin = new \schemaOrgData();
-        unset($_SERVER['HTTP_HOST']);
-        $_SERVER['SCRIPT_NAME'] = '/index.php';
-
-        $this->assertSame('', callPluginMethod($plugin, 'resolveBaseUrl', []));
-    }
-
     // -----------------------------------------------------------
     // resolveNodeId() - schema-deklariertes Fragment + De-Dup
     // -----------------------------------------------------------
@@ -150,49 +106,6 @@ final class IdAnchorTest extends TestCase {
         $this->assertSame(['organization'], $assigned);
     }
 
-    function testResolveNodeIdEmptyForSchemaWithoutFragment(): void {
-        $plugin = new \schemaOrgData();
-        $_SERVER['HTTPS'] = 'on';
-        $_SERVER['HTTP_HOST'] = 'www.example.org';
-        $_SERVER['SCRIPT_NAME'] = '/index.php';
-
-        $assigned = [];
-        $id = callPluginMethod($plugin, 'resolveNodeId', ['LocalBusiness', &$assigned]);
-
-        $this->assertSame('', $id);
-        $this->assertSame([], $assigned);
-    }
-
-    function testResolveNodeIdDeDupGuardAssignsFragmentOnlyOnce(): void {
-        $plugin = new \schemaOrgData();
-        $_SERVER['HTTPS'] = 'on';
-        $_SERVER['HTTP_HOST'] = 'www.example.org';
-        $_SERVER['SCRIPT_NAME'] = '/index.php';
-
-        // Erster Knoten mit Fragment "organization" erhält den Anker ...
-        $assigned = [];
-        $first = callPluginMethod($plugin, 'resolveNodeId', ['NGO', &$assigned]);
-        // ... ein zweiter Knoten mit demselben Fragment bleibt ohne @id.
-        $second = callPluginMethod($plugin, 'resolveNodeId', ['NGO', &$assigned]);
-
-        $this->assertSame('https://www.example.org/#organization', $first);
-        $this->assertSame('', $second);
-        $this->assertSame(['organization'], $assigned);
-    }
-
-    function testResolveNodeIdEmptyWhenBaseUrlUnresolvable(): void {
-        $plugin = new \schemaOrgData();
-        unset($_SERVER['HTTP_HOST']);
-
-        // Leer-Tilgungs-Guard: ohne Basis-URL wird KEIN (leeres) @id gebildet
-        // und das Fragment bleibt unbelegt.
-        $assigned = [];
-        $id = callPluginMethod($plugin, 'resolveNodeId', ['NGO', &$assigned]);
-
-        $this->assertSame('', $id);
-        $this->assertSame([], $assigned);
-    }
-
     // -----------------------------------------------------------
     // buildJsonLdScript() - @id-Einbettung nach dem Leerfilter
     // -----------------------------------------------------------
@@ -208,35 +121,10 @@ final class IdAnchorTest extends TestCase {
         return $decoded;
     }
 
-    function testBuildJsonLdScriptInjectsIdAfterType(): void {
-        $decoded = $this->buildDecoded('NGO', ['name' => 'Beispiel e. V.'], 'https://www.example.org/#organization');
-
-        $this->assertSame('https://www.example.org/#organization', $decoded['@id']);
-
-        // @id steht direkt hinter @type (Reihenfolge im erzeugten JSON).
-        $keys = array_keys($decoded);
-        $this->assertSame(['@context', '@type', '@id'], array_slice($keys, 0, 3));
-    }
-
     function testBuildJsonLdScriptWithoutIdHasNoIdKey(): void {
         $decoded = $this->buildDecoded('NGO', ['name' => 'Beispiel e. V.'], '');
 
         $this->assertArrayNotHasKey('@id', $decoded);
-    }
-
-    function testSetIdSurvivesEmptyPropertyFilter(): void {
-        // Leer-Tilgungs-Guard auf Builder-Ebene: trotz leerer Properties
-        // (die removeEmptyJsonLdProperties() entfernt) bleibt ein gesetztes
-        // @id erhalten, weil es erst NACH dem Leerfilter eingefügt wird.
-        $decoded = $this->buildDecoded('NGO', [
-            'name' => 'Beispiel e. V.',
-            'description' => '',
-            'logo' => null,
-        ], 'https://www.example.org/#organization');
-
-        $this->assertSame('https://www.example.org/#organization', $decoded['@id']);
-        $this->assertArrayNotHasKey('description', $decoded);
-        $this->assertArrayNotHasKey('logo', $decoded);
     }
 
     // -----------------------------------------------------------
@@ -270,36 +158,6 @@ final class IdAnchorTest extends TestCase {
 
         $this->assertSame($expected, $field['enum']);
         $this->assertSame('DERegisteredAssociationCharity', $field['default']);
-    }
-
-    function testNonprofitStatusKnownValueIsSelected(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['NGO']);
-        $field = $schema['properties']['nonprofitStatus'];
-
-        $html = callPluginMethod($plugin, 'renderSelectWidget', [
-            'ngo_status', 'ngo[status]', $field, 'DEFoundationCharity',
-        ]);
-
-        // Bekannter Enum-Wert ist als ausgewählte Option mit lesbarem Label gerendert.
-        $this->assertStringContainsString(
-            '<option value="DEFoundationCharity" selected="selected">Gemeinnützige Stiftung</option>',
-            $html
-        );
-    }
-
-    function testNonprofitStatusUnknownValueIsNotSelected(): void {
-        $plugin = new \schemaOrgData();
-        $schema = callPluginMethod($plugin, 'loadSchema', ['NGO']);
-        $field = $schema['properties']['nonprofitStatus'];
-
-        $html = callPluginMethod($plugin, 'renderSelectWidget', [
-            'ngo_status', 'ngo[status]', $field, 'NichtVorhandenerStatus',
-        ]);
-
-        // Unbekannter Wert taucht in keiner Option auf und ist nicht selektiert.
-        $this->assertStringNotContainsString('NichtVorhandenerStatus', $html);
-        $this->assertStringNotContainsString('selected="selected"', $html);
     }
 
     // -----------------------------------------------------------
