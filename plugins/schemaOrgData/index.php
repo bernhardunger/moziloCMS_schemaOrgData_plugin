@@ -9,6 +9,7 @@ require_once __DIR__.'/lib/SchemaOrgData_IdReferenceService.php';
 require_once __DIR__.'/lib/SchemaOrgData_CollisionDetector.php';
 require_once __DIR__.'/lib/SchemaOrgData_OpeningHoursHelper.php';
 require_once __DIR__.'/lib/SchemaOrgData_DataSplitHelper.php';
+require_once __DIR__.'/lib/SchemaOrgData_Validator.php';
 
 /***************************************************************
 *
@@ -39,7 +40,7 @@ require_once __DIR__.'/lib/SchemaOrgData_DataSplitHelper.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.25-beta';
+    private const PLUGIN_VERSION = '0.4.26-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -88,6 +89,9 @@ class schemaOrgData extends Plugin {
 
     /** Lazy-Instanz von SchemaOrgData_DataSplitHelper (siehe dataSplitHelper()) */
     private ?SchemaOrgData_DataSplitHelper $dataSplitHelperInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_Validator (siehe validator()) */
+    private ?SchemaOrgData_Validator $validatorInstance = null;
 
     function __construct() {
         parent::__construct();
@@ -359,6 +363,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_DataSplitHelper. */
     private function dataSplitHelper(): SchemaOrgData_DataSplitHelper {
         return $this->dataSplitHelperInstance ??= new SchemaOrgData_DataSplitHelper();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_Validator. */
+    private function validator(): SchemaOrgData_Validator {
+        return $this->validatorInstance ??= new SchemaOrgData_Validator();
     }
 
     /***************************************************************
@@ -802,36 +811,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validateAgainstSchema(array $data, ?array $schema): array {
-        $errors = [];
-        $warnings = [];
-
-        if($schema === null) {
-            return ['errors' => $errors, 'warnings' => $warnings];
-        }
-
-        foreach($schema['required'] ?? [] as $requiredProperty) {
-            // id_reference wird zur Build-Zeit automatisch emittiert,
-            // id_reference_or_literal verwaltet eigene Pflichtprüfung in validateFormData().
-            $propSchema = $this->resolveSchemaRef($schema['properties'][$requiredProperty] ?? [], $schema);
-            $widget = $propSchema['ui:widget'] ?? '';
-            if($widget === 'id_reference' or $widget === 'id_reference_or_literal') {
-                continue;
-            }
-
-            $value = $data[$requiredProperty] ?? null;
-            if($value === null or $value === '' or $value === []) {
-                $errors[] = $requiredProperty;
-            }
-        }
-
-        $knownProperties = array_keys($schema['properties'] ?? []);
-        foreach(array_keys($data) as $property) {
-            if(!in_array($property, $knownProperties, true)) {
-                $warnings[] = $property;
-            }
-        }
-
-        return ['errors' => $errors, 'warnings' => $warnings];
+        return $this->validator()->validateAgainstSchema($data, $schema, $this->schemaRepository());
     }
 
     /***************************************************************
@@ -1017,15 +997,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validatePostalCode(string $value, string $countryCode): array {
-        if($countryCode !== 'DE' or trim($value) === '') {
-            return ['status' => null, 'message' => null];
-        }
-
-        if(preg_match('/^[0-9]{5}$/', $value)) {
-            return ['status' => 'ok', 'message' => null];
-        }
-
-        return ['status' => 'error', 'message' => $this->loadAdminLanguage()->getLanguageValue('error_postal_code_format')];
+        return $this->validator()->validatePostalCode($value, $countryCode, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1039,17 +1011,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validateTelephone(string $value, string $countryCode): array {
-        if(trim($value) === '') {
-            return ['status' => null, 'message' => null];
-        }
-
-        $normalized = preg_replace('/[^0-9+]/', '', $value);
-
-        if(preg_match('/^(\+|00)[1-9][0-9]{6,14}$/', $normalized)) {
-            return ['status' => 'ok', 'message' => null];
-        }
-
-        return ['status' => 'error', 'message' => $this->loadAdminLanguage()->getLanguageValue('error_telephone_format')];
+        return $this->validator()->validateTelephone($value, $countryCode, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1062,19 +1024,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validateUrl(string $value): array {
-        if(trim($value) === '') {
-            return ['status' => null, 'message' => null];
-        }
-
-        if(filter_var($value, FILTER_VALIDATE_URL) === false) {
-            return ['status' => 'error', 'message' => $this->loadAdminLanguage()->getLanguageValue('error_url_invalid')];
-        }
-
-        if(str_starts_with($value, 'http://')) {
-            return ['status' => 'warning', 'message' => $this->loadAdminLanguage()->getLanguageValue('warning_url_http')];
-        }
-
-        return ['status' => 'ok', 'message' => null];
+        return $this->validator()->validateUrl($value, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1085,15 +1035,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validateEmail(string $value): array {
-        if(trim($value) === '') {
-            return ['status' => null, 'message' => null];
-        }
-
-        if(filter_var($value, FILTER_VALIDATE_EMAIL) !== false) {
-            return ['status' => 'ok', 'message' => null];
-        }
-
-        return ['status' => 'error', 'message' => $this->loadAdminLanguage()->getLanguageValue('error_email_invalid')];
+        return $this->validator()->validateEmail($value, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1107,26 +1049,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validateOpeningHoursTime(string $from, string $to): array {
-        $from = trim($from);
-        $to = trim($to);
-
-        if($from === '' and $to === '') {
-            return ['status' => null, 'message' => null];
-        }
-
-        if(($from === '') !== ($to === '')) {
-            return ['status' => 'error', 'message' => $this->loadAdminLanguage()->getLanguageValue('error_opening_hours_incomplete')];
-        }
-
-        if(!preg_match('/^[0-9]{2}:[0-9]{2}$/', $from) or !preg_match('/^[0-9]{2}:[0-9]{2}$/', $to)) {
-            return ['status' => 'error', 'message' => $this->loadAdminLanguage()->getLanguageValue('error_opening_hours_format')];
-        }
-
-        if($from >= $to) {
-            return ['status' => 'error', 'message' => $this->loadAdminLanguage()->getLanguageValue('error_opening_hours_order')];
-        }
-
-        return ['status' => 'ok', 'message' => null];
+        return $this->validator()->validateOpeningHoursTime($from, $to, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1143,25 +1066,17 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validateGeoCoordinate(string $value, float $min, float $max, string $errorKey): array {
-        if(trim($value) === '') {
-            return ['status' => null, 'message' => null];
-        }
-
-        if(!is_numeric($value) or (float) $value < $min or (float) $value > $max) {
-            return ['status' => 'error', 'message' => $this->loadAdminLanguage()->getLanguageValue($errorKey)];
-        }
-
-        return ['status' => 'ok', 'message' => null];
+        return $this->validator()->validateGeoCoordinate($value, $min, $max, $errorKey, $this->loadAdminLanguage());
     }
 
     /** Validiert geo.latitude (-90 .. 90), siehe validateGeoCoordinate(). */
     private function validateGeoLatitude(string $value): array {
-        return $this->validateGeoCoordinate($value, -90, 90, 'error_geo_latitude');
+        return $this->validator()->validateGeoLatitude($value, $this->loadAdminLanguage());
     }
 
     /** Validiert geo.longitude (-180 .. 180), siehe validateGeoCoordinate(). */
     private function validateGeoLongitude(string $value): array {
-        return $this->validateGeoCoordinate($value, -180, 180, 'error_geo_longitude');
+        return $this->validator()->validateGeoLongitude($value, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -1176,28 +1091,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validateExtensionGeo(array $extensionData): array {
-        $errors = [];
-        $geo = $extensionData['geo'] ?? null;
-
-        if(!is_array($geo)) {
-            return $errors;
-        }
-
-        if(isset($geo['latitude'])) {
-            $result = $this->validateGeoLatitude((string) $geo['latitude']);
-            if($result['status'] === 'error') {
-                $errors[] = $result['message'];
-            }
-        }
-
-        if(isset($geo['longitude'])) {
-            $result = $this->validateGeoLongitude((string) $geo['longitude']);
-            if($result['status'] === 'error') {
-                $errors[] = $result['message'];
-            }
-        }
-
-        return $errors;
+        return $this->validator()->validateExtensionGeo($extensionData, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -2583,117 +2477,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validateFormData(array $formData, array $schema, array $inheritable = []): array {
-        $lang = $this->loadAdminLanguage();
-        $inheritableData = $inheritable['data'] ?? [];
-        $errors = [];
-
-        foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
-            $fieldSchema = $this->resolveSchemaRef($fieldSchema, $schema);
-            $widget = $fieldSchema['ui:widget'] ?? 'text';
-            $required = (bool) ($fieldSchema['ui:required'] ?? false);
-            $label = $lang->getLanguageValue($fieldSchema['ui:label'] ?? $name);
-            $value = $formData[$name] ?? null;
-
-            if($widget === 'postal_address') {
-                $inheritableAddress = is_array($inheritableData[$name] ?? null) ? $inheritableData[$name] : [];
-                $errors = array_merge($errors, $this->validatePostalAddressData(
-                    is_array($value) ? $value : [], $fieldSchema, $inheritableAddress
-                ));
-                continue;
-            }
-
-            if($widget === 'opening_hours') {
-                $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-                $perDay = is_array($value) ? $value : [];
-                foreach($days as $day) {
-                    $from  = (string) ($perDay[$day]['from']  ?? '');
-                    $to    = (string) ($perDay[$day]['to']    ?? '');
-                    $from2 = (string) ($perDay[$day]['from2'] ?? '');
-                    $to2   = (string) ($perDay[$day]['to2']   ?? '');
-
-                    $result = $this->validateOpeningHoursTime($from, $to);
-                    if($result['status'] === 'error') {
-                        $errors[] = $result['message'];
-                    }
-
-                    $result2 = $this->validateOpeningHoursTime($from2, $to2);
-                    if($result2['status'] === 'error') {
-                        $errors[] = $result2['message'];
-                    }
-
-                    // Zweiter Zeitraum darf nicht vor Ende des ersten beginnen
-                    if($from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
-                        $errors[] = $lang->getLanguageValue('error_opening_hours_overlap');
-                    }
-                }
-                continue;
-            }
-
-            if($widget === 'faq_list') {
-                if($required and !$this->hasFaqEntry(is_array($value) ? $value : [])) {
-                    // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
-                    // Ebene ein nicht-leeres FAQ-Array geerbt wird.
-                    $inheritedList = $inheritableData[$name] ?? null;
-                    if(!is_array($inheritedList) or !$this->hasFaqEntry($inheritedList)) {
-                        $errors[] = $lang->getLanguageValue('error_required_field', $label);
-                    }
-                }
-                continue;
-            }
-
-            if($widget === 'id_reference_or_literal') {
-                if($required) {
-                    $stored = is_array($value) ? $value : [];
-                    $mode = (string) ($stored['_mode'] ?? 'reference');
-                    if($mode === 'reference') {
-                        $fragment = trim((string) ($stored['_fragment'] ?? ''));
-                        if($fragment === '') {
-                            $errors[] = $lang->getLanguageValue('error_required_field', $label);
-                        }
-                    } elseif($mode === 'literal') {
-                        $hasValue = false;
-                        foreach($fieldSchema['ui:literalFields'] ?? [] as $lf) {
-                            if(trim((string) ($stored[(string) $lf] ?? '')) !== '') {
-                                $hasValue = true;
-                                break;
-                            }
-                        }
-                        if(!$hasValue) {
-                            $errors[] = $lang->getLanguageValue('error_required_field', $label);
-                        }
-                    }
-                }
-                continue;
-            }
-
-            $stringValue = trim((string) ($value ?? ''));
-
-            if($stringValue === '') {
-                if($required) {
-                    // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
-                    // Ebene ein nicht-leerer Wert geerbt wird.
-                    $inheritedValue = $inheritableData[$name] ?? null;
-                    if(!is_scalar($inheritedValue) or (string) $inheritedValue === '') {
-                        $errors[] = $lang->getLanguageValue('error_required_field', $label);
-                    }
-                }
-                continue;
-            }
-
-            $format = $fieldSchema['format'] ?? null;
-            $result = match(true) {
-                $format === 'uri'     => $this->validateUrl($stringValue),
-                $format === 'email'   => $this->validateEmail($stringValue),
-                $name === 'telephone' => $this->validateTelephone($stringValue, (string) ($formData['address']['addressCountry'] ?? 'DE')),
-                default               => ['status' => null, 'message' => null],
-            };
-
-            if($result['status'] === 'error') {
-                $errors[] = $result['message'];
-            }
-        }
-
-        return $errors;
+        return $this->validator()->validateFormData($formData, $schema, $inheritable, $this->loadAdminLanguage(), $this->schemaRepository());
     }
 
     /***************************************************************
@@ -2706,14 +2490,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function isAddressProvided(array $address, array $subProperties): bool {
-        foreach($subProperties as $subName => $subSchema) {
-            $subValue = trim((string) ($address[$subName] ?? ''));
-            if($subValue !== '' and !array_key_exists('default', $subSchema)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->validator()->isAddressProvided($address, $subProperties);
     }
 
     /***************************************************************
@@ -2740,41 +2517,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function validatePostalAddressData(array $address, array $fieldSchema, array $inheritableAddress = []): array {
-        $lang = $this->loadAdminLanguage();
-        $errors = [];
-        $subProperties = $fieldSchema['properties'] ?? [];
-
-        // Wurde kein Adressfeld ausgefüllt (nur Default-Werte wie addressCountry=DE),
-        // entfallen alle Pflichtfeld-Prüfungen — die Adresse als Ganzes ist nicht required.
-        if(!$this->isAddressProvided($address, $subProperties)) {
-            return [];
-        }
-
-        foreach($subProperties as $subName => $subSchema) {
-            $subRequired = (bool) ($subSchema['ui:required'] ?? false);
-            $subValue = trim((string) ($address[$subName] ?? ''));
-
-            if($subRequired and $subValue === '') {
-                // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
-                // Ebene ein nicht-leerer Wert für dieses Sub-Feld geerbt wird.
-                $inheritedSubValue = trim((string) ($inheritableAddress[$subName] ?? ''));
-                if($inheritedSubValue === '') {
-                    $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
-                    $errors[] = $lang->getLanguageValue('error_required_field', $subLabel);
-                }
-            }
-        }
-
-        $postalCode = trim((string) ($address['postalCode'] ?? ''));
-        if($postalCode !== '') {
-            $countryCode = (string) ($address['addressCountry'] ?? 'DE');
-            $result = $this->validatePostalCode($postalCode, $countryCode);
-            if($result['status'] === 'error') {
-                $errors[] = $result['message'];
-            }
-        }
-
-        return $errors;
+        return $this->validator()->validatePostalAddressData($address, $fieldSchema, $inheritableAddress, $this->loadAdminLanguage());
     }
 
     /***************************************************************
@@ -2786,16 +2529,7 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function hasFaqEntry(array $entries): bool {
-        foreach($entries as $entry) {
-            $question = trim((string) ($entry['name'] ?? ''));
-            $answer = trim((string) ($entry['acceptedAnswer']['text'] ?? ''));
-
-            if($question !== '' and $answer !== '') {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->validator()->hasFaqEntry($entries);
     }
 
     /***************************************************************

@@ -1,0 +1,505 @@
+<?php if(!defined('IS_CMS')) die();
+
+/***************************************************************
+*
+* SchemaOrgData_Validator
+*
+* Serverseitige Feldvalidierung (Ergänzung zur clientseitigen
+* AJV-Validierung) sowie Formular-/Schema-Validierung für das
+* Plugin schemaOrgData (siehe README.md, Abschnitt
+* "Formularvalidierung").
+*
+* Zustandslos: Kollaboratoren (Language, SchemaOrgData_SchemaRepository)
+* werden je Aufruf als Parameter übergeben, nicht im Konstruktor
+* eingefroren.
+*
+***************************************************************/
+class SchemaOrgData_Validator {
+
+    /***************************************************************
+    *
+    * Validiert Formulardaten serverseitig gegen ein JSON-Schema.
+    *
+    * Prüft, ob alle in "required" gelisteten Properties vorhanden
+    * und nicht leer sind, sowie ob alle Properties in "properties"
+    * bekannt sind. Dient als serverseitige Ergänzung zur
+    * clientseitigen AJV-Validierung; unbekannte Properties führen
+    * nur zu einer Warnung, kein Speichern wird dadurch verhindert.
+    *
+    * @param array $data   zu prüfende Properties (Formularfeld-Werte)
+    * @param array|null $schema aktives JSON-Schema (schemas/{Type}.json)
+    * @param SchemaOrgData_SchemaRepository $schemaRepository für resolveSchemaRef()
+    * @return array{errors: string[], warnings: string[]}
+    *
+    ***************************************************************/
+    public function validateAgainstSchema(array $data, ?array $schema, SchemaOrgData_SchemaRepository $schemaRepository): array {
+        $errors = [];
+        $warnings = [];
+
+        if($schema === null) {
+            return ['errors' => $errors, 'warnings' => $warnings];
+        }
+
+        foreach($schema['required'] ?? [] as $requiredProperty) {
+            // id_reference wird zur Build-Zeit automatisch emittiert,
+            // id_reference_or_literal verwaltet eigene Pflichtprüfung in validateFormData().
+            $propSchema = $schemaRepository->resolveSchemaRef($schema['properties'][$requiredProperty] ?? [], $schema);
+            $widget = $propSchema['ui:widget'] ?? '';
+            if($widget === 'id_reference' or $widget === 'id_reference_or_literal') {
+                continue;
+            }
+
+            $value = $data[$requiredProperty] ?? null;
+            if($value === null or $value === '' or $value === []) {
+                $errors[] = $requiredProperty;
+            }
+        }
+
+        $knownProperties = array_keys($schema['properties'] ?? []);
+        foreach(array_keys($data) as $property) {
+            if(!in_array($property, $knownProperties, true)) {
+                $warnings[] = $property;
+            }
+        }
+
+        return ['errors' => $errors, 'warnings' => $warnings];
+    }
+
+    /***************************************************************
+    *
+    * Validiert die Formularfelder eines Schema-Types serverseitig
+    * (Ergänzung zur clientseitigen Live-Validierung): prüft
+    * Pflichtfelder ("ui:required", inkl. PostalAddress und
+    * mainEntity) sowie die Feldvalidatoren validatePostalCode,
+    * validateTelephone, validateUrl, validateEmail und
+    * validateOpeningHoursTime.
+    *
+    * Ist ein Pflichtfeld leer, aber ein geerbter Wert von einer
+    * übergeordneten Ebene vorhanden ($inheritable['data']), wird
+    * kein Pflichtfeld-Fehler erzeugt - der geerbte Wert deckt das
+    * Pflichtfeld ab (analog clientseitigem Placeholder-Check).
+    *
+    * @param array $formData   Formularfeld-Werte (schemaOrgData[scope][data])
+    * @param array $schema     aktives JSON-Schema (schemas/{Type}.json)
+    * @param array $inheritable Rückgabe von resolveInheritableFields():
+    *                           ['data' => [...], 'originLabel' => [...]]
+    * @param Language $lang für Fehlermeldungen und Feld-Labels
+    * @param SchemaOrgData_SchemaRepository $schemaRepository für resolveSchemaRef()
+    * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
+    *
+    ***************************************************************/
+    public function validateFormData(array $formData, array $schema, array $inheritable, Language $lang, SchemaOrgData_SchemaRepository $schemaRepository): array {
+        $inheritableData = $inheritable['data'] ?? [];
+        $errors = [];
+
+        foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
+            $fieldSchema = $schemaRepository->resolveSchemaRef($fieldSchema, $schema);
+            $widget = $fieldSchema['ui:widget'] ?? 'text';
+            $required = (bool) ($fieldSchema['ui:required'] ?? false);
+            $label = $lang->getLanguageValue($fieldSchema['ui:label'] ?? $name);
+            $value = $formData[$name] ?? null;
+
+            if($widget === 'postal_address') {
+                $inheritableAddress = is_array($inheritableData[$name] ?? null) ? $inheritableData[$name] : [];
+                $errors = array_merge($errors, $this->validatePostalAddressData(
+                    is_array($value) ? $value : [], $fieldSchema, $inheritableAddress, $lang
+                ));
+                continue;
+            }
+
+            if($widget === 'opening_hours') {
+                $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+                $perDay = is_array($value) ? $value : [];
+                foreach($days as $day) {
+                    $from  = (string) ($perDay[$day]['from']  ?? '');
+                    $to    = (string) ($perDay[$day]['to']    ?? '');
+                    $from2 = (string) ($perDay[$day]['from2'] ?? '');
+                    $to2   = (string) ($perDay[$day]['to2']   ?? '');
+
+                    $result = $this->validateOpeningHoursTime($from, $to, $lang);
+                    if($result['status'] === 'error') {
+                        $errors[] = $result['message'];
+                    }
+
+                    $result2 = $this->validateOpeningHoursTime($from2, $to2, $lang);
+                    if($result2['status'] === 'error') {
+                        $errors[] = $result2['message'];
+                    }
+
+                    // Zweiter Zeitraum darf nicht vor Ende des ersten beginnen
+                    if($from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
+                        $errors[] = $lang->getLanguageValue('error_opening_hours_overlap');
+                    }
+                }
+                continue;
+            }
+
+            if($widget === 'faq_list') {
+                if($required and !$this->hasFaqEntry(is_array($value) ? $value : [])) {
+                    // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
+                    // Ebene ein nicht-leeres FAQ-Array geerbt wird.
+                    $inheritedList = $inheritableData[$name] ?? null;
+                    if(!is_array($inheritedList) or !$this->hasFaqEntry($inheritedList)) {
+                        $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                    }
+                }
+                continue;
+            }
+
+            if($widget === 'id_reference_or_literal') {
+                if($required) {
+                    $stored = is_array($value) ? $value : [];
+                    $mode = (string) ($stored['_mode'] ?? 'reference');
+                    if($mode === 'reference') {
+                        $fragment = trim((string) ($stored['_fragment'] ?? ''));
+                        if($fragment === '') {
+                            $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                        }
+                    } elseif($mode === 'literal') {
+                        $hasValue = false;
+                        foreach($fieldSchema['ui:literalFields'] ?? [] as $lf) {
+                            if(trim((string) ($stored[(string) $lf] ?? '')) !== '') {
+                                $hasValue = true;
+                                break;
+                            }
+                        }
+                        if(!$hasValue) {
+                            $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                        }
+                    }
+                }
+                continue;
+            }
+
+            $stringValue = trim((string) ($value ?? ''));
+
+            if($stringValue === '') {
+                if($required) {
+                    // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
+                    // Ebene ein nicht-leerer Wert geerbt wird.
+                    $inheritedValue = $inheritableData[$name] ?? null;
+                    if(!is_scalar($inheritedValue) or (string) $inheritedValue === '') {
+                        $errors[] = $lang->getLanguageValue('error_required_field', $label);
+                    }
+                }
+                continue;
+            }
+
+            $format = $fieldSchema['format'] ?? null;
+            $result = match(true) {
+                $format === 'uri'     => $this->validateUrl($stringValue, $lang),
+                $format === 'email'   => $this->validateEmail($stringValue, $lang),
+                $name === 'telephone' => $this->validateTelephone($stringValue, (string) ($formData['address']['addressCountry'] ?? 'DE'), $lang),
+                default               => ['status' => null, 'message' => null],
+            };
+
+            if($result['status'] === 'error') {
+                $errors[] = $result['message'];
+            }
+        }
+
+        return $errors;
+    }
+
+    /***************************************************************
+    *
+    * Validiert eine Postleitzahl. Nur für addressCountry = "DE"
+    * relevant (siehe README.md, Abschnitt "Formularvalidierung").
+    *
+    * @param Language $lang für die Fehlermeldung
+    * @return array{status: string|null, message: string|null}
+    *   status: null (nicht geprüft), 'ok', 'error'
+    *
+    ***************************************************************/
+    public function validatePostalCode(string $value, string $countryCode, Language $lang): array {
+        if($countryCode !== 'DE' or trim($value) === '') {
+            return ['status' => null, 'message' => null];
+        }
+
+        if(preg_match('/^[0-9]{5}$/', $value)) {
+            return ['status' => 'ok', 'message' => null];
+        }
+
+        return ['status' => 'error', 'message' => $lang->getLanguageValue('error_postal_code_format')];
+    }
+
+    /***************************************************************
+    *
+    * Validiert eine Telefonnummer (E.164, alle Länder). Die
+    * Eingabe wird zunächst normalisiert
+    * (preg_replace('/[^0-9+]/', '', $input)) und dann gegen ein
+    * vereinfachtes E.164-Format geprüft.
+    *
+    * @param Language $lang für die Fehlermeldung
+    * @return array{status: string|null, message: string|null}
+    *
+    ***************************************************************/
+    public function validateTelephone(string $value, string $countryCode, Language $lang): array {
+        if(trim($value) === '') {
+            return ['status' => null, 'message' => null];
+        }
+
+        $normalized = preg_replace('/[^0-9+]/', '', $value);
+
+        if(preg_match('/^(\+|00)[1-9][0-9]{6,14}$/', $normalized)) {
+            return ['status' => 'ok', 'message' => null];
+        }
+
+        return ['status' => 'error', 'message' => $lang->getLanguageValue('error_telephone_format')];
+    }
+
+    /***************************************************************
+    *
+    * Validiert eine URL. "http://" ergibt eine Warnung (HTTPS
+    * empfohlen), "https://" ist OK, eine ungültige URL ist ein
+    * Fehler.
+    *
+    * @param Language $lang für Fehler-/Warnmeldung
+    * @return array{status: string|null, message: string|null}
+    *
+    ***************************************************************/
+    public function validateUrl(string $value, Language $lang): array {
+        if(trim($value) === '') {
+            return ['status' => null, 'message' => null];
+        }
+
+        if(filter_var($value, FILTER_VALIDATE_URL) === false) {
+            return ['status' => 'error', 'message' => $lang->getLanguageValue('error_url_invalid')];
+        }
+
+        if(str_starts_with($value, 'http://')) {
+            return ['status' => 'warning', 'message' => $lang->getLanguageValue('warning_url_http')];
+        }
+
+        return ['status' => 'ok', 'message' => null];
+    }
+
+    /***************************************************************
+    *
+    * Validiert eine E-Mail-Adresse via FILTER_VALIDATE_EMAIL.
+    *
+    * @param Language $lang für die Fehlermeldung
+    * @return array{status: string|null, message: string|null}
+    *
+    ***************************************************************/
+    public function validateEmail(string $value, Language $lang): array {
+        if(trim($value) === '') {
+            return ['status' => null, 'message' => null];
+        }
+
+        if(filter_var($value, FILTER_VALIDATE_EMAIL) !== false) {
+            return ['status' => 'ok', 'message' => null];
+        }
+
+        return ['status' => 'error', 'message' => $lang->getLanguageValue('error_email_invalid')];
+    }
+
+    /***************************************************************
+    *
+    * Validiert ein Von/Bis-Zeitpaar des Öffnungszeiten-Widgets.
+    * Ausschließlich 24-Stunden-Format (HH:MM), Von muss vor Bis
+    * liegen. Sind beide Felder leer, gilt der Tag als
+    * "geschlossen" und wird nicht geprüft.
+    *
+    * @param Language $lang für die Fehlermeldung
+    * @return array{status: string|null, message: string|null}
+    *
+    ***************************************************************/
+    public function validateOpeningHoursTime(string $from, string $to, Language $lang): array {
+        $from = trim($from);
+        $to = trim($to);
+
+        if($from === '' and $to === '') {
+            return ['status' => null, 'message' => null];
+        }
+
+        if(($from === '') !== ($to === '')) {
+            return ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_incomplete')];
+        }
+
+        if(!preg_match('/^[0-9]{2}:[0-9]{2}$/', $from) or !preg_match('/^[0-9]{2}:[0-9]{2}$/', $to)) {
+            return ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_format')];
+        }
+
+        if($from >= $to) {
+            return ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_order')];
+        }
+
+        return ['status' => 'ok', 'message' => null];
+    }
+
+    /***************************************************************
+    *
+    * Validiert eine Geo-Koordinate (latitude/longitude) im
+    * Erweiterungsfeld: muss numerisch sein und im gültigen
+    * Wertebereich liegen.
+    *
+    * @param string $value zu prüfender Wert
+    * @param float $min    unterer Grenzwert (inklusive)
+    * @param float $max    oberer Grenzwert (inklusive)
+    * @param string $errorKey Sprachschlüssel für die Fehlermeldung
+    * @param Language $lang für die Fehlermeldung
+    * @return array{status: string|null, message: string|null}
+    *
+    ***************************************************************/
+    public function validateGeoCoordinate(string $value, float $min, float $max, string $errorKey, Language $lang): array {
+        if(trim($value) === '') {
+            return ['status' => null, 'message' => null];
+        }
+
+        if(!is_numeric($value) or (float) $value < $min or (float) $value > $max) {
+            return ['status' => 'error', 'message' => $lang->getLanguageValue($errorKey)];
+        }
+
+        return ['status' => 'ok', 'message' => null];
+    }
+
+    /** Validiert geo.latitude (-90 .. 90), siehe validateGeoCoordinate(). */
+    public function validateGeoLatitude(string $value, Language $lang): array {
+        return $this->validateGeoCoordinate($value, -90, 90, 'error_geo_latitude', $lang);
+    }
+
+    /** Validiert geo.longitude (-180 .. 180), siehe validateGeoCoordinate(). */
+    public function validateGeoLongitude(string $value, Language $lang): array {
+        return $this->validateGeoCoordinate($value, -180, 180, 'error_geo_longitude', $lang);
+    }
+
+    /***************************************************************
+    *
+    * Validiert geo.latitude/geo.longitude im Erweiterungsfeld
+    * (siehe validateGeoLatitude/validateGeoLongitude). Andere
+    * Properties des Erweiterungsfelds werden serverseitig nicht
+    * geprüft (siehe README.md, Abschnitt "Erweiterungsfeld").
+    *
+    * @param array $extensionData dekodierte Erweiterungsfeld-Daten
+    * @param Language $lang für die Fehlermeldungen
+    * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
+    *
+    ***************************************************************/
+    public function validateExtensionGeo(array $extensionData, Language $lang): array {
+        $errors = [];
+        $geo = $extensionData['geo'] ?? null;
+
+        if(!is_array($geo)) {
+            return $errors;
+        }
+
+        if(isset($geo['latitude'])) {
+            $result = $this->validateGeoLatitude((string) $geo['latitude'], $lang);
+            if($result['status'] === 'error') {
+                $errors[] = $result['message'];
+            }
+        }
+
+        if(isset($geo['longitude'])) {
+            $result = $this->validateGeoLongitude((string) $geo['longitude'], $lang);
+            if($result['status'] === 'error') {
+                $errors[] = $result['message'];
+            }
+        }
+
+        return $errors;
+    }
+
+    /***************************************************************
+    *
+    * Prüft, ob für eine PostalAddress Werte übermittelt wurden:
+    * mindestens ein Feld ohne "default" (also nicht addressCountry,
+    * das standardmäßig "DE" enthält) ist nicht leer. Wird beim
+    * Bereinigen (sanitizeAddressData) verwendet, um keine Adresse zu
+    * speichern, die nur den Default-Wert von addressCountry enthält.
+    *
+    ***************************************************************/
+    public function isAddressProvided(array $address, array $subProperties): bool {
+        foreach($subProperties as $subName => $subSchema) {
+            $subValue = trim((string) ($address[$subName] ?? ''));
+            if($subValue !== '' and !array_key_exists('default', $subSchema)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /***************************************************************
+    *
+    * Validiert die Pflichtfelder und das Format einer PostalAddress
+    * (siehe resolveSchemaRef/renderPostalAddressWidget).
+    *
+    * Die als "ui:required" markierten Unter-Properties (z. B.
+    * addressLocality, addressCountry) werden grundsätzlich geprüft -
+    * auch dann, wenn der Nutzer kein einziges Adressfeld ausgefüllt
+    * hat. Andernfalls würde die voreingestellte Länder-Select-Box
+    * (default "DE") eine leere Adresse als "nicht angegeben"
+    * erscheinen lassen und der Pflichtfeld-Check für "Ort" beim
+    * Speichern (z. B. auf Globalebene) nicht greifen.
+    *
+    * Ist ein Pflichtfeld leer, aber ein geerbter Wert aus einer
+    * übergeordneten Ebene vorhanden ($inheritableAddress), entfällt
+    * der Fehler - der geerbte Wert deckt das Pflichtfeld ab.
+    *
+    * @param array $inheritableAddress Adress-Properties, die von einer
+    *        übergeordneten Ebene geerbt würden (Rückgabe von
+    *        resolveInheritableFields()['data']['address'])
+    * @param Language $lang für die Fehlermeldungen
+    * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
+    *
+    ***************************************************************/
+    public function validatePostalAddressData(array $address, array $fieldSchema, array $inheritableAddress, Language $lang): array {
+        $errors = [];
+        $subProperties = $fieldSchema['properties'] ?? [];
+
+        // Wurde kein Adressfeld ausgefüllt (nur Default-Werte wie addressCountry=DE),
+        // entfallen alle Pflichtfeld-Prüfungen — die Adresse als Ganzes ist nicht required.
+        if(!$this->isAddressProvided($address, $subProperties)) {
+            return [];
+        }
+
+        foreach($subProperties as $subName => $subSchema) {
+            $subRequired = (bool) ($subSchema['ui:required'] ?? false);
+            $subValue = trim((string) ($address[$subName] ?? ''));
+
+            if($subRequired and $subValue === '') {
+                // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
+                // Ebene ein nicht-leerer Wert für dieses Sub-Feld geerbt wird.
+                $inheritedSubValue = trim((string) ($inheritableAddress[$subName] ?? ''));
+                if($inheritedSubValue === '') {
+                    $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
+                    $errors[] = $lang->getLanguageValue('error_required_field', $subLabel);
+                }
+            }
+        }
+
+        $postalCode = trim((string) ($address['postalCode'] ?? ''));
+        if($postalCode !== '') {
+            $countryCode = (string) ($address['addressCountry'] ?? 'DE');
+            $result = $this->validatePostalCode($postalCode, $countryCode, $lang);
+            if($result['status'] === 'error') {
+                $errors[] = $result['message'];
+            }
+        }
+
+        return $errors;
+    }
+
+    /***************************************************************
+    *
+    * Prüft, ob mindestens ein FAQ-Eintrag mit Frage UND Antwort
+    * vorhanden ist. Einträge ohne beides werden von
+    * sanitizePostData() verworfen (siehe renderFaqListWidget, das
+    * stets eine zusätzliche leere Zeile zum Anlegen anzeigt).
+    *
+    ***************************************************************/
+    public function hasFaqEntry(array $entries): bool {
+        foreach($entries as $entry) {
+            $question = trim((string) ($entry['name'] ?? ''));
+            $answer = trim((string) ($entry['acceptedAnswer']['text'] ?? ''));
+
+            if($question !== '' and $answer !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
