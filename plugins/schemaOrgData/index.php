@@ -5,6 +5,7 @@ require_once __DIR__.'/lib/SchemaOrgData_LanguageService.php';
 require_once __DIR__.'/lib/SchemaOrgData_SchemaRepository.php';
 require_once __DIR__.'/lib/SchemaOrgData_ScopeResolver.php';
 require_once __DIR__.'/lib/SchemaOrgData_JsonLdBuilder.php';
+require_once __DIR__.'/lib/SchemaOrgData_IdReferenceService.php';
 
 /***************************************************************
 *
@@ -35,7 +36,7 @@ require_once __DIR__.'/lib/SchemaOrgData_JsonLdBuilder.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.22-beta';
+    private const PLUGIN_VERSION = '0.4.23-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -72,6 +73,9 @@ class schemaOrgData extends Plugin {
 
     /** Lazy-Instanz von SchemaOrgData_JsonLdBuilder (siehe jsonLdBuilder()) */
     private ?SchemaOrgData_JsonLdBuilder $jsonLdBuilderInstance = null;
+
+    /** Lazy-Instanz von SchemaOrgData_IdReferenceService (siehe idReferenceService()) */
+    private ?SchemaOrgData_IdReferenceService $idReferenceServiceInstance = null;
 
     function __construct() {
         parent::__construct();
@@ -325,6 +329,11 @@ class schemaOrgData extends Plugin {
         return $this->jsonLdBuilderInstance ??= new SchemaOrgData_JsonLdBuilder();
     }
 
+    /** Lazy-Accessor für SchemaOrgData_IdReferenceService. */
+    private function idReferenceService(): SchemaOrgData_IdReferenceService {
+        return $this->idReferenceServiceInstance ??= new SchemaOrgData_IdReferenceService();
+    }
+
     /***************************************************************
     *
     * Ermittelt die absolute Basis-URL der Installation als Quelle
@@ -384,29 +393,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function resolveAvailableGlobalFragments(): array {
-        $globalConfig = $this->loadScopeConfig('global');
-        $lang = $this->loadAdminLanguage();
-        $result = [];
-
-        foreach($globalConfig as $type => $typeData) {
-            if(!is_array($typeData)) {
-                continue;
-            }
-            $schema = $this->loadSchema($type);
-            if(!is_array($schema)) {
-                continue;
-            }
-            $fragment = trim((string) ($schema['ui:idFragment'] ?? ''));
-            if($fragment === '') {
-                continue;
-            }
-            $typeLabelKey = $schema['ui:typeLabel'] ?? $type;
-            $typeLabel = $lang->getLanguageValue($typeLabelKey);
-            $name = trim((string) ($typeData['name'] ?? ''));
-            $result[$fragment] = $name !== '' ? $typeLabel.' — '.$name : $typeLabel;
-        }
-
-        return $result;
+        return $this->idReferenceService()->resolveAvailableGlobalFragments(
+            $this->scopeResolver(), $this->schemaRepository(), $this->settings,
+            $this->PLUGIN_SELF_DIR, $this->loadAdminLanguage()
+        );
     }
 
     /***************************************************************
@@ -434,103 +424,10 @@ class schemaOrgData extends Plugin {
     *
     ***************************************************************/
     private function applyDanglingReferenceGuard(array $scopeConfigs, bool $globalSuppressedByKeep): array {
-        $suppressedIdTargets = [];
-
-        // Alle id_reference- und id_reference_or_literal-Targets sammeln.
-        $activeTargets = [];
-        foreach($scopeConfigs as $config) {
-            foreach($config as $type => $typeData) {
-                $schema = $this->loadSchema($type);
-                if(!is_array($schema)) {
-                    continue;
-                }
-                foreach($schema['properties'] ?? [] as $propName => $propSchema) {
-                    $propSchema = $this->resolveSchemaRef($propSchema, $schema);
-                    $widget = $propSchema['ui:widget'] ?? '';
-                    if($widget === 'id_reference') {
-                        $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
-                        if($target !== '') {
-                            $activeTargets[] = $target;
-                        }
-                    } elseif($widget === 'id_reference_or_literal') {
-                        // Nur Referenz-Modus erzeugt eine @id-Abhängigkeit.
-                        $stored = is_array($typeData[$propName] ?? null) ? $typeData[$propName] : null;
-                        if($stored !== null and ($stored['_mode'] ?? '') === 'reference') {
-                            $fragment = trim((string) ($stored['_fragment'] ?? ''));
-                            if($fragment !== '') {
-                                $activeTargets[] = $fragment;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if($activeTargets === []) {
-            return [$scopeConfigs, $suppressedIdTargets];
-        }
-
-        // Bereits im Graph vorhandene @id-Fragmente bestimmen.
-        $presentFragments = [];
-        foreach($scopeConfigs as $config) {
-            foreach(array_keys($config) as $type) {
-                $schema = $this->loadSchema($type);
-                if(!is_array($schema)) {
-                    continue;
-                }
-                $fragment = trim((string) ($schema['ui:idFragment'] ?? ''));
-                if($fragment !== '') {
-                    $presentFragments[] = $fragment;
-                }
-            }
-        }
-
-        foreach(array_unique($activeTargets) as $target) {
-            if(in_array($target, $presentFragments, true)) {
-                // Zielknoten vorhanden - kein Eingriff nötig.
-                continue;
-            }
-
-            if($globalSuppressedByKeep) {
-                // keep-Modus hat Vorrang: id_reference nicht emittieren,
-                // damit kein Dangling-@id gegen die Nutzerwahl erzeugt wird.
-                $suppressedIdTargets[] = $target;
-                continue;
-            }
-
-            // Zielknoten fehlt (z. B. excluded_cats): Minimal-Stub erzwingen.
-            // Aus der globalen Konfiguration den Type mit dem passenden
-            // ui:idFragment laden und als Stub mit @type, @id und name einfügen.
-            $globalConfig = $this->loadScopeConfig('global');
-            unset($globalConfig['_meta'], $globalConfig['excluded_cats'], $globalConfig['debug_output']);
-
-            foreach($globalConfig as $globalType => $globalData) {
-                $schema = $this->loadSchema($globalType);
-                if(!is_array($schema)) {
-                    continue;
-                }
-                if(trim((string) ($schema['ui:idFragment'] ?? '')) !== $target) {
-                    continue;
-                }
-
-                // Stub-Inhalt: nur name als Pflicht-Identifikator;
-                // @type und @id werden durch die reguläre Ausgabeschleife
-                // (buildJsonLdScript + resolveNodeId) ergänzt.
-                $stub = [];
-                $nameValue = is_array($globalData) ? ($globalData['name'] ?? '') : '';
-                if(is_string($nameValue) and $nameValue !== '') {
-                    $stub['name'] = $nameValue;
-                }
-
-                if(!isset($scopeConfigs['global'])) {
-                    $scopeConfigs['global'] = [];
-                }
-                $scopeConfigs['global'][$globalType] = $stub;
-                break;
-            }
-        }
-
-        return [$scopeConfigs, $suppressedIdTargets];
+        return $this->idReferenceService()->applyDanglingReferenceGuard(
+            $this->scopeResolver(), $this->schemaRepository(), $this->settings,
+            $this->PLUGIN_SELF_DIR, $scopeConfigs, $globalSuppressedByKeep
+        );
     }
 
     /***************************************************************
