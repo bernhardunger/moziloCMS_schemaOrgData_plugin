@@ -10,3 +10,5 @@ tests/PLAYWRIGHT-VERIFICATION.md
 /doc/
 /.claude/
 .git-doku/
+/scripts/doku-commit.sh
+
