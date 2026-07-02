@@ -87,8 +87,15 @@ final class DonateActionTest extends TestCase {
     * JSON-LD-Inhalt als Array zurück.
     *
     ***************************************************************/
+    private function adminLang(\schemaOrgData $plugin): \Language {
+        return new \Language($plugin->PLUGIN_SELF_DIR.'sprachen/admin_language_deDE.txt');
+    }
+
     private function buildDecoded(\schemaOrgData $plugin, string $type, array $data, string $nodeId = '', array $suppressedIdTargets = []): array {
-        $script = callPluginMethod($plugin, 'buildJsonLdScript', [$type, $data, $nodeId, $suppressedIdTargets]);
+        $script = (new \SchemaOrgData_JsonLdBuilder())->buildJsonLdScript(
+            new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(),
+            $plugin->PLUGIN_SELF_DIR, $type, $data, $nodeId, $suppressedIdTargets
+        );
         preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
         $decoded = json_decode($matches[1], true);
         $this->assertIsArray($decoded, 'buildJsonLdScript muss valides JSON erzeugen');
@@ -147,7 +154,10 @@ final class DonateActionTest extends TestCase {
             ],
         ];
 
-        [$result, $suppressed] = callPluginMethod($plugin, 'applyDanglingReferenceGuard', [$scopeConfigs, false]);
+        [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+        );
 
         $this->assertSame($scopeConfigs, $result);
         $this->assertSame([], $suppressed);
@@ -173,7 +183,7 @@ final class DonateActionTest extends TestCase {
             'required' => ['recipient'],
         ];
 
-        $result = callPluginMethod($plugin, 'validateAgainstSchema', [[], $schema]);
+        $result = (new \SchemaOrgData_Validator())->validateAgainstSchema([], $schema, new \SchemaOrgData_SchemaRepository());
 
         $this->assertNotContains('recipient', $result['errors'],
             'id_reference darf nicht als fehlende Pflichtangabe gemeldet werden');
@@ -184,7 +194,7 @@ final class DonateActionTest extends TestCase {
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'DonateAction');
 
         // description ist optional, kein Fehler erwartet.
-        $result = callPluginMethod($plugin, 'validateAgainstSchema', [[], $schema]);
+        $result = (new \SchemaOrgData_Validator())->validateAgainstSchema([], $schema, new \SchemaOrgData_SchemaRepository());
 
         $this->assertSame([], $result['errors'],
             'DonateAction ohne recipient-Fehler und ohne description-Fehler');

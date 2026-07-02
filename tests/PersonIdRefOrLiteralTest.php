@@ -107,8 +107,15 @@ final class PersonIdRefOrLiteralTest extends TestCase {
         return $plugin;
     }
 
+    private function adminLang(\schemaOrgData $plugin): \Language {
+        return new \Language($plugin->PLUGIN_SELF_DIR.'sprachen/admin_language_deDE.txt');
+    }
+
     private function buildDecoded(\schemaOrgData $plugin, string $type, array $data, string $nodeId = '', array $suppressedIdTargets = []): array {
-        $script = callPluginMethod($plugin, 'buildJsonLdScript', [$type, $data, $nodeId, $suppressedIdTargets]);
+        $script = (new \SchemaOrgData_JsonLdBuilder())->buildJsonLdScript(
+            new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(),
+            $plugin->PLUGIN_SELF_DIR, $type, $data, $nodeId, $suppressedIdTargets
+        );
         preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
         $decoded = json_decode($matches[1], true);
         $this->assertIsArray($decoded, 'buildJsonLdScript muss valides JSON erzeugen');
@@ -160,7 +167,10 @@ final class PersonIdRefOrLiteralTest extends TestCase {
     function testResolveFragmentsEmptyWhenNoGlobalConfig(): void {
         $plugin = $this->createPlugin();
         // Keine globale Konfiguration gesetzt
-        $fragments = callPluginMethod($plugin, 'resolveAvailableGlobalFragments', []);
+        $fragments = (new \SchemaOrgData_IdReferenceService())->resolveAvailableGlobalFragments(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $this->adminLang($plugin)
+        );
 
         $this->assertSame([], $fragments);
     }
@@ -169,7 +179,10 @@ final class PersonIdRefOrLiteralTest extends TestCase {
         $plugin = $this->createPlugin();
         $this->settings->set('config_global', ['Person' => ['name' => 'Max Mustermann']]);
 
-        $fragments = callPluginMethod($plugin, 'resolveAvailableGlobalFragments', []);
+        $fragments = (new \SchemaOrgData_IdReferenceService())->resolveAvailableGlobalFragments(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $this->adminLang($plugin)
+        );
 
         $this->assertArrayHasKey('person', $fragments,
             'Person mit ui:idFragment "person" muss im Fragment-Array erscheinen');
@@ -182,7 +195,10 @@ final class PersonIdRefOrLiteralTest extends TestCase {
             'Person' => ['name' => 'Max Mustermann'],
         ]);
 
-        $fragments = callPluginMethod($plugin, 'resolveAvailableGlobalFragments', []);
+        $fragments = (new \SchemaOrgData_IdReferenceService())->resolveAvailableGlobalFragments(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $this->adminLang($plugin)
+        );
 
         $this->assertArrayHasKey('organization', $fragments);
         $this->assertArrayHasKey('person', $fragments);
@@ -207,7 +223,10 @@ final class PersonIdRefOrLiteralTest extends TestCase {
             'page'   => ['TestIdRefType' => ['organizer' => ['_mode' => 'reference', '_fragment' => 'organization']]],
         ];
 
-        [$result, $suppressed] = callPluginMethod($plugin, 'applyDanglingReferenceGuard', [$scopeConfigs, false]);
+        [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+        );
 
         $this->assertSame([], $suppressed,
             'Kein suppressed Target wenn Zielknoten vorhanden');
@@ -228,7 +247,10 @@ final class PersonIdRefOrLiteralTest extends TestCase {
             'page' => ['TestIdRefType' => ['organizer' => ['_mode' => 'reference', '_fragment' => 'organization']]],
         ];
 
-        [$result, $suppressed] = callPluginMethod($plugin, 'applyDanglingReferenceGuard', [$scopeConfigs, false]);
+        [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+        );
 
         $this->assertSame([], $suppressed);
         $this->assertArrayHasKey('global', $result,
@@ -245,7 +267,10 @@ final class PersonIdRefOrLiteralTest extends TestCase {
             'page' => ['TestIdRefType' => ['organizer' => ['_mode' => 'reference', '_fragment' => 'organization']]],
         ];
 
-        [$result, $suppressed] = callPluginMethod($plugin, 'applyDanglingReferenceGuard', [$scopeConfigs, true]);
+        [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, true
+        );
 
         $this->assertContains('organization', $suppressed,
             'Keep-Modus muss Target in suppressedIdTargets aufnehmen');
@@ -260,7 +285,7 @@ final class PersonIdRefOrLiteralTest extends TestCase {
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'TestIdRefType');
 
         // Leere Daten — würde ohne Skip einen required-Fehler für "organizer" erzeugen
-        $result = callPluginMethod($plugin, 'validateAgainstSchema', [[], $schema]);
+        $result = (new \SchemaOrgData_Validator())->validateAgainstSchema([], $schema, new \SchemaOrgData_SchemaRepository());
 
         $this->assertSame([], $result['errors'],
             'id_reference_or_literal muss in der required-Prüfung übersprungen werden');

@@ -759,9 +759,12 @@ final class JsonLdOutputTest extends TestCase {
         $plugin = $this->createPlugin();
 
         // Ungültige UTF-8-Bytefolge lässt json_encode() fehlschlagen
-        $script = callPluginMethod($plugin, 'buildJsonLdScript', ['LocalBusiness', [
-            'name' => "Ungültig \xB1\x31",
-        ]]);
+        $script = (new \SchemaOrgData_JsonLdBuilder())->buildJsonLdScript(
+            new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(),
+            $plugin->PLUGIN_SELF_DIR, 'LocalBusiness', [
+                'name' => "Ungültig \xB1\x31",
+            ]
+        );
 
         $this->assertSame('', $script);
     }
