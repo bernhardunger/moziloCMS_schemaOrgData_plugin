@@ -13,8 +13,8 @@ use PHPUnit\Framework\TestCase;
 final class ScopeConfigTest extends TestCase {
 
     private function merge(array ...$configs): array {
-        $plugin = new \schemaOrgData();
-        return callPluginMethod($plugin, 'mergeConfigs', $configs);
+        $scopeResolver = new \SchemaOrgData_ScopeResolver();
+        return $scopeResolver->mergeConfigs(...$configs);
     }
 
     function testGlobalConfigAlone(): void {

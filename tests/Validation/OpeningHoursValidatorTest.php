@@ -31,22 +31,26 @@ final class OpeningHoursValidatorTest extends TestCase {
 
     private const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
-    private function validateTime(string $from, string $to): array {
-        $plugin = new \schemaOrgData();
+    private function adminLang(): \Language {
+        return new \Language(\BASE_DIR.'plugins/schemaOrgData/sprachen/admin_language_deDE.txt');
+    }
 
-        return callPluginMethod($plugin, 'validateOpeningHoursTime', [$from, $to]);
+    private function validateTime(string $from, string $to): array {
+        $validator = new \SchemaOrgData_Validator();
+
+        return $validator->validateOpeningHoursTime($from, $to, $this->adminLang());
     }
 
     private function parse(array $openingHours): array {
-        $plugin = new \schemaOrgData();
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
 
-        return callPluginMethod($plugin, 'parseOpeningHours', [$openingHours, self::DAYS]);
+        return $helper->parseOpeningHours($openingHours, self::DAYS);
     }
 
     private function build(array $perDay, string $fromKey = 'from', string $toKey = 'to'): array {
-        $plugin = new \schemaOrgData();
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
 
-        return callPluginMethod($plugin, 'buildOpeningHoursArray', [$perDay, self::DAYS, $fromKey, $toKey]);
+        return $helper->buildOpeningHoursArray($perDay, self::DAYS, $fromKey, $toKey);
     }
 
     // ── parseOpeningHours: Bestandsfälle (Ein-Zeitraum) ─────────────────────

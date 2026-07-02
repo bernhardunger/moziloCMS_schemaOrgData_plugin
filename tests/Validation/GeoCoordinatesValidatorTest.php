@@ -14,16 +14,20 @@ use PHPUnit\Framework\TestCase;
 ***************************************************************/
 final class GeoCoordinatesValidatorTest extends TestCase {
 
-    private function latitude(string $value): array {
-        $plugin = new \schemaOrgData();
+    private function adminLang(): \Language {
+        return new \Language(\BASE_DIR.'plugins/schemaOrgData/sprachen/admin_language_deDE.txt');
+    }
 
-        return callPluginMethod($plugin, 'validateGeoLatitude', [$value]);
+    private function latitude(string $value): array {
+        $validator = new \SchemaOrgData_Validator();
+
+        return $validator->validateGeoLatitude($value, $this->adminLang());
     }
 
     private function longitude(string $value): array {
-        $plugin = new \schemaOrgData();
+        $validator = new \SchemaOrgData_Validator();
 
-        return callPluginMethod($plugin, 'validateGeoLongitude', [$value]);
+        return $validator->validateGeoLongitude($value, $this->adminLang());
     }
 
     function testValidCoordinatesAreOk(): void {

@@ -100,7 +100,10 @@ final class IdAnchorTest extends TestCase {
         $_SERVER['SCRIPT_NAME'] = '/index.php';
 
         $assigned = [];
-        $id = callPluginMethod($plugin, 'resolveNodeId', ['NGO', &$assigned]);
+        $id = (new \SchemaOrgData_JsonLdBuilder())->resolveNodeId(
+            new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(),
+            $plugin->PLUGIN_SELF_DIR, 'NGO', $assigned
+        );
 
         $this->assertSame('https://www.example.org/#organization', $id);
         $this->assertSame(['organization'], $assigned);
@@ -111,8 +114,10 @@ final class IdAnchorTest extends TestCase {
     // -----------------------------------------------------------
 
     private function buildDecoded(string $type, array $data, string $nodeId): array {
-        $plugin = new \schemaOrgData();
-        $script = callPluginMethod($plugin, 'buildJsonLdScript', [$type, $data, $nodeId]);
+        $script = (new \SchemaOrgData_JsonLdBuilder())->buildJsonLdScript(
+            new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(),
+            \BASE_DIR.'plugins/schemaOrgData/', $type, $data, $nodeId
+        );
 
         preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
         $decoded = json_decode($matches[1], true);

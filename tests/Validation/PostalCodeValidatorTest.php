@@ -16,10 +16,14 @@ use PHPUnit\Framework\TestCase;
 ***************************************************************/
 final class PostalCodeValidatorTest extends TestCase {
 
-    private function validate(string $value, string $countryCode): array {
-        $plugin = new \schemaOrgData();
+    private function adminLang(): \Language {
+        return new \Language(\BASE_DIR.'plugins/schemaOrgData/sprachen/admin_language_deDE.txt');
+    }
 
-        return callPluginMethod($plugin, 'validatePostalCode', [$value, $countryCode]);
+    private function validate(string $value, string $countryCode): array {
+        $validator = new \SchemaOrgData_Validator();
+
+        return $validator->validatePostalCode($value, $countryCode, $this->adminLang());
     }
 
     function testValidGermanPostalCodeIsOk(): void {

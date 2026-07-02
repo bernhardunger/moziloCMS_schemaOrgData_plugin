@@ -19,10 +19,14 @@ use PHPUnit\Framework\TestCase;
 ***************************************************************/
 final class TelephoneValidatorTest extends TestCase {
 
-    private function validate(string $value, string $countryCode = 'DE'): array {
-        $plugin = new \schemaOrgData();
+    private function adminLang(): \Language {
+        return new \Language(\BASE_DIR.'plugins/schemaOrgData/sprachen/admin_language_deDE.txt');
+    }
 
-        return callPluginMethod($plugin, 'validateTelephone', [$value, $countryCode]);
+    private function validate(string $value, string $countryCode = 'DE'): array {
+        $validator = new \SchemaOrgData_Validator();
+
+        return $validator->validateTelephone($value, $countryCode, $this->adminLang());
     }
 
     function testNumberWithPlusPrefixIsOk(): void {

@@ -13,10 +13,14 @@ use PHPUnit\Framework\TestCase;
 ***************************************************************/
 final class EmailValidatorTest extends TestCase {
 
-    private function validate(string $value): array {
-        $plugin = new \schemaOrgData();
+    private function adminLang(): \Language {
+        return new \Language(\BASE_DIR.'plugins/schemaOrgData/sprachen/admin_language_deDE.txt');
+    }
 
-        return callPluginMethod($plugin, 'validateEmail', [$value]);
+    private function validate(string $value): array {
+        $validator = new \SchemaOrgData_Validator();
+
+        return $validator->validateEmail($value, $this->adminLang());
     }
 
     function testValidEmailIsOk(): void {
