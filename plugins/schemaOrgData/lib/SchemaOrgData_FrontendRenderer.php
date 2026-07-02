@@ -26,34 +26,24 @@ class SchemaOrgData_FrontendRenderer {
     *
     * @param mixed $value Seiteninhalt (Platzhalterinhalt), für die
     *              Kollisionserkennung im Seiten-Scope
-    * @param mixed $settings moziloCMS-Settings-API-Instanz
-    * @param string $pluginSelfDir Plugin-Verzeichnis (PLUGIN_SELF_DIR)
+    * @param SchemaOrgData_FrontendRequestContext $context bündelt Settings
+    *              und Kollaboratoren (siehe SchemaOrgData_FrontendRequestContext)
     * @return string fertige <script>-Blöcke (ggf. inkl. Debug-Widget)
     *
     ***************************************************************/
-    public function renderFrontend(
-        $value,
-        $settings,
-        string $pluginSelfDir,
-        SchemaOrgData_ScopeResolver $scopeResolver,
-        SchemaOrgData_SchemaRepository $schemaRepository,
-        SchemaOrgData_JsonLdBuilder $jsonLdBuilder,
-        SchemaOrgData_IdReferenceService $idReferenceService,
-        SchemaOrgData_CollisionDetector $collisionDetector,
-        SchemaOrgData_UrlHelper $urlHelper
-    ): string {
+    public function renderFrontend(mixed $value, SchemaOrgData_FrontendRequestContext $context): string {
         global $TEMPLATE_FILE;
 
         $output = '';
 
         // Konfiguration je Geltungsebene laden (sofern vorhanden)
-        $scopeConfigs = ['global' => $scopeResolver->loadScopeConfig($settings, 'global')];
+        $scopeConfigs = ['global' => $context->scopeResolver->loadScopeConfig($context->settings, 'global')];
 
         if(defined('CAT_REQUEST') and CAT_REQUEST) {
-            $scopeConfigs['category'] = $scopeResolver->loadScopeConfig($settings, 'category', CAT_REQUEST);
+            $scopeConfigs['category'] = $context->scopeResolver->loadScopeConfig($context->settings, 'category', CAT_REQUEST);
         }
         if(defined('CAT_REQUEST') and defined('PAGE_REQUEST') and CAT_REQUEST and PAGE_REQUEST) {
-            $scopeConfigs['page'] = $scopeResolver->loadScopeConfig($settings, 'page', CAT_REQUEST, PAGE_REQUEST);
+            $scopeConfigs['page'] = $context->scopeResolver->loadScopeConfig($context->settings, 'page', CAT_REQUEST, PAGE_REQUEST);
         }
 
         // Ausschlussliste prüfen (nur global): die globale Ausgabe wird
@@ -94,7 +84,7 @@ class SchemaOrgData_FrontendRenderer {
                 default    => [],
             };
 
-            $meta = $scopeResolver->loadScopeMeta($settings, $scope, ...$scopeArgs);
+            $meta = $context->scopeResolver->loadScopeMeta($context->settings, $scope, ...$scopeArgs);
             if($meta['existing_jsonld'] and ($meta['jsonld_mode'] ?? 'override') === 'keep') {
                 if($scope === 'global') {
                     $globalSuppressedByKeep = true;
@@ -106,7 +96,7 @@ class SchemaOrgData_FrontendRenderer {
         // Feldweise Vererbung: ist derselbe Schema-Type auf mehreren
         // Ebenen konfiguriert, werden die Felder zusammengeführt
         // (Global -> Kategorie -> Seite, siehe resolveTypeInheritance()).
-        $scopeConfigs = $scopeResolver->resolveTypeInheritance($scopeConfigs);
+        $scopeConfigs = $context->scopeResolver->resolveTypeInheritance($scopeConfigs);
 
         // Dangling-Reference-Guard: prüft, ob eine id_reference auf einen
         // @id-Knoten verweist, der auf dieser Seite nicht ausgegeben wird,
@@ -114,8 +104,8 @@ class SchemaOrgData_FrontendRenderer {
         // Unterdrückung). Bei keep-Modus wird die id_reference stattdessen
         // unterdrückt (siehe applyDanglingReferenceGuard(), README.md,
         // "@id-Anker").
-        [$scopeConfigs, $suppressedIdTargets] = $idReferenceService->applyDanglingReferenceGuard(
-            $scopeResolver, $schemaRepository, $settings, $pluginSelfDir, $scopeConfigs, $globalSuppressedByKeep
+        [$scopeConfigs, $suppressedIdTargets] = $context->idReferenceService->applyDanglingReferenceGuard(
+            $context->scopeResolver, $context->schemaRepository, $context->settings, $context->pluginSelfDir, $scopeConfigs, $globalSuppressedByKeep
         );
 
         // JSON-LD-Blöcke der verbleibenden Types ausgeben; bei aktivem
@@ -127,8 +117,8 @@ class SchemaOrgData_FrontendRenderer {
         $debugBlocks = [];
         foreach($scopeConfigs as $scope => $config) {
             foreach($config as $type => $data) {
-                $nodeId = $jsonLdBuilder->resolveNodeId($schemaRepository, $urlHelper, $pluginSelfDir, $type, $assignedFragments);
-                $output .= $jsonLdBuilder->buildJsonLdScript($schemaRepository, $urlHelper, $pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets);
+                $nodeId = $context->jsonLdBuilder->resolveNodeId($context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, $type, $assignedFragments);
+                $output .= $context->jsonLdBuilder->buildJsonLdScript($context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets);
                 if($debugOutput) {
                     $scopeKey = match($scope) {
                         'category' => 'cat_'.(CAT_REQUEST ? (string) CAT_REQUEST : ''),
@@ -141,7 +131,7 @@ class SchemaOrgData_FrontendRenderer {
         }
 
         if($debugOutput and $debugBlocks !== []) {
-            $output .= $this->buildDebugWidget($debugBlocks, $jsonLdBuilder);
+            $output .= $this->buildDebugWidget($debugBlocks, $context->jsonLdBuilder);
         }
 
         // Kollisionserkennung: vorhandenes JSON-LD scope-genau persistieren
@@ -153,26 +143,26 @@ class SchemaOrgData_FrontendRenderer {
         // er wird ausschließlich dem Seiten-Scope der aktuell gerenderten
         // Seite zugeordnet, sofern CAT_REQUEST und PAGE_REQUEST gesetzt sind.
         // Kategorie-Scope erhält über diesen Mechanismus keinen Eintrag.
-        $templateBlocks = $collisionDetector->extractExistingJsonLdBlocksFromTemplate((string) ($TEMPLATE_FILE ?? ''));
+        $templateBlocks = $context->collisionDetector->extractExistingJsonLdBlocksFromTemplate((string) ($TEMPLATE_FILE ?? ''));
         $hasJsonLdInTemplate = !empty($templateBlocks);
         $templateContent = implode("\n\n", array_map('trim', $templateBlocks));
-        $metaGlobal = $scopeResolver->loadScopeMeta($settings, 'global');
+        $metaGlobal = $context->scopeResolver->loadScopeMeta($context->settings, 'global');
         if($metaGlobal['existing_jsonld'] !== $hasJsonLdInTemplate
             || $metaGlobal['existing_jsonld_content'] !== $templateContent) {
-            $scopeResolver->saveScopeMeta($settings, 'global', [
+            $context->scopeResolver->saveScopeMeta($context->settings, 'global', [
                 'existing_jsonld' => $hasJsonLdInTemplate,
                 'existing_jsonld_content' => $templateContent,
             ]);
         }
 
-        $contentBlocks = $collisionDetector->extractExistingJsonLdBlocks((string) $value);
+        $contentBlocks = $context->collisionDetector->extractExistingJsonLdBlocks((string) $value);
         $hasJsonLdInContent = !empty($contentBlocks);
         $pageContent = implode("\n\n", array_map('trim', $contentBlocks));
         if(defined('CAT_REQUEST') and defined('PAGE_REQUEST') and CAT_REQUEST and PAGE_REQUEST) {
-            $metaPage = $scopeResolver->loadScopeMeta($settings, 'page', CAT_REQUEST, PAGE_REQUEST);
+            $metaPage = $context->scopeResolver->loadScopeMeta($context->settings, 'page', CAT_REQUEST, PAGE_REQUEST);
             if($metaPage['existing_jsonld'] !== $hasJsonLdInContent
                 || $metaPage['existing_jsonld_content'] !== $pageContent) {
-                $scopeResolver->saveScopeMeta($settings, 'page', [
+                $context->scopeResolver->saveScopeMeta($context->settings, 'page', [
                     'existing_jsonld' => $hasJsonLdInContent,
                     'existing_jsonld_content' => $pageContent,
                 ], CAT_REQUEST, PAGE_REQUEST);

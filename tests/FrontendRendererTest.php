@@ -83,9 +83,12 @@ final class FrontendRendererTest extends TestCase {
 
     private function callRenderFrontend($value, \InMemorySettings $settings): string {
         return $this->renderer()->renderFrontend(
-            $value, $settings, $this->pluginDir,
-            $this->scopeResolver(), $this->schemaRepository(), $this->jsonLdBuilder(),
-            $this->idReferenceService(), $this->collisionDetector(), $this->urlHelper()
+            $value,
+            new \SchemaOrgData_FrontendRequestContext(
+                $settings, $this->pluginDir, $this->scopeResolver(),
+                $this->schemaRepository(), $this->jsonLdBuilder(), $this->idReferenceService(),
+                $this->collisionDetector(), $this->urlHelper()
+            )
         );
     }
 

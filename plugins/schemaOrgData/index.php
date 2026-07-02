@@ -45,7 +45,7 @@ require_once __DIR__.'/lib/SchemaOrgData_FrontendRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.37-beta';
+    private const PLUGIN_VERSION = '0.4.38-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -133,9 +133,12 @@ class schemaOrgData extends Plugin {
         }
 
         return $this->frontendRenderer()->renderFrontend(
-            $value, $this->settings, $this->PLUGIN_SELF_DIR,
-            $this->scopeResolver(), $this->schemaRepository(), $this->jsonLdBuilder(),
-            $this->idReferenceService(), $this->collisionDetector(), $this->urlHelper()
+            $value,
+            new SchemaOrgData_FrontendRequestContext(
+                $this->settings, $this->PLUGIN_SELF_DIR, $this->scopeResolver(),
+                $this->schemaRepository(), $this->jsonLdBuilder(), $this->idReferenceService(),
+                $this->collisionDetector(), $this->urlHelper()
+            )
         );
     }
 
