@@ -223,14 +223,18 @@ final class CollisionDetectorTest extends TestCase {
         $refObj = new \ReflectionObject($plugin);
         $settingsProp = $refObj->getProperty('settings');
         $settingsProp->setAccessible(true);
-        $settingsProp->setValue($plugin, new \InMemorySettings());
+        $settings = new \InMemorySettings();
+        $settingsProp->setValue($plugin, $settings);
 
         $detected = (new \SchemaOrgData_CollisionDetector())->detectExistingJsonLdInTemplateAdmin($GLOBALS['CMS_CONF'] ?? null);
         $this->assertTrue($detected);
 
         // Persistenz prüfen: saveScopeMeta() speichert, loadScopeMeta() liest korrekt
-        callPluginMethod($plugin, 'saveScopeMeta', ['global', ['existing_jsonld' => $detected]]);
-        $meta = callPluginMethod($plugin, 'loadScopeMeta', ['global']);
+        // (direkter Komponenten-Aufruf statt callPluginMethod()-Reflection,
+        // analog zu JsonLdOutputTest.php, Schritt D2b(i), Commit b91146b)
+        $scopeResolver = new \SchemaOrgData_ScopeResolver();
+        $scopeResolver->saveScopeMeta($settings, 'global', ['existing_jsonld' => $detected]);
+        $meta = $scopeResolver->loadScopeMeta($settings, 'global');
         $this->assertTrue($meta['existing_jsonld']);
     }
 
