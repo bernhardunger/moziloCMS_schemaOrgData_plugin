@@ -168,8 +168,7 @@ final class FormRendererTest extends TestCase {
     }
 
     function testDebugOutputCheckboxIsUncheckedWhenDisabled(): void {
-        $plugin = new \schemaOrgData();
-        $html = callPluginMethod($plugin, 'renderExcludedCatsField', [[], false]);
+        $html = (new \SchemaOrgData_AdminController())->renderExcludedCatsField([], false, $this->adminLang());
 
         // Das Eingabefeld darf kein checked-Attribut tragen
         $this->assertMatchesRegularExpression(
@@ -186,12 +185,14 @@ final class FormRendererTest extends TestCase {
     function testAutofillButtonRenderedWhenContentPresent(): void {
         [$plugin, $settings] = $this->pluginWithInMemorySettings();
         // existing_jsonld=true + Inhalt gesetzt → Button soll erscheinen
-        callPluginMethod($plugin, 'saveScopeMeta', ['global', [
+        (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($settings, 'global', [
             'existing_jsonld' => true,
             'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
-        ]]);
+        ]);
 
-        $html = callPluginMethod($plugin, 'renderExistingJsonLdNotice', ['global']);
+        $html = (new \SchemaOrgData_AdminController())->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), new \SchemaOrgData_ScopeResolver(), $settings
+        );
 
         $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
         $this->assertStringContainsString('data-target="schemaOrgData_import_global"', $html);
@@ -201,12 +202,14 @@ final class FormRendererTest extends TestCase {
     function testAutofillButtonAbsentWhenContentEmpty(): void {
         [$plugin, $settings] = $this->pluginWithInMemorySettings();
         // existing_jsonld=true, aber kein Inhalt gespeichert → kein Button
-        callPluginMethod($plugin, 'saveScopeMeta', ['global', [
+        (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($settings, 'global', [
             'existing_jsonld' => true,
             'existing_jsonld_content' => '',
-        ]]);
+        ]);
 
-        $html = callPluginMethod($plugin, 'renderExistingJsonLdNotice', ['global']);
+        $html = (new \SchemaOrgData_AdminController())->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), new \SchemaOrgData_ScopeResolver(), $settings
+        );
 
         $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
     }
@@ -215,7 +218,9 @@ final class FormRendererTest extends TestCase {
         [$plugin, $settings] = $this->pluginWithInMemorySettings();
         // existing_jsonld=false → gesamter Notice-Block fehlt → kein Button
 
-        $html = callPluginMethod($plugin, 'renderExistingJsonLdNotice', ['global']);
+        $html = (new \SchemaOrgData_AdminController())->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), new \SchemaOrgData_ScopeResolver(), $settings
+        );
 
         $this->assertSame('', $html);
         $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
