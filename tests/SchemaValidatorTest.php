@@ -19,11 +19,15 @@ use PHPUnit\Framework\TestCase;
 ***************************************************************/
 final class SchemaValidatorTest extends TestCase {
 
+    private function adminLang(): \Language {
+        return new \Language(\BASE_DIR.'plugins/schemaOrgData/sprachen/admin_language_deDE.txt');
+    }
+
     private function validate(array $data): array {
         $plugin = new \schemaOrgData();
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
 
-        return callPluginMethod($plugin, 'validateAgainstSchema', [$data, $schema]);
+        return (new \SchemaOrgData_Validator())->validateAgainstSchema($data, $schema, new \SchemaOrgData_SchemaRepository());
     }
 
     function testMissingRequiredFieldIsReported(): void {
@@ -88,7 +92,9 @@ final class SchemaValidatorTest extends TestCase {
             ],
         ];
 
-        $errors = callPluginMethod($plugin, 'validateFormData', [[], $schema, $inheritable]);
+        $errors = (new \SchemaOrgData_Validator())->validateFormData(
+            [], $schema, $inheritable, $this->adminLang(), new \SchemaOrgData_SchemaRepository()
+        );
 
         $this->assertSame([], $errors,
             'Leeres Pflichtfeld mit geerbtem Wert darf keinen Fehler erzeugen.');
@@ -99,11 +105,9 @@ final class SchemaValidatorTest extends TestCase {
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
 
         // name leer, kein geerbter Wert → Fehler erwartet
-        $errors = callPluginMethod($plugin, 'validateFormData', [
-            ['url' => 'https://example.com'],
-            $schema,
-            [],
-        ]);
+        $errors = (new \SchemaOrgData_Validator())->validateFormData(
+            ['url' => 'https://example.com'], $schema, [], $this->adminLang(), new \SchemaOrgData_SchemaRepository()
+        );
 
         $this->assertNotEmpty($errors,
             'Leeres Pflichtfeld ohne geerbten Wert muss einen Fehler erzeugen.');
@@ -120,11 +124,9 @@ final class SchemaValidatorTest extends TestCase {
         // addressLocality ist als ui:required markiert; leer, aber geerbt → kein Fehler
         $inheritableAddress = ['addressLocality' => 'Musterstadt', 'addressCountry' => 'DE'];
 
-        $errors = callPluginMethod($plugin, 'validatePostalAddressData', [
-            ['addressCountry' => 'DE'],
-            $addressSchema,
-            $inheritableAddress,
-        ]);
+        $errors = (new \SchemaOrgData_Validator())->validatePostalAddressData(
+            ['addressCountry' => 'DE'], $addressSchema, $inheritableAddress, $this->adminLang()
+        );
 
         $this->assertSame([], $errors,
             'Leeres Adress-Pflichtfeld mit geerbtem Wert darf keinen Fehler erzeugen.');
@@ -140,11 +142,9 @@ final class SchemaValidatorTest extends TestCase {
 
         // streetAddress ausgefüllt (Adresse gilt als "provided"), addressLocality
         // leer, kein geerbter Wert → Fehler für das required Ort-Feld erwartet.
-        $errors = callPluginMethod($plugin, 'validatePostalAddressData', [
-            ['streetAddress' => 'Musterstraße 1', 'addressCountry' => 'DE'],
-            $addressSchema,
-            [],
-        ]);
+        $errors = (new \SchemaOrgData_Validator())->validatePostalAddressData(
+            ['streetAddress' => 'Musterstraße 1', 'addressCountry' => 'DE'], $addressSchema, [], $this->adminLang()
+        );
 
         $this->assertNotEmpty($errors,
             'Teilausgefüllte Adresse ohne addressLocality und ohne geerbten Wert muss einen Fehler erzeugen.');
@@ -156,15 +156,14 @@ final class SchemaValidatorTest extends TestCase {
 
         // name + url gefüllt, address nur mit Default addressCountry=DE (kein
         // Adressfeld manuell ausgefüllt) → validateFormData() darf keinen Fehler liefern.
-        $errors = callPluginMethod($plugin, 'validateFormData', [
+        $errors = (new \SchemaOrgData_Validator())->validateFormData(
             [
                 'name' => 'Muster GmbH',
                 'url'  => 'https://example.com',
                 'address' => ['addressCountry' => 'DE'],
             ],
-            $schema,
-            [],
-        ]);
+            $schema, [], $this->adminLang(), new \SchemaOrgData_SchemaRepository()
+        );
 
         $this->assertSame([], $errors,
             'Komplett leere Adresse (nur Default addressCountry=DE) darf keinen Fehler erzeugen.');
@@ -180,11 +179,9 @@ final class SchemaValidatorTest extends TestCase {
 
         // streetAddress gesetzt → Adresse gilt als "provided";
         // addressLocality fehlt, kein geerbter Wert → Fehler erwartet (Regressionsschutz).
-        $errors = callPluginMethod($plugin, 'validatePostalAddressData', [
-            ['streetAddress' => 'Musterstraße 1', 'addressCountry' => 'DE'],
-            $addressSchema,
-            [],
-        ]);
+        $errors = (new \SchemaOrgData_Validator())->validatePostalAddressData(
+            ['streetAddress' => 'Musterstraße 1', 'addressCountry' => 'DE'], $addressSchema, [], $this->adminLang()
+        );
 
         $this->assertNotEmpty($errors,
             'Teilausgefüllte Adresse ohne addressLocality muss einen Fehler erzeugen.');

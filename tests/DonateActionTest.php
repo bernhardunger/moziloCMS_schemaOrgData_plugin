@@ -91,6 +91,17 @@ final class DonateActionTest extends TestCase {
         return new \Language($plugin->PLUGIN_SELF_DIR.'sprachen/admin_language_deDE.txt');
     }
 
+    private function weekdayLang(\schemaOrgData $plugin): \Language {
+        return new \Language($plugin->PLUGIN_SELF_DIR.'sprachen/cms_language_deDE.txt');
+    }
+
+    private function availableFragments(\schemaOrgData $plugin): array {
+        return (new \SchemaOrgData_IdReferenceService())->resolveAvailableGlobalFragments(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $this->adminLang($plugin)
+        );
+    }
+
     private function buildDecoded(\schemaOrgData $plugin, string $type, array $data, string $nodeId = '', array $suppressedIdTargets = []): array {
         $script = (new \SchemaOrgData_JsonLdBuilder())->buildJsonLdScript(
             new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(),
@@ -212,9 +223,12 @@ final class DonateActionTest extends TestCase {
         $plugin = $this->createPlugin();
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'DonateAction');
 
-        $html = callPluginMethod($plugin, 'renderField', [
-            'page', 'recipient', $schema['properties']['recipient'], null, $schema, [],
-        ]);
+        $html = (new \SchemaOrgData_FormRenderer())->renderField(
+            'page', 'recipient', $schema['properties']['recipient'], null, $schema, [], null, null, null,
+            $this->adminLang($plugin), new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang($plugin),
+            $this->availableFragments($plugin)
+        );
 
         // Kein input-Element (readonly Info-Anzeige).
         $this->assertStringNotContainsString('<input', $html,
@@ -232,9 +246,12 @@ final class DonateActionTest extends TestCase {
         $plugin = $this->createPlugin();
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'DonateAction');
 
-        $html = callPluginMethod($plugin, 'renderField', [
-            'page', 'recipient', $schema['properties']['recipient'], null, $schema, [],
-        ]);
+        $html = (new \SchemaOrgData_FormRenderer())->renderField(
+            'page', 'recipient', $schema['properties']['recipient'], null, $schema, [], null, null, null,
+            $this->adminLang($plugin), new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang($plugin),
+            $this->availableFragments($plugin)
+        );
 
         // Ohne Host: Fallback-URI "#organization" anzeigen.
         $this->assertStringContainsString('#organization', $html);

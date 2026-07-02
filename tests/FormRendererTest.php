@@ -24,6 +24,33 @@ require_once __DIR__ . '/Fixtures/FakeCatPage.php';
 ***************************************************************/
 final class FormRendererTest extends TestCase {
 
+    private function adminLang(): \Language {
+        return new \Language(\BASE_DIR.'plugins/schemaOrgData/sprachen/admin_language_deDE.txt');
+    }
+
+    private function weekdayLang(): \Language {
+        return new \Language(\BASE_DIR.'plugins/schemaOrgData/sprachen/cms_language_deDE.txt');
+    }
+
+    /***************************************************************
+    *
+    * Repliziert resolveAvailableGlobalFragments() über die reale
+    * (private) settings-Property der Fassade-Instanz - identisches
+    * Verhalten zum vormaligen Delegator-Aufruf, der ebenfalls
+    * $this->settings der übergebenen Instanz gelesen hat.
+    *
+    ***************************************************************/
+    private function availableFragments(\schemaOrgData $plugin): array {
+        $ref = new \ReflectionProperty(\schemaOrgData::class, 'settings');
+        $ref->setAccessible(true);
+        $settings = $ref->getValue($plugin);
+
+        return (new \SchemaOrgData_IdReferenceService())->resolveAvailableGlobalFragments(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $settings,
+            $plugin->PLUGIN_SELF_DIR, $this->adminLang()
+        );
+    }
+
     function testKnownSchemaTypeRendersExpectedWidgetTypes(): void {
         $plugin = new \schemaOrgData();
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
@@ -33,7 +60,12 @@ final class FormRendererTest extends TestCase {
         $this->assertSame('textarea', $schema['properties']['description']['ui:widget']);
         $this->assertSame('opening_hours', $schema['properties']['openingHours']['ui:widget']);
 
-        $html = callPluginMethod($plugin, 'renderTypeFields', ['global', 'LocalBusiness', $schema, []]);
+        $html = (new \SchemaOrgData_FormRenderer())->renderTypeFields(
+            'global', 'LocalBusiness', $schema, [], null, null, ['data' => [], 'originLabel' => []],
+            new \SchemaOrgData_DataSplitHelper(), $this->adminLang(), new \SchemaOrgData_SchemaRepository(),
+            new \SchemaOrgData_UrlHelper(), 'deDE', $plugin->PLUGIN_SELF_URL, new \SchemaOrgData_OpeningHoursHelper(),
+            new \SchemaOrgData_Validator(), $this->weekdayLang(), $this->availableFragments($plugin)
+        );
 
         $this->assertStringContainsString('name="schemaOrgData[global][data][name]"', $html);
         $this->assertStringContainsString('<textarea id="schemaOrgData_global_description"', $html);
@@ -44,9 +76,12 @@ final class FormRendererTest extends TestCase {
         $plugin = new \schemaOrgData();
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
 
-        $html = callPluginMethod($plugin, 'renderField', [
-            'global', 'description', $schema['properties']['description'], '', $schema, [],
-        ]);
+        $html = (new \SchemaOrgData_FormRenderer())->renderField(
+            'global', 'description', $schema['properties']['description'], '', $schema, [], null, null, null,
+            $this->adminLang(), new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(),
+            $this->availableFragments($plugin)
+        );
 
         $this->assertStringNotContainsString('schemaOrgData-optional', $html);
         $this->assertStringNotContainsString('schemaOrgData-required', $html);
@@ -65,7 +100,10 @@ final class FormRendererTest extends TestCase {
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
         $addressSchema = (new \SchemaOrgData_SchemaRepository())->resolveSchemaRef($schema['properties']['address'], $schema);
 
-        $html = callPluginMethod($plugin, 'renderPostalAddressWidget', ['global', 'address', $addressSchema, []]);
+        $html = (new \SchemaOrgData_FormRenderer())->renderPostalAddressWidget(
+            'global', 'address', $addressSchema, [], null, null, null,
+            $this->adminLang(), new \SchemaOrgData_Validator(), 'deDE'
+        );
 
         $this->assertMatchesRegularExpression(
             '/id="schemaOrgData_global_address_addressLocality"[^>]*data-validate="required"[^>]*data-required-message="Pflichtfeld &quot;Ort&quot; fehlt\./',
