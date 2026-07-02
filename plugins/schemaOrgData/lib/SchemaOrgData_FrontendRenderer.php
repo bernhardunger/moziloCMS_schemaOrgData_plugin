@@ -249,7 +249,9 @@ class SchemaOrgData_FrontendRenderer {
                 $head['@id'] = $nodeId;
             }
             $jsonLd = array_merge($head, $data);
-            $prettyJson = json_encode($jsonLd, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            // JSON_HEX_TAG ergänzt, damit die Vorschau byte-identisch mit dem
+            // echten <script>-Block aus buildJsonLdScript() bleibt.
+            $prettyJson = json_encode($jsonLd, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
 
             $html .= '<div style="margin-bottom:1.5em;">'."\n";
             $html .= '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4em;">'."\n";

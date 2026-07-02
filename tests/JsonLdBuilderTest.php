@@ -66,6 +66,29 @@ final class JsonLdBuilderTest extends TestCase {
         ], $decoded);
     }
 
+    function testBuildJsonLdScriptEscapedScriptBreakoutInFeldwertPerJsonHexTag(): void {
+        $builder = new \SchemaOrgData_JsonLdBuilder();
+        $schemaRepo = new \SchemaOrgData_SchemaRepository();
+        $urlHelper = new \SchemaOrgData_UrlHelper();
+
+        $payload = '</script><script>alert(1)</script>';
+
+        $script = $builder->buildJsonLdScript(
+            $schemaRepo, $urlHelper, $this->pluginSelfDir(),
+            'Organization', ['name' => $payload]
+        );
+
+        preg_match('#<script type="application/ld\+json">\n(.*)\n</script>\n$#s', $script, $matches);
+        $jsonPart = $matches[1];
+
+        $hexEscapedLt = sprintf('\u%04X', ord('<'));
+        $this->assertStringNotContainsString('</script>', $jsonPart);
+        $this->assertStringContainsString($hexEscapedLt, $jsonPart);
+
+        $decoded = json_decode($jsonPart, true);
+        $this->assertSame($payload, $decoded['name']);
+    }
+
     /***************************************************************
     *
     * Direkt-Tests gegen SchemaOrgData_JsonLdBuilder statt gegen die

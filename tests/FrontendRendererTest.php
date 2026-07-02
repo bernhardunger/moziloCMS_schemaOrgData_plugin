@@ -275,4 +275,36 @@ final class FrontendRendererTest extends TestCase {
 
         $this->assertStringContainsString('href="https://validator.schema.org"', $html);
     }
+
+    function testBuildDebugWidgetJsonHexTagBleibtByteIdentischZuBuildJsonLdScript(): void {
+        $payload = '</script><script>alert(1)</script>';
+        $data = ['name' => $payload];
+
+        $html = $this->renderer()->buildDebugWidget(
+            [$this->debugBlock('global', 'Organization', $data)],
+            $this->jsonLdBuilder()
+        );
+
+        preg_match('#<pre id="schemaOrgData-debug-pre-0"[^>]*>(.*)</pre>#s', $html, $preMatches);
+        $preContent = $preMatches[1];
+
+        // Kein literales </script> im <pre>-Block - JSON_HEX_TAG greift hier
+        // identisch wie in buildJsonLdScript(). Das umgebende Widget-Markup
+        // hat eigene <script>-Blöcke (Dialog-/Copy-Logik) und bleibt
+        // bewusst außen vor.
+        $hexEscapedLt = sprintf('\u%04X', ord('<'));
+        $this->assertStringNotContainsString('</script>', $preContent);
+        $this->assertStringContainsString($hexEscapedLt, $preContent);
+
+        $script = $this->jsonLdBuilder()->buildJsonLdScript(
+            $this->schemaRepository(), $this->urlHelper(), $this->pluginDir,
+            'Organization', $data
+        );
+        preg_match('#<script type="application/ld\+json">\n(.*)\n</script>\n$#s', $script, $scriptMatches);
+        $expectedJson = $scriptMatches[1];
+
+        $actualJson = htmlspecialchars_decode($preContent, ENT_QUOTES);
+
+        $this->assertSame($expectedJson, $actualJson);
+    }
 }

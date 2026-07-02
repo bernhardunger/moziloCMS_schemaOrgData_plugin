@@ -212,7 +212,9 @@ class SchemaOrgData_JsonLdBuilder {
 
         $jsonLd = array_merge($head, $data);
 
-        $json = json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        // JSON_HEX_TAG kodiert Winkelklammern in Feldwerten als Unicode-Escapes
+        // und verhindert so den Ausbruch aus dem <script>-Block (Stored XSS).
+        $json = json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_HEX_TAG);
         if($json === false) {
             return '';
         }
