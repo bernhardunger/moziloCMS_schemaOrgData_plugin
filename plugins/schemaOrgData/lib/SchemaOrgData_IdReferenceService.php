@@ -32,8 +32,6 @@ class SchemaOrgData_IdReferenceService {
     * Label = Schema-Typbezeichnung + gespeicherter name-Wert (falls vorhanden).
     * Typen ohne ui:idFragment werden übersprungen.
     *
-    * @param SchemaOrgData_ScopeResolver $scopeResolver
-    * @param SchemaOrgData_SchemaRepository $schemaRepo
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param Language $adminLang bereits aufgelöste Admin-Sprache
@@ -90,13 +88,11 @@ class SchemaOrgData_IdReferenceService {
     *   einfügen (nur @type, @id und name). Der Stub durchläuft denselben
     *   resolveNodeId()-Mechanismus wie reguläre Knoten.
     *
-    * @param SchemaOrgData_ScopeResolver $scopeResolver
-    * @param SchemaOrgData_SchemaRepository $schemaRepo
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
-    * @param array $scopeConfigs finale Scope-Konfiguration (nach resolveTypeInheritance)
+    * @param array<string, array<string, mixed>> $scopeConfigs finale Scope-Konfiguration (nach resolveTypeInheritance)
     * @param bool $globalSuppressedByKeep true, wenn Global durch keep unterdrückt wurde
-    * @return array{0: array, 1: array<string>} [$scopeConfigs, $suppressedIdTargets]
+    * @return array{0: array<string, array<string, mixed>>, 1: array<string>} [$scopeConfigs, $suppressedIdTargets]
     *
     ***************************************************************/
     public function applyDanglingReferenceGuard(

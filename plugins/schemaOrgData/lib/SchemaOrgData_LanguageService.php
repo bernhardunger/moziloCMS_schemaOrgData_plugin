@@ -14,7 +14,7 @@ class SchemaOrgData_LanguageService {
 
     /***************************************************************
     *
-    * @param array  $prefixMap       Zuordnung 2-Zeichen-Prefix → Locale-Code
+    * @param array<string, string> $prefixMap Zuordnung 2-Zeichen-Prefix → Locale-Code
     *                                (Single Source of Truth: schemaOrgData::LANGUAGE_PREFIX_MAP)
     * @param string $defaultLanguage Fallback-Locale (schemaOrgData::DEFAULT_LANGUAGE)
     *
@@ -54,7 +54,6 @@ class SchemaOrgData_LanguageService {
     *
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param string $locale        Locale-Code ('deDE' oder 'enEN')
-    * @return Language
     *
     ***************************************************************/
     public function loadAdminLanguageFile(string $pluginSelfDir, string $locale): Language {
@@ -71,7 +70,6 @@ class SchemaOrgData_LanguageService {
     *
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param string $locale        Locale-Code ('deDE' oder 'enEN')
-    * @return Language
     *
     ***************************************************************/
     public function loadCmsLanguageFile(string $pluginSelfDir, string $locale): Language {

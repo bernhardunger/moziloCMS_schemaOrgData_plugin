@@ -24,8 +24,8 @@ class SchemaOrgData_JsonLdBuilder {
     * Arrays zurück in Klartext (Gegenstück zu htmlspecialchars(), siehe
     * sanitizePostData()), bevor das Array als JSON-LD ausgegeben wird.
     *
-    * @param array $data Properties eines Schema-Types
-    * @return array Properties mit dekodierten String-Werten
+    * @param array<string, mixed> $data Properties eines Schema-Types
+    * @return array<string, mixed> Properties mit dekodierten String-Werten
     *
     ***************************************************************/
     public function decodeJsonLdValues(array $data): array {
@@ -45,8 +45,8 @@ class SchemaOrgData_JsonLdBuilder {
     * aus einem (verschachtelten) Array, damit sie nicht im JSON-LD
     * ausgegeben werden.
     *
-    * @param array $data Properties eines Schema-Types
-    * @return array Properties ohne leere Werte
+    * @param array<string, mixed> $data Properties eines Schema-Types
+    * @return array<string, mixed> Properties ohne leere Werte
     *
     ***************************************************************/
     public function removeEmptyJsonLdProperties(array $data): array {
@@ -79,11 +79,9 @@ class SchemaOrgData_JsonLdBuilder {
     * Lässt sich die Basis-URL nicht auflösen, wird KEIN (leeres) @id
     * gebildet - das Fragment bleibt dann unbelegt.
     *
-    * @param SchemaOrgData_SchemaRepository $schemaRepo
-    * @param SchemaOrgData_UrlHelper $urlHelper
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param string $type Schema.org-Type des Knotens
-    * @param array  $assignedFragments bereits vergebene Fragmente (per Referenz)
+    * @param string[] $assignedFragments bereits vergebene Fragmente (per Referenz)
     * @return string vollständige @id-URI oder '' (kein Anker)
     *
     ***************************************************************/
@@ -121,11 +119,9 @@ class SchemaOrgData_JsonLdBuilder {
     * Erzeugt aus den zusammengeführten Properties einen
     * <script type="application/ld+json">-Block.
     *
-    * @param SchemaOrgData_SchemaRepository $schemaRepo
-    * @param SchemaOrgData_UrlHelper $urlHelper
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param string $type Schema.org-Type, z. B. "LocalBusiness"
-    * @param array $data  Properties (Formular + Erweiterungsfeld zusammengeführt)
+    * @param array<string, mixed> $data Properties (Formular + Erweiterungsfeld zusammengeführt)
     * @param string $nodeId optionaler @id-Anker (siehe README.md, "@id-Anker");
     *               wird - sofern nicht-leer - direkt hinter @type eingefügt
     * @return string fertiger <script>-Block inkl. Zeilenumbruch

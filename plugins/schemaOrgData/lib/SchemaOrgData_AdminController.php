@@ -140,7 +140,6 @@ class SchemaOrgData_AdminController {
     *
     * @param string $scope 'global' | 'category' | 'page'
     * @param Language $lang Admin-Sprachobjekt
-    * @return string
     *
     ***************************************************************/
     public function buildScopeLabel(string $scope, ?string $cat, ?string $page, Language $lang): string {
@@ -229,7 +228,6 @@ class SchemaOrgData_AdminController {
     *
     * @param string $scope 'global' | 'category' | 'page'
     * @param Language $lang Admin-Sprachobjekt
-    * @param SchemaOrgData_ScopeResolver $scopeResolver
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @return string HTML-Snippet (Hinweis, Radio-Buttons, Import-Textarea)
     *                 oder '' wenn kein vorhandenes JSON-LD erkannt wurde
@@ -286,7 +284,6 @@ class SchemaOrgData_AdminController {
     * SchemaOrgData_ScopeResolver::detectTypeCollision()).
     *
     * @param Language $lang Admin-Sprachobjekt
-    * @param SchemaOrgData_ScopeResolver $scopeResolver
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @return string HTML-Snippet oder '' wenn keine Vererbung vorliegt
     *
@@ -337,7 +334,6 @@ class SchemaOrgData_AdminController {
     * @param string $scope 'global' | 'category' | 'page'
     * @param string $type  Schema-Type, z. B. "LocalBusiness"
     * @param Language $lang Admin-Sprachobjekt
-    * @param SchemaOrgData_ScopeResolver $scopeResolver
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @return array{data: array<string,mixed>, originLabel: array<string,string>}
     *
@@ -726,9 +722,9 @@ class SchemaOrgData_AdminController {
     * Öffnungszeiten als schema.org-Array (buildOpeningHoursArray)
     * und FAQ-Einträge ohne vollständige Frage/Antwort entfernt.
     *
-    * @param array $formData Formularfeld-Werte (schemaOrgData[scope][data])
-    * @param array $schema   aktives JSON-Schema (schemas/{Type}.json)
-    * @return array bereinigte Properties, bereit für serialize()
+    * @param array<string, mixed> $formData Formularfeld-Werte (schemaOrgData[scope][data])
+    * @param array<string, mixed> $schema aktives JSON-Schema (schemas/{Type}.json)
+    * @return array<string, mixed> bereinigte Properties, bereit für serialize()
     *
     ***************************************************************/
     public function sanitizePostData(
@@ -839,7 +835,7 @@ class SchemaOrgData_AdminController {
     * unvollständiges "address"-Property gespeichert, das nur den
     * Default-Wert von addressCountry enthält.
     *
-    * @return array bereinigte Adress-Properties, ggf. leer
+    * @return array<string, mixed> bereinigte Adress-Properties, ggf. leer
     *
     ***************************************************************/
     public function sanitizeAddressData(array $address, array $fieldSchema, SchemaOrgData_Validator $validator): array {
@@ -877,7 +873,7 @@ class SchemaOrgData_AdminController {
     * excluded_cats bleiben erhalten.
     *
     * @param string $scope    'global' | 'category' | 'page'
-    * @param array $postData  schemaOrgData[scope] aus $_POST
+    * @param array<string, mixed> $postData schemaOrgData[scope] aus $_POST
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @return array{success: bool, errors: string[]}
     *

@@ -101,7 +101,7 @@ class SchemaOrgData_FormRenderer {
     *
     * @param string $id   HTML-id des Feldes
     * @param string $name HTML-name des Feldes
-    * @param array $fieldSchema Feld-Schema (für ui:placeholder)
+    * @param array<string, mixed> $fieldSchema Feld-Schema (für ui:placeholder)
     * @param mixed $value aktueller Wert
     * @param array<string,string> $extraAttrs zusätzliche HTML-Attribute (z. B. data-validate)
     * @return string HTML-Snippet
@@ -188,8 +188,8 @@ class SchemaOrgData_FormRenderer {
     *
     * @param string $scope  Geltungsbereich (global/category/page)
     * @param string $name   Property-Name im Schema
-    * @param array $fieldSchema Schema-Definition der Property
-    * @param array $value   Gespeicherter Wert ['_mode' => ..., ...]
+    * @param array<string, mixed> $fieldSchema Schema-Definition der Property
+    * @param array<string, mixed> $value   Gespeicherter Wert ['_mode' => ..., ...]
     * @param string $idPrefix Präfix für HTML-IDs
     * @param Language $lang für die Widget-Labels
     * @param array<string,string> $availableFragments Fragment => Label-Map
@@ -286,8 +286,8 @@ class SchemaOrgData_FormRenderer {
     *
     * @param string $scope Geltungsbereich ('global'|'category'|'page')
     * @param string $name  Property-Name (üblicherweise "address")
-    * @param array $fieldSchema bereits via resolveSchemaRef() aufgelöstes Schema
-    * @param array $value gespeicherte Adress-Properties
+    * @param array<string, mixed> $fieldSchema bereits via resolveSchemaRef() aufgelöstes Schema
+    * @param array<string, mixed> $value gespeicherte Adress-Properties
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     * @param array|null $inheritedValue Adress-Properties, die von einer
     *        übergeordneten Ebene geerbt würden (siehe
@@ -465,8 +465,8 @@ class SchemaOrgData_FormRenderer {
     *
     * @param string $scope Geltungsbereich
     * @param string $name  Property-Name (üblicherweise "openingHours")
-    * @param array $fieldSchema Feld-Schema (ui:days, ui:dayLabelKeys)
-    * @param array $value gespeichertes openingHours-Array
+    * @param array<string, mixed> $fieldSchema Feld-Schema (ui:days, ui:dayLabelKeys)
+    * @param array<string, mixed> $value gespeichertes openingHours-Array
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     * @param Language $lang für Labels/Hinweise
     * @param Language $weekdayLang für die Wochentag-Labels
@@ -561,8 +561,8 @@ class SchemaOrgData_FormRenderer {
     *
     * @param string $scope Geltungsbereich
     * @param string $name  Property-Name (üblicherweise "mainEntity")
-    * @param array $fieldSchema Feld-Schema (items.properties)
-    * @param array $value gespeichertes mainEntity-Array
+    * @param array<string, mixed> $fieldSchema Feld-Schema (items.properties)
+    * @param array<string, mixed> $value gespeichertes mainEntity-Array
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     * @param Language $lang für Labels/Badges
     *
@@ -686,7 +686,7 @@ class SchemaOrgData_FormRenderer {
     * einfaches Feld (Top-Level, außerhalb von postal_address/
     * opening_hours, die ihr Feedback selbst rendern).
     *
-    * @param array $allData alle Formular-Properties des Schema-Types
+    * @param array<string, mixed> $allData alle Formular-Properties des Schema-Types
     *                        (für telephone -> address.addressCountry)
     * @param string $feedbackId Element-ID für das Feedback-<span>
     *        (siehe renderValidationFeedback())
@@ -723,10 +723,10 @@ class SchemaOrgData_FormRenderer {
     *
     * @param string $scope Geltungsbereich
     * @param string $name  Property-Name (Schema-Schlüssel)
-    * @param array $fieldSchema Schema des Feldes (ggf. mit "$ref")
+    * @param array<string, mixed> $fieldSchema Schema des Feldes (ggf. mit "$ref")
     * @param mixed $value  aktueller Wert
-    * @param array $rootSchema vollständiges Schema (für resolveSchemaRef)
-    * @param array $allData alle Formular-Properties dieses Schema-Types
+    * @param array<string, mixed> $rootSchema vollständiges Schema (für resolveSchemaRef)
+    * @param array<string, mixed> $allData alle Formular-Properties dieses Schema-Types
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     * @param mixed $inheritedValue Wert, der von einer übergeordneten Ebene
     *        geerbt würde (siehe resolveInheritableFields()) - nur für
@@ -835,8 +835,8 @@ class SchemaOrgData_FormRenderer {
     *
     * @param string $scope Geltungsbereich
     * @param string $type  Schema-Type, z. B. "LocalBusiness"
-    * @param array $schema vollständiges Schema (schemas/{Type}.json)
-    * @param array $data   gespeicherte Properties dieses Types (Formular + Erweiterung gemischt)
+    * @param array<string, mixed> $schema vollständiges Schema (schemas/{Type}.json)
+    * @param array<string, mixed> $data   gespeicherte Properties dieses Types (Formular + Erweiterung gemischt)
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     * @param string|null $extensionJsonOverride wenn gesetzt, wird dieser Wert
     *        statt der aus $data abgeleiteten Erweiterungs-Properties als
@@ -893,7 +893,7 @@ class SchemaOrgData_FormRenderer {
     * (schema_type_none).
     *
     * @param string $scope Geltungsbereich
-    * @param array<string,array> $availableTypes Type => Schema, für diese Ebene zulässig (ui:scopes)
+    * @param array<string, array<string, mixed>> $availableTypes Type => Schema, für diese Ebene zulässig (ui:scopes)
     * @param string|null $selectedType aktuell konfigurierter Type oder null
     * @param string|null $idPrefix Präfix für die HTML-ID des <select> (Fallback: $scope)
     * @param Language $lang für Labels

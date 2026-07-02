@@ -30,7 +30,7 @@ class SchemaOrgData_CollisionDetector {
     * Fehlerfall false zurück, was als leeres Array behandelt wird.
     *
     * @param string $html zu prüfendes HTML
-    * @return array innere JSON-Texte aller gefundenen Blöcke
+    * @return string[] innere JSON-Texte aller gefundenen Blöcke
     *
     ***************************************************************/
     public function extractExistingJsonLdBlocks(string $html): array {
@@ -78,7 +78,7 @@ class SchemaOrgData_CollisionDetector {
     *
     * @param string $templateFile Pfad zur aktiv geladenen Template-Datei
     *                              (entspricht $TEMPLATE_FILE)
-    * @return array innere JSON-Texte aller gefundenen Blöcke (leer = keiner)
+    * @return string[] innere JSON-Texte aller gefundenen Blöcke (leer = keiner)
     *
     ***************************************************************/
     public function extractExistingJsonLdBlocksFromTemplate(string $templateFile): array {
@@ -124,7 +124,7 @@ class SchemaOrgData_CollisionDetector {
     *                       $CMS_CONF), bewusst kein Type-Hint (analog
     *                       $settings in SchemaOrgData_ScopeResolver) —
     *                       kompatibel zu realem Objekt und Test-Mocks
-    * @return array innere JSON-Texte aller gefundenen Blöcke (leer = keiner)
+    * @return string[] innere JSON-Texte aller gefundenen Blöcke (leer = keiner)
     *
     ***************************************************************/
     public function extractExistingJsonLdBlocksFromTemplateAdmin($cmsConf): array {

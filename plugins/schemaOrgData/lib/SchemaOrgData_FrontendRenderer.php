@@ -195,7 +195,8 @@ class SchemaOrgData_FrontendRenderer {
     * globalen CSS-Klassen, da dies auf der echten Frontend-Seite
     * landet.
     *
-    * @param array $blocks [['scope' => 'global'|'cat_x'|'page_x_y', 'type' => '...', 'data' => [...]], ...]
+    * @param array<int, array{scope: string, type: string, data: array<string, mixed>, id: string}> $blocks
+    *              je Block Scope ('global'|'cat_x'|'page_x_y'), Type, Properties und @id-Anker
     * @return string HTML-Snippet inkl. <script>
     *
     ***************************************************************/

@@ -28,11 +28,14 @@ class SchemaOrgData_SchemaRepository {
     *
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param string $type Schema.org-Type, z. B. "LocalBusiness"
-    * @return array|null dekodiertes Schema oder null bei Fehler
+    * @return array<string, mixed>|null dekodiertes Schema oder null bei Fehler
     *
     ***************************************************************/
     public function loadSchema(string $pluginSelfDir, string $type): ?array {
         $cacheKey = $pluginSelfDir.'|'.$type;
+        // array_key_exists() statt isset(): auch ein gecachtes null-Ergebnis
+        // (Schema nicht gefunden) gilt als Cache-Treffer, siehe
+        // doc/adr_komponenten_refactoring.md, Entscheidung (k).
         if(array_key_exists($cacheKey, $this->schemaCache)) {
             return $this->schemaCache[$cacheKey];
         }
@@ -51,9 +54,9 @@ class SchemaOrgData_SchemaRepository {
     * Schemas auf und führt die referenzierten Properties mit den
     * lokalen (überschreibenden) Properties zusammen.
     *
-    * @param array $fieldSchema Schema des Feldes, ggf. mit "$ref"
-    * @param array $rootSchema  vollständiges Schema (für "definitions")
-    * @return array aufgelöstes Feld-Schema
+    * @param array<string, mixed> $fieldSchema Schema des Feldes, ggf. mit "$ref"
+    * @param array<string, mixed> $rootSchema  vollständiges Schema (für "definitions")
+    * @return array<string, mixed> aufgelöstes Feld-Schema
     *
     ***************************************************************/
     public function resolveSchemaRef(array $fieldSchema, array $rootSchema): array {
@@ -84,7 +87,7 @@ class SchemaOrgData_SchemaRepository {
     * im Verzeichnis schemas/.
     *
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
-    * @return array Liste der Type-Namen (ohne .json), alphabetisch
+    * @return string[] Liste der Type-Namen (ohne .json), alphabetisch
     *
     ***************************************************************/
     public function getAvailableSchemaTypes(string $pluginSelfDir): array {

@@ -26,8 +26,8 @@ class SchemaOrgData_Validator {
     * clientseitigen AJV-Validierung; unbekannte Properties führen
     * nur zu einer Warnung, kein Speichern wird dadurch verhindert.
     *
-    * @param array $data   zu prüfende Properties (Formularfeld-Werte)
-    * @param array|null $schema aktives JSON-Schema (schemas/{Type}.json)
+    * @param array<string, mixed> $data zu prüfende Properties (Formularfeld-Werte)
+    * @param array<string, mixed>|null $schema aktives JSON-Schema (schemas/{Type}.json)
     * @param SchemaOrgData_SchemaRepository $schemaRepository für resolveSchemaRef()
     * @return array{errors: string[], warnings: string[]}
     *
@@ -79,10 +79,10 @@ class SchemaOrgData_Validator {
     * kein Pflichtfeld-Fehler erzeugt - der geerbte Wert deckt das
     * Pflichtfeld ab (analog clientseitigem Placeholder-Check).
     *
-    * @param array $formData   Formularfeld-Werte (schemaOrgData[scope][data])
-    * @param array $schema     aktives JSON-Schema (schemas/{Type}.json)
-    * @param array $inheritable Rückgabe von resolveInheritableFields():
-    *                           ['data' => [...], 'originLabel' => [...]]
+    * @param array<string, mixed> $formData Formularfeld-Werte (schemaOrgData[scope][data])
+    * @param array<string, mixed> $schema aktives JSON-Schema (schemas/{Type}.json)
+    * @param array{data: array<string, mixed>, originLabel: array<string, mixed>} $inheritable
+    *              Rückgabe von resolveInheritableFields()
     * @param Language $lang für Fehlermeldungen und Feld-Labels
     * @param SchemaOrgData_SchemaRepository $schemaRepository für resolveSchemaRef()
     * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
@@ -371,7 +371,7 @@ class SchemaOrgData_Validator {
     * Properties des Erweiterungsfelds werden serverseitig nicht
     * geprüft (siehe README.md, Abschnitt "Erweiterungsfeld").
     *
-    * @param array $extensionData dekodierte Erweiterungsfeld-Daten
+    * @param array<string, mixed> $extensionData dekodierte Erweiterungsfeld-Daten
     * @param Language $lang für die Fehlermeldungen
     * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
     *
@@ -438,7 +438,7 @@ class SchemaOrgData_Validator {
     * übergeordneten Ebene vorhanden ($inheritableAddress), entfällt
     * der Fehler - der geerbte Wert deckt das Pflichtfeld ab.
     *
-    * @param array $inheritableAddress Adress-Properties, die von einer
+    * @param array<string, mixed> $inheritableAddress Adress-Properties, die von einer
     *        übergeordneten Ebene geerbt würden (Rückgabe von
     *        resolveInheritableFields()['data']['address'])
     * @param Language $lang für die Fehlermeldungen

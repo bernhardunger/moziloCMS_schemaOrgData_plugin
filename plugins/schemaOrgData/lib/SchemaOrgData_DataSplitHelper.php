@@ -21,9 +21,9 @@ class SchemaOrgData_DataSplitHelper {
     * Properties (nicht im Schema definiert) auf - Umkehrung des
     * beim Speichern durchgeführten Merge.
     *
-    * @param array $data   gespeicherte Properties eines Schema-Types
-    * @param array|null $schema aktives JSON-Schema (schemas/{Type}.json)
-    * @return array{form: array, extension: array}
+    * @param array<string, mixed> $data gespeicherte Properties eines Schema-Types
+    * @param array<string, mixed>|null $schema aktives JSON-Schema (schemas/{Type}.json)
+    * @return array{form: array<string, mixed>, extension: array<string, mixed>}
     *
     ***************************************************************/
     public function splitDataForRendering(array $data, ?array $schema): array {

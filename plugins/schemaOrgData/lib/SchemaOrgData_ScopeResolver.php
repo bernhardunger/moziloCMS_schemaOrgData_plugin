@@ -112,8 +112,8 @@ class SchemaOrgData_ScopeResolver {
     * zusammen. Spätere Arrays überschreiben gleichnamige Properties
     * früherer Arrays (Global -> Kategorie -> Seite).
     *
-    * @param array ...$configs jeweils array('TypeName' => array(...), ...)
-    * @return array array('TypeName' => array(...), ...)
+    * @param array<string, array<string, mixed>> ...$configs jeweils array('TypeName' => array(...), ...)
+    * @return array<string, array<string, mixed>> array('TypeName' => array(...), ...)
     *
     ***************************************************************/
     public function mergeConfigs(array ...$configs): array {
@@ -140,9 +140,10 @@ class SchemaOrgData_ScopeResolver {
     * einmalig auf der spezifischsten Ebene ausgegeben, auf der der
     * Type konfiguriert ist. Verschiedene Types bleiben unabhängig.
     *
-    * @param array $scopeConfigs array('global' => [...], 'category' => [...], 'page' => [...]),
-    *                             jeweils array('TypeName' => array('property' => 'wert', ...), ...)
-    * @return array dieselbe Struktur, mit feldweise zusammengeführten Daten
+    * @param array<string, array<string, array<string, mixed>>> $scopeConfigs
+    *              array('global' => [...], 'category' => [...], 'page' => [...]),
+    *              jeweils array('TypeName' => array('property' => 'wert', ...), ...)
+    * @return array<string, array<string, array<string, mixed>>> dieselbe Struktur, mit feldweise zusammengeführten Daten
     *
     ***************************************************************/
     public function resolveTypeInheritance(array $scopeConfigs): array {
@@ -180,7 +181,7 @@ class SchemaOrgData_ScopeResolver {
     * @param string $scope 'global' | 'category' | 'page'
     * @param string|null $cat  Kategorie (CAT_REQUEST), für 'category' und 'page'
     * @param string|null $page Seite (PAGE_REQUEST), nur für 'page'
-    * @return array array('TypeName' => array('property' => 'wert', ...), ...)
+    * @return array<string, array<string, mixed>> array('TypeName' => array('property' => 'wert', ...), ...)
     *
     ***************************************************************/
     public function loadScopeConfig(
@@ -230,7 +231,7 @@ class SchemaOrgData_ScopeResolver {
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $scope 'global' | 'category' | 'page'
-    * @param array $meta z. B. ['existing_jsonld' => true, 'jsonld_mode' => 'override']
+    * @param array<string, mixed> $meta z. B. ['existing_jsonld' => true, 'jsonld_mode' => 'override']
     *
     ***************************************************************/
     public function saveScopeMeta(

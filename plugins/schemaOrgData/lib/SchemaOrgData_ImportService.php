@@ -23,14 +23,14 @@ class SchemaOrgData_ImportService {
     * mit dem Ergebnis dieser Methode.
     *
     * @param string $jsonLdText Inhalt des Import-Textarea-Felds
-    * @param array|null $schema aktives JSON-Schema (schemas/{Type}.json)
+    * @param array<string, mixed>|null $schema aktives JSON-Schema (schemas/{Type}.json)
     * @param SchemaOrgData_DataSplitHelper $dataSplitHelper Mapper für die Formular-/Erweiterungsfeld-Trennung
     * @return array{
     *   success: bool,
     *   error: string|null,
     *   type: string|null,
-    *   formData: array,
-    *   extensionData: array
+    *   formData: array<string, mixed>,
+    *   extensionData: array<string, mixed>
     * }
     *
     ***************************************************************/

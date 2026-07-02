@@ -39,7 +39,7 @@ class SchemaOrgData_OpeningHoursHelper {
     * Zeitraum (from2/to2). Ein dritter Eintrag für denselben Tag
     * wird ignoriert (außerhalb des Widget-Scopes).
     *
-    * @param array $openingHours z. B. ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
+    * @param string[] $openingHours z. B. ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
     * @param string[] $days Wochentags-Kürzel in Reihenfolge, z. B. ["Mo",...,"Su"]
     * @return array<string,array{from:string,to:string,from2:string,to2:string}> je Tag (leer = geschlossen)
     *
@@ -97,7 +97,7 @@ class SchemaOrgData_OpeningHoursHelper {
     * ausgelassen. $fromKey/$toKey wählen das Felderpaar (Hauptzeitraum
     * "from"/"to" oder zweiter Zeitraum "from2"/"to2").
     *
-    * @param array<string,array> $perDay je Tag Zeitpaare
+    * @param array<string, array<string, string>> $perDay je Tag Zeitpaare
     * @param string[] $days Wochentags-Kürzel in Reihenfolge, z. B. ["Mo",...,"Su"]
     * @param string $fromKey Schlüssel für Von-Zeit im $perDay-Eintrag
     * @param string $toKey   Schlüssel für Bis-Zeit im $perDay-Eintrag
