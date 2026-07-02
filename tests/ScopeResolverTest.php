@@ -17,7 +17,6 @@ use PHPUnit\Framework\TestCase;
 *   - loadScopeMeta()/saveScopeMeta(): Defaults, Merge, Round-Trip
 *   - deleteConfig(): existierender/fehlender Key, ungültiger Scope
 *   - detectTypeCollision(): Kollisionen je Geltungsebene
-*   - Delegator-Vertrag der Fassade (callPluginMethod) bleibt erhalten
 *
 ***************************************************************/
 final class ScopeResolverTest extends TestCase {
@@ -87,7 +86,6 @@ final class ScopeResolverTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus ScopeConfigTest::testPageOverridesCategory().
     * Dreistufige Kaskade Global -> Kategorie -> Seite: die
     * spezifischere Ebene überschreibt feldweise, nicht ausgefüllte
     * Felder werden von der jeweils allgemeineren Ebene übernommen.
@@ -136,7 +134,6 @@ final class ScopeResolverTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus JsonLdOutputTest::testSameTypeOnCategoryAndPageMergesFieldsOnPage().
     * "name" ist auf Seiten-Ebene leer und damit (siehe
     * sanitizePostData()) gar nicht im gespeicherten Array enthalten.
     *
@@ -166,7 +163,6 @@ final class ScopeResolverTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus JsonLdOutputTest::testNestedFieldOverridesWithoutMergingProperties().
     * Wichtigster Fall: Verhalten bei verschachtelten Objekten
     * (address) — die spezifischere Ebene überschreibt das gesamte
     * Sub-Objekt, es findet kein Feld-Merge innerhalb von address
@@ -213,9 +209,8 @@ final class ScopeResolverTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus ScopeConfigTest::testLoadScopeConfigReturnsEmptyArrayForMissingFiles()
-    * (nur der category-Fall — der global-Fall ist bereits durch
-    * testLoadScopeConfigLiefertLeeresArrayFuerFehlendenKey() abgedeckt).
+    * Nur der category-Fall — der global-Fall ist bereits durch
+    * testLoadScopeConfigLiefertLeeresArrayFuerFehlendenKey() abgedeckt.
     *
     ***************************************************************/
     function testLoadScopeConfigLiefertLeeresArrayFuerFehlendenCategoryKey(): void {
@@ -224,12 +219,6 @@ final class ScopeResolverTest extends TestCase {
         $this->assertSame([], $this->resolver()->loadScopeConfig($settings, 'category', 'nicht-vorhanden'));
     }
 
-    /***************************************************************
-    *
-    * Migriert aus ScopeConfigTest::testLoadScopeConfigReturnsEmptyArrayForMissingFiles()
-    * (page-Fall).
-    *
-    ***************************************************************/
     function testLoadScopeConfigLiefertLeeresArrayFuerFehlendenPageKey(): void {
         $settings = new \InMemorySettings();
 
@@ -301,7 +290,6 @@ final class ScopeResolverTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testExistingJsonLdContentWirdGespeichertUndGeladen().
     * existing_jsonld_content wird bislang nur implizit über die
     * komplette Default-Struktur mitgetestet (siehe
     * testLoadScopeMetaLiefertDefaultsFuerFehlendenKey()) — hier
@@ -321,7 +309,6 @@ final class ScopeResolverTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testExistingJsonLdContentInLegacyMetaFaelltAufDefault().
     * Fehlt der Key existing_jsonld_content in einem bereits
     * gespeicherten (älteren) _meta-Array, muss loadScopeMeta() ihn
     * als Leerstring nachliefern statt einen fehlenden Array-Key zu
@@ -347,7 +334,6 @@ final class ScopeResolverTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testExistingJsonLdContentWirdProScopeGespeichert().
     * Global und Seite speichern existing_jsonld_content unabhängig
     * voneinander unter ihrem jeweiligen Settings-Key.
     *

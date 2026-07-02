@@ -35,9 +35,7 @@ final class FormRendererTest extends TestCase {
     /***************************************************************
     *
     * Repliziert resolveAvailableGlobalFragments() über die reale
-    * (private) settings-Property der Fassade-Instanz - identisches
-    * Verhalten zum vormaligen Delegator-Aufruf, der ebenfalls
-    * $this->settings der übergebenen Instanz gelesen hat.
+    * (private) settings-Property der Fassade-Instanz.
     *
     ***************************************************************/
     private function availableFragments(\schemaOrgData $plugin): array {

@@ -15,8 +15,6 @@ use PHPUnit\Framework\TestCase;
 *     nicht existierenden Pfad
 *   - getAvailableSchemaTypes(): alphabetisch sortierte Liste
 *     passend zu den echten Dateien in schemas/
-*   - Delegator-Vertrag der Fassade (callPluginMethod) bleibt
-*     erhalten
 *
 ***************************************************************/
 final class SchemaRepositoryTest extends TestCase {

@@ -6,16 +6,12 @@ use PHPUnit\Framework\TestCase;
 
 /***************************************************************
 *
-* Direkt-Tests der Komponente SchemaOrgData_FormRenderer
-* (Refactoring-Schritt 10, siehe doc/adr_komponenten_refactoring.md).
+* Direkt-Tests der Komponente SchemaOrgData_FormRenderer.
 * Echte, zustandslose Language-/SchemaOrgData_SchemaRepository-/
 * SchemaOrgData_Validator-/SchemaOrgData_OpeningHoursHelper-/
 * SchemaOrgData_UrlHelper-/SchemaOrgData_DataSplitHelper-Instanzen,
 * $pluginSelfDir zeigt auf die realen Schema-/Sprach-Fixtures des
-* Plugins. Die Facade-Delegator-Verträge sind bereits durch die
-* bestehenden Tests (FormRendererTest, DonateActionTest,
-* PersonIdRefOrLiteralTest) abgedeckt - hier werden nur die
-* Komponenten-Methoden selbst ohne Fassaden-Overhead geprüft.
+* Plugins.
 *
 ***************************************************************/
 final class FormRendererComponentTest extends TestCase {
@@ -259,7 +255,6 @@ final class FormRendererComponentTest extends TestCase {
 
     // -----------------------------------------------------------
     // renderField() - Required-/Inherited-Badge-Integration
-    // migriert aus FormRendererTest.php
     // -----------------------------------------------------------
 
     function testRenderFieldPflichtfeldZeigtRequiredBadgeDirekt(): void {
@@ -320,7 +315,6 @@ final class FormRendererComponentTest extends TestCase {
 
     // -----------------------------------------------------------
     // renderField() - bedingter Pflichtfeld-Hinweis am Adress-Fieldset
-    // migriert aus FormRendererTest.php
     // -----------------------------------------------------------
 
     function testRenderFieldAdresseZeigtBedingtenPflichtfeldHinweisDirekt(): void {
@@ -338,8 +332,7 @@ final class FormRendererComponentTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // renderOpeningHoursWidget() - Vorbefüllung zweiter Zeitraum
-    // migriert aus FormRendererTest.php (Regressionstest zweiter Zeitraum)
+    // renderOpeningHoursWidget() - Regressionstest Vorbefüllung zweiter Zeitraum
     // -----------------------------------------------------------
 
     function testRenderOpeningHoursWidgetVorbefuelltZweitenZeitraumDirekt(): void {
@@ -362,7 +355,6 @@ final class FormRendererComponentTest extends TestCase {
 
     // -----------------------------------------------------------
     // renderSelectWidget() - bekannter/unbekannter Enum-Wert (NGO)
-    // migriert aus IdAnchorTest.php
     // -----------------------------------------------------------
 
     function testRenderSelectWidgetBekannterEnumWertIstSelectedDirekt(): void {

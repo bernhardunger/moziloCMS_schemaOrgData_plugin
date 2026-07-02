@@ -230,8 +230,7 @@ final class CollisionDetectorTest extends TestCase {
         $this->assertTrue($detected);
 
         // Persistenz prüfen: saveScopeMeta() speichert, loadScopeMeta() liest korrekt
-        // (direkter Komponenten-Aufruf statt callPluginMethod()-Reflection,
-        // analog zu JsonLdOutputTest.php, Schritt D2b(i), Commit b91146b)
+        // (direkter Komponenten-Aufruf statt callPluginMethod()-Reflection)
         $scopeResolver = new \SchemaOrgData_ScopeResolver();
         $scopeResolver->saveScopeMeta($settings, 'global', ['existing_jsonld' => $detected]);
         $meta = $scopeResolver->loadScopeMeta($settings, 'global');
@@ -327,11 +326,9 @@ final class CollisionDetectorTest extends TestCase {
     }
 
     // ---------------------------------------------------------------------------
-    // Direkt-Tests der Komponente SchemaOrgData_CollisionDetector
-    // (Refactoring-Schritt 7, siehe doc/adr_komponenten_refactoring.md).
+    // Direkt-Tests der Komponente SchemaOrgData_CollisionDetector.
     // $TEMPLATE_FILE/$CMS_CONF werden hier als explizite Parameter übergeben
-    // statt aus globalem Scope gelesen - die Fassaden-Delegator-Verträge
-    // (callPluginMethod) sind bereits durch die Tests oberhalb abgedeckt.
+    // statt aus globalem Scope gelesen.
     // ---------------------------------------------------------------------------
 
     function testComponentExtractFromTemplateReturnsEmptyArrayForEmptyPath(): void {

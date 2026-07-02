@@ -14,8 +14,7 @@ final class JsonLdBuilderTest extends TestCase {
 
     /***************************************************************
     *
-    * Direkt-Tests der Komponente SchemaOrgData_JsonLdBuilder
-    * (Refactoring-Schritt 5, siehe doc/adr_komponenten_refactoring.md).
+    * Direkt-Tests der Komponente SchemaOrgData_JsonLdBuilder.
     * Echte, zustandslose SchemaRepository-/UrlHelper-Instanzen,
     * $pluginSelfDir zeigt auf die realen Schema-Fixtures des Plugins.
     *
@@ -69,13 +68,8 @@ final class JsonLdBuilderTest extends TestCase {
 
     /***************************************************************
     *
-    * Test-Migration Phase 1b-1 (kein Fahrplan-Schritt, siehe
-    * doc/adr_komponenten_refactoring.md Punkt 14 "Aufräumen
-    * (BLOCKIERT)"): Direkt-Tests, die dieselben Szenarien wie die
-    * obigen bzw. externen Fassade-Tests (callPluginMethod()) prüfen,
-    * hier jedoch direkt gegen SchemaOrgData_JsonLdBuilder statt gegen
-    * die Fassade schemaOrgData. Reine Testverkabelung - kein
-    * Verhaltens-Refactoring, Originaltests bleiben unverändert bestehen.
+    * Direkt-Tests gegen SchemaOrgData_JsonLdBuilder statt gegen die
+    * Fassade schemaOrgData.
     *
     ***************************************************************/
 
@@ -163,7 +157,7 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // Basisfälle (migriert aus den Facade-Tests oben in dieser Datei)
+    // Basisfälle
     // -----------------------------------------------------------
 
     function testRequiredFieldsProduceValidJsonLdDirekt(): void {
@@ -222,7 +216,7 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // @id-Einbettung und resolveNodeId()-Randfälle (migriert aus IdAnchorTest)
+    // @id-Einbettung und resolveNodeId()-Randfälle
     // -----------------------------------------------------------
 
     function testResolveNodeIdEmptyForSchemaWithoutFragmentDirekt(): void {
@@ -285,7 +279,7 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // id_reference-Emission (migriert aus DonateActionTest)
+    // id_reference-Emission
     // -----------------------------------------------------------
 
     function testIdReferenceEmitsAtIdObjectWhenHostIsSetDirekt(): void {
@@ -346,7 +340,7 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // id_reference_or_literal-Emission (migriert aus PersonIdRefOrLiteralTest)
+    // id_reference_or_literal-Emission
     // Referenz-Modus
     // -----------------------------------------------------------
 
@@ -419,7 +413,7 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // id_reference_or_literal-Emission (migriert aus PersonIdRefOrLiteralTest)
+    // id_reference_or_literal-Emission
     // Literal-Modus
     // -----------------------------------------------------------
 

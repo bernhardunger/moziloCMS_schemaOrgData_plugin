@@ -6,8 +6,7 @@ use PHPUnit\Framework\TestCase;
 
 /***************************************************************
 *
-* Direkt-Tests der Komponente SchemaOrgData_FrontendRenderer
-* (Refactoring-Schritt 13, siehe doc/adr_komponenten_refactoring.md):
+* Direkt-Tests der Komponente SchemaOrgData_FrontendRenderer:
 * renderFrontend() (Frontend-Ausgabepipeline von getContent()) und
 * buildDebugWidget(). Echte, zustandslose
 * SchemaOrgData_ScopeResolver-/SchemaOrgData_SchemaRepository-/

@@ -6,9 +6,8 @@ use PHPUnit\Framework\TestCase;
 
 /***************************************************************
 *
-* Direkt-Tests der Komponente SchemaOrgData_DataSplitHelper
-* (Refactoring-Schritt 8, siehe doc/adr_komponenten_refactoring.md,
-* Entscheidung e). Zustandslose Instanz ohne Abhängigkeiten - reine
+* Direkt-Tests der Komponente SchemaOrgData_DataSplitHelper.
+* Zustandslose Instanz ohne Abhängigkeiten - reine
 * Array-Transformation, geteilter Mapper für FormRenderer und
 * ImportService (siehe auch importJsonLd()-Delegation in index.php).
 *

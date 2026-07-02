@@ -6,14 +6,10 @@ use PHPUnit\Framework\TestCase;
 
 /***************************************************************
 *
-* Direkt-Tests der Komponente SchemaOrgData_IdReferenceService
-* (Refactoring-Schritt 6, siehe doc/adr_komponenten_refactoring.md,
-* Entscheidung c). Echte, zustandslose ScopeResolver-/
-* SchemaRepository-Instanzen, $pluginSelfDir zeigt auf die realen
-* Schema-/Sprach-Fixtures des Plugins. Die Facade-Delegator-Verträge
-* (callPluginMethod 'resolveAvailableGlobalFragments' /
-* 'applyDanglingReferenceGuard') sind bereits durch
-* PersonIdRefOrLiteralTest und DonateActionTest abgedeckt.
+* Direkt-Tests der Komponente SchemaOrgData_IdReferenceService.
+* Echte, zustandslose ScopeResolver-/SchemaRepository-Instanzen,
+* $pluginSelfDir zeigt auf die realen Schema-/Sprach-Fixtures des
+* Plugins.
 *
 ***************************************************************/
 final class IdReferenceServiceTest extends TestCase {
@@ -133,9 +129,8 @@ final class IdReferenceServiceTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersonIdRefOrLiteralTest::testGuardNoOpForLiteralMode().
-    * Abweichend vom Original: applyDanglingReferenceGuard() lädt in
-    * seiner ersten Schleife für JEDEN Type in $scopeConfigs zunächst
+    * applyDanglingReferenceGuard() lädt in seiner ersten Schleife
+    * für JEDEN Type in $scopeConfigs zunächst
     * dessen eigenes Schema per loadSchema($pluginSelfDir, $type) -
     * unabhängig vom späteren _mode-Zweig. "TestIdRefType" existiert
     * nicht unter den echten Plugin-Schemas; mit $this->pluginSelfDir()

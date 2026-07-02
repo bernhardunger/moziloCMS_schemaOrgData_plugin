@@ -8,22 +8,18 @@ use PHPUnit\Framework\Attributes\PreserveGlobalState;
 
 /***************************************************************
 *
-* Direkt-Tests der Komponente SchemaOrgData_AdminController:
-* Refactoring-Schritt 12a, "Ebene A" (reine Anzeige-Bausteine)
-* sowie Schritt 12b, "Ebene B" (Orchestrierung/Persistenz -
+* Direkt-Tests der Komponente SchemaOrgData_AdminController: reine
+* Anzeige-Bausteine sowie Orchestrierung/Persistenz -
 * renderScopeSection(), sanitizePostData(), sanitizeAddressData(),
-* saveConfig(), handlePostRequest(), renderAdminPage()), siehe
-* doc/adr_komponenten_refactoring.md. Echte, zustandslose
+* saveConfig(), handlePostRequest(), renderAdminPage(). Echte,
+* zustandslose
 * Language-/SchemaOrgData_ScopeResolver-/SchemaOrgData_SchemaRepository-/
 * SchemaOrgData_FormRenderer-/SchemaOrgData_Validator-/
 * SchemaOrgData_OpeningHoursHelper-/SchemaOrgData_DataSplitHelper-/
 * SchemaOrgData_UrlHelper-/SchemaOrgData_IdReferenceService-/
 * SchemaOrgData_CollisionDetector-Instanzen, $pluginSelfDir zeigt auf
 * die realen Schema-/Sprach-Fixtures des Plugins, $settings ist ein
-* isolierter InMemorySettings-Stub. Die Facade-Delegator-Verträge sind
-* bereits durch bestehende Tests (PersistenceTest, JsonLdOutputTest
-* o. ä.) indirekt abgedeckt - hier wird nur die Komponente selbst ohne
-* Fassaden-Overhead geprüft.
+* isolierter InMemorySettings-Stub.
 *
 ***************************************************************/
 final class AdminControllerTest extends TestCase {
@@ -264,7 +260,6 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testRequiredFieldErrorWithAmpersandLabelIsSingleEncoded().
     * Bug 2 (0.3.6-beta): Pflichtfeld-Fehlermeldungen mit Sonderzeichen
     * im Label (FAQPage-Label "Fragen & Antworten", siehe
     * admin_language_deDE.txt: label_faq_entries) dürfen nicht doppelt
@@ -327,7 +322,6 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus FormRendererTest::testAutofillButtonEscapesSpecialCharsInDataAttribute().
     * XSS-relevant: Sonderzeichen im gespeicherten existing_jsonld_content
     * dürfen nicht roh in das data-Attribut des Autofill-Buttons gelangen.
     *
@@ -435,7 +429,6 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus FormRendererTest::testExcludedCatsFieldOmitsKategorienRootEntry().
     * get_CatArray(true) liefert auch das Wurzelverzeichnis "kategorien"
     * selbst als Eintrag zurück - das ist keine echte Kategorie und
     * darf in der Ausschlussliste nicht als Checkbox erscheinen (nur
@@ -464,9 +457,8 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus FormRendererTest::testDebugOutputCheckboxIsAlwaysRendered()
-    * und ::testDebugOutputCheckboxHasLabelAndHint() (zusammengefasst,
-    * da beide auf denselben Aufruf prüfen).
+    * Prüft in einem Aufruf sowohl das Vorhandensein der Checkbox als
+    * auch Label und Hinweistext.
     *
     ***************************************************************/
     function testRenderExcludedCatsFieldDebugCheckboxImmerMitLabelUndHintDirekt(): void {
@@ -479,15 +471,10 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus FormRendererTest::testDebugOutputCheckboxAbsentForNonGlobalScope().
-    * Das Original testete indirekt über renderTypeFields(), weil
-    * renderScopeSection() zum damaligen Zeitpunkt privat war. Diese
-    * Prämisse gilt nicht mehr: renderScopeSection() ist inzwischen
-    * eine öffentliche Methode und ruft renderExcludedCatsField() laut
+    * renderScopeSection() ruft renderExcludedCatsField() laut
     * lib/SchemaOrgData_AdminController.php ausschließlich innerhalb
     * von "if($scope === 'global')" auf - deshalb hier direkt über
-    * renderScopeSection() mit scope='category' geprüft, statt die
-    * überholte Indirektion über renderTypeFields() zu reproduzieren.
+    * renderScopeSection() mit scope='category' geprüft.
     *
     ***************************************************************/
     function testRenderScopeSectionOhneDebugOutputFeldFuerNichtGlobalenScopeDirekt(): void {
@@ -505,7 +492,7 @@ final class AdminControllerTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // sanitizeAddressData() (Schritt 12b)
+    // sanitizeAddressData()
     // -----------------------------------------------------------
 
     private function localBusinessAddressSchema(): array {
@@ -538,7 +525,7 @@ final class AdminControllerTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // sanitizePostData() (Schritt 12b)
+    // sanitizePostData()
     // -----------------------------------------------------------
 
     function testSanitizePostDataTrimmtUndEntferntHtmlTags(): void {
@@ -579,7 +566,7 @@ final class AdminControllerTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // renderScopeSection() (Schritt 12b)
+    // renderScopeSection()
     // -----------------------------------------------------------
 
     private function callRenderScopeSection(
@@ -620,7 +607,6 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testFailedSaveRetainsPostedScalarValuesInActiveSection().
     * Regressionstest für 0.2.2-beta: schlägt das Speichern fehl
     * (z. B. wegen ungültiger url), müssen die vom Nutzer
     * eingegebenen POST-Werte erhalten bleiben - auch wenn bereits
@@ -651,7 +637,6 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testFailedSaveRetainsInvalidOpeningHoursTime().
     * Ein ungültiges Zeitformat (z. B. "8:00" statt "08:00") in einem
     * Öffnungszeiten-Feld darf beim Re-Display nach fehlgeschlagenem
     * Save nicht zu leeren Von/Bis-Feldern führen. buildOpeningHoursArray()/
@@ -677,7 +662,6 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testFailedSaveRetainsSecondOpeningHoursRange().
     * Regressionstest für 0.4.12-beta: schlägt das Speichern fehl
     * (z. B. wegen ungültiger url), müssen from2/to2 des zweiten
     * Öffnungszeiten-Zeitraums erhalten bleiben — analog zu
@@ -706,7 +690,7 @@ final class AdminControllerTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // saveConfig() (Schritt 12b)
+    // saveConfig()
     // -----------------------------------------------------------
 
     private function callSaveConfig(string $scope, array $postData, \InMemorySettings $settings): array {
@@ -728,14 +712,12 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testRoundTripViaLoadScopeConfig().
     * Round-Trip saveConfig() -> loadScopeConfig() mit realer
     * Datenkonvertierung (Öffnungszeiten-Widget-Struktur ->
-    * schema.org-Notation). Abweichend vom Original: die hiesige
-    * validLocalBusinessData() füllt nur Montag aus (09:00-18:00,
-    * übrige Wochentage leer) statt Mo-Fr durchgehend — die
-    * openingHours-Erwartung ist entsprechend auf ['Mo 09:00-18:00']
-    * angepasst, nicht 1:1 aus PersistenceTest.php übernommen.
+    * schema.org-Notation). validLocalBusinessData() füllt nur Montag
+    * aus (09:00-18:00, übrige Wochentage leer) statt Mo-Fr
+    * durchgehend — die openingHours-Erwartung ist entsprechend auf
+    * ['Mo 09:00-18:00'] angepasst.
     *
     ***************************************************************/
     function testRoundTripViaLoadScopeConfig(): void {
@@ -776,7 +758,6 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testCategoryConfigIsSavedUnderOwnSettingsKey().
     * Eigenständiger, von config_global getrennter settings-Key gemäß
     * getScopeSettingsKey()-Konvention.
     *
@@ -795,11 +776,6 @@ final class AdminControllerTest extends TestCase {
         $this->assertSame('Filiale Nord', $config['LocalBusiness']['name']);
     }
 
-    /***************************************************************
-    *
-    * Migriert aus PersistenceTest::testPageConfigIsSavedUnderOwnSettingsKey().
-    *
-    ***************************************************************/
     function testPageConfigIsSavedUnderOwnSettingsKey(): void {
         $settings = new \InMemorySettings();
         $_POST['schemaOrgData_cat'] = 'ueber-uns';
@@ -814,11 +790,6 @@ final class AdminControllerTest extends TestCase {
         $this->assertSame('Wie erreiche ich euch?', $config['FAQPage']['mainEntity'][0]['name']);
     }
 
-    /***************************************************************
-    *
-    * Migriert aus PersistenceTest::testExistingConfigIsOverwrittenOnResave().
-    *
-    ***************************************************************/
     function testExistingConfigIsOverwrittenOnResave(): void {
         $settings = new \InMemorySettings();
 
@@ -833,7 +804,6 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testGlobalSaveWithCompletelyEmptyAddressSucceeds().
     * Fix 0.4.3-beta: Eine komplett leere Adresse (nur Default-Wert
     * addressCountry=DE aus der Select-Box, alle anderen Felder leer)
     * darf das Speichern nicht blockieren — die Adresse als Ganzes ist
@@ -862,11 +832,6 @@ final class AdminControllerTest extends TestCase {
         $this->assertSame([], $result['errors']);
     }
 
-    /***************************************************************
-    *
-    * Migriert aus PersistenceTest::testExcludedCatsIsSavedAndLoadedAsArray().
-    *
-    ***************************************************************/
     function testExcludedCatsIsSavedAndLoadedAsArray(): void {
         $settings = new \InMemorySettings();
         $postData = $this->validLocalBusinessData();
@@ -879,11 +844,6 @@ final class AdminControllerTest extends TestCase {
         $this->assertSame(['impressum', 'datenschutz'], explode(',', $config['excluded_cats']));
     }
 
-    /***************************************************************
-    *
-    * Migriert aus PersistenceTest::testJsonldModeIsSavedAndLoaded().
-    *
-    ***************************************************************/
     function testJsonldModeIsSavedAndLoaded(): void {
         $settings = new \InMemorySettings();
         $_POST['schemaOrgData_jsonld_mode_global'] = 'override';
@@ -896,7 +856,7 @@ final class AdminControllerTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // handlePostRequest() (Schritt 12b)
+    // handlePostRequest()
     // -----------------------------------------------------------
 
     private function callHandlePostRequest($settings): ?array {
@@ -939,7 +899,7 @@ final class AdminControllerTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // renderAdminPage() (Schritt 12b)
+    // renderAdminPage()
     // -----------------------------------------------------------
 
     private function callRenderAdminPage($settings): string {
@@ -982,7 +942,6 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testFailedCategorySaveWithSpecialCharsRetainsPostValuesInActiveSection().
     * Regressionstest 0.3.7-beta: renderAdminPage() ermittelt
     * $selectedCat aus sanitizeScopeIdentifier($_POST['schemaOrgData_cat'])
     * und verglich diesen Wert bislang direkt mit dem UNSANIERTEN
@@ -1030,7 +989,6 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Migriert aus PersistenceTest::testTemplateJsonLdIsPersistedOnlyForGlobalScope().
     * Regressionstest 0.4.8-beta: Ein im Layout-Template gefundener
     * JSON-LD-Block ist layoutweit und damit kein seiten-/kategorie-
     * spezifisches Signal. renderAdminPage() darf das existing_jsonld-

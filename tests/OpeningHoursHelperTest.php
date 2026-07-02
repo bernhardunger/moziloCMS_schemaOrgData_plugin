@@ -6,9 +6,8 @@ use PHPUnit\Framework\TestCase;
 
 /***************************************************************
 *
-* Direkt-Tests der Komponente SchemaOrgData_OpeningHoursHelper
-* (Refactoring-Schritt 8, siehe doc/adr_komponenten_refactoring.md,
-* Entscheidung e). Zustandslose Instanz ohne Abhängigkeiten - reine
+* Direkt-Tests der Komponente SchemaOrgData_OpeningHoursHelper.
+* Zustandslose Instanz ohne Abhängigkeiten - reine
 * Array-/String-Transformationen, kein Bezug zu CMS-Globals.
 *
 ***************************************************************/

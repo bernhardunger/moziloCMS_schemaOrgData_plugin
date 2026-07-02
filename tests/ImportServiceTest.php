@@ -6,10 +6,8 @@ use PHPUnit\Framework\TestCase;
 
 /***************************************************************
 *
-* Direkt-Tests der Komponente SchemaOrgData_ImportService
-* (Refactoring-Schritt 11, siehe doc/adr_komponenten_refactoring.md).
+* Direkt-Tests der Komponente SchemaOrgData_ImportService.
 * Einziger Kollaborator ist SchemaOrgData_DataSplitHelper, zustandslos.
-* Verhaltensabdeckung über die Fassade siehe ImportParserTest.php.
 *
 ***************************************************************/
 final class ImportServiceTest extends TestCase {
@@ -55,11 +53,6 @@ final class ImportServiceTest extends TestCase {
         $this->assertSame([], $result['extensionData']);
     }
 
-    /***************************************************************
-    *
-    * Migriert aus ImportParserTest::testEmptyBlockIsHandledCorrectly().
-    *
-    ***************************************************************/
     function testLeererJsonLdBlockWirdKorrektBehandelt(): void {
         $service = new \SchemaOrgData_ImportService();
         $dataSplitHelper = new \SchemaOrgData_DataSplitHelper();
