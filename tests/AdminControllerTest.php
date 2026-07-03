@@ -11,10 +11,13 @@ use PHPUnit\Framework\Attributes\PreserveGlobalState;
 * Direkt-Tests der Komponente SchemaOrgData_AdminController:
 * feldweise Vererbungsanzeige (resolveInheritableFields()) sowie
 * Orchestrierung/Persistenz - renderScopeSection(), sanitizePostData(),
-* sanitizeAddressData(), saveConfig(), handlePostRequest(),
-* renderAdminPage(). Die reinen Anzeige-Bausteine sind seit
-* Fahrplan-Schritt 4 in SchemaOrgData_AdminPageRenderer ausgelagert
-* (siehe tests/AdminPageRendererTest.php). Echte, zustandslose
+* sanitizeAddressData(), saveConfig(), renderAdminPage(). Die reinen
+* Anzeige-Bausteine sind seit Fahrplan-Schritt 4 in
+* SchemaOrgData_AdminPageRenderer ausgelagert (siehe
+* tests/AdminPageRendererTest.php), die POST-Verarbeitung
+* (handlePostRequest()) seit Fahrplan-Schritt 5 in
+* SchemaOrgData_AdminRequestHandler (siehe
+* tests/AdminRequestHandlerTest.php). Echte, zustandslose
 * Language-/SchemaOrgData_ScopeResolver-/SchemaOrgData_SchemaRepository-/
 * SchemaOrgData_FormRenderer-/SchemaOrgData_Validator-/
 * SchemaOrgData_OpeningHoursHelper-/SchemaOrgData_DataSplitHelper-/
@@ -580,58 +583,20 @@ final class AdminControllerTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // handlePostRequest()
-    // -----------------------------------------------------------
-
-    private function callHandlePostRequest($settings): ?array {
-        return $this->controller()->handlePostRequest(
-            $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
-            $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(), $this->adminPageRenderer()
-        );
-    }
-
-    function testHandlePostRequestOhnePostDatenLiefertNull(): void {
-        $_POST = [];
-
-        $this->assertNull($this->callHandlePostRequest(new \InMemorySettings()));
-    }
-
-    function testHandlePostRequestSpeichertGlobalenScope(): void {
-        $settings = new \InMemorySettings();
-        $_POST['schemaOrgData'] = ['global' => $this->validLocalBusinessData()];
-        $_POST['schemaOrgData_cat'] = '';
-        $_POST['schemaOrgData_page'] = '';
-
-        $result = $this->callHandlePostRequest($settings);
-
-        $this->assertTrue($result['success']);
-        $this->assertTrue($settings->keyExists('config_global'));
-    }
-
-    function testHandlePostRequestLoeschtBeiDeleteFlag(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', ['LocalBusiness' => ['name' => 'Muster GmbH']]);
-        $_POST['schemaOrgData'] = ['global' => []];
-        $_POST['schemaOrgData_delete_global'] = '1';
-        $_POST['schemaOrgData_cat'] = '';
-        $_POST['schemaOrgData_page'] = '';
-
-        $result = $this->callHandlePostRequest($settings);
-
-        $this->assertTrue($result['success']);
-        $this->assertFalse($settings->keyExists('config_global'));
-    }
-
-    // -----------------------------------------------------------
     // renderAdminPage()
     // -----------------------------------------------------------
+
+    private function adminRequestHandler(): \SchemaOrgData_AdminRequestHandler {
+        return new \SchemaOrgData_AdminRequestHandler();
+    }
 
     private function callRenderAdminPage($settings): string {
         return $this->controller()->renderAdminPage(
             $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
             $this->pluginSelfDir(), $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
             'deDE', $this->pluginSelfDir(), $this->weekdayLang(), $this->idReferenceService(),
-            $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(), $this->adminPageRenderer()
+            $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(), $this->adminPageRenderer(),
+            $this->adminRequestHandler()
         );
     }
 

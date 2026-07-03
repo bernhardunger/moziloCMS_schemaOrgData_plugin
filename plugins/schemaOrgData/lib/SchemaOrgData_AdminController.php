@@ -8,15 +8,18 @@
 * (resolveInheritableFields()) sowie Orchestrierung/Persistenz
 * (Refactoring-Schritt 12b, "Ebene B"): Sektions-Rendering
 * (renderScopeSection()), POST-Sanitizing (sanitizePostData(),
-* sanitizeAddressData()), Speichern/Validieren (saveConfig()),
-* POST-Verarbeitung (handlePostRequest()) und die vollständige
-* Admin-Seite (renderAdminPage()). Siehe doc/adr_komponenten_refactoring.md.
+* sanitizeAddressData()), Speichern/Validieren (saveConfig()) und die
+* vollständige Admin-Seite (renderAdminPage()). Siehe
+* doc/adr_komponenten_refactoring.md.
 * Die reinen Anzeige-Bausteine (Info-Block, Scope-Label/Selektor,
 * Speichern-Button-Beschriftung, Speicher-Ergebnis-Hinweis, Hinweis
 * auf vorhandenes/kollidierendes JSON-LD, Ausschlussliste, Admin-CSS,
 * Schema-Type-Auswahl) sind seit Fahrplan-Schritt 4 in
-* SchemaOrgData_AdminPageRenderer ausgelagert (siehe
-* doc/adr_ziel_architektur.md).
+* SchemaOrgData_AdminPageRenderer ausgelagert, die POST-Verarbeitung
+* (handlePostRequest()) seit Fahrplan-Schritt 5 in
+* SchemaOrgData_AdminRequestHandler (saveConfig() bleibt vorerst hier,
+* siehe dessen Klassen-Docblock) - beide siehe
+* doc/adr_ziel_architektur.md.
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
 * SchemaOrgData_SchemaRepository, SchemaOrgData_FormRenderer,
@@ -554,86 +557,6 @@ class SchemaOrgData_AdminController {
 
     /***************************************************************
     *
-    * Verarbeitet die $_POST-Daten des Admin-Formulars. Für jede
-    * übermittelte Geltungsebene (schemaOrgData[global|category|page],
-    * siehe renderScopeSection) wird je nach Flag
-    * "schemaOrgData_delete_{scope}" deleteConfig() oder saveConfig()
-    * aufgerufen.
-    *
-    * Wird von getConfig() aufgerufen, bevor das Formular gerendert
-    * wird, sofern $_POST nicht leer ist.
-    *
-    * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer wird an saveConfig() durchgereicht
-    * @return ?array{success: bool, errors: string[]}
-    *
-    ***************************************************************/
-    public function handlePostRequest(
-        $settings,
-        Language $lang,
-        SchemaOrgData_ScopeResolver $scopeResolver,
-        SchemaOrgData_SchemaRepository $schemaRepository,
-        string $pluginSelfDir,
-        SchemaOrgData_Validator $validator,
-        SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
-        SchemaOrgData_AdminPageRenderer $adminPageRenderer
-    ): ?array {
-        $scopes = $_POST['schemaOrgData'] ?? null;
-
-        // Keine schemaOrgData-Formulardaten im POST - kein Speichervorgang,
-        // kein Ergebnis zurückgeben (verhindert falsche Erfolgsmeldung).
-        if(!is_array($scopes)) {
-            return null;
-        }
-
-        $success = true;
-        $errors = [];
-
-        // Globaler Geltungsbereich (Sonderfall): schemaOrgData_cat und
-        // schemaOrgData_page sind beide leer, wenn "Global" der aktive
-        // Scope ist (siehe renderAdminPage()). saveConfig('global', ...)
-        // wird ausschließlich hier ausgeführt, mit den tatsächlichen
-        // POST-Daten - auch wenn $scopes['global'] aus dem POST nicht
-        // als Array vorliegt (dann mit leerem Array). Der Scope-Loop
-        // unten iteriert nur noch über 'category' und 'page', damit
-        // Global nicht zusätzlich (mit ggf. leeren Daten) erneut
-        // gespeichert wird.
-        $catParam  = $scopeResolver->sanitizeScopeIdentifier((string) ($_POST['schemaOrgData_cat']  ?? ''));
-        $pageParam = $scopeResolver->sanitizeScopeIdentifier((string) ($_POST['schemaOrgData_page'] ?? ''));
-        $isGlobalScope = ($catParam === '' && $pageParam === '');
-
-        if($isGlobalScope) {
-            $globalData = (isset($scopes['global']) and is_array($scopes['global']))
-                ? $scopes['global'] : [];
-
-            $result = !empty($_POST['schemaOrgData_delete_global'])
-                ? $scopeResolver->deleteConfig($settings, 'global')
-                : $this->saveConfig('global', $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer);
-
-            $success = $success && $result['success'];
-            $errors = array_merge($errors, $result['errors']);
-        }
-
-        foreach(['category', 'page'] as $scope) {
-            $hasData = isset($scopes[$scope]) and is_array($scopes[$scope]);
-
-            if(!$hasData) {
-                continue;
-            }
-
-            $result = !empty($_POST['schemaOrgData_delete_'.$scope])
-                ? $scopeResolver->deleteConfig($settings, $scope)
-                : $this->saveConfig($scope, $scopes[$scope], $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer);
-
-            $success = $success && $result['success'];
-            $errors = array_merge($errors, $result['errors']);
-        }
-
-        return ['success' => $success, 'errors' => $errors];
-    }
-
-    /***************************************************************
-    *
     * Rendert die vollständige Admin-UI (schema-getriebenes
     * Konfigurationsformular, Geltungsbereiche Global / Kategorie /
     * Seite) im PLUGINADMIN-Kontext (Iframe-Dialog der Plugin-
@@ -668,6 +591,7 @@ class SchemaOrgData_AdminController {
     * @param string $pluginLang aktuell aufgelöste Admin-Locale (ui:enumLabels)
     * @param string $pluginSelfUrl PLUGIN_SELF_URL
     * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer für die reinen Anzeige-Bausteine
+    * @param SchemaOrgData_AdminRequestHandler $adminRequestHandler POST-Verarbeitung (siehe SchemaOrgData_AdminRequestHandler)
     *
     ***************************************************************/
     public function renderAdminPage(
@@ -686,13 +610,14 @@ class SchemaOrgData_AdminController {
         SchemaOrgData_Validator $validator,
         SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
         SchemaOrgData_CollisionDetector $collisionDetector,
-        SchemaOrgData_AdminPageRenderer $adminPageRenderer
+        SchemaOrgData_AdminPageRenderer $adminPageRenderer,
+        SchemaOrgData_AdminRequestHandler $adminRequestHandler
     ): string {
         global $CatPage;
         global $CMS_CONF;
 
-        $saveResult = ($_POST !== []) ? $this->handlePostRequest(
-            $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer
+        $saveResult = ($_POST !== []) ? $adminRequestHandler->handlePostRequest(
+            $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $this
         ) : null;
 
         // Bei fehlgeschlagenem Speichern wird die aktive Sektion in
