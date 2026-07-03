@@ -444,8 +444,13 @@ class SchemaOrgData_AdminController {
             'unsavedChanges'     => $lang->getLanguageValue('notice_unsaved_changes', '{PARAM1}'),
         ];
 
+        // JSON_HEX_TAG kodiert Winkelklammern in Sprachstring-Werten als Unicode-
+        // Escapes und verhindert so einen Script-Break-out, falls ein
+        // Sprachdatei-Wert jemals "</script>" enthalten sollte (analoges
+        // Härtungsmuster zu buildJsonLdScript()/buildDebugWidget(), siehe
+        // README.md, Abschnitt "JSON-LD-Ausgabe").
         $html .= '<script>window.schemaOrgDataMessages = '
-            .json_encode($messages, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).';</script>'."\n";
+            .json_encode($messages, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG).';</script>'."\n";
         $html .= '<script src="'.$pluginSelfUrl.'js/ajv.min.js"></script>'."\n";
         $html .= '<script src="'.$pluginSelfUrl.'js/validator.js"></script>'."\n";
         $html .= '<script>document.addEventListener("DOMContentLoaded", function () {'

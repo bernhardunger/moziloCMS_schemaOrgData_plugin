@@ -188,9 +188,9 @@ final class AdminControllerTest extends TestCase {
     // renderScopeSection()
     // -----------------------------------------------------------
 
-    private function buildAdminRequestContext($settings): \SchemaOrgData_AdminRequestContext {
+    private function buildAdminRequestContext($settings, ?\Language $lang = null): \SchemaOrgData_AdminRequestContext {
         return new \SchemaOrgData_AdminRequestContext(
-            $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
+            $settings, $lang ?? $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
             $this->pluginSelfDir(), $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
             'deDE', $this->pluginSelfDir(), $this->weekdayLang(), $this->idReferenceService(),
             $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(),
@@ -344,6 +344,10 @@ final class AdminControllerTest extends TestCase {
         return $this->controller()->renderAdminPage($this->buildAdminRequestContext($settings));
     }
 
+    private function callRenderAdminPageWithLang($settings, \Language $lang): string {
+        return $this->controller()->renderAdminPage($this->buildAdminRequestContext($settings, $lang));
+    }
+
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
     function testRenderAdminPageEnthaeltFormularUndScriptEinbindung(): void {
@@ -371,6 +375,44 @@ final class AdminControllerTest extends TestCase {
         $html = $this->callRenderAdminPage(new \InMemorySettings());
 
         $this->assertStringContainsString('schemaOrgData-notice--success', $html);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest 0.4.45-beta: window.schemaOrgDataMessages wird per
+    * json_encode() mit JSON_HEX_TAG kodiert (Escaping-Audit,
+    * Fahrplan-Schritt 9). Enthält ein Sprachdatei-Wert "</script>",
+    * darf dieser NICHT literal im erzeugten <script>-Block erscheinen
+    * (Script-Break-out), sondern muss als Unicode-Escape kodiert sein.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageEscaptSchemaOrgDataMessagesGegenScriptBreakout(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $maliciousLang = new class($this->adminLang()) extends \Language {
+            private \Language $delegate;
+            function __construct(\Language $delegate) {
+                $this->delegate = $delegate;
+            }
+            function getLanguageValue(string $phrase, string $param1 = '', string $param2 = ''): string {
+                if ($phrase === 'error_postal_code_format') {
+                    return '</script><script>alert(1)</script>';
+                }
+                return $this->delegate->getLanguageValue($phrase, $param1, $param2);
+            }
+        };
+
+        $html = $this->callRenderAdminPageWithLang(new \InMemorySettings(), $maliciousLang);
+
+        $this->assertStringNotContainsString('</script><script>alert(1)</script>', $html);
+        $this->assertStringContainsString(
+            "\\u003C/script\\u003E\\u003Cscript\\u003Ealert(1)\\u003C/script\\u003E",
+            $html
+        );
     }
 
     /***************************************************************
