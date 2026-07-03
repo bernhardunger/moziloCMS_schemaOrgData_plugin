@@ -16,6 +16,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminController.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminPageRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminRequestHandler.php';
 require_once __DIR__.'/lib/SchemaOrgData_ConfigSaveService.php';
+require_once __DIR__.'/lib/SchemaOrgData_ValidationResult.php';
 require_once __DIR__.'/lib/SchemaOrgData_FrontendRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_FrontendRequestContext.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
@@ -49,7 +50,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.42-beta';
+    private const PLUGIN_VERSION = '0.4.43-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';

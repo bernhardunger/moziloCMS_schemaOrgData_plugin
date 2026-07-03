@@ -4,17 +4,18 @@
 *
 * SchemaOrgData_ConfigSaveService
 *
-* Save-Flow-Pipeline des Admin-Formulars (Fahrplan-Schritt 6, siehe
+* Save-Flow-Pipeline des Admin-Formulars (Fahrplan-Schritt 6+7, siehe
 * doc/adr_ziel_architektur.md, Abschnitt 4 + 11): bündelt die
 * vererbungsbewusste Feld-Auflösung (resolveInheritableFields()),
 * die POST-Bereinigung (sanitizePostData(), sanitizeAddressData())
 * sowie Validieren/Speichern (saveConfig()) - vorher auf
 * SchemaOrgData_AdminController, dessen saveConfig()-Rückreferenz
-* aus SchemaOrgData_AdminRequestHandler damit aufgelöst ist. Noch
-* dünner Wrapper: die vier Methoden wurden unverändert übernommen,
-* saveConfig() macht die Vier-Phasen-Struktur (Rohdaten/Normalisieren/
-* Validieren/Speichern) nur per Kommentar-Abschnitten sichtbar - ein
-* eigenes ValidationResult-Objekt kommt erst mit Fahrplan-Schritt 7.
+* aus SchemaOrgData_AdminRequestHandler damit aufgelöst ist.
+* saveConfig() macht die Vier-Phasen-Struktur (Rohdaten/Validieren/
+* Normalisieren/Speichern) per Kommentar-Abschnitten sichtbar; die
+* Erweiterungsfeld-Validierung ist seit Fahrplan-Schritt 7 in die
+* eigenständige, ein SchemaOrgData_ValidationResult liefernde Methode
+* validateExtensionField() ausgelagert.
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
 * SchemaOrgData_SchemaRepository, SchemaOrgData_Validator,
@@ -234,12 +235,47 @@ class SchemaOrgData_ConfigSaveService {
 
     /***************************************************************
     *
+    * Validiert das Erweiterungsfeld (freies JSON-Textarea, siehe
+    * README.md "Erweiterungsfeld"): dekodiert die Rohdaten und prüft
+    * Geo-Properties (validateExtensionGeo()). Aus saveConfig() ausgelagert
+    * (Fahrplan-Schritt 7, siehe doc/adr_ziel_architektur.md, Abschnitt 4),
+    * damit saveConfig() nur noch orchestriert und keine Validierungslogik
+    * selbst enthält.
+    *
+    * Leere Rohdaten ($extensionRaw === '') sind kein Fehler - das
+    * Erweiterungsfeld ist optional.
+    *
+    * @param string $extensionRaw Rohwert aus $_POST (schemaOrgData[scope][extension][$type])
+    *
+    ***************************************************************/
+    public function validateExtensionField(
+        string $extensionRaw,
+        Language $lang,
+        SchemaOrgData_Validator $validator
+    ): SchemaOrgData_ValidationResult {
+        if($extensionRaw === '') {
+            return new SchemaOrgData_ValidationResult(true, [], []);
+        }
+
+        $decoded = json_decode($extensionRaw, true);
+
+        if(json_last_error() !== JSON_ERROR_NONE or !is_array($decoded)) {
+            return new SchemaOrgData_ValidationResult(false, [$lang->getLanguageValue('error_json_invalid')], []);
+        }
+
+        $errors = $validator->validateExtensionGeo($decoded, $lang);
+
+        return new SchemaOrgData_ValidationResult($errors === [], $errors, $decoded);
+    }
+
+    /***************************************************************
+    *
     * Validiert und speichert die Konfiguration einer Geltungsebene.
     *
     * Ablauf (Save-Flow-Pipeline, siehe doc/adr_ziel_architektur.md,
     * Abschnitt 4): Schema des gewählten Types laden, Formularfelder
-    * und Erweiterungsfeld validieren (validateFormData/json_decode/
-    * validateExtensionGeo). Bei Validierungsfehlern wird nicht
+    * und Erweiterungsfeld validieren (validateFormData()/
+    * validateExtensionField()). Bei Validierungsfehlern wird nicht
     * gespeichert. Andernfalls werden die Formularfelder bereinigt
     * (sanitizePostData) und mit dem Erweiterungsfeld zusammengeführt
     * (Formular hat Vorrang, siehe README.md "Erweiterungsfeld"),
@@ -299,26 +335,20 @@ class SchemaOrgData_ConfigSaveService {
             } else {
                 $formData = is_array($postData['data'] ?? null) ? $postData['data'] : [];
                 $extensionRaw = trim((string) ($postData['extension'][$type] ?? ''));
-                $extensionData = [];
 
-                // 3. Validieren
+                // 2. Validieren
+                // Bewusste Reihenfolge (siehe doc/adr_ziel_architektur.md, Abschnitt 4):
+                // Validierung arbeitet auf den Rohdaten, nicht auf der bereits
+                // bereinigten Normalisierungs-Zwischenform - Fehlermeldungen sollen sich
+                // auf das beziehen, was der Nutzer tatsächlich eingegeben hat.
                 $inheritable = $this->resolveInheritableFields($scope, $cat, $page, $type, $lang, $scopeResolver, $settings, $adminPageRenderer);
-                $errors = $validator->validateFormData($formData, $schema, $inheritable, $lang, $schemaRepository);
+                $formErrors = $validator->validateFormData($formData, $schema, $inheritable, $lang, $schemaRepository);
+                $extensionResult = $this->validateExtensionField($extensionRaw, $lang, $validator);
+                $errors = array_merge($formErrors, $extensionResult->errors);
 
-                if($extensionRaw !== '') {
-                    $decoded = json_decode($extensionRaw, true);
-
-                    if(json_last_error() !== JSON_ERROR_NONE or !is_array($decoded)) {
-                        $errors[] = $lang->getLanguageValue('error_json_invalid');
-                    } else {
-                        $extensionData = $decoded;
-                        $errors = array_merge($errors, $validator->validateExtensionGeo($extensionData, $lang));
-                    }
-                }
-
-                // 2. Normalisieren
+                // 3. Normalisieren
                 if($errors === []) {
-                    $config[$type] = array_merge($extensionData, $this->sanitizePostData($formData, $schema, $schemaRepository, $openingHoursHelper, $validator));
+                    $config[$type] = array_merge($extensionResult->extensionData, $this->sanitizePostData($formData, $schema, $schemaRepository, $openingHoursHelper, $validator));
                 }
             }
         }

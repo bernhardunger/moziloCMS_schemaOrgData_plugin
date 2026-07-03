@@ -227,6 +227,49 @@ final class ConfigSaveServiceTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // validateExtensionField()
+    // -----------------------------------------------------------
+
+    function testValidateExtensionFieldLeererRohwertLiefertErfolgOhneDaten(): void {
+        $result = $this->configSaveService()->validateExtensionField('', $this->adminLang(), $this->validator());
+
+        $this->assertTrue($result->success);
+        $this->assertSame([], $result->errors);
+        $this->assertSame([], $result->extensionData);
+    }
+
+    function testValidateExtensionFieldGueltigesJsonLiefertDekodierteDaten(): void {
+        $result = $this->configSaveService()->validateExtensionField('{"foo":"bar"}', $this->adminLang(), $this->validator());
+
+        $this->assertTrue($result->success);
+        $this->assertSame([], $result->errors);
+        $this->assertSame(['foo' => 'bar'], $result->extensionData);
+    }
+
+    function testValidateExtensionFieldUngueltigesJsonLiefertFehler(): void {
+        $result = $this->configSaveService()->validateExtensionField('{ungueltig', $this->adminLang(), $this->validator());
+
+        $this->assertFalse($result->success);
+        $this->assertNotEmpty($result->errors);
+        $this->assertSame([], $result->extensionData);
+    }
+
+    /***************************************************************
+    *
+    * validateExtensionGeo() (SchemaOrgData_Validator) prüft geo.latitude
+    * gegen den Wertebereich -90..90 (validateGeoLatitude()) - ein Wert
+    * außerhalb davon löst einen Fehler aus, obwohl das JSON selbst
+    * syntaktisch gültig ist.
+    *
+    ***************************************************************/
+    function testValidateExtensionFieldGeoFehlerLiefertFehler(): void {
+        $result = $this->configSaveService()->validateExtensionField('{"geo":{"latitude":"200"}}', $this->adminLang(), $this->validator());
+
+        $this->assertFalse($result->success);
+        $this->assertNotEmpty($result->errors);
+    }
+
+    // -----------------------------------------------------------
     // saveConfig()
     // -----------------------------------------------------------
 
@@ -269,6 +312,17 @@ final class ConfigSaveServiceTest extends TestCase {
         $this->assertSame('Musterstadt', $loaded['LocalBusiness']['address']['addressLocality']);
         $this->assertSame('DE', $loaded['LocalBusiness']['address']['addressCountry']);
         $this->assertSame(['Mo 09:00-18:00'], $loaded['LocalBusiness']['openingHours']);
+    }
+
+    function testSaveConfigMergtGueltigesErweiterungsJson(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['extension']['LocalBusiness'] = '{"foo":"bar"}';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('bar', $settings->get('config_global')['LocalBusiness']['foo']);
     }
 
     function testSaveConfigLehntUngueltigesErweiterungsJsonAb(): void {
