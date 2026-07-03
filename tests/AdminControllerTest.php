@@ -188,15 +188,22 @@ final class AdminControllerTest extends TestCase {
     // renderScopeSection()
     // -----------------------------------------------------------
 
+    private function buildAdminRequestContext($settings): \SchemaOrgData_AdminRequestContext {
+        return new \SchemaOrgData_AdminRequestContext(
+            $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
+            $this->pluginSelfDir(), $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
+            'deDE', $this->pluginSelfDir(), $this->weekdayLang(), $this->idReferenceService(),
+            $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(),
+            $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService()
+        );
+    }
+
     private function callRenderScopeSection(
         string $scope, ?string $cat, ?string $page, bool $active, ?string $idPrefix, bool $saveFailed, $settings
     ): string {
         return $this->controller()->renderScopeSection(
             $scope, $cat, $page, $active, $idPrefix, $saveFailed,
-            $this->adminLang(), $this->scopeResolver(), $settings, $this->schemaRepository(),
-            $this->pluginSelfDir(), $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
-            'deDE', $this->pluginSelfDir(), $this->weekdayLang(), $this->idReferenceService(),
-            $this->openingHoursHelper(), $this->validator(), $this->adminPageRenderer(), $this->configSaveService()
+            $this->buildAdminRequestContext($settings)
         );
     }
 
@@ -334,13 +341,7 @@ final class AdminControllerTest extends TestCase {
     }
 
     private function callRenderAdminPage($settings): string {
-        return $this->controller()->renderAdminPage(
-            $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
-            $this->pluginSelfDir(), $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
-            'deDE', $this->pluginSelfDir(), $this->weekdayLang(), $this->idReferenceService(),
-            $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(), $this->adminPageRenderer(),
-            $this->adminRequestHandler(), $this->configSaveService()
-        );
+        return $this->controller()->renderAdminPage($this->buildAdminRequestContext($settings));
     }
 
     #[RunInSeparateProcess]

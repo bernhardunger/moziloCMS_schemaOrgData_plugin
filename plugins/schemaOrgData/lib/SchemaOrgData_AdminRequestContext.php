@@ -5,9 +5,9 @@
 * SchemaOrgData_AdminRequestContext
 *
 * Bündelt die Laufzeit-Kollaboratoren und -Parameter, die
-* SchemaOrgData_AdminController::renderAdminPage() für den
-* Aufbau der Admin-Seite benötigt (siehe
-* doc/adr_ziel_architektur.md, Abschnitt 1 "Context-Objekte").
+* SchemaOrgData_AdminController::renderAdminPage() und
+* renderScopeSection() für den Aufbau der Admin-Seite benötigen
+* (siehe doc/adr_ziel_architektur.md, Abschnitt 1 "Context-Objekte").
 *
 ***************************************************************/
 final class SchemaOrgData_AdminRequestContext {
@@ -40,7 +40,10 @@ final class SchemaOrgData_AdminRequestContext {
         public readonly SchemaOrgData_IdReferenceService $idReferenceService,
         public readonly SchemaOrgData_Validator $validator,
         public readonly SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
-        public readonly SchemaOrgData_CollisionDetector $collisionDetector
+        public readonly SchemaOrgData_CollisionDetector $collisionDetector,
+        public readonly SchemaOrgData_AdminPageRenderer $adminPageRenderer,
+        public readonly SchemaOrgData_AdminRequestHandler $adminRequestHandler,
+        public readonly SchemaOrgData_ConfigSaveService $configSaveService
     ) {
     }
 }

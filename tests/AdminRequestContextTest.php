@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 *
 * Tests für SchemaOrgData_AdminRequestContext:
 *
-*   - Konstruktor setzt alle 15 Properties korrekt
+*   - Konstruktor setzt alle 18 Properties korrekt
 *   - Properties sind readonly (Schreibversuch wirft Error)
 *
 ***************************************************************/
@@ -42,7 +42,10 @@ final class AdminRequestContextTest extends TestCase {
             new \SchemaOrgData_IdReferenceService(),
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_CollisionDetector()
+            new \SchemaOrgData_CollisionDetector(),
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_AdminRequestHandler(),
+            new \SchemaOrgData_ConfigSaveService()
         );
     }
 
@@ -60,6 +63,9 @@ final class AdminRequestContextTest extends TestCase {
         $validator = new \SchemaOrgData_Validator();
         $openingHoursHelper = new \SchemaOrgData_OpeningHoursHelper();
         $collisionDetector = new \SchemaOrgData_CollisionDetector();
+        $adminPageRenderer = new \SchemaOrgData_AdminPageRenderer();
+        $adminRequestHandler = new \SchemaOrgData_AdminRequestHandler();
+        $configSaveService = new \SchemaOrgData_ConfigSaveService();
 
         $context = new \SchemaOrgData_AdminRequestContext(
             $settings,
@@ -76,7 +82,10 @@ final class AdminRequestContextTest extends TestCase {
             $idReferenceService,
             $validator,
             $openingHoursHelper,
-            $collisionDetector
+            $collisionDetector,
+            $adminPageRenderer,
+            $adminRequestHandler,
+            $configSaveService
         );
 
         $this->assertSame($settings, $context->settings);
@@ -94,6 +103,9 @@ final class AdminRequestContextTest extends TestCase {
         $this->assertSame($validator, $context->validator);
         $this->assertSame($openingHoursHelper, $context->openingHoursHelper);
         $this->assertSame($collisionDetector, $context->collisionDetector);
+        $this->assertSame($adminPageRenderer, $context->adminPageRenderer);
+        $this->assertSame($adminRequestHandler, $context->adminRequestHandler);
+        $this->assertSame($configSaveService, $context->configSaveService);
     }
 
     function testSchreibversuchAufReadonlyPropertyWirftError(): void {
@@ -110,5 +122,13 @@ final class AdminRequestContextTest extends TestCase {
         $this->expectException(\Error::class);
 
         $context->settings = new \InMemorySettings();
+    }
+
+    function testSchreibversuchAufConfigSaveServicePropertyWirftError(): void {
+        $context = $this->buildContext();
+
+        $this->expectException(\Error::class);
+
+        $context->configSaveService = new \SchemaOrgData_ConfigSaveService();
     }
 }

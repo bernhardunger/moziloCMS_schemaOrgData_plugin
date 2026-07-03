@@ -55,13 +55,7 @@ class SchemaOrgData_AdminController {
     * @param bool   $active ob diese Sektion initial sichtbar ist
     * @param string|null $idPrefix Präfix für HTML-IDs dieser Sektion
     *                     (z. B. "global", "cat_Startseite"; Fallback: $scope)
-    * @param Language $lang Admin-Sprachobjekt
-    * @param Language $weekdayLang Sprachobjekt für Wochentag-Labels (openingHours)
-    * @param string $pluginLang aktuell aufgelöste Admin-Locale (ui:enumLabels)
-    * @param string $pluginSelfUrl PLUGIN_SELF_URL (Extension-Feld-Schema-URL)
-    * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer für die reinen Anzeige-Bausteine
-    * @param SchemaOrgData_ConfigSaveService $configSaveService für resolveInheritableFields()/sanitizePostData()
+    * @param SchemaOrgData_AdminRequestContext $context Laufzeit-Kollaboratoren (siehe dort)
     * @return string HTML-Snippet
     *
     ***************************************************************/
@@ -72,23 +66,25 @@ class SchemaOrgData_AdminController {
         bool $active,
         ?string $idPrefix,
         bool $saveFailed,
-        Language $lang,
-        SchemaOrgData_ScopeResolver $scopeResolver,
-        $settings,
-        SchemaOrgData_SchemaRepository $schemaRepository,
-        string $pluginSelfDir,
-        SchemaOrgData_FormRenderer $formRenderer,
-        SchemaOrgData_DataSplitHelper $dataSplitHelper,
-        SchemaOrgData_UrlHelper $urlHelper,
-        string $pluginLang,
-        string $pluginSelfUrl,
-        Language $weekdayLang,
-        SchemaOrgData_IdReferenceService $idReferenceService,
-        SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
-        SchemaOrgData_Validator $validator,
-        SchemaOrgData_AdminPageRenderer $adminPageRenderer,
-        SchemaOrgData_ConfigSaveService $configSaveService
+        SchemaOrgData_AdminRequestContext $context
     ): string {
+        $lang = $context->lang;
+        $scopeResolver = $context->scopeResolver;
+        $settings = $context->settings;
+        $schemaRepository = $context->schemaRepository;
+        $pluginSelfDir = $context->pluginSelfDir;
+        $formRenderer = $context->formRenderer;
+        $dataSplitHelper = $context->dataSplitHelper;
+        $urlHelper = $context->urlHelper;
+        $pluginLang = $context->pluginLang;
+        $pluginSelfUrl = $context->pluginSelfUrl;
+        $weekdayLang = $context->weekdayLang;
+        $idReferenceService = $context->idReferenceService;
+        $openingHoursHelper = $context->openingHoursHelper;
+        $validator = $context->validator;
+        $adminPageRenderer = $context->adminPageRenderer;
+        $configSaveService = $context->configSaveService;
+
         $idPrefix = $idPrefix ?? $scope;
         $config = $scopeResolver->loadScopeConfig($settings, $scope, $cat, $page);
 
@@ -259,37 +255,25 @@ class SchemaOrgData_AdminController {
     * Geltungsbereichs Sichtbarkeit und disabled-Status um, damit
     * beim Speichern nur die aktive Sektion übertragen wird.
     *
-    * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @param string $pluginSelfDir PLUGIN_SELF_DIR
-    * @param string $pluginLang aktuell aufgelöste Admin-Locale (ui:enumLabels)
-    * @param string $pluginSelfUrl PLUGIN_SELF_URL
-    * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer für die reinen Anzeige-Bausteine
-    * @param SchemaOrgData_AdminRequestHandler $adminRequestHandler POST-Verarbeitung (siehe SchemaOrgData_AdminRequestHandler)
-    * @param SchemaOrgData_ConfigSaveService $configSaveService Speichern/Validieren (siehe SchemaOrgData_ConfigSaveService)
+    * @param SchemaOrgData_AdminRequestContext $context Laufzeit-Kollaboratoren (siehe dort)
     *
     ***************************************************************/
-    public function renderAdminPage(
-        $settings,
-        Language $lang,
-        SchemaOrgData_ScopeResolver $scopeResolver,
-        SchemaOrgData_SchemaRepository $schemaRepository,
-        string $pluginSelfDir,
-        SchemaOrgData_FormRenderer $formRenderer,
-        SchemaOrgData_DataSplitHelper $dataSplitHelper,
-        SchemaOrgData_UrlHelper $urlHelper,
-        string $pluginLang,
-        string $pluginSelfUrl,
-        Language $weekdayLang,
-        SchemaOrgData_IdReferenceService $idReferenceService,
-        SchemaOrgData_Validator $validator,
-        SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
-        SchemaOrgData_CollisionDetector $collisionDetector,
-        SchemaOrgData_AdminPageRenderer $adminPageRenderer,
-        SchemaOrgData_AdminRequestHandler $adminRequestHandler,
-        SchemaOrgData_ConfigSaveService $configSaveService
-    ): string {
+    public function renderAdminPage(SchemaOrgData_AdminRequestContext $context): string {
         global $CatPage;
         global $CMS_CONF;
+
+        $settings = $context->settings;
+        $lang = $context->lang;
+        $scopeResolver = $context->scopeResolver;
+        $schemaRepository = $context->schemaRepository;
+        $pluginSelfDir = $context->pluginSelfDir;
+        $pluginSelfUrl = $context->pluginSelfUrl;
+        $validator = $context->validator;
+        $openingHoursHelper = $context->openingHoursHelper;
+        $collisionDetector = $context->collisionDetector;
+        $adminPageRenderer = $context->adminPageRenderer;
+        $adminRequestHandler = $context->adminRequestHandler;
+        $configSaveService = $context->configSaveService;
 
         $saveResult = ($_POST !== []) ? $adminRequestHandler->handlePostRequest(
             $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $configSaveService
@@ -369,12 +353,7 @@ class SchemaOrgData_AdminController {
             active: $selectedCat === null,
             idPrefix: 'global',
             saveFailed: $saveFailed,
-            lang: $lang, scopeResolver: $scopeResolver, settings: $settings, schemaRepository: $schemaRepository,
-            pluginSelfDir: $pluginSelfDir, formRenderer: $formRenderer, dataSplitHelper: $dataSplitHelper,
-            urlHelper: $urlHelper, pluginLang: $pluginLang, pluginSelfUrl: $pluginSelfUrl,
-            weekdayLang: $weekdayLang, idReferenceService: $idReferenceService,
-            openingHoursHelper: $openingHoursHelper, validator: $validator, adminPageRenderer: $adminPageRenderer,
-            configSaveService: $configSaveService
+            context: $context
         );
 
         // Alle Kategorien vorrendern
@@ -398,12 +377,7 @@ class SchemaOrgData_AdminController {
                 active: $catActive,
                 idPrefix: 'cat_' . $safeCat,
                 saveFailed: $saveFailed,
-                lang: $lang, scopeResolver: $scopeResolver, settings: $settings, schemaRepository: $schemaRepository,
-                pluginSelfDir: $pluginSelfDir, formRenderer: $formRenderer, dataSplitHelper: $dataSplitHelper,
-                urlHelper: $urlHelper, pluginLang: $pluginLang, pluginSelfUrl: $pluginSelfUrl,
-                weekdayLang: $weekdayLang, idReferenceService: $idReferenceService,
-                openingHoursHelper: $openingHoursHelper, validator: $validator, adminPageRenderer: $adminPageRenderer,
-                configSaveService: $configSaveService
+                context: $context
             );
 
             // Seiten aller Kategorien vorrendern - inaktive erhalten display:none
@@ -418,12 +392,7 @@ class SchemaOrgData_AdminController {
                         active: $pageActive,
                         idPrefix: 'page_' . $safeCat . '_' . $safePage,
                         saveFailed: $saveFailed,
-                        lang: $lang, scopeResolver: $scopeResolver, settings: $settings, schemaRepository: $schemaRepository,
-                        pluginSelfDir: $pluginSelfDir, formRenderer: $formRenderer, dataSplitHelper: $dataSplitHelper,
-                        urlHelper: $urlHelper, pluginLang: $pluginLang, pluginSelfUrl: $pluginSelfUrl,
-                        weekdayLang: $weekdayLang, idReferenceService: $idReferenceService,
-                        openingHoursHelper: $openingHoursHelper, validator: $validator, adminPageRenderer: $adminPageRenderer,
-                        configSaveService: $configSaveService
+                        context: $context
                     );
                 }
             }

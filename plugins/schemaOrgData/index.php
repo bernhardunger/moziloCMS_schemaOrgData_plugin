@@ -50,7 +50,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.43-beta';
+    private const PLUGIN_VERSION = '0.4.44-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -139,11 +139,13 @@ class schemaOrgData extends Plugin {
         // $this->settings nach Rückgabe dieser Methode explizit)
         if (defined('PLUGINADMIN')) {
             return $this->adminController()->renderAdminPage(
-                $this->settings, $this->loadAdminLanguage(), $this->scopeResolver(), $this->schemaRepository(),
-                $this->PLUGIN_SELF_DIR, $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
-                $this->pluginLang, $this->PLUGIN_SELF_URL, $this->loadWeekdayLanguage(), $this->idReferenceService(),
-                $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(), $this->adminPageRenderer(),
-                $this->adminRequestHandler(), $this->configSaveService()
+                new SchemaOrgData_AdminRequestContext(
+                    $this->settings, $this->loadAdminLanguage(), $this->scopeResolver(), $this->schemaRepository(),
+                    $this->PLUGIN_SELF_DIR, $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
+                    $this->pluginLang, $this->PLUGIN_SELF_URL, $this->loadWeekdayLanguage(), $this->idReferenceService(),
+                    $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(),
+                    $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService()
+                )
             );
         }
 
