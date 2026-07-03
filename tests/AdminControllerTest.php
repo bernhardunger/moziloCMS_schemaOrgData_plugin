@@ -8,18 +8,20 @@ use PHPUnit\Framework\Attributes\PreserveGlobalState;
 
 /***************************************************************
 *
-* Direkt-Tests der Komponente SchemaOrgData_AdminController: reine
-* Anzeige-Bausteine sowie Orchestrierung/Persistenz -
-* renderScopeSection(), sanitizePostData(), sanitizeAddressData(),
-* saveConfig(), handlePostRequest(), renderAdminPage(). Echte,
-* zustandslose
+* Direkt-Tests der Komponente SchemaOrgData_AdminController:
+* feldweise Vererbungsanzeige (resolveInheritableFields()) sowie
+* Orchestrierung/Persistenz - renderScopeSection(), sanitizePostData(),
+* sanitizeAddressData(), saveConfig(), handlePostRequest(),
+* renderAdminPage(). Die reinen Anzeige-Bausteine sind seit
+* Fahrplan-Schritt 4 in SchemaOrgData_AdminPageRenderer ausgelagert
+* (siehe tests/AdminPageRendererTest.php). Echte, zustandslose
 * Language-/SchemaOrgData_ScopeResolver-/SchemaOrgData_SchemaRepository-/
 * SchemaOrgData_FormRenderer-/SchemaOrgData_Validator-/
 * SchemaOrgData_OpeningHoursHelper-/SchemaOrgData_DataSplitHelper-/
 * SchemaOrgData_UrlHelper-/SchemaOrgData_IdReferenceService-/
-* SchemaOrgData_CollisionDetector-Instanzen, $pluginSelfDir zeigt auf
-* die realen Schema-/Sprach-Fixtures des Plugins, $settings ist ein
-* isolierter InMemorySettings-Stub.
+* SchemaOrgData_CollisionDetector-/SchemaOrgData_AdminPageRenderer-
+* Instanzen, $pluginSelfDir zeigt auf die realen Schema-/Sprach-Fixtures
+* des Plugins, $settings ist ein isolierter InMemorySettings-Stub.
 *
 ***************************************************************/
 final class AdminControllerTest extends TestCase {
@@ -48,22 +50,6 @@ final class AdminControllerTest extends TestCase {
     private function ensureFakeCatPageWithPagesLoaded(): void {
         if (!class_exists(FakeCatPageWithPages::class)) {
             require_once __DIR__ . '/Fixtures/FakeCatPageWithPages.php';
-        }
-    }
-
-    /***************************************************************
-    *
-    * FakeCatPage ist in tests/Fixtures/FakeCatPage.php deklariert (nicht
-    * PSR-4-autoloadbar unter eigenem Dateinamen) - nicht identisch mit
-    * FakeCatPageWithPages aus tests/Fixtures/FakeCatPageWithPages.php. Im
-    * normalen Suite-Lauf ist die Klasse durch das Laden von
-    * FormRendererTest.php bereits verfügbar; hier bei Bedarf explizit
-    * nachladen.
-    *
-    ***************************************************************/
-    private function ensureFakeCatPageLoaded(): void {
-        if (!class_exists(FakeCatPage::class)) {
-            require_once __DIR__ . '/Fixtures/FakeCatPage.php';
         }
     }
 
@@ -119,6 +105,10 @@ final class AdminControllerTest extends TestCase {
         return new \SchemaOrgData_AdminController();
     }
 
+    private function adminPageRenderer(): \SchemaOrgData_AdminPageRenderer {
+        return new \SchemaOrgData_AdminPageRenderer();
+    }
+
     /***************************************************************
     *
     * Minimale, gültige Formulardaten für den Type "LocalBusiness"
@@ -171,206 +161,6 @@ final class AdminControllerTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // getAdminCss()
-    // -----------------------------------------------------------
-
-    function testGetAdminCssEnthaeltAdminSelektor(): void {
-        $css = $this->controller()->getAdminCss();
-
-        $this->assertStringContainsString('.schemaOrgData-admin', $css);
-        $this->assertStringContainsString('.schemaOrgData-required', $css);
-    }
-
-    // -----------------------------------------------------------
-    // renderInfoBlock()
-    // -----------------------------------------------------------
-
-    function testRenderInfoBlockGlobalEnthaeltTemplateHinweis(): void {
-        $html = $this->controller()->renderInfoBlock('global', $this->adminLang());
-
-        $this->assertStringContainsString('schemaOrgData-info', $html);
-    }
-
-    function testRenderInfoBlockUngueltigerScopeLiefertLeerenString(): void {
-        $this->assertSame('', $this->controller()->renderInfoBlock('nicht-existent', $this->adminLang()));
-    }
-
-    // -----------------------------------------------------------
-    // buildScopeLabel()
-    // -----------------------------------------------------------
-
-    function testBuildScopeLabelGlobal(): void {
-        $label = $this->controller()->buildScopeLabel('global', null, null, $this->adminLang());
-
-        $this->assertNotSame('', $label);
-    }
-
-    function testBuildScopeLabelCategoryEnthaeltKategorieBezeichner(): void {
-        $label = $this->controller()->buildScopeLabel('category', 'ueber-uns', null, $this->adminLang());
-
-        $this->assertStringContainsString('ueber-uns', $label);
-    }
-
-    function testBuildScopeLabelPageEnthaeltSeitenBezeichner(): void {
-        $label = $this->controller()->buildScopeLabel('page', 'ueber-uns', 'kontakt', $this->adminLang());
-
-        $this->assertStringContainsString('kontakt', $label);
-    }
-
-    // -----------------------------------------------------------
-    // buildSaveButtonLabel()
-    // -----------------------------------------------------------
-
-    function testBuildSaveButtonLabelGlobalOhneKategorie(): void {
-        $label = $this->controller()->buildSaveButtonLabel(null, null, $this->adminLang());
-
-        $this->assertNotSame('', $label);
-    }
-
-    function testBuildSaveButtonLabelCategoryEnthaeltKategorieBezeichner(): void {
-        $label = $this->controller()->buildSaveButtonLabel('impressum', null, $this->adminLang());
-
-        $this->assertStringContainsString('impressum', $label);
-    }
-
-    function testBuildSaveButtonLabelPageEnthaeltSeitenBezeichner(): void {
-        $label = $this->controller()->buildSaveButtonLabel('impressum', 'kontakt', $this->adminLang());
-
-        $this->assertStringContainsString('kontakt', $label);
-    }
-
-    // -----------------------------------------------------------
-    // renderSaveResultNotice()
-    // -----------------------------------------------------------
-
-    function testRenderSaveResultNoticeErfolg(): void {
-        $html = $this->controller()->renderSaveResultNotice(['success' => true, 'errors' => []], $this->adminLang());
-
-        $this->assertStringContainsString('schemaOrgData-notice--success', $html);
-    }
-
-    function testRenderSaveResultNoticeFehlerListetFehlerAuf(): void {
-        $html = $this->controller()->renderSaveResultNotice(
-            ['success' => false, 'errors' => ['Feld X ist ungültig']], $this->adminLang()
-        );
-
-        $this->assertStringContainsString('schemaOrgData-notice--error', $html);
-        $this->assertStringContainsString('Feld X ist ungültig', $html);
-    }
-
-    /***************************************************************
-    *
-    * Bug 2 (0.3.6-beta): Pflichtfeld-Fehlermeldungen mit Sonderzeichen
-    * im Label (FAQPage-Label "Fragen & Antworten", siehe
-    * admin_language_deDE.txt: label_faq_entries) dürfen nicht doppelt
-    * HTML-kodiert werden. renderSaveResultNotice() kodiert die Meldung
-    * einmal via htmlspecialchars(); der Label-Wert selbst muss daher
-    * unkodiert aus der Sprachdatei kommen, sodass exakt "&amp;" (statt
-    * "&amp;amp;") im gerenderten Hinweisblock erscheint. Hier über den
-    * echten Pfad (saveConfig() mit leerem mainEntity) statt mit einer
-    * synthetischen Fehlerstring-Eingabe geprüft.
-    *
-    ***************************************************************/
-    function testRequiredFieldErrorWithAmpersandLabelIsSingleEncoded(): void {
-        $settings = new \InMemorySettings();
-        $_POST['schemaOrgData_cat'] = 'faq';
-        $_POST['schemaOrgData_page'] = 'allgemein';
-
-        $postData = $this->validFaqPageData();
-        $postData['data']['mainEntity'] = [];
-
-        $result = $this->callSaveConfig('page', $postData, $settings);
-        $this->assertFalse($result['success']);
-
-        $html = $this->controller()->renderSaveResultNotice($result, $this->adminLang());
-
-        $this->assertStringContainsString('Fragen &amp; Antworten', $html);
-        $this->assertStringNotContainsString('&amp;amp;', $html);
-    }
-
-    // -----------------------------------------------------------
-    // renderExistingJsonLdNotice()
-    // -----------------------------------------------------------
-
-    function testRenderExistingJsonLdNoticeLeerOhneVorhandenesJsonLd(): void {
-        $settings = new \InMemorySettings();
-
-        $html = $this->controller()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertSame('', $html);
-    }
-
-    function testRenderExistingJsonLdNoticeMitVorhandenemJsonLd(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
-            ],
-        ]);
-
-        $html = $this->controller()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertStringContainsString('schemaOrgData-jsonld-notice', $html);
-        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
-    }
-
-    /***************************************************************
-    *
-    * XSS-relevant: Sonderzeichen im gespeicherten existing_jsonld_content
-    * dürfen nicht roh in das data-Attribut des Autofill-Buttons gelangen.
-    *
-    ***************************************************************/
-    function testRenderExistingJsonLdNoticeEscaptSonderzeichenImDataAttributDirekt(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"name":"Müller & Söhne <GmbH>"}',
-            ],
-        ]);
-
-        $html = $this->controller()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
-        $this->assertStringNotContainsString('data-existing-content="{"', $html);
-        $this->assertStringContainsString('data-existing-content=', $html);
-    }
-
-    // -----------------------------------------------------------
-    // renderCollisionNotice()
-    // -----------------------------------------------------------
-
-    function testRenderCollisionNoticeLeerOhneKollision(): void {
-        $settings = new \InMemorySettings();
-
-        $html = $this->controller()->renderCollisionNotice(
-            'category', 'ueber-uns', null, 'LocalBusiness', $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertSame('', $html);
-    }
-
-    function testRenderCollisionNoticeMitKollisionAufGlobalerEbene(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', ['LocalBusiness' => ['name' => 'Global GmbH']]);
-
-        $html = $this->controller()->renderCollisionNotice(
-            'category', 'ueber-uns', null, 'LocalBusiness', $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertStringContainsString('schemaOrgData-notice--info', $html);
-    }
-
-    // -----------------------------------------------------------
     // resolveInheritableFields()
     // -----------------------------------------------------------
 
@@ -378,7 +168,7 @@ final class AdminControllerTest extends TestCase {
         $settings = new \InMemorySettings();
 
         $result = $this->controller()->resolveInheritableFields(
-            'global', null, null, 'LocalBusiness', $this->adminLang(), $this->scopeResolver(), $settings
+            'global', null, null, 'LocalBusiness', $this->adminLang(), $this->scopeResolver(), $settings, $this->adminPageRenderer()
         );
 
         $this->assertSame([], $result['data']);
@@ -390,7 +180,7 @@ final class AdminControllerTest extends TestCase {
         $settings->set('config_global', ['LocalBusiness' => ['name' => 'Global GmbH', 'email' => 'info@example.com']]);
 
         $result = $this->controller()->resolveInheritableFields(
-            'category', 'ueber-uns', null, 'LocalBusiness', $this->adminLang(), $this->scopeResolver(), $settings
+            'category', 'ueber-uns', null, 'LocalBusiness', $this->adminLang(), $this->scopeResolver(), $settings, $this->adminPageRenderer()
         );
 
         $this->assertSame('Global GmbH', $result['data']['name']);
@@ -404,69 +194,10 @@ final class AdminControllerTest extends TestCase {
         $settings->set('config_cat_ueber-uns', ['LocalBusiness' => ['name' => 'Kategorie GmbH']]);
 
         $result = $this->controller()->resolveInheritableFields(
-            'page', 'ueber-uns', 'kontakt', 'LocalBusiness', $this->adminLang(), $this->scopeResolver(), $settings
+            'page', 'ueber-uns', 'kontakt', 'LocalBusiness', $this->adminLang(), $this->scopeResolver(), $settings, $this->adminPageRenderer()
         );
 
         $this->assertSame('Kategorie GmbH', $result['data']['name']);
-    }
-
-    // -----------------------------------------------------------
-    // renderExcludedCatsField()
-    // -----------------------------------------------------------
-
-    function testRenderExcludedCatsFieldOhneCatPageNurDebugCheckbox(): void {
-        $html = $this->controller()->renderExcludedCatsField([], false, $this->adminLang());
-
-        $this->assertStringNotContainsString('schemaOrgData-checkbox--all', $html);
-        $this->assertStringContainsString('schemaOrgData_global_debug_output', $html);
-    }
-
-    function testRenderExcludedCatsFieldDebugCheckboxGesetztWennAktiv(): void {
-        $html = $this->controller()->renderExcludedCatsField([], true, $this->adminLang());
-
-        $this->assertStringContainsString('schemaOrgData_global_debug_output" name="schemaOrgData[global][debug_output]" value="1" checked="checked"', $html);
-    }
-
-    /***************************************************************
-    *
-    * get_CatArray(true) liefert auch das Wurzelverzeichnis "kategorien"
-    * selbst als Eintrag zurück - das ist keine echte Kategorie und
-    * darf in der Ausschlussliste nicht als Checkbox erscheinen (nur
-    * echte Kategorien + "Alle Kategorien"-Toggle). Nutzt FakeCatPage
-    * aus FormRendererTest.php (nicht FakeCatPageWithPages).
-    *
-    ***************************************************************/
-    function testRenderExcludedCatsFieldOmitsKategorienRootEntryDirekt(): void {
-        $this->ensureFakeCatPageLoaded();
-        global $CatPage;
-        $CatPage = new FakeCatPage(['kategorien', 'ueber-uns', 'impressum']);
-
-        $html = $this->controller()->renderExcludedCatsField([], false, $this->adminLang());
-
-        // unset($CatPage) würde nur die lokale global-Bindung lösen, nicht
-        // den Eintrag in $GLOBALS selbst - echtes Aufräumen erfordert
-        // unset($GLOBALS['CatPage']), sonst leakt die FakeCatPage-Instanz in
-        // spätere Tests derselben Klasse (z. B. testRenderScopeSelectorOhneCatPageLiefertLeerenString).
-        unset($GLOBALS['CatPage']);
-
-        $this->assertStringContainsString('value="ueber-uns"', $html);
-        $this->assertStringContainsString('value="impressum"', $html);
-        $this->assertStringNotContainsString('value="kategorien"', $html);
-        $this->assertStringContainsString('data-select-all="schemaOrgData[global][excluded_cats][]"', $html);
-    }
-
-    /***************************************************************
-    *
-    * Prüft in einem Aufruf sowohl das Vorhandensein der Checkbox als
-    * auch Label und Hinweistext.
-    *
-    ***************************************************************/
-    function testRenderExcludedCatsFieldDebugCheckboxImmerMitLabelUndHintDirekt(): void {
-        $html = $this->controller()->renderExcludedCatsField([], false, $this->adminLang());
-
-        $this->assertStringContainsString('name="schemaOrgData[global][debug_output]"', $html);
-        $this->assertStringContainsString('Debug', $html);
-        $this->assertStringContainsString('validator.schema.org', $html);
     }
 
     /***************************************************************
@@ -481,14 +212,6 @@ final class AdminControllerTest extends TestCase {
         $html = $this->callRenderScopeSection('category', 'ueber-uns', null, true, 'category', false, new \InMemorySettings());
 
         $this->assertStringNotContainsString('debug_output', $html);
-    }
-
-    // -----------------------------------------------------------
-    // renderScopeSelector()
-    // -----------------------------------------------------------
-
-    function testRenderScopeSelectorOhneCatPageLiefertLeerenString(): void {
-        $this->assertSame('', $this->controller()->renderScopeSelector(null, null, $this->adminLang()));
     }
 
     // -----------------------------------------------------------
@@ -577,7 +300,7 @@ final class AdminControllerTest extends TestCase {
             $this->adminLang(), $this->scopeResolver(), $settings, $this->schemaRepository(),
             $this->pluginSelfDir(), $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
             'deDE', $this->pluginSelfDir(), $this->weekdayLang(), $this->idReferenceService(),
-            $this->openingHoursHelper(), $this->validator()
+            $this->openingHoursHelper(), $this->validator(), $this->adminPageRenderer()
         );
     }
 
@@ -696,7 +419,8 @@ final class AdminControllerTest extends TestCase {
     private function callSaveConfig(string $scope, array $postData, \InMemorySettings $settings): array {
         return $this->controller()->saveConfig(
             $scope, $postData, $settings, $this->adminLang(), $this->scopeResolver(),
-            $this->schemaRepository(), $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper()
+            $this->schemaRepository(), $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(),
+            $this->adminPageRenderer()
         );
     }
 
@@ -862,7 +586,7 @@ final class AdminControllerTest extends TestCase {
     private function callHandlePostRequest($settings): ?array {
         return $this->controller()->handlePostRequest(
             $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
-            $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper()
+            $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(), $this->adminPageRenderer()
         );
     }
 
@@ -907,7 +631,7 @@ final class AdminControllerTest extends TestCase {
             $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
             $this->pluginSelfDir(), $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
             'deDE', $this->pluginSelfDir(), $this->weekdayLang(), $this->idReferenceService(),
-            $this->validator(), $this->openingHoursHelper(), $this->collisionDetector()
+            $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(), $this->adminPageRenderer()
         );
     }
 

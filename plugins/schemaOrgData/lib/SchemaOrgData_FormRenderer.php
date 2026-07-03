@@ -886,39 +886,4 @@ class SchemaOrgData_FormRenderer {
         return $html;
     }
 
-    /***************************************************************
-    *
-    * Rendert die Schema-Type-Auswahl (<select>) einer Geltungsebene.
-    * Enthält zusätzlich die Option "– kein Schema –"
-    * (schema_type_none).
-    *
-    * @param string $scope Geltungsbereich
-    * @param array<string, array<string, mixed>> $availableTypes Type => Schema, für diese Ebene zulässig (ui:scopes)
-    * @param string|null $selectedType aktuell konfigurierter Type oder null
-    * @param string|null $idPrefix Präfix für die HTML-ID des <select> (Fallback: $scope)
-    * @param Language $lang für Labels
-    * @return string HTML-Snippet
-    *
-    ***************************************************************/
-    public function renderTypeSelector(string $scope, array $availableTypes, ?string $selectedType, ?string $idPrefix, Language $lang): string {
-        $idPrefix = $idPrefix ?? $scope;
-        $fieldId = 'schemaOrgData_'.$idPrefix.'_type';
-        $fieldName = 'schemaOrgData['.$scope.'][type]';
-
-        $html = '<div class="mo-select-div flex">';
-        $html .= '<select id="'.$fieldId.'" name="'.$fieldName.'" class="mo-select flex-100 schemaOrgData-type-select">';
-
-        $noneSelected = ($selectedType === null) ? ' selected="selected"' : '';
-        $html .= '<option value=""'.$noneSelected.'>'.$lang->getLanguageHtml('schema_type_none').'</option>';
-
-        foreach($availableTypes as $type => $schema) {
-            $selected = ($selectedType === $type) ? ' selected="selected"' : '';
-            $typeLabel = $lang->getLanguageHtml($schema['ui:typeLabel'] ?? $type);
-            $html .= '<option value="'.htmlspecialchars($type, ENT_QUOTES, CHARSET).'"'.$selected.'>'.$typeLabel.'</option>';
-        }
-
-        $html .= '</select></div>';
-
-        return $html;
-    }
 }

@@ -382,20 +382,6 @@ final class FormRendererComponentTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // renderTypeSelector()
-    // -----------------------------------------------------------
-
-    function testRenderTypeSelectorEnthaeltKeinSchemaOptionUndVerfuegbareTypes(): void {
-        $renderer = new \SchemaOrgData_FormRenderer();
-        $schema = $this->localBusinessSchema();
-
-        $html = $renderer->renderTypeSelector('global', ['LocalBusiness' => $schema], 'LocalBusiness', null, $this->adminLang());
-
-        $this->assertStringContainsString('<option value="">', $html);
-        $this->assertMatchesRegularExpression('/<option value="LocalBusiness" selected="selected">/', $html);
-    }
-
-    // -----------------------------------------------------------
     // renderTypeFields()
     // -----------------------------------------------------------
 

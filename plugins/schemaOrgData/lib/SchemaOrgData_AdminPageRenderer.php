@@ -1,0 +1,488 @@
+<?php if(!defined('IS_CMS')) die();
+
+/***************************************************************
+*
+* SchemaOrgData_AdminPageRenderer
+*
+* Reine Anzeige-Bausteine der Admin-Seite (Fahrplan-Schritt 4, siehe
+* doc/adr_ziel_architektur.md): Info-Block, Scope-Label/Selektor,
+* Speichern-Button-Beschriftung, Speicher-Ergebnis-Hinweis, Hinweis
+* auf vorhandenes/kollidierendes JSON-LD, Ausschlussliste, Admin-CSS
+* sowie die Schema-Type-Auswahl.
+*
+* Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
+* $settings) werden je Aufruf als Parameter übergeben, nicht im
+* Konstruktor eingefroren (siehe README.md, Abschnitt "Architektur").
+*
+***************************************************************/
+class SchemaOrgData_AdminPageRenderer {
+
+    /***************************************************************
+    *
+    * Liefert das CSS für das Admin-Formular (Feedback-Farben,
+    * Pflichtfeld-Kennzeichnung, Öffnungszeiten-Tabelle, FAQ-Liste
+    * usw.). Wird in getConfig() in einen <style>-Block eingebettet,
+    * da das Plugin keine eigene CSS-Datei in das Admin-Layout
+    * einbinden kann.
+    *
+    ***************************************************************/
+    public function getAdminCss(): string {
+        return '
+.schemaOrgData-admin .schemaOrgData-info { background: #eef6ff; border: 1px solid #b6d4f5; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
+.schemaOrgData-admin .schemaOrgData-notice--info, .schemaOrgData-admin .schemaOrgData-notice--unsaved { background: #fff8e1; border: 1px solid #ffe082; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
+.schemaOrgData-admin .schemaOrgData-notice--success { background: #e8f5e9; border: 1px solid #a5d6a7; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
+.schemaOrgData-admin .schemaOrgData-notice--error { background: #fdecea; border: 1px solid #f5c6c2; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
+.schemaOrgData-admin .schemaOrgData-notice--error ul { margin: .25em 0 0; padding-left: 1.5em; }
+.schemaOrgData-admin .schemaOrgData-required { color: #c0392b; font-weight: bold; }
+.schemaOrgData-admin .schemaOrgData-inherited { color: #888; font-weight: normal; font-style: italic; cursor: help; }
+.schemaOrgData-admin input.mo-input-text::placeholder,
+.schemaOrgData-admin textarea.mo-input-text::placeholder { color: #aaa; }
+.schemaOrgData-admin .schemaOrgData-fieldset { border: 1px solid #ddd; border-radius: 4px; padding: 1em; margin-bottom: 1em; }
+.schemaOrgData-admin .schemaOrgData-fieldset legend { font-weight: bold; padding: 0 .5em; }
+.schemaOrgData-admin .schemaOrgData-hint { color: #666; font-size: .85em; margin: 0 0 .5em; }
+.schemaOrgData-admin .schemaOrgData-feedback { display: block; margin-top: .25em; font-size: .9em; }
+.schemaOrgData-admin .schemaOrgData-feedback--ok { color: #2e7d32; }
+.schemaOrgData-admin .schemaOrgData-feedback--warning { color: #b8860b; }
+.schemaOrgData-admin .schemaOrgData-feedback--error { color: #c0392b; }
+.schemaOrgData-admin .schemaOrgData-opening-hours { border-collapse: collapse; }
+.schemaOrgData-admin .schemaOrgData-opening-hours th, .schemaOrgData-admin .schemaOrgData-opening-hours td { padding: .25em .5em; text-align: left; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-group { display: flex; align-items: center; gap: 4px; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-group input { max-width: 80px; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-sep { color: #999; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-second { margin-top: 2px; opacity: .75; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-range-label { font-size: .85em; color: #666; white-space: nowrap; }
+.schemaOrgData-admin .schemaOrgData-opening-hours-range-label[aria-hidden="true"] { visibility: hidden; }
+.schemaOrgData-admin .schemaOrgData-faq-entry { border-top: 1px solid #eee; padding-top: .5em; margin-top: .5em; }
+.schemaOrgData-admin .schemaOrgData-faq-entry:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.schemaOrgData-admin .schemaOrgData-checkbox { display: inline-block; margin: 0 1em .25em 0; }
+.schemaOrgData-admin .schemaOrgData-checkbox--all { font-weight: bold; border-left: 1px solid #ccc; padding-left: 1em; }
+.schemaOrgData-admin .schemaOrgData-scope-selector { display: flex; align-items: center; gap: .75em; flex-wrap: wrap; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .6em 1em; margin-bottom: 1.25em; }
+.schemaOrgData-admin .schemaOrgData-scope-selector__label { font-weight: bold; white-space: nowrap; }
+.schemaOrgData-admin .schemaOrgData-scope-selector__select { min-width: 200px; }
+.schemaOrgData-admin .schemaOrgData-save-bar { margin-top: 1.5em; padding: .75em 0; border-top: 1px solid #ddd; text-align: right; }
+.schemaOrgData-admin .schemaOrgData-save-bar--top { margin: 0 0 1.25em; padding: 0 0 .75em; border-top: none; border-bottom: 1px solid #ddd; }
+.schemaOrgData-admin .schemaOrgData-field-row { display: grid !important; grid-template-columns: 200px 1fr !important; align-items: baseline !important; gap: 4px 12px !important; margin-bottom: .5em; }
+.schemaOrgData-admin .schemaOrgData-field-row .mo-in-li-l, .schemaOrgData-admin .schemaOrgData-field-row .mo-in-li-r { float: none !important; width: auto !important; padding: 0; margin: 0; }
+.schemaOrgData-admin .schemaOrgData-type-selector-row { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .75em 1em; margin-bottom: 1.25em; }
+.schemaOrgData-admin .schemaOrgData-type-selector-row .mo-in-li-l label { font-weight: bold; font-size: 1.05em; }
+.schemaOrgData-admin .schemaOrgData-address-row { display: flex !important; flex-wrap: wrap; gap: 8px 12px; }
+.schemaOrgData-admin .schemaOrgData-address-field { display: flex !important; flex-direction: column; flex: 1 1 160px !important; }
+.schemaOrgData-admin .schemaOrgData-address-field label { font-size: .85em; color: #666; margin-bottom: 2px; }
+.schemaOrgData-admin .schemaOrgData-address-field--narrow { flex: 0 0 80px !important; }
+.schemaOrgData-admin .schemaOrgData-address-field--narrow input { max-width: 80px; }
+.schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
+.schemaOrgData-admin select[id$="_addressCountry"] { max-width: 200px; }
+.schemaOrgData-admin input[id$="_addressRegion"] { max-width: 300px; }
+.schemaOrgData-admin .schemaOrgData-idrl-container { margin-bottom: .25em; }
+.schemaOrgData-admin .schemaOrgData-idrl-radio-label { display: block; margin: .4em 0 .15em; cursor: pointer; }
+.schemaOrgData-admin .schemaOrgData-idrl-section { padding-left: 1.5em; margin-bottom: .25em; }
+';
+    }
+
+    /***************************************************************
+    *
+    * Rendert den Info-Block oberhalb der Konfigurationsfelder einer
+    * Geltungsebene. Der Text erklärt das Ausgabeverhalten für die
+    * jeweilige Ebene (Global/Kategorie/Seite) sowie allgemein, dass
+    * das JSON-LD im <head> ausgegeben wird (unsichtbar im
+    * Seiteninhalt) und mit https://validator.schema.org geprüft
+    * werden kann.
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @param Language $lang Admin-Sprachobjekt
+    * @return string HTML-Snippet
+    *
+    ***************************************************************/
+    public function renderInfoBlock(string $scope, Language $lang): string {
+        $key = match($scope) {
+            'global'   => 'info_text_global',
+            'category' => 'info_text_category',
+            'page'     => 'info_text_page',
+            default    => '',
+        };
+
+        if($key === '') {
+            return '';
+        }
+
+        // Im Global-Scope zusätzlicher Hinweis, dass eine im Layout-Template
+        // erkannte JSON-LD-Kollision ausschließlich hier angezeigt wird
+        // (siehe renderAdminPage(), Template-Detection ist layoutweit).
+        $templateNotice = ($scope === 'global')
+            ? '<p>'.$lang->getLanguageHtml('info_text_template_global').'</p>'
+            : '';
+
+        return '<div class="schemaOrgData-info">'
+            .'<p>'.$lang->getLanguageHtml($key).'</p>'
+            .$templateNotice
+            .'<p>'.$lang->getLanguageHtml('info_text_general').'</p>'
+            .'</div>'."\n";
+    }
+
+    /***************************************************************
+    *
+    * Liefert die für den Nutzer lesbare Bezeichnung eines
+    * Geltungsbereichs, z. B. "Global", "Kategorie Über-uns" oder
+    * "Seite kontakt". Wird als data-scope-label in
+    * renderScopeSection() ausgegeben und von initScopeSelector()
+    * (validator.js) für den Hinweis auf ungespeicherte Eingaben
+    * beim Scope-Wechsel verwendet (Sprachschlüssel
+    * notice_unsaved_changes, Platzhalter {PARAM1}).
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @param Language $lang Admin-Sprachobjekt
+    *
+    ***************************************************************/
+    public function buildScopeLabel(string $scope, ?string $cat, ?string $page, Language $lang): string {
+        return match($scope) {
+            'global'   => $lang->getLanguageValue('scope_global'),
+            'category' => $lang->getLanguageValue('scope_category').' '.rawurldecode((string) $cat),
+            'page'     => $lang->getLanguageValue('scope_page').' '.rawurldecode((string) $page),
+            default    => $lang->getLanguageValue('scope_'.$scope),
+        };
+    }
+
+    /***************************************************************
+    *
+    * Liefert den Text des Speichern-Buttons für den aktuell aktiven
+    * Geltungsbereich, z. B. "Globale Konfiguration speichern",
+    * "Konfiguration Kategorie Über-uns speichern" oder
+    * "Konfiguration Seite kontakt speichern". Wird in
+    * renderAdminPage() für beide Speichern-Buttons (oben und unten)
+    * verwendet, analog zu buildScopeLabel().
+    *
+    * @param string|null $selectedCat  sanitierter Kategorie-Bezeichner
+    *        des aktiven Scopes (siehe sanitizeScopeIdentifier()) oder
+    *        null für den globalen Scope
+    * @param string|null $selectedPage sanitierter Seiten-Bezeichner des
+    *        aktiven Scopes oder null für Global/Kategorie
+    * @param Language $lang Admin-Sprachobjekt
+    * @return string HTML (bereits escaped via getLanguageHtml())
+    *
+    ***************************************************************/
+    public function buildSaveButtonLabel(?string $selectedCat, ?string $selectedPage, Language $lang): string {
+        if($selectedCat === null) {
+            return $lang->getLanguageHtml('button_save_global');
+        }
+
+        if($selectedPage === null) {
+            return $lang->getLanguageHtml('button_save_category', rawurldecode($selectedCat));
+        }
+
+        return $lang->getLanguageHtml('button_save_page', rawurldecode($selectedPage));
+    }
+
+    /***************************************************************
+    *
+    * Rendert das Ergebnis von handlePostRequest() als Hinweisblock
+    * (Erfolg oder Fehlerliste) oberhalb der Geltungsebenen.
+    *
+    * @param array{success: bool, errors: string[]} $result
+    * @param Language $lang Admin-Sprachobjekt
+    * @return string HTML-Snippet
+    *
+    ***************************************************************/
+    public function renderSaveResultNotice(array $result, Language $lang): string {
+        if($result['success']) {
+            return '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--success">'
+                .$lang->getLanguageHtml('notice_config_saved')
+                .'</div>'."\n";
+        }
+
+        $html = '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--error">'."\n";
+        $html .= '<p>'.$lang->getLanguageHtml('notice_config_save_error').'</p>'."\n";
+        $html .= '<ul>'."\n";
+
+        foreach($result['errors'] as $error) {
+            $html .= '<li>'.htmlspecialchars($error, ENT_QUOTES, CHARSET).'</li>'."\n";
+        }
+
+        $html .= '</ul></div>'."\n";
+
+        return $html;
+    }
+
+    /***************************************************************
+    *
+    * Rendert den Hinweis- und Auswahl-Block für bereits vorhandenes
+    * JSON-LD sowie das Import-Feld einer Geltungsebene.
+    *
+    * Vorgesehen zur Einbindung in das schema-getriebene Admin-Formular
+    * (siehe render-form) innerhalb des jeweiligen Geltungsbereich-Tabs.
+    * Gibt einen leeren String zurück, wenn für diese Ebene kein
+    * vorhandenes JSON-LD erkannt wurde (existing_jsonld = false).
+    *
+    * Wichtig: kein automatischer Merge - "Vorhandenes beibehalten"
+    * unterdrückt lediglich die eigene Ausgabe dieser Ebene,
+    * "Überschreiben" gibt das eigene JSON-LD zusätzlich zum
+    * vorhandenen Block aus.
+    *
+    * @param string $scope 'global' | 'category' | 'page'
+    * @param Language $lang Admin-Sprachobjekt
+    * @param mixed $settings moziloCMS-Settings-API ($this->settings)
+    * @return string HTML-Snippet (Hinweis, Radio-Buttons, Import-Textarea)
+    *                 oder '' wenn kein vorhandenes JSON-LD erkannt wurde
+    *
+    ***************************************************************/
+    public function renderExistingJsonLdNotice(
+        string $scope,
+        ?string $cat,
+        ?string $page,
+        Language $lang,
+        SchemaOrgData_ScopeResolver $scopeResolver,
+        $settings
+    ): string {
+        $meta = $scopeResolver->loadScopeMeta($settings, $scope, $cat, $page);
+
+        if(!$meta['existing_jsonld']) {
+            return '';
+        }
+
+        $fieldName = 'schemaOrgData_jsonld_mode_'.$scope;
+        $options = ['keep' => 'option_keep_existing_jsonld', 'override' => 'option_override_existing_jsonld'];
+
+        $html  = '<div class="schemaOrgData-jsonld-notice">'."\n";
+        $html .= '<p class="schemaOrgData-jsonld-notice__title"><strong>'.$lang->getLanguageHtml('notice_existing_jsonld_title').'</strong></p>'."\n";
+        $html .= '<p>'.$lang->getLanguageHtml('notice_existing_jsonld_text').'</p>'."\n";
+
+        foreach($options as $value => $labelKey) {
+            $checked = ($meta['jsonld_mode'] === $value) ? ' checked="checked"' : '';
+            $html .= '<label><input type="radio" name="'.$fieldName.'" value="'.$value.'"'.$checked.' /> '
+                  .$lang->getLanguageHtml($labelKey).'</label><br />'."\n";
+        }
+
+        $html .= '<p><label for="schemaOrgData_import_'.$scope.'">'.$lang->getLanguageHtml('label_import_jsonld').'</label><br />'."\n";
+
+        if(!empty($meta['existing_jsonld_content'])) {
+            $escaped = htmlspecialchars((string) $meta['existing_jsonld_content'], ENT_QUOTES, CHARSET);
+            $html .= '<button type="button" class="mo-btn schemaOrgData-autofill-btn"'
+                .' data-target="schemaOrgData_import_'.$scope.'"'
+                .' data-existing-content="'.$escaped.'">'
+                .$lang->getLanguageHtml('button_use_detected_jsonld').'</button><br />'."\n";
+        }
+
+        $html .= '<textarea id="schemaOrgData_import_'.$scope.'" name="schemaOrgData_import_'.$scope.'" rows="6"></textarea></p>'."\n";
+        $html .= '<p class="schemaOrgData-jsonld-notice__hint">'.$lang->getLanguageHtml('description_import_jsonld').'</p>'."\n";
+        $html .= '</div>'."\n";
+
+        return $html;
+    }
+
+    /***************************************************************
+    *
+    * Rendert den Hinweis auf eine Vererbung von einer allgemeineren
+    * Ebene für denselben Type (siehe
+    * SchemaOrgData_ScopeResolver::detectTypeCollision()).
+    *
+    * @param Language $lang Admin-Sprachobjekt
+    * @param mixed $settings moziloCMS-Settings-API ($this->settings)
+    * @return string HTML-Snippet oder '' wenn keine Vererbung vorliegt
+    *
+    ***************************************************************/
+    public function renderCollisionNotice(
+        string $scope,
+        ?string $cat,
+        ?string $page,
+        string $selectedType,
+        Language $lang,
+        SchemaOrgData_ScopeResolver $scopeResolver,
+        $settings
+    ): string {
+        $collisions = $scopeResolver->detectTypeCollision($settings, $scope, $cat, $page, $selectedType);
+
+        if($collisions === []) {
+            return '';
+        }
+
+        $scopeNames = implode(', ', array_map(
+            fn($higherScope) => $lang->getLanguageValue('scope_'.$higherScope),
+            $collisions
+        ));
+
+        return '<div class="schemaOrgData-notice schemaOrgData-notice--info">'
+            .$lang->getLanguageHtml('notice_type_collision', $selectedType, $scopeNames)
+            .'</div>'."\n";
+    }
+
+    /***************************************************************
+    *
+    * Rendert die Ausschlussliste für die globale Ausgabe (nur
+    * Geltungsbereich "global"): eine Checkbox je vorhandener
+    * Kategorie. Angehakte Kategorien erhalten keine globale
+    * JSON-LD-Ausgabe (siehe README.md, "excluded_cats").
+    * Zusätzlich wird die Debug-Modus-Checkbox gerendert.
+    *
+    * @param string[] $excludedCats aktuell ausgeschlossene Kategorien
+    * @param bool $debugOutput      aktueller Zustand des Debug-Flags
+    * @param Language $lang Admin-Sprachobjekt
+    * @return string HTML-Snippet
+    *
+    ***************************************************************/
+    public function renderExcludedCatsField(array $excludedCats, bool $debugOutput, Language $lang): string {
+        global $CatPage;
+        $html = '';
+
+        // Ausschlussliste nur wenn Kategorienliste verfügbar
+        if(isset($CatPage) and is_object($CatPage)) {
+            $cats = $CatPage->get_CatArray(true);
+
+            $html .= '<fieldset class="schemaOrgData-fieldset">'."\n";
+            $html .= '<legend>'.$lang->getLanguageHtml('label_excluded_cats').'</legend>'."\n";
+            $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_excluded_cats').'</p>'."\n";
+
+            foreach($cats as $cat) {
+                // get_CatArray(true) liefert auch das Wurzelverzeichnis
+                // "kategorien" selbst zurück - das ist keine echte Kategorie
+                // und wird daher nicht als Checkbox angeboten.
+                if(strtolower(rawurldecode($cat)) === 'kategorien') {
+                    continue;
+                }
+
+                $checked = in_array($cat, $excludedCats, true) ? ' checked="checked"' : '';
+                $catLabel = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
+                // rawurldecode() dekodiert den moziloCMS-Bezeichner nur für die
+                // Anzeige - der value-Attributwert bleibt roh (% erhalten),
+                // damit excluded_cats weiterhin zu CAT_REQUEST passt.
+                $catDisplayLabel = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
+                $fieldId = 'schemaOrgData_global_excluded_cats_'.md5($cat);
+                $html .= '<label class="schemaOrgData-checkbox" for="'.$fieldId.'">'
+                    .'<input type="checkbox" id="'.$fieldId.'" name="schemaOrgData[global][excluded_cats][]" value="'.$catLabel.'"'.$checked.' /> '
+                    .$catDisplayLabel.'</label>'."\n";
+            }
+
+            // "Alle Kategorien"-Select-All-Toggle: rein clientseitig (kein
+            // name-Attribut, daher kein Einfluss auf saveConfig()/excluded_cats).
+            // initExcludedCatsSelectAll() (validator.js) setzt/leert beim
+            // Anklicken alle Kategorie-Checkboxen oben und zeigt bei
+            // Teilauswahl einen indeterminate-Zustand.
+            $html .= '<label class="schemaOrgData-checkbox schemaOrgData-checkbox--all" for="schemaOrgData_global_excluded_cats_all">'
+                .'<input type="checkbox" id="schemaOrgData_global_excluded_cats_all" data-select-all="schemaOrgData[global][excluded_cats][]" /> '
+                .$lang->getLanguageHtml('label_excluded_cats_all').'</label>'."\n";
+
+            $html .= '</fieldset>'."\n";
+        }
+
+        // Debug-Modus-Checkbox (immer sichtbar, unabhängig von $CatPage)
+        $checkedAttr = $debugOutput ? ' checked="checked"' : '';
+        $html .= '<fieldset class="schemaOrgData-fieldset">'."\n";
+        $html .= '<legend>'.$lang->getLanguageHtml('label_debug_output').'</legend>'."\n";
+        $html .= '<label class="schemaOrgData-checkbox" for="schemaOrgData_global_debug_output">'
+            .'<input type="checkbox" id="schemaOrgData_global_debug_output" name="schemaOrgData[global][debug_output]" value="1"'.$checkedAttr.' /> '
+            .$lang->getLanguageHtml('label_debug_output').'</label>'."\n";
+        $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_debug_output').'</p>'."\n";
+        $html .= '</fieldset>'."\n";
+
+        return $html;
+    }
+
+    /***************************************************************
+    *
+    * Rendert den Scope-Selektor als zweistufiges Select-Paar.
+    *
+    * Stufe 1 (#schemaOrgData_scope_cat) enthält "Global" und alle
+    * Kategorien. Stufe 2 (#schemaOrgData_scope_page) enthält die
+    * Seiten der gewählten Kategorie und wird clientseitig
+    * (initScopeSelector(), validator.js) anhand der im data-pages-
+    * Attribut hinterlegten JSON-Map (Kategorie => Seiten) befüllt
+    * und ein-/ausgeblendet - ohne PHP-Roundtrip.
+    *
+    * moziloCMS öffnet die Plugin-Einstellungen über einen
+    * JavaScript-Tab-Mechanismus — ein Page-Reload würde diesen Tab
+    * schließen und auf die Info-Seite zurückspringen. Die Auswahl
+    * blendet daher nur die passende .schemaOrgData-scope-Sektion
+    * ein, ohne die Seite neu zu laden. Ist $CatPage nicht verfügbar,
+    * wird ein leerer String zurückgegeben.
+    *
+    * @param string|null $selectedCat  aktuell gewählte Kategorie
+    * @param string|null $selectedPage aktuell gewählte Seite
+    * @param Language $lang Admin-Sprachobjekt
+    * @return string HTML-Snippet
+    *
+    ***************************************************************/
+    public function renderScopeSelector(?string $selectedCat, ?string $selectedPage, Language $lang): string {
+        global $CatPage;
+
+        if (!isset($CatPage) || !is_object($CatPage)) {
+            return '';
+        }
+
+        $cats = $CatPage->get_CatArray(false, false, [EXT_PAGE, EXT_HIDDEN]);
+
+        $html  = '<div class="schemaOrgData-scope-selector">'."\n";
+        $html .= '<label class="schemaOrgData-scope-selector__label" for="schemaOrgData_scope_cat">'
+               . $lang->getLanguageHtml('label_scope_selector') . '</label>'."\n";
+
+        // Stufe 1: Global + alle Kategorien
+        $html .= '<select id="schemaOrgData_scope_cat" class="mo-select schemaOrgData-scope-selector__select">'."\n";
+        $html .= '<option value="">'.$lang->getLanguageHtml('scope_global').'</option>'."\n";
+
+        // Seiten je Kategorie als JSON-Map für Stufe 2 sammeln - rawurldecode()
+        // dekodiert den moziloCMS-URL-kodierten Bezeichner ("%C3%9CBer..." →
+        // "Über...") nur für die Anzeige, der value-Attributwert bleibt roh.
+        $pagesByCat = [];
+
+        foreach ($cats as $cat) {
+            $catAttr  = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
+            $catLabel = htmlspecialchars(rawurldecode($cat), ENT_QUOTES, CHARSET);
+            $html .= '<option value="'.$catAttr.'">'.$catLabel.'</option>'."\n";
+
+            $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
+            $pagesByCat[$cat] = array_map(
+                fn($page) => ['value' => $page, 'label' => rawurldecode($page)],
+                $pages
+            );
+        }
+
+        $html .= '</select>'."\n";
+
+        // Stufe 2: Seiten der gewählten Kategorie - wird von
+        // initScopeSelector() (validator.js) anhand von data-pages befüllt,
+        // initial nur sichtbar wenn bereits eine Kategorie aktiv ist
+        $pagesJson = json_encode($pagesByCat, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $pageStyle = ($selectedCat === null) ? ' style="display:none"' : '';
+        $html .= '<select id="schemaOrgData_scope_page" class="mo-select schemaOrgData-scope-selector__select"'
+               . ' data-pages="'.htmlspecialchars($pagesJson, ENT_QUOTES, CHARSET).'"'.$pageStyle.'>'."\n";
+        $html .= '<option value="">— '.$lang->getLanguageHtml('scope_category').' —</option>'."\n";
+        $html .= '</select>'."\n";
+
+        $html .= '</div>'."\n";
+
+        return $html;
+    }
+
+    /***************************************************************
+    *
+    * Rendert die Schema-Type-Auswahl (<select>) einer Geltungsebene.
+    * Enthält zusätzlich die Option "– kein Schema –"
+    * (schema_type_none).
+    *
+    * @param string $scope Geltungsbereich
+    * @param array<string, array<string, mixed>> $availableTypes Type => Schema, für diese Ebene zulässig (ui:scopes)
+    * @param string|null $selectedType aktuell konfigurierter Type oder null
+    * @param string|null $idPrefix Präfix für die HTML-ID des <select> (Fallback: $scope)
+    * @param Language $lang für Labels
+    * @return string HTML-Snippet
+    *
+    ***************************************************************/
+    public function renderTypeSelector(string $scope, array $availableTypes, ?string $selectedType, ?string $idPrefix, Language $lang): string {
+        $idPrefix = $idPrefix ?? $scope;
+        $fieldId = 'schemaOrgData_'.$idPrefix.'_type';
+        $fieldName = 'schemaOrgData['.$scope.'][type]';
+
+        $html = '<div class="mo-select-div flex">';
+        $html .= '<select id="'.$fieldId.'" name="'.$fieldName.'" class="mo-select flex-100 schemaOrgData-type-select">';
+
+        $noneSelected = ($selectedType === null) ? ' selected="selected"' : '';
+        $html .= '<option value=""'.$noneSelected.'>'.$lang->getLanguageHtml('schema_type_none').'</option>';
+
+        foreach($availableTypes as $type => $schema) {
+            $selected = ($selectedType === $type) ? ' selected="selected"' : '';
+            $typeLabel = $lang->getLanguageHtml($schema['ui:typeLabel'] ?? $type);
+            $html .= '<option value="'.htmlspecialchars($type, ENT_QUOTES, CHARSET).'"'.$selected.'>'.$typeLabel.'</option>';
+        }
+
+        $html .= '</select></div>';
+
+        return $html;
+    }
+}

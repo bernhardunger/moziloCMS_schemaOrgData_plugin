@@ -13,8 +13,10 @@ require_once __DIR__.'/lib/SchemaOrgData_Validator.php';
 require_once __DIR__.'/lib/SchemaOrgData_FormRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_ImportService.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminController.php';
+require_once __DIR__.'/lib/SchemaOrgData_AdminPageRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_FrontendRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_FrontendRequestContext.php';
+require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 
 /***************************************************************
 *
@@ -45,7 +47,7 @@ require_once __DIR__.'/lib/SchemaOrgData_FrontendRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.38-beta';
+    private const PLUGIN_VERSION = '0.4.40-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -104,6 +106,9 @@ class schemaOrgData extends Plugin {
     /** Lazy-Instanz von SchemaOrgData_AdminController (siehe adminController()) */
     private ?SchemaOrgData_AdminController $adminControllerInstance = null;
 
+    /** Lazy-Instanz von SchemaOrgData_AdminPageRenderer (siehe adminPageRenderer()) */
+    private ?SchemaOrgData_AdminPageRenderer $adminPageRendererInstance = null;
+
     /** Lazy-Instanz von SchemaOrgData_FrontendRenderer (siehe frontendRenderer()) */
     private ?SchemaOrgData_FrontendRenderer $frontendRendererInstance = null;
 
@@ -128,7 +133,7 @@ class schemaOrgData extends Plugin {
                 $this->settings, $this->loadAdminLanguage(), $this->scopeResolver(), $this->schemaRepository(),
                 $this->PLUGIN_SELF_DIR, $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
                 $this->pluginLang, $this->PLUGIN_SELF_URL, $this->loadWeekdayLanguage(), $this->idReferenceService(),
-                $this->validator(), $this->openingHoursHelper(), $this->collisionDetector()
+                $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(), $this->adminPageRenderer()
             );
         }
 
@@ -200,6 +205,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_AdminController. */
     private function adminController(): SchemaOrgData_AdminController {
         return $this->adminControllerInstance ??= new SchemaOrgData_AdminController();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_AdminPageRenderer. */
+    private function adminPageRenderer(): SchemaOrgData_AdminPageRenderer {
+        return $this->adminPageRendererInstance ??= new SchemaOrgData_AdminPageRenderer();
     }
 
     /** Lazy-Accessor für SchemaOrgData_FrontendRenderer. */
