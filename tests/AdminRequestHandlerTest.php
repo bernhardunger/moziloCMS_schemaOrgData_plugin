@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 * (siehe doc/adr_ziel_architektur.md). Echte, zustandslose
 * Language-/SchemaOrgData_ScopeResolver-/SchemaOrgData_SchemaRepository-/
 * SchemaOrgData_Validator-/SchemaOrgData_OpeningHoursHelper-/
-* SchemaOrgData_AdminPageRenderer-/SchemaOrgData_AdminController-
+* SchemaOrgData_AdminPageRenderer-/SchemaOrgData_ConfigSaveService-
 * Instanzen, $pluginSelfDir zeigt auf die realen Schema-/Sprach-Fixtures
 * des Plugins, $settings ist ein isolierter InMemorySettings-Stub.
 *
@@ -55,8 +55,8 @@ final class AdminRequestHandlerTest extends TestCase {
         return new \SchemaOrgData_AdminPageRenderer();
     }
 
-    private function controller(): \SchemaOrgData_AdminController {
-        return new \SchemaOrgData_AdminController();
+    private function configSaveService(): \SchemaOrgData_ConfigSaveService {
+        return new \SchemaOrgData_ConfigSaveService();
     }
 
     private function adminRequestHandler(): \SchemaOrgData_AdminRequestHandler {
@@ -104,7 +104,7 @@ final class AdminRequestHandlerTest extends TestCase {
         return $this->adminRequestHandler()->handlePostRequest(
             $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
             $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(), $this->adminPageRenderer(),
-            $this->controller()
+            $this->configSaveService()
         );
     }
 

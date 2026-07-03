@@ -15,6 +15,7 @@ require_once __DIR__.'/lib/SchemaOrgData_ImportService.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminController.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminPageRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminRequestHandler.php';
+require_once __DIR__.'/lib/SchemaOrgData_ConfigSaveService.php';
 require_once __DIR__.'/lib/SchemaOrgData_FrontendRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_FrontendRequestContext.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
@@ -48,7 +49,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.41-beta';
+    private const PLUGIN_VERSION = '0.4.42-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -113,6 +114,9 @@ class schemaOrgData extends Plugin {
     /** Lazy-Instanz von SchemaOrgData_AdminRequestHandler (siehe adminRequestHandler()) */
     private ?SchemaOrgData_AdminRequestHandler $adminRequestHandlerInstance = null;
 
+    /** Lazy-Instanz von SchemaOrgData_ConfigSaveService (siehe configSaveService()) */
+    private ?SchemaOrgData_ConfigSaveService $configSaveServiceInstance = null;
+
     /** Lazy-Instanz von SchemaOrgData_FrontendRenderer (siehe frontendRenderer()) */
     private ?SchemaOrgData_FrontendRenderer $frontendRendererInstance = null;
 
@@ -138,7 +142,7 @@ class schemaOrgData extends Plugin {
                 $this->PLUGIN_SELF_DIR, $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
                 $this->pluginLang, $this->PLUGIN_SELF_URL, $this->loadWeekdayLanguage(), $this->idReferenceService(),
                 $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(), $this->adminPageRenderer(),
-                $this->adminRequestHandler()
+                $this->adminRequestHandler(), $this->configSaveService()
             );
         }
 
@@ -220,6 +224,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_AdminRequestHandler. */
     private function adminRequestHandler(): SchemaOrgData_AdminRequestHandler {
         return $this->adminRequestHandlerInstance ??= new SchemaOrgData_AdminRequestHandler();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_ConfigSaveService. */
+    private function configSaveService(): SchemaOrgData_ConfigSaveService {
+        return $this->configSaveServiceInstance ??= new SchemaOrgData_ConfigSaveService();
     }
 
     /** Lazy-Accessor für SchemaOrgData_FrontendRenderer. */

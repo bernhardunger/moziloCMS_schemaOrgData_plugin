@@ -7,21 +7,15 @@
 * POST/Actions-Dispatch des Admin-Formulars (Fahrplan-Schritt 5, siehe
 * doc/adr_ziel_architektur.md): handlePostRequest() verarbeitet die
 * $_POST-Daten je Geltungsebene und delegiert an deleteConfig()
-* (SchemaOrgData_ScopeResolver) bzw. saveConfig().
+* (SchemaOrgData_ScopeResolver) bzw. saveConfig()
+* (SchemaOrgData_ConfigSaveService, seit Fahrplan-Schritt 6).
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
 * SchemaOrgData_SchemaRepository, SchemaOrgData_Validator,
 * SchemaOrgData_OpeningHoursHelper, SchemaOrgData_AdminPageRenderer,
-* $this->settings, PLUGIN_SELF_DIR) werden je Aufruf als Parameter
-* übergeben, nicht im Konstruktor eingefroren (siehe README.md,
-* Abschnitt "Architektur").
-*
-* saveConfig() bleibt bis Schritt 6 (ConfigSaveService) auf
-* SchemaOrgData_AdminController - handlePostRequest() erhält deshalb
-* zusätzlich eine Referenz auf die aufrufende AdminController-Instanz,
-* um saveConfig() weiterhin aufrufen zu können. Diese Rückreferenz ist
-* ein bewusster Zwischenzustand und löst sich in Schritt 6 wieder auf,
-* sobald saveConfig() nach ConfigSaveService wandert.
+* SchemaOrgData_ConfigSaveService, $this->settings, PLUGIN_SELF_DIR)
+* werden je Aufruf als Parameter übergeben, nicht im Konstruktor
+* eingefroren (siehe README.md, Abschnitt "Architektur").
 *
 ***************************************************************/
 class SchemaOrgData_AdminRequestHandler {
@@ -39,7 +33,7 @@ class SchemaOrgData_AdminRequestHandler {
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer wird an saveConfig() durchgereicht
-    * @param SchemaOrgData_AdminController $adminController für den saveConfig()-Aufruf (temporäre Rückreferenz, siehe Klassen-Docblock)
+    * @param SchemaOrgData_ConfigSaveService $configSaveService für den saveConfig()-Aufruf
     * @return ?array{success: bool, errors: string[]}
     *
     ***************************************************************/
@@ -52,7 +46,7 @@ class SchemaOrgData_AdminRequestHandler {
         SchemaOrgData_Validator $validator,
         SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
         SchemaOrgData_AdminPageRenderer $adminPageRenderer,
-        SchemaOrgData_AdminController $adminController
+        SchemaOrgData_ConfigSaveService $configSaveService
     ): ?array {
         $scopes = $_POST['schemaOrgData'] ?? null;
 
@@ -84,7 +78,7 @@ class SchemaOrgData_AdminRequestHandler {
 
             $result = !empty($_POST['schemaOrgData_delete_global'])
                 ? $scopeResolver->deleteConfig($settings, 'global')
-                : $adminController->saveConfig('global', $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer);
+                : $configSaveService->saveConfig('global', $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer);
 
             $success = $success && $result['success'];
             $errors = array_merge($errors, $result['errors']);
@@ -99,7 +93,7 @@ class SchemaOrgData_AdminRequestHandler {
 
             $result = !empty($_POST['schemaOrgData_delete_'.$scope])
                 ? $scopeResolver->deleteConfig($settings, $scope)
-                : $adminController->saveConfig($scope, $scopes[$scope], $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer);
+                : $configSaveService->saveConfig($scope, $scopes[$scope], $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer);
 
             $success = $success && $result['success'];
             $errors = array_merge($errors, $result['errors']);

@@ -4,97 +4,32 @@
 *
 * SchemaOrgData_AdminController
 *
-* Admin-Formular: feldweise Vererbungsanzeige
-* (resolveInheritableFields()) sowie Orchestrierung/Persistenz
-* (Refactoring-Schritt 12b, "Ebene B"): Sektions-Rendering
-* (renderScopeSection()), POST-Sanitizing (sanitizePostData(),
-* sanitizeAddressData()), Speichern/Validieren (saveConfig()) und die
-* vollständige Admin-Seite (renderAdminPage()). Siehe
-* doc/adr_komponenten_refactoring.md.
+* Admin-Formular: Orchestrierung (Refactoring-Schritt 12b, "Ebene B"):
+* Sektions-Rendering (renderScopeSection()) und die vollständige
+* Admin-Seite (renderAdminPage()). Siehe doc/adr_komponenten_refactoring.md.
 * Die reinen Anzeige-Bausteine (Info-Block, Scope-Label/Selektor,
 * Speichern-Button-Beschriftung, Speicher-Ergebnis-Hinweis, Hinweis
 * auf vorhandenes/kollidierendes JSON-LD, Ausschlussliste, Admin-CSS,
 * Schema-Type-Auswahl) sind seit Fahrplan-Schritt 4 in
 * SchemaOrgData_AdminPageRenderer ausgelagert, die POST-Verarbeitung
 * (handlePostRequest()) seit Fahrplan-Schritt 5 in
-* SchemaOrgData_AdminRequestHandler (saveConfig() bleibt vorerst hier,
-* siehe dessen Klassen-Docblock) - beide siehe
-* doc/adr_ziel_architektur.md.
+* SchemaOrgData_AdminRequestHandler, die feldweise Vererbungsanzeige
+* (resolveInheritableFields()), POST-Sanitizing (sanitizePostData(),
+* sanitizeAddressData()) und Speichern/Validieren (saveConfig()) seit
+* Fahrplan-Schritt 6 in SchemaOrgData_ConfigSaveService - alle drei
+* siehe doc/adr_ziel_architektur.md.
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
 * SchemaOrgData_SchemaRepository, SchemaOrgData_FormRenderer,
 * SchemaOrgData_Validator, SchemaOrgData_OpeningHoursHelper,
 * SchemaOrgData_CollisionDetector, SchemaOrgData_IdReferenceService,
-* SchemaOrgData_AdminPageRenderer, $this->settings,
-* PLUGIN_SELF_DIR/PLUGIN_SELF_URL) werden je Aufruf als Parameter
-* übergeben, nicht im Konstruktor eingefroren (siehe README.md,
-* Abschnitt "Architektur").
+* SchemaOrgData_AdminPageRenderer, SchemaOrgData_ConfigSaveService,
+* $this->settings, PLUGIN_SELF_DIR/PLUGIN_SELF_URL) werden je Aufruf
+* als Parameter übergeben, nicht im Konstruktor eingefroren (siehe
+* README.md, Abschnitt "Architektur").
 *
 ***************************************************************/
 class SchemaOrgData_AdminController {
-
-    /***************************************************************
-    *
-    * Ermittelt für eine Kategorie-/Seiten-Sektion, welche Feldwerte
-    * eines Schema-Types von einer übergeordneten Ebene (Global bzw.
-    * Global+Kategorie) geerbt würden (siehe
-    * SchemaOrgData_ScopeResolver::resolveTypeInheritance()), sowie
-    * die jeweilige Ursprungsebene als lesbares Label (siehe
-    * buildScopeLabel()). Dient ausschließlich der Anzeige im Formular
-    * (Placeholder + "ü"-Badge, siehe
-    * SchemaOrgData_FormRenderer::renderInheritedBadge()) - die
-    * zurückgegebenen Werte werden NICHT in die Formularfelder
-    * übernommen und nicht gespeichert, damit die feldweise Vererbung
-    * aus 0.2.4-beta unverändert bleibt.
-    *
-    * Bei mehreren übergeordneten Ebenen gewinnt die spezifischere
-    * (Kategorie vor Global) - analog mergeConfigs()/
-    * resolveTypeInheritance().
-    *
-    * @param string $scope 'global' | 'category' | 'page'
-    * @param string $type  Schema-Type, z. B. "LocalBusiness"
-    * @param Language $lang Admin-Sprachobjekt
-    * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer für buildScopeLabel()
-    * @return array{data: array<string,mixed>, originLabel: array<string,string>}
-    *
-    ***************************************************************/
-    public function resolveInheritableFields(
-        string $scope,
-        ?string $cat,
-        ?string $page,
-        string $type,
-        Language $lang,
-        SchemaOrgData_ScopeResolver $scopeResolver,
-        $settings,
-        SchemaOrgData_AdminPageRenderer $adminPageRenderer
-    ): array {
-        $higherScopes = match($scope) {
-            'category' => [
-                ['global', $scopeResolver->loadScopeConfig($settings, 'global'), null, null],
-            ],
-            'page' => [
-                ['global', $scopeResolver->loadScopeConfig($settings, 'global'), null, null],
-                ['category', $scopeResolver->loadScopeConfig($settings, 'category', $cat), $cat, null],
-            ],
-            default => [],
-        };
-
-        $data = [];
-        $originLabel = [];
-        foreach($higherScopes as [$higherScope, $higherConfig, $higherCat, $higherPage]) {
-            if(!is_array($higherConfig[$type] ?? null)) {
-                continue;
-            }
-            $label = $adminPageRenderer->buildScopeLabel($higherScope, $higherCat, $higherPage, $lang);
-            foreach($higherConfig[$type] as $field => $value) {
-                $data[$field] = $value;
-                $originLabel[$field] = $label;
-            }
-        }
-
-        return ['data' => $data, 'originLabel' => $originLabel];
-    }
 
     /***************************************************************
     *
@@ -126,6 +61,7 @@ class SchemaOrgData_AdminController {
     * @param string $pluginSelfUrl PLUGIN_SELF_URL (Extension-Feld-Schema-URL)
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer für die reinen Anzeige-Bausteine
+    * @param SchemaOrgData_ConfigSaveService $configSaveService für resolveInheritableFields()/sanitizePostData()
     * @return string HTML-Snippet
     *
     ***************************************************************/
@@ -150,7 +86,8 @@ class SchemaOrgData_AdminController {
         SchemaOrgData_IdReferenceService $idReferenceService,
         SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
         SchemaOrgData_Validator $validator,
-        SchemaOrgData_AdminPageRenderer $adminPageRenderer
+        SchemaOrgData_AdminPageRenderer $adminPageRenderer,
+        SchemaOrgData_ConfigSaveService $configSaveService
     ): string {
         $idPrefix = $idPrefix ?? $scope;
         $config = $scopeResolver->loadScopeConfig($settings, $scope, $cat, $page);
@@ -229,7 +166,7 @@ class SchemaOrgData_AdminController {
 
             if($postScope !== null and $type === $selectedType) {
                 $postData = is_array($postScope['data'] ?? null) ? $postScope['data'] : [];
-                $data = $this->sanitizePostData($postData, $schema, $schemaRepository, $openingHoursHelper, $validator);
+                $data = $configSaveService->sanitizePostData($postData, $schema, $schemaRepository, $openingHoursHelper, $validator);
                 $extensionOverride = (string) ($postScope['extension'][$type] ?? '');
 
                 // Öffnungszeiten: die rohen Pro-Tag-Werte aus dem POST statt
@@ -248,7 +185,7 @@ class SchemaOrgData_AdminController {
             }
 
             $typeIdPrefix = $idPrefix.'_'.$type;
-            $inheritable = $this->resolveInheritableFields($scope, $cat, $page, $type, $lang, $scopeResolver, $settings, $adminPageRenderer);
+            $inheritable = $configSaveService->resolveInheritableFields($scope, $cat, $page, $type, $lang, $scopeResolver, $settings, $adminPageRenderer);
 
             $html .= '<div class="schemaOrgData-type-fields" data-schema-type="'.htmlspecialchars($type, ENT_QUOTES, CHARSET).'"'.$display.'>'."\n";
             $html .= $formRenderer->renderTypeFields(
@@ -293,270 +230,6 @@ class SchemaOrgData_AdminController {
 
     /***************************************************************
     *
-    * Bereinigt die Formularfeld-Werte eines Schema-Types vor dem
-    * Speichern: nur im Schema bekannte Properties, Strings
-    * getrimmt und ohne HTML-Tags (strip_tags), Telefonnummern
-    * normalisiert (preg_replace('/[^0-9+]/', '', ...)),
-    * Öffnungszeiten als schema.org-Array (buildOpeningHoursArray)
-    * und FAQ-Einträge ohne vollständige Frage/Antwort entfernt.
-    *
-    * @param array<string, mixed> $formData Formularfeld-Werte (schemaOrgData[scope][data])
-    * @param array<string, mixed> $schema aktives JSON-Schema (schemas/{Type}.json)
-    * @return array<string, mixed> bereinigte Properties, bereit für serialize()
-    *
-    ***************************************************************/
-    public function sanitizePostData(
-        array $formData,
-        array $schema,
-        SchemaOrgData_SchemaRepository $schemaRepository,
-        SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
-        SchemaOrgData_Validator $validator
-    ): array {
-        $result = [];
-
-        foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
-            if(!array_key_exists($name, $formData)) {
-                continue;
-            }
-
-            $fieldSchema = $schemaRepository->resolveSchemaRef($fieldSchema, $schema);
-            $widget = $fieldSchema['ui:widget'] ?? 'text';
-            $value = $formData[$name];
-
-            if($widget === 'postal_address') {
-                $address = $this->sanitizeAddressData(is_array($value) ? $value : [], $fieldSchema, $validator);
-                if($address !== []) {
-                    $result[$name] = $address;
-                }
-                continue;
-            }
-
-            if($widget === 'opening_hours') {
-                $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-                $perDay = is_array($value) ? $value : [];
-                $primary = $openingHoursHelper->buildOpeningHoursArray($perDay, $days);
-                $secondary = $openingHoursHelper->buildOpeningHoursArray($perDay, $days, 'from2', 'to2');
-                $openingHours = array_merge($primary, $secondary);
-                if($openingHours !== []) {
-                    $result[$name] = $openingHours;
-                }
-                continue;
-            }
-
-            if($widget === 'faq_list') {
-                $entries = [];
-                foreach((is_array($value) ? $value : []) as $entry) {
-                    $question = trim(strip_tags((string) ($entry['name'] ?? '')));
-                    $answer = trim(strip_tags((string) ($entry['acceptedAnswer']['text'] ?? '')));
-
-                    if($question === '' or $answer === '') {
-                        continue;
-                    }
-
-                    $entries[] = ['name' => $question, 'acceptedAnswer' => ['text' => $answer]];
-                }
-                if($entries !== []) {
-                    $result[$name] = $entries;
-                }
-                continue;
-            }
-
-            if($widget === 'id_reference_or_literal') {
-                if(!is_array($value)) {
-                    continue;
-                }
-                $mode = (string) ($value['_mode'] ?? '');
-                if($mode === 'reference') {
-                    $fragment = trim(strip_tags((string) ($value['_fragment'] ?? '')));
-                    if($fragment !== '') {
-                        $result[$name] = ['_mode' => 'reference', '_fragment' => $fragment];
-                    }
-                } elseif($mode === 'literal') {
-                    $literal = ['_mode' => 'literal'];
-                    foreach($fieldSchema['ui:literalFields'] ?? [] as $lf) {
-                        $lv = trim(strip_tags((string) ($value[(string) $lf] ?? '')));
-                        if($lv !== '') {
-                            $literal[(string) $lf] = $lv;
-                        }
-                    }
-                    if(count($literal) > 1) {
-                        $result[$name] = $literal;
-                    }
-                }
-                continue;
-            }
-
-            if(!is_scalar($value)) {
-                continue;
-            }
-
-            $stringValue = trim(strip_tags((string) $value));
-            if($stringValue === '') {
-                continue;
-            }
-
-            if($name === 'telephone') {
-                $stringValue = preg_replace('/[^0-9+]/', '', $stringValue);
-            }
-
-            $result[$name] = $stringValue;
-        }
-
-        return $result;
-    }
-
-    /***************************************************************
-    *
-    * Bereinigt die Werte einer PostalAddress (siehe sanitizePostData).
-    * Wurde keine Adresse ausgefüllt (siehe isAddressProvided), wird
-    * ein leeres Array zurückgegeben - es wird also kein
-    * unvollständiges "address"-Property gespeichert, das nur den
-    * Default-Wert von addressCountry enthält.
-    *
-    * @return array<string, mixed> bereinigte Adress-Properties, ggf. leer
-    *
-    ***************************************************************/
-    public function sanitizeAddressData(array $address, array $fieldSchema, SchemaOrgData_Validator $validator): array {
-        $subProperties = $fieldSchema['properties'] ?? [];
-
-        if(!$validator->isAddressProvided($address, $subProperties)) {
-            return [];
-        }
-
-        $result = [];
-        foreach($subProperties as $subName => $subSchema) {
-            $subValue = trim(strip_tags((string) ($address[$subName] ?? '')));
-            if($subValue !== '') {
-                $result[$subName] = $subValue;
-            }
-        }
-
-        return $result;
-    }
-
-    /***************************************************************
-    *
-    * Validiert und speichert die Konfiguration einer Geltungsebene.
-    *
-    * Ablauf: Schema des gewählten Types laden, Formularfelder und
-    * Erweiterungsfeld validieren (validateFormData/json_decode/
-    * validateExtensionGeo). Bei Validierungsfehlern wird nicht
-    * gespeichert. Andernfalls werden die Formularfelder bereinigt
-    * (sanitizePostData) und mit dem Erweiterungsfeld zusammengeführt
-    * (Formular hat Vorrang, siehe README.md "Erweiterungsfeld"),
-    * zusätzlich excluded_cats (nur global) und jsonld_mode
-    * übernommen und über $this->settings gespeichert. Wurde kein Type
-    * gewählt ("- kein Schema -"), wird die bisherige
-    * Type-Konfiguration dieser Ebene entfernt, _meta und
-    * excluded_cats bleiben erhalten.
-    *
-    * @param string $scope    'global' | 'category' | 'page'
-    * @param array<string, mixed> $postData schemaOrgData[scope] aus $_POST
-    * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer wird an resolveInheritableFields() durchgereicht
-    * @return array{success: bool, errors: string[]}
-    *
-    ***************************************************************/
-    public function saveConfig(
-        string $scope,
-        array $postData,
-        $settings,
-        Language $lang,
-        SchemaOrgData_ScopeResolver $scopeResolver,
-        SchemaOrgData_SchemaRepository $schemaRepository,
-        string $pluginSelfDir,
-        SchemaOrgData_Validator $validator,
-        SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
-        SchemaOrgData_AdminPageRenderer $adminPageRenderer
-    ): array {
-        [$cat, $page] = $scopeResolver->resolveScopeIdentifiers($scope);
-        $key = $scopeResolver->getScopeSettingsKey($scope, $cat, $page);
-
-        if ($key === null) {
-            return ['success' => false, 'errors' => []];
-        }
-
-        $existing = $settings->keyExists($key)
-            ? $settings->get($key) : [];
-        if (!is_array($existing)) {
-            $existing = [];
-        }
-        $config = ['_meta' => $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => '']];
-
-        if($scope === 'global') {
-            $config['excluded_cats'] = $existing['excluded_cats'] ?? '';
-            $config['debug_output'] = !empty($existing['debug_output']);
-        }
-
-        $type = (string) ($postData['type'] ?? '');
-        $errors = [];
-
-        if($type !== '') {
-            $schema = $schemaRepository->loadSchema($pluginSelfDir, $type);
-
-            if($schema === null or !in_array($scope, $schema['ui:scopes'] ?? [], true)) {
-                $errors[] = $lang->getLanguageValue('error_invalid_schema_type', $type);
-            } else {
-                $formData = is_array($postData['data'] ?? null) ? $postData['data'] : [];
-                $extensionRaw = trim((string) ($postData['extension'][$type] ?? ''));
-                $extensionData = [];
-
-                $inheritable = $this->resolveInheritableFields($scope, $cat, $page, $type, $lang, $scopeResolver, $settings, $adminPageRenderer);
-                $errors = $validator->validateFormData($formData, $schema, $inheritable, $lang, $schemaRepository);
-
-                if($extensionRaw !== '') {
-                    $decoded = json_decode($extensionRaw, true);
-
-                    if(json_last_error() !== JSON_ERROR_NONE or !is_array($decoded)) {
-                        $errors[] = $lang->getLanguageValue('error_json_invalid');
-                    } else {
-                        $extensionData = $decoded;
-                        $errors = array_merge($errors, $validator->validateExtensionGeo($extensionData, $lang));
-                    }
-                }
-
-                if($errors === []) {
-                    $config[$type] = array_merge($extensionData, $this->sanitizePostData($formData, $schema, $schemaRepository, $openingHoursHelper, $validator));
-                }
-            }
-        }
-
-        if($errors !== []) {
-            return ['success' => false, 'errors' => $errors];
-        }
-
-        if($scope === 'global') {
-            $excludedCats = [];
-            foreach((array) ($postData['excluded_cats'] ?? []) as $excludedCat) {
-                $excludedCat = $scopeResolver->sanitizeScopeIdentifier(trim((string) $excludedCat));
-                if($excludedCat !== '') {
-                    $excludedCats[] = $excludedCat;
-                }
-            }
-            $config['excluded_cats'] = implode(',', $excludedCats);
-            $config['debug_output'] = !empty($postData['debug_output']);
-        }
-
-        $jsonldMode = $_POST['schemaOrgData_jsonld_mode_'.$scope] ?? null;
-        if(in_array($jsonldMode, ['keep', 'override'], true)) {
-            $config['_meta']['jsonld_mode'] = $jsonldMode;
-        }
-
-        // Konfiguration über moziloCMS-settings-API speichern
-        try {
-            $settings->set($key, $config);
-        } catch (\Throwable $e) {
-            error_log('schemaOrgData: saveConfig fehlgeschlagen: ' . $e->getMessage());
-            return ['success' => false, 'errors' => [
-                $lang->getLanguageValue('error_config_write_failed')
-            ]];
-        }
-
-        return ['success' => true, 'errors' => []];
-    }
-
-    /***************************************************************
-    *
     * Rendert die vollständige Admin-UI (schema-getriebenes
     * Konfigurationsformular, Geltungsbereiche Global / Kategorie /
     * Seite) im PLUGINADMIN-Kontext (Iframe-Dialog der Plugin-
@@ -592,6 +265,7 @@ class SchemaOrgData_AdminController {
     * @param string $pluginSelfUrl PLUGIN_SELF_URL
     * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer für die reinen Anzeige-Bausteine
     * @param SchemaOrgData_AdminRequestHandler $adminRequestHandler POST-Verarbeitung (siehe SchemaOrgData_AdminRequestHandler)
+    * @param SchemaOrgData_ConfigSaveService $configSaveService Speichern/Validieren (siehe SchemaOrgData_ConfigSaveService)
     *
     ***************************************************************/
     public function renderAdminPage(
@@ -611,13 +285,14 @@ class SchemaOrgData_AdminController {
         SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
         SchemaOrgData_CollisionDetector $collisionDetector,
         SchemaOrgData_AdminPageRenderer $adminPageRenderer,
-        SchemaOrgData_AdminRequestHandler $adminRequestHandler
+        SchemaOrgData_AdminRequestHandler $adminRequestHandler,
+        SchemaOrgData_ConfigSaveService $configSaveService
     ): string {
         global $CatPage;
         global $CMS_CONF;
 
         $saveResult = ($_POST !== []) ? $adminRequestHandler->handlePostRequest(
-            $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $this
+            $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $configSaveService
         ) : null;
 
         // Bei fehlgeschlagenem Speichern wird die aktive Sektion in
@@ -698,7 +373,8 @@ class SchemaOrgData_AdminController {
             pluginSelfDir: $pluginSelfDir, formRenderer: $formRenderer, dataSplitHelper: $dataSplitHelper,
             urlHelper: $urlHelper, pluginLang: $pluginLang, pluginSelfUrl: $pluginSelfUrl,
             weekdayLang: $weekdayLang, idReferenceService: $idReferenceService,
-            openingHoursHelper: $openingHoursHelper, validator: $validator, adminPageRenderer: $adminPageRenderer
+            openingHoursHelper: $openingHoursHelper, validator: $validator, adminPageRenderer: $adminPageRenderer,
+            configSaveService: $configSaveService
         );
 
         // Alle Kategorien vorrendern
@@ -726,7 +402,8 @@ class SchemaOrgData_AdminController {
                 pluginSelfDir: $pluginSelfDir, formRenderer: $formRenderer, dataSplitHelper: $dataSplitHelper,
                 urlHelper: $urlHelper, pluginLang: $pluginLang, pluginSelfUrl: $pluginSelfUrl,
                 weekdayLang: $weekdayLang, idReferenceService: $idReferenceService,
-                openingHoursHelper: $openingHoursHelper, validator: $validator, adminPageRenderer: $adminPageRenderer
+                openingHoursHelper: $openingHoursHelper, validator: $validator, adminPageRenderer: $adminPageRenderer,
+                configSaveService: $configSaveService
             );
 
             // Seiten aller Kategorien vorrendern - inaktive erhalten display:none
@@ -745,7 +422,8 @@ class SchemaOrgData_AdminController {
                         pluginSelfDir: $pluginSelfDir, formRenderer: $formRenderer, dataSplitHelper: $dataSplitHelper,
                         urlHelper: $urlHelper, pluginLang: $pluginLang, pluginSelfUrl: $pluginSelfUrl,
                         weekdayLang: $weekdayLang, idReferenceService: $idReferenceService,
-                        openingHoursHelper: $openingHoursHelper, validator: $validator, adminPageRenderer: $adminPageRenderer
+                        openingHoursHelper: $openingHoursHelper, validator: $validator, adminPageRenderer: $adminPageRenderer,
+                        configSaveService: $configSaveService
                     );
                 }
             }

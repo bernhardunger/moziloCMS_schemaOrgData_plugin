@@ -54,8 +54,8 @@ final class AdminPageRendererTest extends TestCase {
         return new \SchemaOrgData_OpeningHoursHelper();
     }
 
-    private function controller(): \SchemaOrgData_AdminController {
-        return new \SchemaOrgData_AdminController();
+    private function configSaveService(): \SchemaOrgData_ConfigSaveService {
+        return new \SchemaOrgData_ConfigSaveService();
     }
 
     private function renderer(): \SchemaOrgData_AdminPageRenderer {
@@ -85,7 +85,7 @@ final class AdminPageRendererTest extends TestCase {
     }
 
     private function callSaveConfig(string $scope, array $postData, \InMemorySettings $settings): array {
-        return $this->controller()->saveConfig(
+        return $this->configSaveService()->saveConfig(
             $scope, $postData, $settings, $this->adminLang(), $this->scopeResolver(),
             $this->schemaRepository(), $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(),
             $this->renderer()

@@ -159,7 +159,7 @@ final class JsonLdOutputTest extends TestCase {
 
     function testConfiguredScopeProducesScriptBlock(): void {
         $plugin = $this->createPlugin();
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $this->validLocalBusinessData(),
             $this->settings,
@@ -182,7 +182,7 @@ final class JsonLdOutputTest extends TestCase {
 
     function testContextIsAlwaysSchemaOrg(): void {
         $plugin = $this->createPlugin();
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $this->validLocalBusinessData(),
             $this->settings,
@@ -202,7 +202,7 @@ final class JsonLdOutputTest extends TestCase {
 
     function testTypeMatchesConfiguredSchemaType(): void {
         $plugin = $this->createPlugin();
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $this->validLocalBusinessData(),
             $this->settings,
@@ -245,7 +245,7 @@ final class JsonLdOutputTest extends TestCase {
 
     function testAddressIsNestedAsPostalAddress(): void {
         $plugin = $this->createPlugin();
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $this->validLocalBusinessData(),
             $this->settings,
@@ -267,7 +267,7 @@ final class JsonLdOutputTest extends TestCase {
 
     function testAddressCountryContainsIsoCode(): void {
         $plugin = $this->createPlugin();
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $this->validLocalBusinessData(),
             $this->settings,
@@ -291,7 +291,7 @@ final class JsonLdOutputTest extends TestCase {
 
     function testOpeningHoursIsOutputAsArray(): void {
         $plugin = $this->createPlugin();
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $this->validLocalBusinessData(),
             $this->settings,
@@ -318,7 +318,7 @@ final class JsonLdOutputTest extends TestCase {
         $postData = $this->validLocalBusinessData();
         $postData['extension']['LocalBusiness'] = json_encode(['foundingDate' => '2020-01-01']);
 
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $postData,
             $this->settings,
@@ -342,7 +342,7 @@ final class JsonLdOutputTest extends TestCase {
         $postData['data']['telephone'] = '+4989111111';
         $postData['extension']['LocalBusiness'] = json_encode(['telephone' => '+4989222222']);
 
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $postData,
             $this->settings,
@@ -369,7 +369,7 @@ final class JsonLdOutputTest extends TestCase {
         $postData = $this->validLocalBusinessData();
         $postData['excluded_cats'] = ['impressum', 'datenschutz'];
 
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $postData,
             $this->settings,
@@ -405,7 +405,7 @@ final class JsonLdOutputTest extends TestCase {
 
     function testJsonldModeKeepSuppressesOutput(): void {
         $plugin = $this->createPlugin();
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $this->validLocalBusinessData(),
             $this->settings,
@@ -426,7 +426,7 @@ final class JsonLdOutputTest extends TestCase {
 
     function testJsonldModeOverrideProducesOutput(): void {
         $plugin = $this->createPlugin();
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $this->validLocalBusinessData(),
             $this->settings,
@@ -602,7 +602,7 @@ final class JsonLdOutputTest extends TestCase {
 
     function testDebugOutputFalseProducesNoDebugWidget(): void {
         $plugin = $this->createPlugin();
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $this->validLocalBusinessData(),
             $this->settings,
@@ -625,7 +625,7 @@ final class JsonLdOutputTest extends TestCase {
         $plugin = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $postData,
             $this->settings,
@@ -648,7 +648,7 @@ final class JsonLdOutputTest extends TestCase {
         $plugin = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $postData,
             $this->settings,
@@ -671,7 +671,7 @@ final class JsonLdOutputTest extends TestCase {
         $plugin = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $postData,
             $this->settings,
@@ -696,7 +696,7 @@ final class JsonLdOutputTest extends TestCase {
         $plugin = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $postData,
             $this->settings,
@@ -717,7 +717,7 @@ final class JsonLdOutputTest extends TestCase {
     function testScriptBlocksIdenticalRegardlessOfDebugOutput(): void {
         // Ohne Debug
         $plugin1 = $this->createPlugin();
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $this->validLocalBusinessData(),
             $this->settings,
@@ -735,7 +735,7 @@ final class JsonLdOutputTest extends TestCase {
         $plugin2 = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';
-        (new \SchemaOrgData_AdminController())->saveConfig(
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
             $postData,
             $this->settings,
