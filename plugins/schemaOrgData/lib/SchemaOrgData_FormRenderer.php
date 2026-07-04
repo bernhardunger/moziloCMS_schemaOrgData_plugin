@@ -195,7 +195,10 @@ class SchemaOrgData_FormRenderer {
     * @param array<string,string> $availableFragments Fragment => Label-Map
     *        (siehe IdReferenceService::resolveAvailableGlobalFragments()),
     *        von der Fassade einmal je renderTypeFields()-Aufruf berechnet
-    * @return string HTML des Widgets
+    * @return string HTML des Widgets - die beiden Modus-Radios tragen einen
+    *         je Instanz eindeutigen (nicht submittierten) Namen, der
+    *         tatsächlich gespeicherte _mode-Wert läuft über ein per JS
+    *         nachgeführtes verstecktes Feld mit dem regulären Feldnamen
     *
     ***************************************************************/
     public function renderIdReferenceOrLiteralWidget(string $scope, string $name, array $fieldSchema, array $value, string $idPrefix, Language $lang, array $availableFragments): string {
@@ -211,12 +214,30 @@ class SchemaOrgData_FormRenderer {
         $fragmentField = $fieldNameBase.'[_fragment]';
         $containerId   = 'schemaOrgData_'.$idPrefix.'_'.$name.'_idrl';
 
+        // Radiogruppen-Name je Widget-Instanz eindeutig (über $idPrefix), NICHT
+        // $modeField: da für Kategorie-/Seiten-Scopes alle vorgerenderten
+        // Sektionen denselben literalen $scope ("page"/"category") verwenden,
+        // würde ein gemeinsamer Radio-Name dazu führen, dass der Browser beim
+        // Parsen alle gleichnamigen Radios über sämtliche Sektionen hinweg zu
+        // einer einzigen Gruppe zusammenfasst und automatisch bis auf das
+        // zuletzt im DOM stehende Exemplar entcheckt - sichtbar als "nach dem
+        // Speichern ist kein Radio mehr ausgewählt", sobald eine andere
+        // Seite/Kategorie mit demselben Feld ebenfalls vorgerendert wird. Der
+        // tatsächlich zu speichernde Wert läuft deshalb über das separate
+        // versteckte Feld $modeField, dessen Value die Toggle-Funktion
+        // (schemaOrgDataIdRlToggle) bei jeder Radio-Auswahl mitführt.
+        $radioGroupName = 'schemaOrgData_idrl_'.$idPrefix.'_'.$name.'_mode';
+
         $html  = '<div class="schemaOrgData-idrl-container" id="'.htmlspecialchars($containerId, ENT_QUOTES, CHARSET).'">'."\n";
+
+        $html .= '<input type="hidden" class="schemaOrgData-idrl-mode-field"'
+            .' name="'.htmlspecialchars($modeField, ENT_QUOTES, CHARSET).'"'
+            .' value="'.($storedMode === 'literal' ? 'literal' : 'reference').'" />'."\n";
 
         // Radio: Referenz-Modus
         $html .= '<label class="schemaOrgData-idrl-radio-label">'
             .'<input type="radio" class="schemaOrgData-idrl-radio"'
-            .' name="'.htmlspecialchars($modeField, ENT_QUOTES, CHARSET).'" value="reference"'
+            .' name="'.htmlspecialchars($radioGroupName, ENT_QUOTES, CHARSET).'" value="reference"'
             .$refChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
             .' '.$lang->getLanguageHtml('label_id_reflit_reference')
             .'</label>'."\n";
@@ -240,7 +261,7 @@ class SchemaOrgData_FormRenderer {
         // Radio: Literal-Modus
         $html .= '<label class="schemaOrgData-idrl-radio-label">'
             .'<input type="radio" class="schemaOrgData-idrl-radio"'
-            .' name="'.htmlspecialchars($modeField, ENT_QUOTES, CHARSET).'" value="literal"'
+            .' name="'.htmlspecialchars($radioGroupName, ENT_QUOTES, CHARSET).'" value="literal"'
             .$litChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
             .' '.$lang->getLanguageHtml('label_id_reflit_literal')
             .'</label>'."\n";
@@ -267,11 +288,16 @@ class SchemaOrgData_FormRenderer {
         $html .= '</div>'."\n";
 
         // Einmalig definierte Toggle-Funktion (idempotent via window-Guard).
+        // Pflegt zusätzlich das versteckte Feld schemaOrgData-idrl-mode-field
+        // nach, das - anders als die (je Instanz eindeutig benannten) Radios -
+        // unter dem tatsächlichen Formularfeldnamen ($modeField) übermittelt wird.
         $html .= '<script>if(!window.schemaOrgDataIdRlToggle){'
             .'window.schemaOrgDataIdRlToggle=function(r){'
             .'var c=r.closest(".schemaOrgData-idrl-container");'
             .'c.querySelectorAll(".schemaOrgData-idrl-section").forEach(function(s){s.style.display="none";});'
             .'c.querySelector(".schemaOrgData-idrl-"+r.value).style.display="";'
+            .'var h=c.querySelector(".schemaOrgData-idrl-mode-field");'
+            .'if(h){h.value=r.value;}'
             .'};}</script>'."\n";
 
         return $html;

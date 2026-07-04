@@ -515,6 +515,101 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
+    * Regressionstest 0.4.51-beta (Playwright-Fund, Phase 7): Nach dem
+    * Speichern von Event.organizer im Referenz-Modus zeigte das
+    * Admin-Formular beim Neuladen keinen der beiden Radio-Buttons
+    * (Referenz/Manuell) mehr als ausgewählt an. Ursache: renderAdminPage()
+    * rendert das organizer-Widget für JEDE Seite mit Event-Type vor
+    * (auch inaktive, per display:none/disabled ausgeblendete Seiten-
+    * Sektionen), und renderIdReferenceOrLiteralWidget() verwendete für
+    * den name des Radios bislang den literalen $scope ("page"), nicht
+    * das seiten-eindeutige $idPrefix. Teilen sich zwei Seiten damit
+    * denselben Radio-name, behandelt der Browser sie beim Parsen als
+    * EINE Gruppe und entcheckt automatisch alle bis auf das zuletzt im
+    * DOM stehende Exemplar - unabhängig von Sichtbarkeit/disabled. Die
+    * eigentlich gespeicherte Seite kann so als "kein Radio ausgewählt"
+    * erscheinen. Test rendert zwei Seiten derselben Kategorie (nur die
+    * erste hat Event/organizer im Referenz-Modus gespeichert, die
+    * zweite bleibt leer und zeigt daher den Default-Modus "reference")
+    * und prüft, dass beide Radiogruppen eindeutige Namen tragen und
+    * das Referenz-Radio der gespeicherten Seite als checked markiert
+    * bleibt.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testOrganizerReferenceRadioBleibtNachSpeichernAusgewaehltTrotzWeitererSeite(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+        $_POST['schemaOrgData_page'] = 'sommerfest';
+
+        $postData = [
+            'type' => 'Event',
+            'data' => [
+                'name' => 'Sommerfest',
+                'startDate' => '2026-09-15T19:00:00+02:00',
+                'organizer' => ['_mode' => 'reference', '_fragment' => 'organization'],
+            ],
+            'extension' => ['Event' => ''],
+        ];
+        $saveResult = $this->configSaveService()->saveConfig(
+            'page', $postData, $settings, $this->adminLang(), $this->scopeResolver(),
+            $this->schemaRepository(), $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(),
+            $this->adminPageRenderer()
+        );
+        $this->assertTrue($saveResult['success'], implode(', ', $saveResult['errors']));
+
+        $_POST = [];
+        $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+        $_POST['schemaOrgData_page'] = 'sommerfest';
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+        global $CatPage;
+        // zweite Seite derselben Kategorie ohne eigene Event-Konfiguration -
+        // rendert trotzdem ein leeres Event-Formular mit organizer-Widget,
+        // da Event für den Scope "page" grundsätzlich verfügbar ist
+        $CatPage = new FakeCatPageWithPages(
+            ['veranstaltungen'],
+            ['veranstaltungen' => ['sommerfest', 'andere-seite']]
+        );
+
+        $html = $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+
+        // (disabled="disabled" wird bei inaktiven Sektionen per preg_replace()
+        // direkt nach dem Tag-Namen eingefügt, siehe renderScopeSection())
+        preg_match_all(
+            '/<input (?:disabled="disabled" )?type="radio" class="schemaOrgData-idrl-radio" name="([^"]+)" value="([a-z]+)"( checked="checked")?/',
+            $html, $radioMatches, PREG_SET_ORDER
+        );
+
+        $sommerfestGroups = array_values(array_filter($radioMatches, fn($m) => str_contains($m[1], 'sommerfest')));
+        $andereSeiteGroups = array_values(array_filter($radioMatches, fn($m) => str_contains($m[1], 'andere-seite')));
+
+        $this->assertNotEmpty($sommerfestGroups, 'organizer-Radios der Seite "sommerfest" müssen im HTML vorhanden sein');
+        $this->assertNotEmpty($andereSeiteGroups, 'organizer-Radios der Seite "andere-seite" müssen im HTML vorhanden sein');
+
+        // Regressionsschutz gegen die eigentliche Root Cause: die
+        // Radiogruppen zweier unterschiedlicher Seiten dürfen keinen
+        // identischen name teilen
+        $this->assertNotSame($sommerfestGroups[0][1], $andereSeiteGroups[0][1]);
+
+        $sommerfestReference = array_values(array_filter($sommerfestGroups, fn($m) => $m[2] === 'reference'))[0];
+        $this->assertSame(
+            ' checked="checked"', $sommerfestReference[3] ?? '',
+            'Referenz-Radio der Seite "sommerfest" muss nach dem Speichern trotz weiterer Seite ausgewählt bleiben'
+        );
+    }
+
+    /***************************************************************
+    *
     * Fehlt der Plugin-Platzhalter {schemaOrgData} im aktiven
     * Layout-Template, MUSS renderAdminPage() den Hinweis anzeigen -
     * unabhängig vom aktuell gewählten Geltungsbereich (siehe

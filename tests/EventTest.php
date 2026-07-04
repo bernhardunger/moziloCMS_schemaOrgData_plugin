@@ -66,6 +66,10 @@ final class EventTest extends TestCase {
         return new \SchemaOrgData_ConfigSaveService();
     }
 
+    private function formRenderer(): \SchemaOrgData_FormRenderer {
+        return new \SchemaOrgData_FormRenderer();
+    }
+
     private function eventSchema(): array {
         return $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'Event');
     }
@@ -232,6 +236,78 @@ final class EventTest extends TestCase {
         $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
         $this->assertSame('reference', $config['organizer']['_mode']);
         $this->assertSame('organization', $config['organizer']['_fragment']);
+    }
+
+    // -----------------------------------------------------------
+    // Redisplay nach saveConfig(): id_reference_or_literal-Widget
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Regressionstest 0.4.51-beta (Playwright-Fund): geprüft wird hier
+    * ausschließlich die checked-Logik von renderField()/
+    * renderIdReferenceOrLiteralWidget() für den aus InMemorySettings
+    * geladenen Round-Trip-Wert einer einzelnen Widget-Instanz. Der
+    * tatsächlich gemeldete Fehler (nach dem Speichern ist keines der
+    * beiden Radios mehr ausgewählt) trat erst auf, sobald mehrere
+    * Seiten-Sektionen mit organizer-Feld gleichzeitig vorgerendert
+    * werden (Radio-name-Kollision über den literalen $scope statt
+    * $idPrefix) - dieses Szenario deckt
+    * AdminControllerTest::testOrganizerReferenceRadioBleibtNachSpeichernAusgewaehltTrotzWeitererSeite()
+    * ab.
+    *
+    ***************************************************************/
+    function testRenderFieldZeigtReferenceRadioNachSaveConfigRoundTripAlsAusgewaehlt(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+        $_POST['schemaOrgData_page'] = 'sommerfest';
+
+        $postData = $this->validEventData();
+        $postData['data']['organizer'] = ['_mode' => 'reference', '_fragment' => 'organization'];
+
+        $result = $this->callSaveConfig('page', $postData, $settings);
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+
+        $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
+        $schema = $this->eventSchema();
+
+        $html = $this->formRenderer()->renderField(
+            'page', 'organizer', $schema['properties']['organizer'], $config['organizer'], $schema, $config,
+            'page_veranstaltungen_sommerfest_Event', null, null, $this->adminLang(), $this->schemaRepository(),
+            new \SchemaOrgData_UrlHelper(), 'deDE', $this->openingHoursHelper(), $this->validator(),
+            $this->adminLang(), ['organization' => 'Organization']
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/value="reference"\s+checked="checked"/', $html,
+            'Referenz-Radio muss nach dem saveConfig()-Round-Trip als ausgewählt markiert sein'
+        );
+        $this->assertDoesNotMatchRegularExpression('/value="literal"\s+checked="checked"/', $html);
+    }
+
+    function testRenderFieldZeigtLiteralRadioNachSaveConfigRoundTripAlsAusgewaehlt(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+        $_POST['schemaOrgData_page'] = 'sommerfest';
+
+        $result = $this->callSaveConfig('page', $this->validEventData(), $settings);
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+
+        $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
+        $schema = $this->eventSchema();
+
+        $html = $this->formRenderer()->renderField(
+            'page', 'organizer', $schema['properties']['organizer'], $config['organizer'], $schema, $config,
+            'page_veranstaltungen_sommerfest_Event', null, null, $this->adminLang(), $this->schemaRepository(),
+            new \SchemaOrgData_UrlHelper(), 'deDE', $this->openingHoursHelper(), $this->validator(),
+            $this->adminLang(), ['organization' => 'Organization']
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/value="literal"\s+checked="checked"/', $html,
+            'Literal-Radio muss nach dem saveConfig()-Round-Trip als ausgewählt markiert sein'
+        );
+        $this->assertDoesNotMatchRegularExpression('/value="reference"\s+checked="checked"/', $html);
     }
 
     function testSaveConfigLehntFehlendesStartDateAb(): void {
