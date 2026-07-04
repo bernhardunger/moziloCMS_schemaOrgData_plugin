@@ -799,7 +799,7 @@ class SchemaOrgData_FormRenderer {
     *        (siehe buildScopeLabel()), für den Badge-Tooltip
     * @param Language $lang für Labels/Badges/Hinweise
     * @param SchemaOrgData_SchemaRepository $schemaRepository für resolveSchemaRef()
-    * @param SchemaOrgData_UrlHelper $urlHelper für resolveBaseUrl() (nur id_reference-Widget)
+    * @param SchemaOrgData_UrlHelper $urlHelper für resolveFrontendBaseUrl() (nur id_reference-Widget)
     * @param string $pluginLang aktuelle Admin-Sprache (für renderSelectWidget())
     * @param SchemaOrgData_OpeningHoursHelper $openingHoursHelper für renderOpeningHoursWidget()
     * @param SchemaOrgData_Validator $validator für renderPostalAddressWidget()/renderOpeningHoursWidget()/renderFieldFeedback()
@@ -823,7 +823,10 @@ class SchemaOrgData_FormRenderer {
         // aufgelösten Ziel-URI.
         if($widget === 'id_reference') {
             $target = trim((string) ($fieldSchema['ui:idTarget'] ?? ''));
-            $baseUrl = $urlHelper->resolveBaseUrl();
+            // Admin-Anzeige: ohne "admin/"-Segment, damit die angezeigte
+            // URI mit der tatsächlichen Frontend-Emission übereinstimmt
+            // (siehe SchemaOrgData_UrlHelper::resolveFrontendBaseUrl()).
+            $baseUrl = $urlHelper->resolveFrontendBaseUrl();
             $uri = $baseUrl !== '' ? $baseUrl.'#'.$target : '#'.$target;
             $infoText = $lang->getLanguageHtml('hint_id_reference_auto_link');
             return '<div class="c-content schemaOrgData-field-row">'

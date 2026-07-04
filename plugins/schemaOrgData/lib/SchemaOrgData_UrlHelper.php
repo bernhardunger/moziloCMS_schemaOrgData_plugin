@@ -48,4 +48,46 @@ class SchemaOrgData_UrlHelper {
 
         return $protocol.$host.$path;
     }
+
+    /***************************************************************
+    *
+    * Wie resolveBaseUrl(), aber für Admin-seitige @id-Anzeigen
+    * (siehe renderField(), Widget "id_reference"): kürzt ein
+    * abschließendes ADMIN_DIR_NAME-Pfadsegment, falls vorhanden.
+    *
+    * Hintergrund: resolveBaseUrl() leitet den Pfad aus SCRIPT_NAME
+    * ab. Im PLUGINADMIN-Kontext ist das ".../admin/index.php" -
+    * die reine Spiegelung würde daher fälschlich ein "admin/"-Segment
+    * in die angezeigte Referenz-URI übernehmen, obwohl die Frontend-
+    * Emission (buildJsonLdScript()/resolveNodeId(), unverändert über
+    * resolveBaseUrl()) dieses Segment nie enthält.
+    *
+    * Kein Kern-Konstante liefert die Frontend-Basis-URL direkt (siehe
+    * README.md, Rechercheergebnis in der begleitenden ADR-Notiz):
+    * URL_BASE bildet zwar dasselbe Prinzip im Core nach (Kürzung um
+    * ADMIN_DIR_NAME."/index.php" statt nur "index.php"), enthält aber
+    * nur den Pfad ohne Protokoll/Host - eine Wiederverwendung würde
+    * eine eigene Kern-Konstanten-Abhängigkeit an dieser Stelle nötig
+    * machen, die der Rest des Plugins bewusst vermeidet (siehe
+    * resolveBaseUrl()-Kommentar zum fehlenden Domain-Setting).
+    * Konservative Kürzung ist daher additiv und lokal auf diese
+    * Methode begrenzt - resolveBaseUrl() selbst bleibt unverändert.
+    *
+    * @return string Basis-URL wie resolveBaseUrl(), ohne ein
+    *                abschließendes "<ADMIN_DIR_NAME>/"-Segment
+    *
+    ***************************************************************/
+    public function resolveFrontendBaseUrl(): string {
+        $baseUrl = $this->resolveBaseUrl();
+        if($baseUrl === '' or !defined('ADMIN_DIR_NAME')) {
+            return $baseUrl;
+        }
+
+        $adminSegment = trim((string) ADMIN_DIR_NAME, '/').'/';
+        if($adminSegment !== '/' and str_ends_with($baseUrl, $adminSegment)) {
+            $baseUrl = substr($baseUrl, 0, -strlen($adminSegment));
+        }
+
+        return $baseUrl;
+    }
 }
