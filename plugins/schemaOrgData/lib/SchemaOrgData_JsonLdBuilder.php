@@ -144,12 +144,18 @@ class SchemaOrgData_JsonLdBuilder {
         // (z. B. unvollständige PostalAddress/GeoCoordinates-Angaben).
         $data = $this->removeEmptyJsonLdProperties($data);
 
-        // Adresse, Geokoordinaten und Mitarbeiter als verschachtelte,
-        // typisierte schema.org-Objekte ausgeben.
-        foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person'] as $property => $nestedType) {
+        // Adresse, Geokoordinaten, Mitarbeiter und Veranstaltungsort als
+        // verschachtelte, typisierte schema.org-Objekte ausgeben.
+        foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person', 'location' => 'Place'] as $property => $nestedType) {
             if(isset($data[$property]) and is_array($data[$property])) {
                 $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
             }
+        }
+
+        // location.address ist eine Ebene tiefer als die obige Map reicht -
+        // eigener PostalAddress-@type für die verschachtelte Adresse (Event.location).
+        if(isset($data['location']['address']) and is_array($data['location']['address'])) {
+            $data['location']['address'] = array_merge(['@type' => 'PostalAddress'], $data['location']['address']);
         }
 
         // id_reference-Properties aus dem Schema einsetzen (Build-Zeit-Emitter).

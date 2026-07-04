@@ -425,4 +425,45 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertStringContainsString('schemaOrgData-idrl-container', $html);
         $this->assertStringContainsString('Organization — Muster GmbH', $html);
     }
+
+    // -----------------------------------------------------------
+    // renderPlaceWidget() / renderField() - place (Event.location)
+    // -----------------------------------------------------------
+
+    private function eventSchema(): array {
+        return $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'Event');
+    }
+
+    function testRenderPlaceWidgetRendertNameUndVerschachtelteAdressfelder(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->eventSchema();
+        $locationSchema = $schema['properties']['location'];
+        $value = ['name' => 'Stadtpark', 'address' => ['addressLocality' => 'Musterstadt', 'addressCountry' => 'DE']];
+
+        $html = $renderer->renderPlaceWidget(
+            'page', 'location', $locationSchema, $value, $schema, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_Validator(), 'deDE'
+        );
+
+        $this->assertStringContainsString('name="schemaOrgData[page][data][location][name]"', $html);
+        $this->assertStringContainsString('value="Stadtpark"', $html);
+        $this->assertStringContainsString('name="schemaOrgData[page][data][location][address][addressLocality]"', $html);
+        $this->assertStringContainsString('value="Musterstadt"', $html);
+    }
+
+    function testRenderFieldDispatchtPlaceWidgetAlsFieldset(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->eventSchema();
+        $locationSchema = $schema['properties']['location'];
+
+        $html = $renderer->renderField(
+            'page', 'location', $locationSchema, ['name' => 'Stadtpark'], $schema, [], null, null, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('<fieldset class="schemaOrgData-fieldset">', $html);
+        $this->assertStringContainsString('name="schemaOrgData[page][data][location][name]"', $html);
+        $this->assertStringContainsString('name="schemaOrgData[page][data][location][address][addressCountry]"', $html);
+    }
 }

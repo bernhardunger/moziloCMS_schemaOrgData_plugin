@@ -107,6 +107,19 @@ class SchemaOrgData_Validator {
                 continue;
             }
 
+            if($widget === 'place') {
+                // Wiederverwendung von validatePostalAddressData() für die
+                // verschachtelte Adresse - keine eigene Validierungslogik.
+                $properties = $fieldSchema['properties'] ?? [];
+                $addressSchema = isset($properties['address']) ? $schemaRepository->resolveSchemaRef($properties['address'], $schema) : [];
+                $placeValue = is_array($value) ? $value : [];
+                $addressValue = is_array($placeValue['address'] ?? null) ? $placeValue['address'] : [];
+                $inheritedPlace = is_array($inheritableData[$name] ?? null) ? $inheritableData[$name] : [];
+                $inheritedAddress = is_array($inheritedPlace['address'] ?? null) ? $inheritedPlace['address'] : [];
+                $errors = array_merge($errors, $this->validatePostalAddressData($addressValue, $addressSchema, $inheritedAddress, $lang));
+                continue;
+            }
+
             if($widget === 'opening_hours') {
                 $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
                 $perDay = is_array($value) ? $value : [];
@@ -187,15 +200,28 @@ class SchemaOrgData_Validator {
 
             $format = $fieldSchema['format'] ?? null;
             $result = match(true) {
-                $format === 'uri'     => $this->validateUrl($stringValue, $lang),
-                $format === 'email'   => $this->validateEmail($stringValue, $lang),
-                $name === 'telephone' => $this->validateTelephone($stringValue, (string) ($formData['address']['addressCountry'] ?? 'DE'), $lang),
-                default               => ['status' => null, 'message' => null],
+                $format === 'uri'       => $this->validateUrl($stringValue, $lang),
+                $format === 'email'     => $this->validateEmail($stringValue, $lang),
+                $format === 'date-time' => $this->validateIso8601Date($stringValue, $lang),
+                $name === 'telephone'   => $this->validateTelephone($stringValue, (string) ($formData['address']['addressCountry'] ?? 'DE'), $lang),
+                default                 => ['status' => null, 'message' => null],
             };
 
             if($result['status'] === 'error') {
                 $errors[] = $result['message'];
             }
+        }
+
+        // endDate darf nicht vor startDate liegen (nur wenn beide gültige
+        // ISO-8601-Werte sind - ein bereits gemeldeter Formatfehler wird
+        // nicht durch einen zusätzlichen Bereichsfehler verdoppelt).
+        $startDateValue = trim((string) ($formData['startDate'] ?? ''));
+        $endDateValue = trim((string) ($formData['endDate'] ?? ''));
+        if($startDateValue !== '' and $endDateValue !== ''
+            and $this->validateIso8601Date($startDateValue, $lang)['status'] !== 'error'
+            and $this->validateIso8601Date($endDateValue, $lang)['status'] !== 'error'
+            and $endDateValue < $startDateValue) {
+            $errors[] = $lang->getLanguageValue('error_date_range_invalid');
         }
 
         return $errors;
@@ -326,6 +352,33 @@ class SchemaOrgData_Validator {
         }
 
         return ['status' => 'ok', 'message' => null];
+    }
+
+    /***************************************************************
+    *
+    * Validiert ein ISO-8601-Datum (Event.startDate/endDate):
+    * entweder reines Datum ("YYYY-MM-DD") oder Datum+Zeit+Zeitzone
+    * ("YYYY-MM-DDTHH:MM:SS±HH:MM" bzw. "...Z"). Ausschließlich
+    * 24-Stunden-Format, kein TT.MM.YYYY (siehe README.md,
+    * Abschnitt "Formularvalidierung"). Kalendarische Gültigkeit
+    * (z. B. 31. Februar) wird zusätzlich per checkdate() geprüft.
+    *
+    * @param Language $lang für die Fehlermeldung
+    * @return array{status: string|null, message: string|null}
+    *
+    ***************************************************************/
+    public function validateIso8601Date(string $value, Language $lang): array {
+        $value = trim($value);
+        if($value === '') {
+            return ['status' => null, 'message' => null];
+        }
+
+        if(preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:Z|[+-]\d{2}:\d{2}))?$/', $value, $m)
+            and checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+            return ['status' => 'ok', 'message' => null];
+        }
+
+        return ['status' => 'error', 'message' => $lang->getLanguageValue('error_date_invalid')];
     }
 
     /***************************************************************

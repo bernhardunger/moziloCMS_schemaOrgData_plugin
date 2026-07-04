@@ -130,6 +130,32 @@ class SchemaOrgData_ConfigSaveService {
                 continue;
             }
 
+            if($widget === 'place') {
+                // Wiederverwendung von sanitizeAddressData() für die
+                // verschachtelte Adresse - keine eigene Bereinigungslogik.
+                $place = is_array($value) ? $value : [];
+                $placeResult = [];
+
+                $placeName = trim(strip_tags((string) ($place['name'] ?? '')));
+                if($placeName !== '') {
+                    $placeResult['name'] = $placeName;
+                }
+
+                $properties = $fieldSchema['properties'] ?? [];
+                if(isset($properties['address'])) {
+                    $addressSchema = $schemaRepository->resolveSchemaRef($properties['address'], $schema);
+                    $address = $this->sanitizeAddressData(is_array($place['address'] ?? null) ? $place['address'] : [], $addressSchema, $validator);
+                    if($address !== []) {
+                        $placeResult['address'] = $address;
+                    }
+                }
+
+                if($placeResult !== []) {
+                    $result[$name] = $placeResult;
+                }
+                continue;
+            }
+
             if($widget === 'opening_hours') {
                 $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
                 $perDay = is_array($value) ? $value : [];

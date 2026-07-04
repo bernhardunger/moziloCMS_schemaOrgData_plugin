@@ -38,8 +38,10 @@ schema_type_medicalbusiness = 🩺 Medical Practice / Health (MedicalBusiness)
 schema_type_article = 📰 Article / Blog Post (Article)
 schema_type_jobposting = 💼 Job Posting (JobPosting)
 schema_type_donateaction = 💝 Donation / Donate Action (DonateAction)
+schema_type_event = 📅 Event / Appointment (Event)
 
 label_recipient = Recipient (Organisation)
+label_organizer = Organizer
 
 label_name = Name
 label_description = Description
@@ -60,6 +62,12 @@ label_title = Job Title
 label_date_posted = Date Posted
 label_valid_through = Application Deadline
 label_employment_type = Employment Type
+
+label_location = Event Location
+label_start_date = Start (Date/Time)
+label_end_date = End (Date/Time)
+label_event_attendance_mode = Attendance Mode
+label_event_status = Status
 
 label_address = Address
 label_street_address = Street Address
@@ -108,6 +116,8 @@ error_opening_hours_order = The start time must be earlier than the end time.
 error_opening_hours_overlap = The second time range must not start before the end of the first.
 error_geo_latitude = Latitude must be between -90 and 90.
 error_geo_longitude = Longitude must be between -180 and 180.
+error_date_invalid = Please enter a valid date in the format YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS+HH:MM.
+error_date_range_invalid = The end must be after the start.
 error_invalid_schema_type = The schema type "{PARAM1}" is not valid for this scope.
 
 notice_config_saved = The configuration has been saved.

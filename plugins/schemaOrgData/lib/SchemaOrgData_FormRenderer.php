@@ -298,11 +298,16 @@ class SchemaOrgData_FormRenderer {
     * @param Language $lang für Labels/Badges (wird an renderAddressSubField() durchgereicht)
     * @param SchemaOrgData_Validator $validator für validatePostalCode() (in renderAddressSubField())
     * @param string $pluginLang aktuelle Admin-Sprache (für ui:enumLabels in renderSelectWidget())
+    * @param string|null $groupPrefix wenn gesetzt (siehe renderAddressSubField()),
+    *        wird der Feldname um diese Ebene verschachtelt - genutzt vom
+    *        place-Widget (siehe renderPlaceWidget()), das die Adresse unter
+    *        "location.address" statt "address" ablegt
     *
     ***************************************************************/
-    public function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang): string {
+    public function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang, ?string $groupPrefix = null): string {
         $idPrefix = $idPrefix ?? $scope;
-        $countryFieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_addressCountry';
+        $idSegment = $groupPrefix !== null ? $groupPrefix.'_'.$name : $name;
+        $countryFieldId = 'schemaOrgData_'.$idPrefix.'_'.$idSegment.'_addressCountry';
         $properties = $fieldSchema['properties'] ?? [];
         $html = '';
 
@@ -311,7 +316,7 @@ class SchemaOrgData_FormRenderer {
         // kombiniertes streetAddress-Feld und erhält eine eigene,
         // volle Zeile.
         if(isset($properties['streetAddress'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'streetAddress', $properties['streetAddress'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang);
+            $field = $this->renderAddressSubField($scope, $name, 'streetAddress', $properties['streetAddress'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix);
             $html .= $this->renderAddressFullRow($field);
         }
 
@@ -319,17 +324,17 @@ class SchemaOrgData_FormRenderer {
         $html .= $this->renderAddressFieldGroup($scope, $name, $properties, $value, $countryFieldId, $idPrefix, [
             'postalCode'      => true,
             'addressLocality' => false,
-        ], $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang);
+        ], $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix);
 
         // Land: eigene Zeile, Select ~200px breit (siehe getAdminCss)
         if(isset($properties['addressCountry'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'addressCountry', $properties['addressCountry'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang);
+            $field = $this->renderAddressSubField($scope, $name, 'addressCountry', $properties['addressCountry'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix);
             $html .= $this->renderAddressFullRow($field);
         }
 
         // Region/Bundesland: eigene Zeile, ~300px breit (siehe getAdminCss)
         if(isset($properties['addressRegion'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'addressRegion', $properties['addressRegion'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang);
+            $field = $this->renderAddressSubField($scope, $name, 'addressRegion', $properties['addressRegion'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix);
             $html .= $this->renderAddressFullRow($field);
         }
 
@@ -367,12 +372,21 @@ class SchemaOrgData_FormRenderer {
     * @param Language $lang für Labels/Badges/Pflichtfeld-Meldungen
     * @param SchemaOrgData_Validator $validator für validatePostalCode()
     * @param string $pluginLang aktuelle Admin-Sprache (für ui:enumLabels in renderSelectWidget())
+    * @param string|null $groupPrefix wenn gesetzt (z. B. "location" für das
+    *        place-Widget, siehe renderPlaceWidget()), wird der Feldname um
+    *        diese Ebene verschachtelt:
+    *        schemaOrgData[scope][data][$groupPrefix][$name][$subName]
+    *        statt schemaOrgData[scope][data][$name][$subName]
     * @return array{fieldId:string,label:string,badge:string,widget:string,feedback:string}
     *
     ***************************************************************/
-    public function renderAddressSubField(string $scope, string $name, string $subName, array $subSchema, array $value, string $countryFieldId, string $idPrefix, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang): array {
-        $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$subName;
-        $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$subName.']';
+    public function renderAddressSubField(string $scope, string $name, string $subName, array $subSchema, array $value, string $countryFieldId, string $idPrefix, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang, ?string $groupPrefix = null): array {
+        $idSegment = $groupPrefix !== null ? $groupPrefix.'_'.$name : $name;
+        $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$idSegment.'_'.$subName;
+        $fieldNameBase = $groupPrefix !== null
+            ? 'schemaOrgData['.$scope.'][data]['.$groupPrefix.']['.$name.']'
+            : 'schemaOrgData['.$scope.'][data]['.$name.']';
+        $fieldName = $fieldNameBase.'['.$subName.']';
         $subValue = $value[$subName] ?? ($subSchema['default'] ?? null);
         $required = (bool) ($subSchema['ui:required'] ?? false);
         $label = $lang->getLanguageHtml($subSchema['ui:label'] ?? $subName);
@@ -431,9 +445,11 @@ class SchemaOrgData_FormRenderer {
     * @param Language $lang wird an renderAddressSubField() durchgereicht
     * @param SchemaOrgData_Validator $validator wird an renderAddressSubField() durchgereicht
     * @param string $pluginLang wird an renderAddressSubField() durchgereicht
+    * @param string|null $groupPrefix wird an renderAddressSubField() durchgereicht
+    *        (siehe dort)
     *
     ***************************************************************/
-    public function renderAddressFieldGroup(string $scope, string $name, array $properties, array $value, string $countryFieldId, string $idPrefix, array $subNames, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang): string {
+    public function renderAddressFieldGroup(string $scope, string $name, array $properties, array $value, string $countryFieldId, string $idPrefix, array $subNames, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang, ?string $groupPrefix = null): string {
         $html = '<div class="c-content schemaOrgData-field-row">'
             .'<div class="mo-in-li-l"></div>'
             .'<div class="mo-in-li-r"><div class="schemaOrgData-address-row">'."\n";
@@ -442,7 +458,7 @@ class SchemaOrgData_FormRenderer {
             if(!isset($properties[$subName])) {
                 continue;
             }
-            $field = $this->renderAddressSubField($scope, $name, $subName, $properties[$subName], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang);
+            $field = $this->renderAddressSubField($scope, $name, $subName, $properties[$subName], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix);
             $narrowClass = $narrow ? ' schemaOrgData-address-field--narrow' : '';
             $html .= '<div class="schemaOrgData-address-field'.$narrowClass.'">'
                 .'<label for="'.$field['fieldId'].'">'.$field['label'].$field['badge'].'</label>'
@@ -451,6 +467,54 @@ class SchemaOrgData_FormRenderer {
         }
 
         $html .= '</div></div></div>'."\n";
+
+        return $html;
+    }
+
+    /***************************************************************
+    *
+    * Rendert das Place-Widget (Event.location): ein einfaches
+    * Textfeld für "name" sowie eine verschachtelte PostalAddress
+    * unter "location.address" (siehe renderPostalAddressWidget(),
+    * $groupPrefix = $name). Weg-1-Wiederverwendung, kein neues
+    * generisches Nested-Object-Widget-System.
+    *
+    * @param string $scope Geltungsbereich
+    * @param string $name  Property-Name (üblicherweise "location")
+    * @param array<string, mixed> $fieldSchema Feld-Schema (properties.name, properties.address mit "$ref")
+    * @param array<string, mixed> $value gespeicherter Place-Wert (name, address)
+    * @param array<string, mixed> $rootSchema vollständiges Schema (für resolveSchemaRef() von properties.address)
+    * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
+    * @param Language $lang für Labels
+    * @param SchemaOrgData_SchemaRepository $schemaRepository für resolveSchemaRef()
+    * @param SchemaOrgData_Validator $validator für renderPostalAddressWidget()
+    * @param string $pluginLang für renderSelectWidget() (in renderPostalAddressWidget())
+    * @return string HTML-Snippet
+    *
+    ***************************************************************/
+    public function renderPlaceWidget(string $scope, string $name, array $fieldSchema, array $value, array $rootSchema, ?string $idPrefix, Language $lang, SchemaOrgData_SchemaRepository $schemaRepository, SchemaOrgData_Validator $validator, string $pluginLang): string {
+        $idPrefix = $idPrefix ?? $scope;
+        $properties = $fieldSchema['properties'] ?? [];
+        $html = '';
+
+        if(isset($properties['name'])) {
+            $nameSchema = $properties['name'];
+            $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_name';
+            $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.'][name]';
+            $nameValue = $value['name'] ?? null;
+            $label = $lang->getLanguageHtml($nameSchema['ui:label'] ?? 'label_name');
+            $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $nameSchema, $nameValue, []);
+            $html .= '<div class="c-content schemaOrgData-field-row">'
+                .'<div class="mo-in-li-l"><label for="'.$fieldId.'">'.$label.'</label></div>'
+                .'<div class="mo-in-li-r">'.$widgetHtml.'</div>'
+                .'</div>'."\n";
+        }
+
+        if(isset($properties['address'])) {
+            $addressSchema = $schemaRepository->resolveSchemaRef($properties['address'], $rootSchema);
+            $addressValue = is_array($value['address'] ?? null) ? $value['address'] : [];
+            $html .= $this->renderPostalAddressWidget($scope, 'address', $addressSchema, $addressValue, $idPrefix, null, null, $lang, $validator, $pluginLang, $name);
+        }
 
         return $html;
     }
@@ -774,6 +838,14 @@ class SchemaOrgData_FormRenderer {
             $inner = $this->renderIdReferenceOrLiteralWidget(
                 $scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, $lang, $availableFragments
             );
+            return '<fieldset class="schemaOrgData-fieldset">'."\n"
+                .'<legend>'.$label.$badge.'</legend>'."\n"
+                .$inner
+                .'</fieldset>'."\n";
+        }
+
+        if($widget === 'place') {
+            $inner = $this->renderPlaceWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $rootSchema, $idPrefix, $lang, $schemaRepository, $validator, $pluginLang);
             return '<fieldset class="schemaOrgData-fieldset">'."\n"
                 .'<legend>'.$label.$badge.'</legend>'."\n"
                 .$inner

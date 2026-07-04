@@ -1,0 +1,212 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.org/Event",
+  "title": "Event",
+  "type": "object",
+  "ui:typeLabel": "schema_type_event",
+  "ui:scopes": ["page"],
+  "required": ["name", "startDate"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "ui:widget": "text",
+      "ui:label": "label_name",
+      "ui:required": true
+    },
+    "description": {
+      "type": "string",
+      "ui:widget": "textarea",
+      "ui:label": "label_description",
+      "ui:required": false
+    },
+    "startDate": {
+      "type": "string",
+      "format": "date-time",
+      "ui:widget": "text",
+      "ui:label": "label_start_date",
+      "ui:placeholder": "2026-09-15T19:00:00+02:00",
+      "ui:required": true
+    },
+    "endDate": {
+      "type": "string",
+      "format": "date-time",
+      "ui:widget": "text",
+      "ui:label": "label_end_date",
+      "ui:placeholder": "2026-09-15T22:00:00+02:00",
+      "ui:required": false
+    },
+    "eventAttendanceMode": {
+      "type": "string",
+      "ui:widget": "select",
+      "ui:label": "label_event_attendance_mode",
+      "ui:required": false,
+      "enum": [
+        "https://schema.org/OfflineEventAttendanceMode",
+        "https://schema.org/OnlineEventAttendanceMode",
+        "https://schema.org/MixedEventAttendanceMode"
+      ],
+      "ui:enumLabels": {
+        "deDE": {
+          "https://schema.org/OfflineEventAttendanceMode": "Vor Ort",
+          "https://schema.org/OnlineEventAttendanceMode": "Online",
+          "https://schema.org/MixedEventAttendanceMode": "Hybrid (vor Ort und online)"
+        },
+        "enEN": {
+          "https://schema.org/OfflineEventAttendanceMode": "Offline",
+          "https://schema.org/OnlineEventAttendanceMode": "Online",
+          "https://schema.org/MixedEventAttendanceMode": "Mixed (offline and online)"
+        }
+      }
+    },
+    "eventStatus": {
+      "type": "string",
+      "ui:widget": "select",
+      "ui:label": "label_event_status",
+      "ui:required": false,
+      "enum": [
+        "https://schema.org/EventScheduled",
+        "https://schema.org/EventCancelled",
+        "https://schema.org/EventPostponed",
+        "https://schema.org/EventRescheduled",
+        "https://schema.org/EventMovedOnline"
+      ],
+      "ui:enumLabels": {
+        "deDE": {
+          "https://schema.org/EventScheduled": "Wie geplant",
+          "https://schema.org/EventCancelled": "Abgesagt",
+          "https://schema.org/EventPostponed": "Verschoben (neuer Termin unbekannt)",
+          "https://schema.org/EventRescheduled": "Verschoben (neuer Termin bekannt)",
+          "https://schema.org/EventMovedOnline": "Ins Internet verlegt"
+        },
+        "enEN": {
+          "https://schema.org/EventScheduled": "Scheduled",
+          "https://schema.org/EventCancelled": "Cancelled",
+          "https://schema.org/EventPostponed": "Postponed",
+          "https://schema.org/EventRescheduled": "Rescheduled",
+          "https://schema.org/EventMovedOnline": "Moved online"
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "ui:widget": "place",
+      "ui:label": "label_location",
+      "ui:required": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "ui:widget": "text",
+          "ui:label": "label_name",
+          "ui:required": false
+        },
+        "address": {
+          "$ref": "#/definitions/PostalAddress"
+        }
+      }
+    },
+    "organizer": {
+      "type": "object",
+      "ui:widget": "id_reference_or_literal",
+      "ui:label": "label_organizer",
+      "ui:required": false,
+      "ui:literalFields": ["name"],
+      "ui:literalType": "Organization"
+    }
+  },
+  "definitions": {
+    "PostalAddress": {
+      "$id": "https://schema.org/PostalAddress",
+      "title": "PostalAddress",
+      "type": "object",
+      "ui:widget": "postal_address",
+      "ui:label": "label_address",
+      "ui:required": false,
+      "required": ["addressLocality", "addressCountry"],
+      "properties": {
+        "streetAddress": {
+          "type": "string",
+          "ui:widget": "text",
+          "ui:label": "label_street_address",
+          "ui:required": false
+        },
+        "postalCode": {
+          "type": "string",
+          "ui:widget": "text",
+          "ui:label": "label_postal_code",
+          "ui:required": false
+        },
+        "addressLocality": {
+          "type": "string",
+          "ui:widget": "text",
+          "ui:label": "label_address_locality",
+          "ui:required": true
+        },
+        "addressRegion": {
+          "type": "string",
+          "ui:widget": "text",
+          "ui:label": "label_address_region",
+          "ui:required": false
+        },
+        "addressCountry": {
+          "type": "string",
+          "ui:widget": "select",
+          "ui:label": "label_address_country",
+          "ui:required": true,
+          "default": "DE",
+          "enum": [
+            "DE", "AT", "CH", "LI", "FR", "IT", "ES", "PT",
+            "NL", "BE", "LU", "PL", "CZ", "DK", "SE", "NO",
+            "FI", "GB", "IE", "US"
+          ],
+          "ui:enumLabels": {
+            "deDE": {
+              "DE": "Deutschland",
+              "AT": "Österreich",
+              "CH": "Schweiz",
+              "LI": "Liechtenstein",
+              "FR": "Frankreich",
+              "IT": "Italien",
+              "ES": "Spanien",
+              "PT": "Portugal",
+              "NL": "Niederlande",
+              "BE": "Belgien",
+              "LU": "Luxemburg",
+              "PL": "Polen",
+              "CZ": "Tschechien",
+              "DK": "Dänemark",
+              "SE": "Schweden",
+              "NO": "Norwegen",
+              "FI": "Finnland",
+              "GB": "Vereinigtes Königreich",
+              "IE": "Irland",
+              "US": "Vereinigte Staaten"
+            },
+            "enEN": {
+              "DE": "Germany",
+              "AT": "Austria",
+              "CH": "Switzerland",
+              "LI": "Liechtenstein",
+              "FR": "France",
+              "IT": "Italy",
+              "ES": "Spain",
+              "PT": "Portugal",
+              "NL": "Netherlands",
+              "BE": "Belgium",
+              "LU": "Luxembourg",
+              "PL": "Poland",
+              "CZ": "Czechia",
+              "DK": "Denmark",
+              "SE": "Sweden",
+              "NO": "Norway",
+              "FI": "Finland",
+              "GB": "United Kingdom",
+              "IE": "Ireland",
+              "US": "United States"
+            }
+          }
+        }
+      }
+    }
+  }
+}

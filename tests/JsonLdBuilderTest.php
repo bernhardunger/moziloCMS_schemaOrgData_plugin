@@ -218,6 +218,36 @@ final class JsonLdBuilderTest extends TestCase {
         $this->assertSame('DE', $decoded['address']['addressCountry']);
     }
 
+    function testLocationIsNestedAsPlaceWithPostalAddressDirekt(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'Event', [
+            'name' => 'Sommerfest',
+            'startDate' => '2026-09-15T19:00:00+02:00',
+            'location' => [
+                'name' => 'Stadtpark',
+                'address' => [
+                    'addressLocality' => 'Musterstadt',
+                    'addressCountry' => 'DE',
+                ],
+            ],
+        ]);
+
+        $this->assertSame('Place', $decoded['location']['@type']);
+        $this->assertSame('Stadtpark', $decoded['location']['name']);
+        $this->assertSame('PostalAddress', $decoded['location']['address']['@type']);
+        $this->assertSame('Musterstadt', $decoded['location']['address']['addressLocality']);
+    }
+
+    function testLocationWithoutAddressHasNoPostalAddressTypeDirekt(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'Event', [
+            'name' => 'Sommerfest',
+            'startDate' => '2026-09-15T19:00:00+02:00',
+            'location' => ['name' => 'Stadtpark'],
+        ]);
+
+        $this->assertSame('Place', $decoded['location']['@type']);
+        $this->assertArrayNotHasKey('address', $decoded['location']);
+    }
+
     function testOpeningHoursArrayIsFormattedCorrectlyDirekt(): void {
         $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'LocalBusiness', [
             'name' => 'Muster GmbH',

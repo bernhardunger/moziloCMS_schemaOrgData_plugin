@@ -226,6 +226,35 @@ final class ConfigSaveServiceTest extends TestCase {
         $this->assertSame('Musterstadt', $result['address']['addressLocality']);
     }
 
+    function testSanitizePostDataDelegiertPlaceWidgetAnSanitizeAddressData(): void {
+        $schema = $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'Event');
+        $formData = ['location' => [
+            'name' => '  <b>Stadtpark</b>  ',
+            'address' => [
+                'addressLocality' => 'Musterstadt',
+                'addressCountry' => 'DE',
+            ],
+        ]];
+
+        $result = $this->configSaveService()->sanitizePostData(
+            $formData, $schema, $this->schemaRepository(), $this->openingHoursHelper(), $this->validator()
+        );
+
+        $this->assertSame('Stadtpark', $result['location']['name']);
+        $this->assertSame('Musterstadt', $result['location']['address']['addressLocality']);
+    }
+
+    function testSanitizePostDataPlaceWidgetOhneAngabenLiefertKeinLocationProperty(): void {
+        $schema = $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'Event');
+        $formData = ['location' => ['name' => '', 'address' => ['addressCountry' => 'DE']]];
+
+        $result = $this->configSaveService()->sanitizePostData(
+            $formData, $schema, $this->schemaRepository(), $this->openingHoursHelper(), $this->validator()
+        );
+
+        $this->assertArrayNotHasKey('location', $result);
+    }
+
     // -----------------------------------------------------------
     // validateExtensionField()
     // -----------------------------------------------------------

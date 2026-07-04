@@ -454,4 +454,100 @@ final class ValidatorTest extends TestCase {
 
         $this->assertSame([], $errors, 'geerbter Wert deckt das Pflichtfeld url ab');
     }
+
+    // -----------------------------------------------------------
+    // validateIso8601Date()
+    // -----------------------------------------------------------
+
+    function testValidateIso8601DateNullBeiLeeremWert(): void {
+        $result = (new \SchemaOrgData_Validator())->validateIso8601Date('', $this->adminLang());
+        $this->assertNull($result['status']);
+    }
+
+    function testValidateIso8601DateOkBeiReinemDatum(): void {
+        $result = (new \SchemaOrgData_Validator())->validateIso8601Date('2026-09-15', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    function testValidateIso8601DateOkBeiDatumZeitUndOffset(): void {
+        $result = (new \SchemaOrgData_Validator())->validateIso8601Date('2026-09-15T19:00:00+02:00', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    function testValidateIso8601DateOkBeiDatumZeitUndZ(): void {
+        $result = (new \SchemaOrgData_Validator())->validateIso8601Date('2026-09-15T19:00:00Z', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    function testValidateIso8601DateErrorBeiUngueltigemKalendertag(): void {
+        // 31. Februar existiert nicht - Regex passt, checkdate() schlägt fehl.
+        $result = (new \SchemaOrgData_Validator())->validateIso8601Date('2026-02-31', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    function testValidateIso8601DateErrorBeiDeutschemFormat(): void {
+        // TT.MM.YYYY wird bewusst nicht unterstützt (siehe README.md).
+        $result = (new \SchemaOrgData_Validator())->validateIso8601Date('15.09.2026', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    function testValidateIso8601DateErrorBeiUngueltigerUhrzeit(): void {
+        $result = (new \SchemaOrgData_Validator())->validateIso8601Date('2026-09-15T25:00:00Z', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    // -----------------------------------------------------------
+    // validateFormData() - Event: endDate vor startDate
+    // -----------------------------------------------------------
+
+    private function eventSchema(): array {
+        return $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'Event');
+    }
+
+    function testValidateFormDataMeldetEndDateVorStartDate(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'name' => 'Sommerfest',
+            'startDate' => '2026-09-15T19:00:00+02:00',
+            'endDate' => '2026-09-15T18:00:00+02:00',
+        ];
+        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertContains($this->adminLang()->getLanguageValue('error_date_range_invalid'), $errors);
+    }
+
+    function testValidateFormDataOkBeiEndDateNachStartDate(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'name' => 'Sommerfest',
+            'startDate' => '2026-09-15T19:00:00+02:00',
+            'endDate' => '2026-09-15T22:00:00+02:00',
+        ];
+        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertSame([], $errors);
+    }
+
+    function testValidateFormDataMeldetPflichtfeldStartDate(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = ['name' => 'Sommerfest'];
+        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertNotEmpty($errors);
+    }
+
+    function testValidateFormDataPlaceWidgetDelegiertAnValidatePostalAddressData(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'name' => 'Sommerfest',
+            'startDate' => '2026-09-15T19:00:00+02:00',
+            'location' => ['name' => 'Stadtpark', 'address' => ['addressCountry' => 'DE']],
+        ];
+        // Ort ausgefüllt ohne addressLocality -> Pflichtfeld-Fehler über die
+        // verschachtelte Adresse des place-Widgets.
+        $formData['location']['address']['streetAddress'] = 'Am Stadtpark 1';
+        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertNotEmpty($errors, 'fehlender addressLocality-Pflichtwert muss über das place-Widget gemeldet werden');
+    }
 }
