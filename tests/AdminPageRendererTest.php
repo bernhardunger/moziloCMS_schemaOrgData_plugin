@@ -425,6 +425,23 @@ final class AdminPageRendererTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // renderPlaceholderMissingNotice()
+    // -----------------------------------------------------------
+
+    function testRenderPlaceholderMissingNoticeLeerWennGefunden(): void {
+        $html = $this->renderer()->renderPlaceholderMissingNotice(true, 'schemaOrgData', $this->adminLang());
+
+        $this->assertSame('', $html);
+    }
+
+    function testRenderPlaceholderMissingNoticeEnthaeltPluginNamenWennFehlend(): void {
+        $html = $this->renderer()->renderPlaceholderMissingNotice(false, 'schemaOrgData', $this->adminLang());
+
+        $this->assertStringContainsString('schemaOrgData-placeholder-notice', $html);
+        $this->assertStringContainsString('schemaOrgData', $html);
+    }
+
+    // -----------------------------------------------------------
     // renderScopeSelector()
     // -----------------------------------------------------------
 

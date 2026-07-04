@@ -16,6 +16,9 @@ info_text_template_global = Hinweis: Ein direkt im Layout-Template eingebundener
 
 notice_type_collision = Für den Type "{PARAM1}" ist auch auf Ebene {PARAM2} eine Konfiguration vorhanden. Leere Felder werden von der übergeordneten Ebene übernommen - gefüllte Felder überschreiben die Ausgabe von {PARAM2} für diesen Type.
 
+notice_placeholder_missing_title = Plugin-Platzhalter fehlt im aktiven Layout-Template.
+notice_placeholder_missing_text = Im aktiven Layout-Template wurde kein Platzhalter {PARAM1} gefunden. Ohne diesen Platzhalter gibt das Plugin im Frontend keinerlei JSON-LD aus - unabhängig davon, wie es hier konfiguriert ist. Bitte den Platzhalter {PARAM1} an passender Stelle im &lt;head&gt;-Bereich des Layout-Templates ergänzen.
+
 label_excluded_cats = Ausnahmen (Kategorien ohne globale Ausgabe)
 description_excluded_cats = Auf den hier angehakten Kategorien (und deren Seiten) wird die globale Konfiguration nicht ausgegeben, z. B. Impressum, Datenschutz, Sitemap.
 label_excluded_cats_all = Alle Kategorien

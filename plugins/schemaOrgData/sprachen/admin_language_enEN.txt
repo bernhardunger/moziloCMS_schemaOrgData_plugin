@@ -16,6 +16,9 @@ info_text_template_global = Note: A JSON-LD block embedded directly in the layou
 
 notice_type_collision = A configuration for type "{PARAM1}" also exists at the {PARAM2} level. Empty fields here inherit their value from that level - filled fields override the output of {PARAM2} for this type.
 
+notice_placeholder_missing_title = Plugin placeholder is missing from the active layout template.
+notice_placeholder_missing_text = No {PARAM1} placeholder was found in the active layout template. Without this placeholder, the plugin outputs no JSON-LD on the frontend at all - regardless of how it is configured here. Please add the {PARAM1} placeholder at a suitable place in the layout template's &lt;head&gt; section.
+
 label_excluded_cats = Exceptions (categories without global output)
 description_excluded_cats = The global configuration is not output on the categories checked here (and their pages), e.g. imprint, privacy policy, sitemap.
 label_excluded_cats_all = All categories

@@ -323,6 +323,12 @@ class SchemaOrgData_AdminController {
         // Scope-Selektor rendern
         $html .= $adminPageRenderer->renderScopeSelector($selectedCat, $selectedPage, $lang);
 
+        // Platzhalter-Hinweis: scope-unabhängig, da ein fehlender
+        // {schemaOrgData}-Platzhalter im Layout-Template alle
+        // Geltungsebenen gleichermaßen betrifft (siehe README.md).
+        $placeholderFound = $collisionDetector->detectPluginPlaceholderInTemplateAdmin($CMS_CONF, 'schemaOrgData');
+        $html .= $adminPageRenderer->renderPlaceholderMissingNotice($placeholderFound, 'schemaOrgData', $lang);
+
         // Template-Kollisionserkennung: im Admin-Kontext (IS_ADMIN) live prüfen.
         // Ein im Layout-Template eingebundener JSON-LD-Block ist layoutweit
         // und damit kein seiten-/kategoriespezifisches Signal - das Ergebnis

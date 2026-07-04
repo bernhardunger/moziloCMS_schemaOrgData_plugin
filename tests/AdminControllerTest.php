@@ -512,4 +512,64 @@ final class AdminControllerTest extends TestCase {
         $this->assertTrue($globalMeta['existing_jsonld']);
         $this->assertFalse($categoryMeta['existing_jsonld']);
     }
+
+    /***************************************************************
+    *
+    * Fehlt der Plugin-Platzhalter {schemaOrgData} im aktiven
+    * Layout-Template, MUSS renderAdminPage() den Hinweis anzeigen -
+    * unabhängig vom aktuell gewählten Geltungsbereich (siehe
+    * renderPlaceholderMissingNotice()).
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageZeigtHinweisBeiFehlendemPlatzhalter(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $layout = 'schemaOrgData_ph_missing_' . uniqid();
+        $layoutDir = \BASE_DIR . \LAYOUT_DIR_NAME . '/' . $layout;
+        mkdir($layoutDir, 0777, true);
+        file_put_contents($layoutDir . '/template.html', '<head><title>Kein Platzhalter</title></head>');
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
+
+        $html = $this->callRenderAdminPage(new \InMemorySettings());
+
+        unlink($layoutDir . '/template.html');
+        rmdir($layoutDir);
+
+        // Nicht auf die bloße CSS-Klasse prüfen - die steht wegen getAdminCss()
+        // ohnehin immer im <style>-Block, unabhängig vom Prüfergebnis.
+        $this->assertStringContainsString('<div class="schemaOrgData-notice schemaOrgData-placeholder-notice">', $html);
+    }
+
+    /***************************************************************
+    *
+    * Ist der Plugin-Platzhalter im aktiven Layout-Template vorhanden,
+    * darf renderAdminPage() den Hinweis nicht anzeigen.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageZeigtKeinenHinweisBeiVorhandenemPlatzhalter(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $layout = 'schemaOrgData_ph_present_' . uniqid();
+        $layoutDir = \BASE_DIR . \LAYOUT_DIR_NAME . '/' . $layout;
+        mkdir($layoutDir, 0777, true);
+        file_put_contents($layoutDir . '/template.html', '<head>{schemaOrgData}</head>');
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
+
+        $html = $this->callRenderAdminPage(new \InMemorySettings());
+
+        unlink($layoutDir . '/template.html');
+        rmdir($layoutDir);
+
+        // Nicht auf die bloße CSS-Klasse prüfen - die steht wegen getAdminCss()
+        // ohnehin immer im <style>-Block, unabhängig vom Prüfergebnis.
+        $this->assertStringNotContainsString('<div class="schemaOrgData-notice schemaOrgData-placeholder-notice">', $html);
+    }
 }

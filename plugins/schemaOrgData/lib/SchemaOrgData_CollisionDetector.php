@@ -178,4 +178,70 @@ class SchemaOrgData_CollisionDetector {
     public function detectExistingJsonLdInTemplateAdmin($cmsConf): bool {
         return !empty($this->extractExistingJsonLdBlocksFromTemplateAdmin($cmsConf));
     }
+
+    /***************************************************************
+    *
+    * Prüft im Admin-Kontext, ob das aktiv ausgelieferte Layout-Template
+    * den Plugin-Platzhalter ({$pluginName} oder {$pluginName|param})
+    * enthält. Fehlt der Platzhalter, ruft der Kern getContent() des
+    * Plugins im Frontend nirgends auf - das Plugin bleibt dann
+    * unabhängig von seiner Konfiguration wirkungslos (siehe README.md).
+    *
+    * Layout-Auflösung analog extractExistingJsonLdBlocksFromTemplateAdmin()
+    * (bewusst dupliziert statt über einen gemeinsamen privaten Helper
+    * extrahiert, siehe README.md).
+    *
+    * Fail-safe statt Fail-loud: Kann die Prüfung mangels Grundlage nicht
+    * durchgeführt werden (BASE_DIR/LAYOUT_DIR_NAME undefiniert, $cmsConf
+    * fehlt/kein Objekt, cmslayout leer/'false'), liefert die Methode
+    * true (= Platzhalter gilt als vorhanden, kein Fehlalarm auf Basis
+    * unklarer Umgebung).
+    *
+    * @param mixed $cmsConf moziloCMS-Konfigurationsobjekt (entspricht
+    *                       $CMS_CONF), bewusst kein Type-Hint (siehe
+    *                       extractExistingJsonLdBlocksFromTemplateAdmin())
+    * @param string $pluginName Klassenname/Platzhaltername des Plugins
+    *                           (z. B. "schemaOrgData")
+    * @return bool true wenn der Platzhalter gefunden wurde oder die
+    *              Prüfung mangels Grundlage nicht durchgeführt werden
+    *              konnte, sonst false
+    *
+    ***************************************************************/
+    public function detectPluginPlaceholderInTemplateAdmin($cmsConf, string $pluginName): bool {
+        if (!defined('BASE_DIR') || !defined('LAYOUT_DIR_NAME')
+            || !isset($cmsConf) || !is_object($cmsConf)) {
+            return true;
+        }
+
+        $activeLayout = (string) ($cmsConf->get('cmslayout') ?? '');
+        if ($activeLayout === '' || $activeLayout === 'false') {
+            return true;
+        }
+
+        $layoutsToCheck = [$activeLayout];
+
+        if ($cmsConf->get('draftmode') === 'true') {
+            $draftLayout = (string) ($cmsConf->get('draftlayout') ?? '');
+            if ($draftLayout !== '' && $draftLayout !== 'false') {
+                $layoutsToCheck[] = $draftLayout;
+            }
+        }
+
+        $placeholderPattern = '/\{'.preg_quote($pluginName, '/').'(\|[^\[\]\{\}]*)?\}/';
+
+        foreach ($layoutsToCheck as $layout) {
+            foreach (['template.html', 'gallerytemplate.html'] as $tplFile) {
+                $path = BASE_DIR . LAYOUT_DIR_NAME . '/' . $layout . '/' . $tplFile;
+                if (!file_exists($path) || !is_readable($path)) {
+                    continue;
+                }
+                $content = file_get_contents($path);
+                if ($content !== false && preg_match($placeholderPattern, $content) === 1) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }

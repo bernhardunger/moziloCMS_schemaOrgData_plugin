@@ -33,6 +33,7 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-notice--success { background: #e8f5e9; border: 1px solid #a5d6a7; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--error { background: #fdecea; border: 1px solid #f5c6c2; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--error ul { margin: .25em 0 0; padding-left: 1.5em; }
+.schemaOrgData-admin .schemaOrgData-placeholder-notice { background: #fdecea; border: 2px solid #c0392b; padding: .75em 1em; margin-bottom: 1.25em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-required { color: #c0392b; font-weight: bold; }
 .schemaOrgData-admin .schemaOrgData-inherited { color: #888; font-weight: normal; font-style: italic; cursor: help; }
 .schemaOrgData-admin input.mo-input-text::placeholder,
@@ -301,6 +302,32 @@ class SchemaOrgData_AdminPageRenderer {
 
         return '<div class="schemaOrgData-notice schemaOrgData-notice--info">'
             .$lang->getLanguageHtml('notice_type_collision', $selectedType, $scopeNames)
+            .'</div>'."\n";
+    }
+
+    /***************************************************************
+    *
+    * Rendert einen scope-unabhängigen Hinweis, dass der Plugin-
+    * Platzhalter im aktiven Layout-Template fehlt (siehe
+    * SchemaOrgData_CollisionDetector::detectPluginPlaceholderInTemplateAdmin()).
+    * Fehlt der Platzhalter, ruft der Kern getContent() des Plugins im
+    * Frontend nirgends auf - das Plugin bleibt dann unabhängig von
+    * seiner Konfiguration wirkungslos.
+    *
+    * @param bool $placeholderFound Ergebnis von detectPluginPlaceholderInTemplateAdmin()
+    * @param string $pluginName Klassenname/Platzhaltername des Plugins
+    * @param Language $lang Admin-Sprachobjekt
+    * @return string HTML-Snippet oder '' wenn der Platzhalter gefunden wurde
+    *
+    ***************************************************************/
+    public function renderPlaceholderMissingNotice(bool $placeholderFound, string $pluginName, Language $lang): string {
+        if($placeholderFound) {
+            return '';
+        }
+
+        return '<div class="schemaOrgData-notice schemaOrgData-placeholder-notice">'
+            .'<p><strong>'.$lang->getLanguageHtml('notice_placeholder_missing_title').'</strong></p>'
+            .'<p>'.$lang->getLanguageHtml('notice_placeholder_missing_text', $pluginName).'</p>'
             .'</div>'."\n";
     }
 

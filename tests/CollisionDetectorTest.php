@@ -473,4 +473,58 @@ final class CollisionDetectorTest extends TestCase {
         file_put_contents($this->templateFile, '<head><script type="application/ld+json">{}</script></head>');
         $this->assertTrue($detector->detectExistingJsonLd('<title>x</title>', $this->templateFile));
     }
+
+    // ---------------------------------------------------------------------------
+    // Tests für detectPluginPlaceholderInTemplateAdmin()
+    // ---------------------------------------------------------------------------
+
+    function testPlaceholderWithoutParamIsFound(): void {
+        $layout = 'schemaOrgData_ph_ohne_' . uniqid();
+        $this->createLayoutTemplate($layout, 'template.html', '<head>{schemaOrgData}</head>');
+        $cmsConf = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertTrue($detector->detectPluginPlaceholderInTemplateAdmin($cmsConf, 'schemaOrgData'));
+    }
+
+    function testPlaceholderWithParamIsFound(): void {
+        $layout = 'schemaOrgData_ph_mit_' . uniqid();
+        $this->createLayoutTemplate($layout, 'template.html', '<head>{schemaOrgData|foo}</head>');
+        $cmsConf = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertTrue($detector->detectPluginPlaceholderInTemplateAdmin($cmsConf, 'schemaOrgData'));
+    }
+
+    function testPlaceholderNotFoundReturnsFalse(): void {
+        $layout = 'schemaOrgData_ph_fehlt_' . uniqid();
+        $this->createLayoutTemplate($layout, 'template.html', '<head><title>Kein Platzhalter</title></head>');
+        $cmsConf = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertFalse($detector->detectPluginPlaceholderInTemplateAdmin($cmsConf, 'schemaOrgData'));
+    }
+
+    function testPlaceholderCheckIsFailSafeWithoutCmsConf(): void {
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertTrue($detector->detectPluginPlaceholderInTemplateAdmin(null, 'schemaOrgData'));
+    }
+
+    function testPlaceholderCheckIsFailSafeWithEmptyCmslayout(): void {
+        $cmsConf = new \MockConf(['cmslanguage' => 'de']);
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertTrue($detector->detectPluginPlaceholderInTemplateAdmin($cmsConf, 'schemaOrgData'));
+    }
+
+    function testPlaceholderCheckIsFailSafeWithFalseCmslayout(): void {
+        $cmsConf = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => 'false']);
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertTrue($detector->detectPluginPlaceholderInTemplateAdmin($cmsConf, 'schemaOrgData'));
+    }
 }
