@@ -35,10 +35,12 @@ final class DonateActionTest extends TestCase {
 
     protected function setUp(): void {
         $this->serverBackup = $_SERVER;
+        $_POST = [];
     }
 
     protected function tearDown(): void {
         $_SERVER = $this->serverBackup;
+        $_POST = [];
         if($this->pluginDir !== null) {
             $this->removeDirectory($this->pluginDir);
             $this->pluginDir = null;
@@ -102,6 +104,14 @@ final class DonateActionTest extends TestCase {
         );
     }
 
+    private function callSaveConfig(\schemaOrgData $plugin, array $postData): array {
+        return (new \SchemaOrgData_ConfigSaveService())->saveConfig(
+            'page', $postData, $this->settings, $this->adminLang($plugin), new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(), $plugin->PLUGIN_SELF_DIR, new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_AdminPageRenderer()
+        );
+    }
+
     private function buildDecoded(\schemaOrgData $plugin, string $type, array $data, string $nodeId = '', array $suppressedIdTargets = []): array {
         $script = (new \SchemaOrgData_JsonLdBuilder())->buildJsonLdScript(
             new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(),
@@ -150,6 +160,31 @@ final class DonateActionTest extends TestCase {
     // -----------------------------------------------------------
     // buildJsonLdScript(): id_reference-Emission
     // -----------------------------------------------------------
+
+    // -----------------------------------------------------------
+    // saveConfig(): recipient (id_reference) hat per Design keinen
+    // POST-Wert - darf den Pflichtfeld-Check nicht scheitern lassen.
+    // -----------------------------------------------------------
+
+    function testSaveConfigSucceedsWithoutRecipientInPost(): void {
+        $plugin = $this->createPlugin();
+        $_POST['schemaOrgData_cat'] = 'spenden';
+        $_POST['schemaOrgData_page'] = 'spendenaufruf';
+
+        $postData = [
+            'type' => 'DonateAction',
+            'data' => ['description' => 'Unterstütze unser Projekt.'],
+            'extension' => ['DonateAction' => ''],
+        ];
+
+        $result = $this->callSaveConfig($plugin, $postData);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+
+        $config = $this->settings->get('config_page_spenden_spendenaufruf')['DonateAction'];
+        $this->assertArrayNotHasKey('recipient', $config,
+            'recipient wird erst zur Ausgabezeit über buildJsonLdScript() emittiert, nicht gespeichert');
+    }
 
     // -----------------------------------------------------------
     // applyDanglingReferenceGuard(): Guard-Verhalten

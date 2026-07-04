@@ -159,6 +159,13 @@ class SchemaOrgData_Validator {
                 continue;
             }
 
+            if($widget === 'id_reference') {
+                // Wird zur Build-Zeit automatisch emittiert (buildJsonLdScript()) -
+                // schreibgeschützte Info-Anzeige ohne POST-Wert per Design
+                // (siehe renderField()), analog zum Skip in validateAgainstSchema().
+                continue;
+            }
+
             if($widget === 'id_reference_or_literal') {
                 if($required) {
                     $stored = is_array($value) ? $value : [];

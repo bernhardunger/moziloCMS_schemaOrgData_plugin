@@ -455,6 +455,21 @@ final class ValidatorTest extends TestCase {
         $this->assertSame([], $errors, 'geerbter Wert deckt das Pflichtfeld url ab');
     }
 
+    function testValidateFormDataUeberspringtIdReferencePflichtfeld(): void {
+        // recipient (DonateAction) ist ui:required, ui:widget id_reference -
+        // wird erst zur Build-Zeit emittiert und hat per Design keinen
+        // POST-Wert (siehe renderField()). Darf keinen Pflichtfeld-Fehler
+        // erzeugen, auch wenn formData den Schlüssel gar nicht enthält.
+        $validator = new \SchemaOrgData_Validator();
+        $donateActionSchema = $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'DonateAction');
+
+        $errors = $validator->validateFormData(
+            [], $donateActionSchema, [], $this->adminLang(), $this->schemaRepository()
+        );
+
+        $this->assertSame([], $errors);
+    }
+
     // -----------------------------------------------------------
     // validateIso8601Date()
     // -----------------------------------------------------------
