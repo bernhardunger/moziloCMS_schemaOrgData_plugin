@@ -36,14 +36,23 @@ class SchemaOrgData_FrontendRenderer {
 
         $output = '';
 
+        // Lese-/Schreibpfad-Symmetrie: CAT_REQUEST/PAGE_REQUEST werden hier
+        // einmalig über sanitizeScopeIdentifier() bereinigt (identisch zum
+        // Schreibpfad in resolveScopeIdentifiers()) und als $cat/$page an
+        // alle nachfolgenden Aufrufstellen durchgereicht, damit Lese- und
+        // Schreib-Settings-Key für dieselbe Kategorie/Seite übereinstimmen
+        // (siehe README.md, Abschnitt "Geltungsbereiche und Vererbung").
+        $cat  = (defined('CAT_REQUEST') and CAT_REQUEST) ? $context->scopeResolver->sanitizeScopeIdentifier((string) CAT_REQUEST) : null;
+        $page = (defined('PAGE_REQUEST') and PAGE_REQUEST) ? $context->scopeResolver->sanitizeScopeIdentifier((string) PAGE_REQUEST) : null;
+
         // Konfiguration je Geltungsebene laden (sofern vorhanden)
         $scopeConfigs = ['global' => $context->scopeResolver->loadScopeConfig($context->settings, 'global')];
 
-        if(defined('CAT_REQUEST') and CAT_REQUEST) {
-            $scopeConfigs['category'] = $context->scopeResolver->loadScopeConfig($context->settings, 'category', CAT_REQUEST);
+        if($cat !== null) {
+            $scopeConfigs['category'] = $context->scopeResolver->loadScopeConfig($context->settings, 'category', $cat);
         }
-        if(defined('CAT_REQUEST') and defined('PAGE_REQUEST') and CAT_REQUEST and PAGE_REQUEST) {
-            $scopeConfigs['page'] = $context->scopeResolver->loadScopeConfig($context->settings, 'page', CAT_REQUEST, PAGE_REQUEST);
+        if($cat !== null and $page !== null) {
+            $scopeConfigs['page'] = $context->scopeResolver->loadScopeConfig($context->settings, 'page', $cat, $page);
         }
 
         // Ausschlussliste prüfen (nur global): die globale Ausgabe wird
@@ -53,7 +62,7 @@ class SchemaOrgData_FrontendRenderer {
             ? explode(',', (string) $scopeConfigs['global']['excluded_cats'])
             : [];
 
-        if(defined('CAT_REQUEST') and CAT_REQUEST and in_array(CAT_REQUEST, $excludedCats, true)) {
+        if($cat !== null and in_array($cat, $excludedCats, true)) {
             unset($scopeConfigs['global']);
         }
 
@@ -79,8 +88,8 @@ class SchemaOrgData_FrontendRenderer {
         $globalSuppressedByKeep = false;
         foreach($scopeConfigs as $scope => $config) {
             $scopeArgs = match($scope) {
-                'category' => [CAT_REQUEST],
-                'page'     => [CAT_REQUEST, PAGE_REQUEST],
+                'category' => [$cat],
+                'page'     => [$cat, $page],
                 default    => [],
             };
 
@@ -121,8 +130,8 @@ class SchemaOrgData_FrontendRenderer {
                 $output .= $context->jsonLdBuilder->buildJsonLdScript($context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets);
                 if($debugOutput) {
                     $scopeKey = match($scope) {
-                        'category' => 'cat_'.(CAT_REQUEST ? (string) CAT_REQUEST : ''),
-                        'page'     => 'page_'.(CAT_REQUEST ? (string) CAT_REQUEST : '').'_'.(PAGE_REQUEST ? (string) PAGE_REQUEST : ''),
+                        'category' => 'cat_'.($cat ?? ''),
+                        'page'     => 'page_'.($cat ?? '').'_'.($page ?? ''),
                         default    => 'global',
                     };
                     $debugBlocks[] = ['scope' => $scopeKey, 'type' => $type, 'data' => $data, 'id' => $nodeId];
@@ -158,14 +167,14 @@ class SchemaOrgData_FrontendRenderer {
         $contentBlocks = $context->collisionDetector->extractExistingJsonLdBlocks((string) $value);
         $hasJsonLdInContent = !empty($contentBlocks);
         $pageContent = implode("\n\n", array_map('trim', $contentBlocks));
-        if(defined('CAT_REQUEST') and defined('PAGE_REQUEST') and CAT_REQUEST and PAGE_REQUEST) {
-            $metaPage = $context->scopeResolver->loadScopeMeta($context->settings, 'page', CAT_REQUEST, PAGE_REQUEST);
+        if($cat !== null and $page !== null) {
+            $metaPage = $context->scopeResolver->loadScopeMeta($context->settings, 'page', $cat, $page);
             if($metaPage['existing_jsonld'] !== $hasJsonLdInContent
                 || $metaPage['existing_jsonld_content'] !== $pageContent) {
                 $context->scopeResolver->saveScopeMeta($context->settings, 'page', [
                     'existing_jsonld' => $hasJsonLdInContent,
                     'existing_jsonld_content' => $pageContent,
-                ], CAT_REQUEST, PAGE_REQUEST);
+                ], $cat, $page);
             }
         }
 

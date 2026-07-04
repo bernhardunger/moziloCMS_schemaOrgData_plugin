@@ -66,6 +66,15 @@ final class ScopeResolverTest extends TestCase {
         $this->assertSame('a%2Fb', $this->resolver()->sanitizeScopeIdentifier('a%2Fb'));
     }
 
+    // Encodierte und dekodierte Form eines Bezeichners liefern zwei
+    // unterschiedliche, voneinander unabhängige Ergebnisse (Leerzeichen wird
+    // entfernt, % bleibt erhalten) - keine Symmetrie-Aussage zwischen beiden
+    // Formen, siehe F2-Diagnose in CLAUDE.md/doc/TODO.md.
+    function testSanitizeScopeIdentifierEncodierteUndDekodierteFormUnterscheidenSich(): void {
+        $this->assertSame('UnsereLeistungen', $this->resolver()->sanitizeScopeIdentifier('Unsere Leistungen'));
+        $this->assertSame('Unsere%20Leistungen', $this->resolver()->sanitizeScopeIdentifier('Unsere%20Leistungen'));
+    }
+
     // mergeConfigs() -----------------------------------------------------------
 
     function testMergeConfigsSpaetereUeberschreibtFruehereFelder(): void {
