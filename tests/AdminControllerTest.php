@@ -360,6 +360,27 @@ final class AdminControllerTest extends TestCase {
         $this->assertStringContainsString('js/validator.js', $html);
     }
 
+    /***************************************************************
+    *
+    * Fahrplan-Schritt 4b: js/validator.js liest getMessages().dateInvalid
+    * bzw. getMessages().dateRangeInvalid für die date-time-Live-
+    * Validierung von Event.startDate/endDate - ohne diese beiden Keys in
+    * window.schemaOrgDataMessages liefen die Aufrufe dort ins Leere.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageEnthaeltDateTimeMessageKeys(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $html = $this->callRenderAdminPage(new \InMemorySettings());
+
+        $this->assertStringContainsString('"dateInvalid"', $html);
+        $this->assertStringContainsString('"dateRangeInvalid"', $html);
+    }
+
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
     function testRenderAdminPageZeigtSpeicherErgebnisNachPost(): void {

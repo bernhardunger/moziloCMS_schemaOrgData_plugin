@@ -435,6 +435,8 @@ class SchemaOrgData_AdminController {
             'openingHoursFormat'     => $lang->getLanguageValue('error_opening_hours_format'),
             'openingHoursIncomplete' => $lang->getLanguageValue('error_opening_hours_incomplete'),
             'openingHoursOrder'      => $lang->getLanguageValue('error_opening_hours_order'),
+            'dateInvalid'        => $lang->getLanguageValue('error_date_invalid'),
+            'dateRangeInvalid'   => $lang->getLanguageValue('error_date_range_invalid'),
             // '{PARAM1}' wird hier als Wert übergeben, damit
             // getLanguageValue() den Platzhalter NICHT durch ""
             // ersetzt (Default von $param1) - die Ersetzung mit dem

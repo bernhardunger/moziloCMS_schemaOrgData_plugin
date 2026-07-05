@@ -243,6 +243,122 @@
     }
 
     /**
+     * Prüft, ob ein Kalenderdatum tatsächlich existiert (JavaScript hat kein
+     * PHP-checkdate()-Äquivalent - ein "Date"-Konstruktor läuft bei
+     * ungültigen Tagen/Monaten stillschweigend in den Folgemonat über, z. B.
+     * 31.02. -> 03.03.). Rundreise über den Date-Konstruktor und Vergleich
+     * der zerlegten Werte mit den Eingabewerten deckt das auf.
+     *
+     * @param {number} year
+     * @param {number} month 1-12
+     * @param {number} day
+     * @returns {boolean}
+     */
+    function isValidCalendarDate(year, month, day) {
+        var date = new Date(year, month - 1, day);
+        return date.getFullYear() === year && (date.getMonth() + 1) === month && date.getDate() === day;
+    }
+
+    /**
+     * Validiert eine Datumseingabe für Event.startDate/endDate: akzeptiert
+     * ISO-8601 (Datum bzw. Datum+Zeit+Sekunden+Offset/"Z") sowie zusätzlich
+     * das deutsche Format "TT.MM.YYYY", optional mit Uhrzeit
+     * ("TT.MM.YYYY HH:MM"). Spiegelt SchemaOrgData_Validator::validateEventDateInput()
+     * (PHP) - beide Implementierungen müssen bei einer Formatänderung
+     * gemeinsam angepasst werden.
+     *
+     * @param {string} value
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function validateEventDateInput(value) {
+        var trimmed = (value || '').trim();
+
+        if (trimmed === '') {
+            return { status: null, message: null };
+        }
+
+        var isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:T([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(?:Z|[+-]\d{2}:\d{2}))?$/);
+        if (isoMatch && isValidCalendarDate(parseInt(isoMatch[1], 10), parseInt(isoMatch[2], 10), parseInt(isoMatch[3], 10))) {
+            return { status: 'ok', message: null };
+        }
+
+        var deMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/);
+        if (deMatch && isValidCalendarDate(parseInt(deMatch[3], 10), parseInt(deMatch[2], 10), parseInt(deMatch[1], 10))) {
+            return { status: 'ok', message: null };
+        }
+
+        return { status: 'error', message: getMessages().dateInvalid || null };
+    }
+
+    /**
+     * Wandelt eine bereits als gültig bestätigte Datumseingabe
+     * (validateEventDateInput()) in ein vergleichbares "Date"-Objekt um -
+     * reine Hilfsfunktion für checkDateRange(), kein eigenständiger
+     * Validierungsschritt. Ein reines Datum ohne Uhrzeit wird als lokale
+     * Mitternacht interpretiert (symmetrisch zu normalizeEventDateInput() in
+     * SchemaOrgData_Validator.php); mit Uhrzeit übernimmt der "Date"-
+     * Konstruktor die Sommer-/Winterzeit-Auflösung der Browser-Zeitzone
+     * automatisch.
+     *
+     * @param {string} value
+     * @returns {Date|null}
+     */
+    function parseEventDateValue(value) {
+        var trimmed = (value || '').trim();
+
+        var deMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/);
+        if (deMatch) {
+            var day = parseInt(deMatch[1], 10);
+            var month = parseInt(deMatch[2], 10) - 1;
+            var year = parseInt(deMatch[3], 10);
+            var hour = deMatch[4] ? parseInt(deMatch[4], 10) : 0;
+            var minute = deMatch[5] ? parseInt(deMatch[5], 10) : 0;
+            return new Date(year, month, day, hour, minute, 0);
+        }
+
+        var isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:T([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(?:Z|[+-]\d{2}:\d{2}))?$/);
+        if (isoMatch) {
+            if (!isoMatch[4]) {
+                return new Date(parseInt(isoMatch[1], 10), parseInt(isoMatch[2], 10) - 1, parseInt(isoMatch[3], 10));
+            }
+            return new Date(trimmed);
+        }
+
+        return null;
+    }
+
+    /**
+     * Prüft, ob Event.endDate nicht vor Event.startDate liegt (nur wenn
+     * beide Felder gefüllt und für sich genommen gültig sind - siehe
+     * SchemaOrgData_Validator::validateFormData(), gleiche Bedingung
+     * serverseitig). Gleicher Zeitpunkt gilt als gültig (nur "davor" ist ein
+     * Fehler).
+     *
+     * @param {HTMLElement|null} startInput
+     * @param {HTMLElement|null} endInput
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function checkDateRange(startInput, endInput) {
+        var startValue = startInput ? startInput.value : '';
+        var endValue = endInput ? endInput.value : '';
+
+        if (startValue.trim() === '' || endValue.trim() === ''
+            || validateEventDateInput(startValue).status === 'error'
+            || validateEventDateInput(endValue).status === 'error') {
+            return { status: null, message: null };
+        }
+
+        var startDate = parseEventDateValue(startValue);
+        var endDate = parseEventDateValue(endValue);
+
+        if (!startDate || !endDate || endDate.getTime() < startDate.getTime()) {
+            return { status: 'error', message: getMessages().dateRangeInvalid || null };
+        }
+
+        return { status: 'ok', message: null };
+    }
+
+    /**
      * Validiert ein Pflichtfeld (siehe index.php, renderPostalAddressWidget()).
      * Die Fehlermeldung wird bereits server-seitig vollständig aufgelöst und
      * über data-required-message übergeben.
@@ -412,10 +528,82 @@
     }
 
     /**
+     * Sucht das Bereichs-Gegenstück eines date-time-Felds
+     * (Event.startDate/endDate, siehe buildValidationAttrs() in
+     * SchemaOrgData_FormRenderer.php): trägt "input" selbst
+     * data-range-start-field, ist es das endDate-Feld; andernfalls wird
+     * nach einem endDate-Feld gesucht, das per data-range-start-field auf
+     * "input" (dann startDate) verweist.
+     *
+     * @param {HTMLElement} input
+     * @returns {{startInput: HTMLElement|null, endInput: HTMLElement}|null}
+     */
+    function findDateRangeCounterpart(input) {
+        var startFieldId = input.getAttribute('data-range-start-field');
+        if (startFieldId) {
+            return { startInput: document.getElementById(startFieldId), endInput: input };
+        }
+
+        var endInput = input.id ? document.querySelector('[data-range-start-field="' + input.id + '"]') : null;
+        if (endInput) {
+            return { startInput: input, endInput: endInput };
+        }
+
+        return null;
+    }
+
+    /**
+     * Aktualisiert das Feedback des endDate-Felds: eigener Formatfehler hat
+     * Vorrang vor dem Bereichsvergleich (siehe checkDateRange()) - ein
+     * bereits gemeldeter Formatfehler wird nicht durch einen zusätzlichen
+     * Bereichsfehler überschrieben/verdoppelt (analog zur serverseitigen
+     * Logik in SchemaOrgData_Validator::validateFormData()).
+     *
+     * @param {HTMLElement|null} startInput
+     * @param {HTMLElement} endInput
+     * @param {boolean} [onlyClearErrors] siehe showFieldFeedback()
+     */
+    function updateEndDateFeedback(startInput, endInput, onlyClearErrors) {
+        var endOwnResult = validateEventDateInput(endInput.value);
+        var result = (endOwnResult.status === 'error') ? endOwnResult : checkDateRange(startInput, endInput);
+
+        showFieldFeedback(endInput, endInput.id + '_feedback', result, onlyClearErrors);
+    }
+
+    /**
+     * Validiert ein date-time-Feld (Event.startDate/endDate) und
+     * aktualisiert bei Bedarf zusätzlich das Feedback des jeweils anderen
+     * Feldes: wird startDate validiert, triggert das ebenfalls die
+     * Bereichsprüfung für das zugehörige endDate (siehe
+     * findDateRangeCounterpart()), damit eine nachträgliche Korrektur von
+     * startDate sofort im bereits sichtbaren endDate-Feedback honoriert
+     * wird, ohne dass der Nutzer endDate erneut verlassen muss.
+     *
+     * @param {HTMLElement} input
+     * @param {boolean} [onlyClearErrors] siehe showFieldFeedback()
+     */
+    function runEventDateValidation(input, onlyClearErrors) {
+        var counterpart = findDateRangeCounterpart(input);
+
+        if (!counterpart) {
+            showFieldFeedback(input, input.id + '_feedback', validateEventDateInput(input.value), onlyClearErrors);
+            return;
+        }
+
+        if (input !== counterpart.endInput) {
+            showFieldFeedback(input, input.id + '_feedback', validateEventDateInput(input.value), onlyClearErrors);
+        }
+
+        updateEndDateFeedback(counterpart.startInput, counterpart.endInput, onlyClearErrors);
+    }
+
+    /**
      * Führt die zu input.dataset.validate passende Live-Validierung
      * aus und zeigt das Ergebnis an. Bei "opening_hours" wird das
      * über data-pair verknüpfte Gegenstück (Von/Bis) mit einbezogen
-     * (siehe runOpeningHoursValidation()). Felder mit
+     * (siehe runOpeningHoursValidation()). Bei "date-time" wird das
+     * über data-range-start-field verknüpfte Gegenstück (startDate/
+     * endDate) mit einbezogen (siehe runEventDateValidation()). Felder mit
      * data-required-message melden einen leeren Wert als Fehler,
      * unabhängig vom data-validate-Typ.
      *
@@ -464,6 +652,9 @@
                 break;
             case 'opening_hours':
                 runOpeningHoursValidation(input, onlyClearErrors);
+                return;
+            case 'date-time':
+                runEventDateValidation(input, onlyClearErrors);
                 return;
             default:
                 return;
@@ -1054,6 +1245,7 @@
         validateEmail: validateEmail,
         validateRequiredField: validateRequiredField,
         validateOpeningHoursTime: validateOpeningHoursTime,
+        validateEventDateInput: validateEventDateInput,
         initExcludedCatsSelectAll: initExcludedCatsSelectAll,
         initAutofillButton: initAutofillButton,
         initAdminForm: initAdminForm

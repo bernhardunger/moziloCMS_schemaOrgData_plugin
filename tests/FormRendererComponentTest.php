@@ -229,6 +229,27 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertSame('schemaOrgData_cat_testkat_address_addressCountry', $attrs['data-country-field']);
     }
 
+    function testBuildValidationAttrsDateTimeEndDateVerweistAufStartDateFeld(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $fieldSchema = ['format' => 'date-time'];
+
+        $attrs = $renderer->buildValidationAttrs('page', 'endDate', $fieldSchema, 'page_kat_seite', $this->adminLang());
+
+        $this->assertSame('date-time', $attrs['data-validate']);
+        $this->assertSame('schemaOrgData_page_kat_seite_startDate', $attrs['data-range-start-field']);
+    }
+
+    function testBuildValidationAttrsDateTimeStartDateOhneRangeStartField(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $fieldSchema = ['format' => 'date-time', 'ui:required' => true, 'ui:label' => 'label_startDate'];
+
+        $attrs = $renderer->buildValidationAttrs('page', 'startDate', $fieldSchema, 'page_kat_seite', $this->adminLang());
+
+        $this->assertSame('date-time', $attrs['data-validate']);
+        $this->assertArrayNotHasKey('data-range-start-field', $attrs);
+        $this->assertArrayHasKey('data-required-message', $attrs);
+    }
+
     // -----------------------------------------------------------
     // renderFieldFeedback()
     // -----------------------------------------------------------
@@ -251,6 +272,26 @@ final class FormRendererComponentTest extends TestCase {
         );
 
         $this->assertStringContainsString('schemaOrgData-feedback--ok', $html);
+    }
+
+    function testRenderFieldFeedbackDateTimeAkzeptiertDeutschesFormat(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $html = $renderer->renderFieldFeedback(
+            'startDate', ['format' => 'date-time'], '24.12.2026 18:00', [], 'fid_feedback',
+            new \SchemaOrgData_Validator(), $this->adminLang(),
+        );
+
+        $this->assertStringContainsString('schemaOrgData-feedback--ok', $html);
+    }
+
+    function testRenderFieldFeedbackDateTimeMeldetUngueltigesDatum(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $html = $renderer->renderFieldFeedback(
+            'startDate', ['format' => 'date-time'], '31.02.2026', [], 'fid_feedback',
+            new \SchemaOrgData_Validator(), $this->adminLang(),
+        );
+
+        $this->assertStringContainsString('schemaOrgData-feedback--error', $html);
     }
 
     // -----------------------------------------------------------

@@ -751,6 +751,15 @@ class SchemaOrgData_FormRenderer {
             $attrs = ['data-validate' => 'url'];
         } elseif($format === 'email') {
             $attrs = ['data-validate' => 'email'];
+        } elseif($format === 'date-time') {
+            $attrs = ['data-validate' => 'date-time'];
+            // Nur endDate erhält die Gegenstück-Referenz auf startDate - der
+            // Bereichsfehler wird nur einmal gemeldet (analog zur serverseitigen
+            // Logik in SchemaOrgData_Validator::validateFormData(), die den
+            // Fehler ebenfalls nur einmal in $errors[] einträgt).
+            if($name === 'endDate') {
+                $attrs['data-range-start-field'] = 'schemaOrgData_'.$idPrefix.'_startDate';
+            }
         } elseif($name === 'telephone') {
             $attrs = [
                 'data-validate' => 'telephone',
@@ -780,7 +789,7 @@ class SchemaOrgData_FormRenderer {
     *                        (für telephone -> address.addressCountry)
     * @param string $feedbackId Element-ID für das Feedback-<span>
     *        (siehe renderValidationFeedback())
-    * @param SchemaOrgData_Validator $validator für validateUrl()/validateEmail()/validateTelephone()
+    * @param SchemaOrgData_Validator $validator für validateUrl()/validateEmail()/validateTelephone()/validateEventDateInput()
     * @param Language $lang für die Fehlermeldungen
     *
     ***************************************************************/
@@ -793,6 +802,10 @@ class SchemaOrgData_FormRenderer {
 
         if($format === 'email') {
             return $this->renderValidationFeedback($validator->validateEmail($value, $lang), $feedbackId);
+        }
+
+        if($format === 'date-time') {
+            return $this->renderValidationFeedback($validator->validateEventDateInput($value, $lang), $feedbackId);
         }
 
         if($name === 'telephone') {
