@@ -10,6 +10,17 @@
 
 ## Überblick
 
+**Strukturierte Daten ohne SEO-Agentur.** `schemaOrgData` macht die Inhalte
+einer moziloCMS-Website für Suchmaschinen eindeutig interpretierbar: wer hinter
+der Website steht (Unternehmen, Praxis, Kanzlei, Verein), was angeboten wird und
+welche Seiten besondere Inhalte tragen — Veranstaltungen, Stellenanzeigen,
+Spendenaufrufe, FAQ. Das erhöht die Chance auf **Rich Results** in der
+Google-Suche und verbessert die maschinelle Auswertbarkeit der Website insgesamt.
+Technisch geschieht das über validiertes, Schema.org-konformes **JSON-LD**, das
+vollständig im Admin-Bereich über Formulare gepflegt wird: kein Eingriff in
+Templates nötig (bis auf einen einmalig zu setzenden Platzhalter), keine
+Code-Kenntnisse erforderlich, client- und server-seitige Validierung inklusive.
+
 `schemaOrgData` ist ein Plugin für moziloCMS 3.0.4 oder höher, das **Schema.org-konformes JSON-LD** in den `<head>`-Bereich jeder Seite schreibt. Es ergänzt die im moziloCMS-Core bereits vorhandenen Microdata-Implementierungen (Article-Wrapper, ImageObject, BreadcrumbList, Contact) um maschinenlesbare JSON-LD-Blöcke, die von Suchmaschinen bevorzugt ausgewertet werden.
 
 Das Plugin ist **vollständig eigenständig** und setzt kein anderes Plugin (z. B. `seo_urls`) voraus.
@@ -55,6 +66,65 @@ Das Plugin arbeitet **konfigurationsgetrieben**: Die strukturierten Daten werden
 | `JobPosting` | Stellenanzeige | Seite |
 | `DonateAction` | Spendenaufruf (verknüpft per `@id` mit dem globalen Org-Knoten) | Seite |
 | `Event` | Veranstaltung / Termin (`location` als `Place` mit Adresse, `organizer` wahlweise als Referenz oder Direkteingabe) | Seite |
+
+---
+
+## Best Practices: Schema.org-Daten sinnvoll pflegen
+
+Das Plugin validiert die **Struktur** der eingegebenen Daten — ob die Daten
+**inhaltlich** zur Seite passen, liegt in der Verantwortung des Betreibers.
+Dafür gilt eine einfache Grundregel:
+
+> **Strukturierte Daten müssen dem sichtbaren Seiteninhalt entsprechen.**
+> Suchmaschinen (insbesondere Google) werten Markup, das Inhalte behauptet,
+> die auf der Seite nicht sichtbar sind, als irreführend — im schlimmsten
+> Fall führt das zum Ausschluss der gesamten Website von Rich Results.
+
+### Empfehlungen
+
+- **So wenig Types wie nötig.** Jeder konfigurierte Type sollte eine klare
+  Entsprechung auf der Website haben. Mehr Markup ist nicht automatisch
+  besseres Ranking.
+- **Global nur die Identität.** Auf globaler Ebene gehört hin, wer hinter der
+  Website steht (`Organization`, `NGO`, `Person` oder ein `LocalBusiness`-Typ)
+  sowie ggf. `WebSite` — und zwar **genau eine** Organisations-Identität, nicht
+  mehrere parallel.
+- **Seiten-Types nur dort, wo der Inhalt es hergibt.** `Event`, `JobPosting`,
+  `DonateAction`, `FAQPage` und `Article` gehören auf die Kategorie bzw. Seite,
+  die den entsprechenden Inhalt tatsächlich sichtbar zeigt.
+- **Nach jeder Änderung prüfen.** Debug-Modus aktivieren und das erzeugte
+  JSON-LD mit [validator.schema.org](https://validator.schema.org) abgleichen;
+  für die Google-Sicht zusätzlich der
+  [Rich-Results-Test](https://search.google.com/test/rich-results).
+- **Pflege einplanen.** Strukturierte Daten sind kein Einmal-Setup: Bei
+  Inhaltsänderungen (Veranstaltung vorbei, Stelle besetzt, Öffnungszeiten
+  geändert) muss die Konfiguration mitziehen.
+
+### Typische Fehler — so bitte nicht
+
+- ❌ **`FAQPage` ohne sichtbare Fragen und Antworten.** Die Fragen im Markup
+  müssen wortgleich auf der Seite stehen — ein FAQ-Markup als reiner
+  „SEO-Trick" auf einer normalen Inhaltsseite verstößt gegen die
+  Google-Richtlinien.
+- ❌ **Abgelaufene `Event`-Einträge stehen lassen.** Eine Veranstaltung von
+  letztem Jahr im Markup signalisiert Suchmaschinen veraltete Daten. Nach dem
+  Termin: Konfiguration der Seite entfernen oder aktualisieren.
+- ❌ **`DonateAction` ohne tatsächliche Spendenmöglichkeit.** Der Spendenaufruf
+  im Markup muss auf der Seite nachvollziehbar sein (Spendenformular,
+  Bankverbindung, Spenden-Link).
+- ❌ **Keyword-Stuffing im `name`-Feld.** „Zahnarzt München Zahnarztpraxis
+  günstig Implantate" ist kein Name. Ins `name`-Feld gehört der tatsächliche
+  Name — für Leistungen und Orte gibt es eigene Properties bzw. den sichtbaren
+  Seiteninhalt.
+- ❌ **Mehrere Organisations-Identitäten global parallel.** `Organization`,
+  `NGO` und ein `LocalBusiness`-Typ gleichzeitig global zu konfigurieren
+  erzeugt konkurrierende Aussagen darüber, wer die Website betreibt.
+  Einen Typ wählen, der am besten passt — im Zweifel den spezifischsten
+  (z. B. `NGO` statt `Organization` für einen e. V.).
+- ❌ **Daten eintragen, „weil das Feld da ist".** Leere Felder sind kein
+  Mangel — das Plugin tilgt sie automatisch aus der Ausgabe. Geschätzte oder
+  erfundene Werte (Geo-Koordinaten, Gründungsdatum, Öffnungszeiten) schaden
+  mehr als fehlende.
 
 ---
 
