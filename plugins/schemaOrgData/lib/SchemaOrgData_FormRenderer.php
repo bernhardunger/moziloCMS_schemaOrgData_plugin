@@ -854,6 +854,16 @@ class SchemaOrgData_FormRenderer {
         $required = (bool) ($fieldSchema['ui:required'] ?? false);
         $badge = $this->renderRequiredBadge($required, $lang);
         $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name;
+
+        // date-time-Felder (Event.startDate/endDate): gespeicherter
+        // ISO-8601-Wert wird für die Anzeige nach TT.MM.YYYY[ HH:MM]
+        // zurückformatiert (Redisplay-Nachtrag zu Fahrplan-Schritt 4,
+        // symmetrisch zu normalizeEventDateInput()) - wirkt sich nicht
+        // auf das Speicherformat aus, nur auf Eingabefeld und Feedback.
+        if(($fieldSchema['format'] ?? null) === 'date-time' and is_string($value) and $value !== '') {
+            $value = $validator->formatEventDateForDisplay($value);
+        }
+
         $isEmpty = ($value === null or $value === '' or $value === []);
 
         // id_reference: rein deklaratives Widget ohne Eingabefeld.
@@ -919,7 +929,11 @@ class SchemaOrgData_FormRenderer {
         // resolveInheritableFields()) - das Feld selbst bleibt leer.
         if($isEmpty and is_scalar($inheritedValue) and (string) $inheritedValue !== '') {
             if($widget !== 'select') {
-                $fieldSchema['ui:placeholder'] = (string) $inheritedValue;
+                $placeholderValue = (string) $inheritedValue;
+                if(($fieldSchema['format'] ?? null) === 'date-time') {
+                    $placeholderValue = $validator->formatEventDateForDisplay($placeholderValue);
+                }
+                $fieldSchema['ui:placeholder'] = $placeholderValue;
             }
             $badge .= $this->renderInheritedBadge($inheritedLabel, $lang);
         }

@@ -603,6 +603,35 @@ final class ValidatorTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // formatEventDateForDisplay()
+    // -----------------------------------------------------------
+
+    function testFormatEventDateForDisplayWandeltReinesIsoDatumZuDeutschemDatum(): void {
+        $result = (new \SchemaOrgData_Validator())->formatEventDateForDisplay('2026-09-15');
+        $this->assertSame('15.09.2026', $result);
+    }
+
+    function testFormatEventDateForDisplayWandeltIsoDatumZeitOffsetZuDeutschemDatumMitUhrzeit(): void {
+        $result = (new \SchemaOrgData_Validator())->formatEventDateForDisplay('2026-09-15T19:00:00+02:00');
+        $this->assertSame('15.09.2026 19:00', $result);
+    }
+
+    function testFormatEventDateForDisplayWandeltIsoDatumZeitZZuDeutschemDatumMitUhrzeit(): void {
+        $result = (new \SchemaOrgData_Validator())->formatEventDateForDisplay('2026-09-15T19:00:00Z');
+        $this->assertSame('15.09.2026 19:00', $result);
+    }
+
+    function testFormatEventDateForDisplayLaesstLeerenStringUnveraendert(): void {
+        $result = (new \SchemaOrgData_Validator())->formatEventDateForDisplay('');
+        $this->assertSame('', $result);
+    }
+
+    function testFormatEventDateForDisplayLaesstNichtErkanntenWertUnveraendert(): void {
+        $result = (new \SchemaOrgData_Validator())->formatEventDateForDisplay('nicht-ein-datum');
+        $this->assertSame('nicht-ein-datum', $result);
+    }
+
+    // -----------------------------------------------------------
     // validateFormData() - Event: endDate vor startDate
     // -----------------------------------------------------------
 

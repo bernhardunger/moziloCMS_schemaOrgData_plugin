@@ -422,4 +422,50 @@ final class EventTest extends TestCase {
         $this->assertSame('https://www.example.org/#organization', $decoded['organizer']['@id']);
         $this->assertArrayNotHasKey('name', $decoded['organizer']);
     }
+
+    // -----------------------------------------------------------
+    // Redisplay nach saveConfig(): startDate TT.MM.YYYY-Round-Trip
+    // (Nachtrag zu Fahrplan-Schritt 4)
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Ende-zu-Ende-Test zum Redisplay-Nachtrag: startDate wird im
+    * deutschen Format eingegeben, von saveConfig() als ISO-8601
+    * gespeichert (Fahrplan-Schritt 4a) und muss beim erneuten
+    * renderField() wieder als TT.MM.YYYY HH:MM angezeigt werden -
+    * nicht als das zwischenzeitlich gespeicherte ISO.
+    *
+    ***************************************************************/
+    function testRenderFieldZeigtStartDateNachSaveConfigRoundTripWiederAlsDeutschesDatum(): void {
+        $previousTimezone = date_default_timezone_get();
+        date_default_timezone_set('Europe/Berlin');
+        try {
+            $settings = new \InMemorySettings();
+            $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+            $_POST['schemaOrgData_page'] = 'sommerfest';
+
+            $postData = $this->validEventData();
+            $postData['data']['startDate'] = '15.09.2026 19:00';
+
+            $result = $this->callSaveConfig('page', $postData, $settings);
+            $this->assertTrue($result['success'], implode(', ', $result['errors']));
+
+            $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
+            $this->assertSame('2026-09-15T19:00:00+02:00', $config['startDate']);
+
+            $schema = $this->eventSchema();
+            $html = $this->formRenderer()->renderField(
+                'page', 'startDate', $schema['properties']['startDate'], $config['startDate'], $schema, $config,
+                'page_veranstaltungen_sommerfest_Event', null, null, $this->adminLang(), $this->schemaRepository(),
+                new \SchemaOrgData_UrlHelper(), 'deDE', $this->openingHoursHelper(), $this->validator(),
+                $this->adminLang(), []
+            );
+
+            $this->assertStringContainsString('value="15.09.2026 19:00"', $html);
+            $this->assertStringNotContainsString('value="2026-09-15T19:00:00', $html);
+        } finally {
+            date_default_timezone_set($previousTimezone);
+        }
+    }
 }

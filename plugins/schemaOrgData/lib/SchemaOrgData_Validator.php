@@ -465,6 +465,37 @@ class SchemaOrgData_Validator {
 
     /***************************************************************
     *
+    * Formatiert einen gespeicherten ISO-8601-Wert (Event.startDate/
+    * endDate) für die Anzeige im Formular als deutsches Datum
+    * "TT.MM.YYYY" bzw. "TT.MM.YYYY HH:MM" - symmetrisches Gegenstück
+    * zu normalizeEventDateInput(). Sekunden und Offset werden für
+    * die Anzeige verworfen: beim erneuten Speichern löst
+    * normalizeEventDateInput() den Offset ohnehin aus der aktuellen
+    * Serverzeitzone neu auf (bewusste Vereinfachung, kein Bug -
+    * betrifft nur ein manuell mit abweichendem Offset gespeichertes
+    * Datum). Nicht als ISO erkannte Werte werden unverändert
+    * zurückgegeben (defensiv, seit normalizeEventDateInput() wird
+    * ausschließlich ISO gespeichert).
+    *
+    ***************************************************************/
+    public function formatEventDateForDisplay(string $isoValue): string {
+        $isoValue = trim($isoValue);
+
+        if(preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:T([01][0-9]|2[0-3]):([0-5][0-9]):[0-5][0-9](?:Z|[+-]\d{2}:\d{2}))?$/', $isoValue, $m)) {
+            $germanDate = $m[3] . '.' . $m[2] . '.' . $m[1];
+
+            if(!isset($m[4])) {
+                return $germanDate;
+            }
+
+            return $germanDate . ' ' . $m[4] . ':' . $m[5];
+        }
+
+        return $isoValue;
+    }
+
+    /***************************************************************
+    *
     * Validiert eine Geo-Koordinate (latitude/longitude) im
     * Erweiterungsfeld: muss numerisch sein und im gültigen
     * Wertebereich liegen.

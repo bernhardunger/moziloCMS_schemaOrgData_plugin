@@ -507,4 +507,52 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertStringContainsString('name="schemaOrgData[page][data][location][name]"', $html);
         $this->assertStringContainsString('name="schemaOrgData[page][data][location][address][addressCountry]"', $html);
     }
+
+    // -----------------------------------------------------------
+    // renderField() - date-time-Redisplay (Nachtrag zu Fahrplan-Schritt 4)
+    // -----------------------------------------------------------
+
+    function testRenderFieldZeigtGespeichertesIsoDatumAlsDeutschesDatumOhneUhrzeit(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->eventSchema();
+
+        $html = $renderer->renderField(
+            'page', 'startDate', $schema['properties']['startDate'], '2026-09-15', $schema, [], null, null, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('value="15.09.2026"', $html);
+        $this->assertStringNotContainsString('value="2026-09-15"', $html);
+    }
+
+    function testRenderFieldZeigtGespeichertesIsoDatumMitUhrzeitAlsDeutschesDatumMitUhrzeit(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->eventSchema();
+
+        $html = $renderer->renderField(
+            'page', 'startDate', $schema['properties']['startDate'], '2026-09-15T19:00:00+02:00', $schema, [], null, null, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('value="15.09.2026 19:00"', $html);
+        $this->assertStringContainsString('schemaOrgData-feedback--ok', $html);
+    }
+
+    function testRenderFieldZeigtGeerbtesIsoDatumAlsDeutschesDatumImPlaceholder(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->eventSchema();
+
+        $html = $renderer->renderField(
+            'page', 'startDate', $schema['properties']['startDate'], '', $schema, [], null,
+            '2026-09-15T19:00:00+02:00', 'Kategorie',
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('value=""', $html);
+        $this->assertStringContainsString('placeholder="15.09.2026 19:00"', $html);
+        $this->assertStringNotContainsString('2026-09-15T19:00:00', $html);
+    }
 }
