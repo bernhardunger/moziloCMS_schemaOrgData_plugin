@@ -1,6 +1,6 @@
 # schemaOrgData — moziloCMS Plugin
 
-**Version:** 1.0.0 (geplant)  
+**Version:** 0.4.51-beta  
 **Kompatibilität:** moziloCMS 3.0.4 oder höher  
 **PHP:** 8.1+  
 **Lizenz:** GPL-3.0  
@@ -14,36 +14,47 @@
 
 Das Plugin ist **vollständig eigenständig** und setzt kein anderes Plugin (z. B. `seo_urls`) voraus.
 
+Das Plugin arbeitet **konfigurationsgetrieben**: Die strukturierten Daten werden im Admin-Bereich über Formulare gepflegt und nicht automatisch aus dem Seiteninhalt abgeleitet. Für die typische moziloCMS-Website (überschaubare Seitenzahl, ein Betreiber) ist das der passende Zuschnitt — volle Kontrolle über die Ausgabe, kein Mapping-Setup nötig.
+
 ---
 
 ## Features
 
 - JSON-LD-Ausgabe im `<head>` der Seite, nicht im Seiteninhalt
 - Drei Geltungsbereiche: **Global**, **Kategorie**, **Seite**
-- Vererbungslogik: Global → Kategorie → Seite (spezifischere Ebene überschreibt)
+- Vererbungslogik: Global → Kategorie → Seite (spezifischere Ebene überschreibt feldweise, siehe „Type-Kollision")
 - **Schema-getriebenes Formular**: JSON-Schema-Dateien definieren sowohl Validierungsregeln als auch Formularfelder — kein hardcodiertes PHP pro Type
+- **@id-Anker und Knotenreferenzen**: Seiten-Typen (z. B. `DonateAction`, `Event`) verweisen per `@id` auf global definierte Identitätsknoten — inkl. Schutzmechanismen gegen doppelte und hängende Referenzen
 - Generisches `PostalAddress`-Schema nach schema.org (international)
-- Öffnungszeiten-Widget
+- Öffnungszeiten-Widget (inkl. optionalem zweitem Zeitraum je Wochentag, z. B. für Mittagspausen)
 - **Erweiterungsfeld** (JSON-Textarea) für zusätzliche Properties mit Live-Validierung
+- **Erkennung vorhandener JSON-LD-Blöcke** in Template und Seiteninhalt, wahlweise Beibehalten oder Überschreiben — plus **Import-Feld** zur Übernahme bestehender Daten ins Formular
+- **Debug-Modus**: erzeugte JSON-LD-Blöcke im Frontend als Pop-up anzeigen (zum Abgleich mit validator.schema.org)
 - Validierung via **AJV.js** gegen eigene JSON-Schema-Dateien (client-side) — [AJV.js](https://ajv.js.org) (Another JSON Validator) ist eine weit verbreitete JavaScript-Bibliothek zur Validierung von JSON-Daten gegen JSON-Schema-Definitionen; wird lokal ausgeliefert, kein CDN
-- Serverside-Absicherung via `json_decode()` vor dem Speichern
+- Eigenständige server-seitige Validierung und Absicherung beim Speichern (unabhängig von JavaScript)
 - Mehrsprachige Labels via `$language->getLanguageValue()` und `$admin_lang->getLanguageValue()`
 - Neuen Schema-Type hinzufügen = neue `.json`-Datei in `schemas/`, kein PHP nötig
 
 ---
 
-## Unterstützte Schema-Types (initial)
+## Unterstützte Schema-Types
 
 | Type | Beschreibung | Geltungsbereich |
 |---|---|---|
 | `LocalBusiness` | Lokales Unternehmen | Global / Kategorie |
-| `ProfessionalService` | Dienstleister (z. B. Anwaltskanzlei, Arztpraxis) | Global / Kategorie |
+| `ProfessionalService` | Dienstleister | Global / Kategorie |
+| `LegalService` | Anwaltskanzlei / Rechtsberatung (LocalBusiness-Subtyp) | Global / Kategorie |
+| `MedicalBusiness` | Arztpraxis / medizinische Einrichtung (LocalBusiness-Subtyp) | Global / Kategorie |
+| `AccountingService` | Steuerberatung / Buchhaltung | Global / Kategorie |
 | `Organization` | Organisation / Firma | Global |
-| `NGO` | Gemeinnützige Organisation (Verein, Stiftung u. a.) | Global |
-| `Person` | Einzelperson | Global / Kategorie |
+| `NGO` | Gemeinnützige Organisation (Verein, Stiftung u. a.), mit `@id`-Anker `#organization` | Global |
+| `Person` | Einzelperson, mit `@id`-Anker `#person` | Global |
 | `WebSite` | Website-Metadaten | Global |
 | `FAQPage` | Häufig gestellte Fragen | Kategorie / Seite |
+| `Article` | Artikel / Blogbeitrag | Kategorie / Seite |
+| `JobPosting` | Stellenanzeige | Seite |
 | `DonateAction` | Spendenaufruf (verknüpft per `@id` mit dem globalen Org-Knoten) | Seite |
+| `Event` | Veranstaltung / Termin (`location` als `Place` mit Adresse, `organizer` wahlweise als Referenz oder Direkteingabe) | Seite |
 
 ---
 
@@ -53,21 +64,48 @@ Das Plugin ist **vollständig eigenständig** und setzt kein anderes Plugin (z. 
 
 ```
 plugins/schemaOrgData/
-├── index.php                        # Plugin-Hauptklasse
+├── index.php                        # Plugin-Hauptklasse (Fassade)
+├── plugin.conf.php                  # moziloCMS-Plugin-Metadaten
 ├── schemas/                         # JSON-Schema-Dateien (Validierung + Formular)
+│   ├── AccountingService.json
+│   ├── Article.json
+│   ├── DonateAction.json
+│   ├── Event.json
+│   ├── FAQPage.json
+│   ├── JobPosting.json
+│   ├── LegalService.json
 │   ├── LocalBusiness.json
-│   ├── ProfessionalService.json
+│   ├── MedicalBusiness.json
+│   ├── NGO.json
 │   ├── Organization.json
 │   ├── Person.json
-│   ├── WebSite.json
-│   └── FAQPage.json
-├── conf/                            # Konfigurationsdaten (vom Plugin verwaltet)
-│   ├── _global.conf.php             # Globale Konfiguration
-│   ├── cat_kontakt.conf.php         # Kategorie-spezifisch
-│   └── page_kontakt_anfahrt.conf.php # Seiten-spezifisch
+│   ├── ProfessionalService.json
+│   └── WebSite.json
 ├── js/
 │   ├── ajv.min.js                   # AJV JSON-Schema-Validator (lokal, kein CDN)
-│   └── validator.js                 # Plugin-eigene Validierungslogik
+│   └── validator.js                 # Plugin-eigene Validierungslogik (Live-Feedback)
+├── lib/                             # Plugin-Komponenten (per require_once geladen,
+│   │                                  je Datei mit eigenem IS_CMS-Guard)
+│   ├── SchemaOrgData_UrlHelper.php            # Basis-URL-Ermittlung (Frontend/Admin)
+│   ├── SchemaOrgData_LanguageService.php      # Sprachauflösung und Sprachdatei-Laden
+│   ├── SchemaOrgData_SchemaRepository.php     # Schema-Dateien laden, $ref auflösen, Type-Liste
+│   ├── SchemaOrgData_ScopeResolver.php        # Settings-Keys, Scope-Erkennung, Vererbung, Type-Kollision
+│   ├── SchemaOrgData_JsonLdBuilder.php        # JSON-LD-Erzeugung inkl. @id-Einbettung und Leerfeld-Tilgung
+│   ├── SchemaOrgData_IdReferenceService.php   # Globale @id-Fragmente auflösen, Dangling-Reference-Guard
+│   ├── SchemaOrgData_CollisionDetector.php    # Erkennung vorhandener JSON-LD-Blöcke, Platzhalter-Prüfung
+│   ├── SchemaOrgData_OpeningHoursHelper.php   # Öffnungszeiten parsen und in schema.org-Notation wandeln
+│   ├── SchemaOrgData_DataSplitHelper.php      # Aufteilung Formulardaten / Erweiterungsdaten
+│   ├── SchemaOrgData_Validator.php            # Server-seitige Feld- und Schema-Validierung
+│   ├── SchemaOrgData_FormRenderer.php         # Formularfelder und Widgets rendern
+│   ├── SchemaOrgData_ImportService.php        # Import vorhandener JSON-LD-Blöcke
+│   ├── SchemaOrgData_AdminController.php      # Orchestrierung der Admin-Seite
+│   ├── SchemaOrgData_AdminPageRenderer.php    # Hinweise, Selektoren, CSS der Admin-Seite
+│   ├── SchemaOrgData_AdminRequestHandler.php  # POST-Verarbeitung im Admin
+│   ├── SchemaOrgData_ConfigSaveService.php    # Sanitizing, Validierung und Speichern der Konfiguration
+│   ├── SchemaOrgData_ValidationResult.php     # Ergebnis-Objekt der Validierungsphase
+│   ├── SchemaOrgData_FrontendRenderer.php     # Frontend-Ausgabe inkl. Debug-Widget
+│   ├── SchemaOrgData_FrontendRequestContext.php # Context-Objekt für die Frontend-Ausgabe
+│   └── SchemaOrgData_AdminRequestContext.php  # Context-Objekt für die Admin-Seite
 └── sprachen/
     ├── admin_language_deDE.txt
     ├── admin_language_enEN.txt
@@ -75,17 +113,19 @@ plugins/schemaOrgData/
     └── cms_language_enEN.txt
 ```
 
+Die Konfigurationsdaten werden **nicht** als Dateien im Plugin-Ordner abgelegt, sondern über die moziloCMS-eigene Settings-API (`$this->settings`) gespeichert — siehe „Geltungsbereiche und Vererbung".
+
 ### Geltungsbereiche und Vererbung
 
-Das Plugin kennt drei Konfigurationsebenen. Beim Seitenaufbau werden alle zutreffenden Ebenen geladen und zusammengeführt — die spezifischere Ebene überschreibt die allgemeinere:
+Das Plugin kennt drei Konfigurationsebenen. Die Konfiguration wird über die Settings-API des moziloCMS-Kerns unter einem ebenenspezifischen Schlüssel gespeichert:
 
 ```
-_global.conf.php          → wird auf jeder Seite ausgegeben
-cat_{kategorie}.conf.php  → wird zusätzlich auf allen Seiten der Kategorie ausgegeben
-page_{kat}_{seite}.conf.php → wird zusätzlich nur auf dieser einzelnen Seite ausgegeben
+config_global                     → wird auf jeder Seite ausgegeben
+config_cat_{kategorie}            → wird zusätzlich auf allen Seiten der Kategorie ausgegeben
+config_page_{kategorie}_{seite}   → wird zusätzlich nur auf dieser einzelnen Seite ausgegeben
 ```
 
-Die aktive Kategorie wird über `CAT_REQUEST`, die aktive Seite über `PAGE_REQUEST` ermittelt.
+Beim Seitenaufbau werden alle zutreffenden Ebenen geladen und zusammengeführt — die spezifischere Ebene überschreibt die allgemeinere (feldweise, siehe „Type-Kollision"). Die aktive Kategorie wird über `CAT_REQUEST`, die aktive Seite über `PAGE_REQUEST` ermittelt.
 
 ### Schema-getriebenes Formular
 
@@ -94,6 +134,7 @@ Jede JSON-Schema-Datei in `schemas/` beschreibt einen Schema-Type vollständig:
 - **Validierungsregeln** (type, format, required, enum)
 - **Formularfeld-Metadaten** via `ui:`-Properties (Widget-Typ, Placeholder, Pflichtfeld)
 - **Sprachschlüssel** für Labels und Fehlermeldungen (werden zur Laufzeit aufgelöst)
+- **Geltungsbereiche** des Types via `ui:scopes` (z. B. `["global", "category"]`)
 
 Das Plugin liest beim Laden des Admin-Formulars die passende Schema-Datei und rendert daraus dynamisch die Formularfelder. Neuen Type unterstützen = neue `.json`-Datei ablegen, kein PHP anfassen.
 
@@ -103,26 +144,23 @@ Das Plugin liest beim Laden des Admin-Formulars die passende Schema-Datei und re
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LocalBusiness",
+  "ui:scopes": ["global", "category"],
   "required": ["name", "url"],
   "properties": {
     "name": {
       "type": "string",
+      "minLength": 1,
       "ui:widget": "text",
       "ui:label": "label_name",
       "ui:required": true
     },
     "address": {
-      "type": "object",
-      "ui:widget": "postal_address"
+      "$ref": "#/definitions/PostalAddress"
     },
     "openingHours": {
       "type": "array",
-      "ui:widget": "opening_hours"
-    },
-    "priceRange": {
-      "type": "string",
-      "ui:widget": "select",
-      "ui:options": ["€", "€€", "€€€"]
+      "ui:widget": "opening_hours",
+      "ui:label": "label_opening_hours"
     }
   }
 }
@@ -164,6 +202,8 @@ Je Wochentag steht zusätzlich ein **optionaler zweiter Zeitraum** (Pause) zur V
 
 Der zweite Zeitraum ist niemals Pflicht — Organisationen ohne Pause bleiben beim Ein-Zeitraum-Modell.
 
+Es wird ausschließlich das **24-Stunden-Format** (`HH:MM`) unterstützt — kein AM/PM. Ein entsprechender Hinweis wird im Widget angezeigt.
+
 ---
 
 ## Erweiterungsfeld (erweiterte Properties)
@@ -177,10 +217,36 @@ Die Validierung des Erweiterungsfelds erfolgt zweistufig:
 **Client-side (live, AJV.js):**
 1. JSON-Syntaxprüfung — Fehler mit Position werden sofort angezeigt
 2. Property-Whitelist-Prüfung gegen das aktive JSON-Schema — unbekannte Properties werden mit Hinweis markiert (gelbe Warnung), aber nicht blockiert
-3. Format-Prüfung bekannter Properties (z. B. URL-Format für `hasMap`)
+3. Format-Prüfung bekannter Properties (z. B. URL-Format für `hasMap`, Wertebereich für `geo`-Koordinaten)
 
 **Server-side (PHP, beim Speichern):**
 - `json_decode()` — bei ungültigem JSON wird nicht gespeichert, Fehlermeldung wird zurückgegeben
+- inhaltliche Prüfung bekannter Properties (z. B. `geo`-Koordinaten)
+
+---
+
+## Formularvalidierung
+
+Alle Formularfelder werden zweistufig validiert: **live im Browser** (JavaScript/AJV) und **server-seitig in PHP** beim Speichern. Die server-seitige Prüfung ist eigenständig und greift auch, wenn JavaScript deaktiviert ist.
+
+Das Feedback ist dreistufig: ✅ grün (OK) · ⚠️ gelb (Warnung) · ❌ rot (Fehler). Alle Fehlermeldungen kommen aus den Sprachdateien (`$admin_lang->getLanguageValue()`).
+
+| Feld | Prüfung | Nur DE |
+|---|---|---|
+| `postalCode` | Regex `[0-9]{5}` | ja |
+| `telephone` | Normalisierung + E.164-Prüfung | nein |
+| `url`, `logo`, `hasMap`, `image` | URL-Format; `http://` ergibt HTTPS-Warnung (⚠️) | nein |
+| `email` | E-Mail-Format | nein |
+| `openingHours` | Format + Von-Zeit < Bis-Zeit (24-Stunden-Format) | nein |
+| `addressCountry` | Enum-Prüfung gegen die Länderliste | nein |
+| `geo` (Erweiterungsfeld) | numerisch + Wertebereich (Breite/Länge) | nein |
+| Datumsfelder (`startDate`, `endDate`) | ISO-8601 (`YYYY-MM-DD`, optional mit Uhrzeit und Zeitzonen-Offset), kalendarische Gültigkeit; bei `Event` zusätzlich `endDate` nicht vor `startDate` | nein |
+
+**PLZ** — nur wenn `addressCountry = DE`: `/^[0-9]{5}$/`
+
+**Telefon** — alle Länder (E.164 ist internationaler Standard): Eingabe wird normalisiert (alle Zeichen außer Ziffern und `+` entfernt), dann gegen E.164 geprüft: `/^(\+|00)[1-9][0-9]{6,14}$/`
+
+**URL** — `http://` ergibt die Warnung „Für Produktivseiten wird HTTPS empfohlen", `https://` ist OK, eine ungültige URL ist ein Fehler.
 
 ---
 
@@ -198,7 +264,7 @@ Initiale Sprachen: **Deutsch** (`deDE`), **Englisch** (`enEN`).
 
 ## JSON-LD-Ausgabe
 
-Das Plugin gibt das JSON-LD als `<script>`-Tag im `<head>` aus:
+Das Plugin gibt das JSON-LD als `<script>`-Tag im `<head>` aus — an der Stelle, an der im Layout-Template der Platzhalter `{schemaOrgData}` steht (siehe „Installation"):
 
 ```html
 <script type="application/ld+json">
@@ -222,15 +288,19 @@ Das Plugin gibt das JSON-LD als `<script>`-Tag im `<head>` aus:
 > **Tipp:** Das erzeugte JSON-LD kann mit dem offiziellen Schema.org-Validator geprüft werden:  
 > 🔗 [https://validator.schema.org](https://validator.schema.org)
 
-Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global + Kategorie + Seite = bis zu drei Blöcke). Types die ausschließlich auf Globalebene sinnvoll sind (`WebSite`, `Organization`) werden nur einmal ausgegeben.
+Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global + Kategorie + Seite = bis zu drei Blöcke). Types die ausschließlich auf Globalebene sinnvoll sind (`WebSite`, `Organization`) werden nur einmal ausgegeben. Leere Felder werden vor der Ausgabe entfernt; vollständig leere Knoten werden gar nicht ausgegeben.
+
+### Debug-Modus
+
+In der globalen Konfiguration kann ein **Debug-Modus** aktiviert werden. Er blendet im Frontend einen kleinen Button ein, der alle auf der aktuellen Seite erzeugten JSON-LD-Blöcke als Pop-up anzeigt — zum Kopieren und manuellen Abgleich mit [validator.schema.org](https://validator.schema.org). Nicht für den Produktivbetrieb gedacht.
 
 ---
 
 ## @id-Anker (stabile Knoten-Identität)
 
 Ausgewählte Schema-Types erhalten zusätzlich eine stabile `@id` — eine URI, die
-den Knoten innerhalb des Datengraphen eindeutig identifiziert. Spätere
-Erweiterungen (z. B. eine Spendenaktion oder Veranstaltung) können so per `@id`
+den Knoten innerhalb des Datengraphen eindeutig identifiziert. Erweiterungen
+(z. B. eine Spendenaktion oder Veranstaltung) können so per `@id`
 auf den global definierten Organisationsknoten verweisen, ohne den
 Organisationsblock auf jeder Seite zu wiederholen.
 
@@ -250,8 +320,8 @@ Organisationsblock auf jeder Seite zu wiederholen.
 **Generisch und schema-getrieben.** Ob und unter welchem URI-Fragment ein Type
 eine `@id` bekommt, wird ausschließlich in der jeweiligen Schema-Datei über die
 Property `ui:idFragment` festgelegt — es gibt keine Type-Namen im PHP-Code.
-Org-Identitätstypen (z. B. `Organization`, `NGO`) teilen sich das Fragment
-`organization`; pro Seite trägt **genau ein** Knoten `#organization`. Schema-
+Aktuell deklariert `NGO` das Fragment `organization` und `Person` das Fragment
+`person`. Pro Seite trägt **genau ein** Knoten ein gegebenes Fragment. Schema-
 Dateien ohne `ui:idFragment` erhalten unverändert keine `@id`.
 
 **Basis-URL.** Die absolute Basis-URL wird zur Ausgabezeit aus dem aktuellen
@@ -283,7 +353,8 @@ jeder Seite zu wiederholen. Die Deklaration erfolgt ausschließlich im Schema:
 ```
 
 Zur Ausgabezeit fügt das Plugin dafür automatisch `{"@id": "<Basis-URL>#organization"}`
-ein — kein Eingabefeld, kein gespeicherter Wert.
+ein — kein Eingabefeld, kein gespeicherter Wert. Im Formular wird die aufgelöste
+Ziel-URI als schreibgeschützte Info angezeigt.
 
 **Ausgabe-Beispiel (`DonateAction` auf einer Spenden-Seite, `NGO` global):**
 
@@ -320,8 +391,10 @@ aktiv, hat dieser ausdrückliche Nutzerwunsch Vorrang — in diesem Fall wird di
 `id_reference` **nicht** emittiert (kein Dangling-`@id` gegen den Nutzerwillen).
 
 > **Künftige Optionen (noch nicht umgesetzt):** ein optionales manuelles
-> Basis-URL-/Domain-Setting (für Reverse-Proxy-/CDN-Szenarien) sowie die
-> Darstellung einer Entität mit mehreren Typen über ein `@type`-Array.
+> Basis-URL-/Domain-Setting (für Reverse-Proxy-/CDN-Szenarien), die Deklaration
+> des `organization`-Fragments auch für weitere Org-Identitätstypen
+> (z. B. `Organization`) sowie die Darstellung einer Entität mit mehreren
+> Typen über ein `@type`-Array.
 
 ---
 
@@ -352,7 +425,7 @@ analog zu `NGO`. De-Dup-Guard und Dangling-Reference-Guard greifen unabhängig v
 
 ### Widget `id_reference_or_literal` (selektierbare Verknüpfung)
 
-Für Properties, bei denen der Organisator wahlweise ein bekannter globaler Knoten
+Für Properties, bei denen der Wert wahlweise ein bekannter globaler Knoten
 **oder** eine reine Literal-Angabe sein soll (z. B. `Event.organizer`), steht das
 Widget `id_reference_or_literal` zur Verfügung.
 
@@ -407,26 +480,13 @@ kein Dangling-Guard-Bezug.
 ```
 
 Bestehende `id_reference`-Properties (z. B. `DonateAction.recipient`) bleiben
-unverändert — das neue Widget ist additiv, kein Breaking Change.
-
----
-
-## Tests
-
-Das Plugin verwendet PHPUnit 11.x für Unit-Tests.
-
-```bash
-composer install
-./vendor/bin/phpunit
-```
-
-> `vendor/` ist in `.gitignore` — PHPUnit wird nicht ins Repository eingecheckt.
+unverändert — das Widget ist additiv, kein Breaking Change.
 
 ---
 
 ## Steuerung der globalen Ausgabe
 
-Die globale Konfiguration (`_global.conf.php`) wird standardmäßig auf jeder Seite ausgegeben. Dieses Verhalten kann gezielt eingeschränkt werden.
+Die globale Konfiguration (Settings-Key `config_global`) wird standardmäßig auf jeder Seite ausgegeben. Dieses Verhalten kann gezielt eingeschränkt werden.
 
 ### Ausschlussliste
 
@@ -439,11 +499,13 @@ Globale Ausgabe deaktivieren für:
 [ ] sitemap
 ```
 
+Die Ausschlussliste unterdrückt ausschließlich die **globale** Konfiguration auf den betroffenen Kategorien. Eine eigenständige Konfiguration der Kategorie oder ihrer Seiten wird davon nicht berührt.
+
 ### Type-Kollision / feldweise Vererbung
 
 Ist für eine Kategorie oder Seite derselbe Schema-Type wie auf einer übergeordneten Ebene hinterlegt, werden die Felder zusammengeführt (Global → Kategorie → Seite): leere bzw. fehlende Felder der spezifischeren Ebene übernehmen den Wert der übergeordneten Ebene, gefüllte Felder überschreiben ihn. Bei verschachtelten Feldern (z. B. `address`, `openingHours`) gewinnt die Ebene mit dem gefüllten Objekt vollständig — es erfolgt kein Merge innerhalb des Objekts. Die Ausgabe erfolgt einmalig auf der spezifischsten Ebene, auf der der Type konfiguriert ist.
 
-Beispiel: `LocalBusiness` global mit `name = "Beispiel GmbH"` und `priceRange = "€€"`, dieselbe Konfiguration auf Kategorie `kontakt` mit `name = "Beispiel GmbH - Filiale Nord"` → auf Seiten der Kategorie `kontakt` wird `name = "Beispiel GmbH - Filiale Nord"` und `priceRange = "€€"` (von global geerbt) ausgegeben.
+Beispiel: `LocalBusiness` global mit `name = "Beispiel GmbH"` und `telephone = "+49 89 123456"`, dieselbe Konfiguration auf Kategorie `kontakt` mit `name = "Beispiel GmbH - Filiale Nord"` → auf Seiten der Kategorie `kontakt` wird `name = "Beispiel GmbH - Filiale Nord"` und `telephone = "+49 89 123456"` (von global geerbt) ausgegeben.
 
 Verschiedene Types bleiben unabhängig voneinander.
 
@@ -500,11 +562,38 @@ Wurde ein JSON-LD-Block im Template oder Seiteninhalt erkannt, erscheint oberhal
 
 ---
 
+## Sicherheit
+
+- **Kein Direktzugriff**: Jede PHP-Datei des Plugins (inkl. aller `lib/`-Komponenten) prüft die moziloCMS-Konstante `IS_CMS` und bricht bei Direktaufruf ab.
+- **Settings-Key-Härtung**: Kategorie- und Seitenbezeichner werden vor der Verwendung in Settings-Keys bereinigt (`sanitizeScopeIdentifier()`) — Schutz vor Path-Traversal und unerwünschten Zeichen in Schlüsselnamen.
+- **Eingabe-Sanitizing**: Alle Formularwerte werden beim Speichern getrimmt und von HTML-Tags befreit; Telefonnummern werden normalisiert.
+- **Script-Breakout-Schutz**: Die JSON-LD-Ausgabe erfolgt mit `JSON_HEX_TAG` — in Feldwerten enthaltene `<`/`>`-Zeichen können den umgebenden `<script>`-Block nicht aufbrechen. Dasselbe gilt für die an das Admin-JavaScript übergebenen Meldungstexte.
+- **Server-seitige Validierung ist maßgeblich**: Die client-seitige AJV-Validierung ist Komfort; gespeichert wird nur, was die PHP-Validierung besteht.
+- **Kein CDN**: AJV.js wird lokal ausgeliefert — keine externen Skript-Quellen.
+
+---
+
+## Tests
+
+Das Plugin verwendet **PHPUnit 11.x** für Unit-Tests. Da moziloCMS kein eigenes Test-Framework mitbringt, werden CMS-Abhängigkeiten (Konstanten, Basisklassen) im Test-Bootstrap gemockt.
+
+```bash
+composer install
+./vendor/bin/phpunit
+```
+
+Stand `0.4.51-beta`: **486 Tests / 938 Assertions** (4 dokumentierte Skips für strukturell im Unit-Test nicht erreichbare Fälle). Ergänzend wird das Plugin per Browser-Regressionstests (Playwright) gegen eine reale moziloCMS-Installation verifiziert.
+
+> `vendor/` ist in `.gitignore` — PHPUnit wird nicht ins Repository eingecheckt. Die Tests liegen im Entwicklungs-Repository eine Ebene über dem Plugin-Ordner und sind nicht Teil des Deployment-Pakets.
+
+---
+
 ## Installation
 
 1. Ordner `schemaOrgData` in `plugins/` hochladen
 2. Im moziloCMS-Admin unter **Plugins** aktivieren
-3. Konfiguration unter **Plugins → schemaOrgData** vornehmen
+3. **Wichtig:** Den Platzhalter `{schemaOrgData}` an passender Stelle im `<head>`-Bereich des aktiven Layout-Templates ergänzen — **ohne diesen Platzhalter gibt das Plugin im Frontend keinerlei JSON-LD aus**, unabhängig von der Konfiguration. Fehlt der Platzhalter, zeigt der Admin-Bereich einen entsprechenden Hinweis an.
+4. Konfiguration unter **Plugins → schemaOrgData** vornehmen
 
 ---
 
@@ -524,7 +613,7 @@ moziloCMS 3.0 enthält bereits folgende Schema.org-Implementierungen als Microda
 
 | Bereich | Core-Implementierung | Dieses Plugin |
 |---|---|---|
-| Seiteninhalt | `Article` (Wrapper, minimal) | — |
+| Seiteninhalt | `Article` (Wrapper, minimal) | `Article` als JSON-LD im `<head>` |
 | Bilder | `ImageObject` via `itemprop` | — |
 | Breadcrumb | `BreadcrumbList` via Microdata | — |
 | Kontakt | `LocalBusiness` via Microdata im Body | `LocalBusiness` als JSON-LD im `<head>` |
