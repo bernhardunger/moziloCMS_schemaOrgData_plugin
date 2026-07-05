@@ -228,4 +228,65 @@ final class IdAnchorTest extends TestCase {
         $this->assertSame('https://www.example.org/#organization', $byType['NGO']['@id']);
         $this->assertArrayNotHasKey('@id', $byType['TestOrgAnchor']);
     }
+
+    /***************************************************************
+    *
+    * Analog zu testDeDupGuardAcrossTwoTypesSharingFragment(), aber mit
+    * den beiden echten Schema-Types NGO und Organization statt einem
+    * synthetischen Zweit-Schema - seit Fahrplan-Schritt 2 (0.4.53-beta)
+    * teilen beide real das Fragment "organization" (ui:idFragment in
+    * Organization.json).
+    *
+    ***************************************************************/
+    function testDeDupGuardAcrossNgoAndOrganizationSharingFragment(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $plugin = $this->createPluginWithSettings();
+
+        // NGO zuerst -> erhält den Anker; Organization teilt das Fragment
+        // und bleibt daher ohne @id.
+        $this->settings->set('config_global', [
+            'NGO' => ['name' => 'Beispiel e. V.', 'url' => 'https://www.example.org'],
+            'Organization' => ['name' => 'Beispiel GmbH', 'url' => 'https://www.example.org'],
+        ]);
+
+        $blocks = $this->getJsonLdBlocks($plugin);
+        $byType = [];
+        foreach($blocks as $block) {
+            $byType[$block['@type']] = $block;
+        }
+
+        $this->assertCount(2, $blocks);
+        $this->assertSame('https://www.example.org/#organization', $byType['NGO']['@id']);
+        $this->assertArrayNotHasKey('@id', $byType['Organization']);
+    }
+
+    function testDeDupGuardAcrossOrganizationAndNgoSharingFragmentReversedOrder(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $plugin = $this->createPluginWithSettings();
+
+        // Umgekehrte Reihenfolge im config_global-Array: Organization zuerst
+        // -> erhält den Anker; NGO bleibt ohne @id. Dokumentiert, dass die
+        // Ausgabereihenfolge (nicht ein hartcodierter Type-Vorrang) über die
+        // @id-Vergabe entscheidet.
+        $this->settings->set('config_global', [
+            'Organization' => ['name' => 'Beispiel GmbH', 'url' => 'https://www.example.org'],
+            'NGO' => ['name' => 'Beispiel e. V.', 'url' => 'https://www.example.org'],
+        ]);
+
+        $blocks = $this->getJsonLdBlocks($plugin);
+        $byType = [];
+        foreach($blocks as $block) {
+            $byType[$block['@type']] = $block;
+        }
+
+        $this->assertCount(2, $blocks);
+        $this->assertSame('https://www.example.org/#organization', $byType['Organization']['@id']);
+        $this->assertArrayNotHasKey('@id', $byType['NGO']);
+    }
 }

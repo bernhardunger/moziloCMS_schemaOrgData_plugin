@@ -46,7 +46,7 @@ Das Plugin arbeitet **konfigurationsgetrieben**: Die strukturierten Daten werden
 | `LegalService` | Anwaltskanzlei / Rechtsberatung (LocalBusiness-Subtyp) | Global / Kategorie |
 | `MedicalBusiness` | Arztpraxis / medizinische Einrichtung (LocalBusiness-Subtyp) | Global / Kategorie |
 | `AccountingService` | Steuerberatung / Buchhaltung | Global / Kategorie |
-| `Organization` | Organisation / Firma | Global |
+| `Organization` | Organisation / Firma, mit `@id`-Anker `#organization` | Global |
 | `NGO` | Gemeinnützige Organisation (Verein, Stiftung u. a.), mit `@id`-Anker `#organization` | Global |
 | `Person` | Einzelperson, mit `@id`-Anker `#person` | Global |
 | `WebSite` | Website-Metadaten | Global |
@@ -320,9 +320,13 @@ Organisationsblock auf jeder Seite zu wiederholen.
 **Generisch und schema-getrieben.** Ob und unter welchem URI-Fragment ein Type
 eine `@id` bekommt, wird ausschließlich in der jeweiligen Schema-Datei über die
 Property `ui:idFragment` festgelegt — es gibt keine Type-Namen im PHP-Code.
-Aktuell deklariert `NGO` das Fragment `organization` und `Person` das Fragment
-`person`. Pro Seite trägt **genau ein** Knoten ein gegebenes Fragment. Schema-
-Dateien ohne `ui:idFragment` erhalten unverändert keine `@id`.
+Aktuell deklarieren `NGO` und `Organization` gemeinsam das Fragment
+`organization` (geteiltes Fragment für unterschiedliche Org-Identitätstypen)
+und `Person` das Fragment `person`. Pro Seite trägt **genau ein** Knoten ein
+gegebenes Fragment — sind auf derselben Seite z. B. sowohl `NGO` als auch
+`Organization` global konfiguriert, erhält nur der in Ausgabereihenfolge
+erste Knoten die `@id` (De-Dup-Guard, siehe unten). Schema-Dateien ohne
+`ui:idFragment` erhalten unverändert keine `@id`.
 
 **Basis-URL.** Die absolute Basis-URL wird zur Ausgabezeit aus dem aktuellen
 Request abgeleitet (Protokoll + Host + Pfad), analog zur kanonischen URL des
@@ -392,9 +396,8 @@ aktiv, hat dieser ausdrückliche Nutzerwunsch Vorrang — in diesem Fall wird di
 
 > **Künftige Optionen (noch nicht umgesetzt):** ein optionales manuelles
 > Basis-URL-/Domain-Setting (für Reverse-Proxy-/CDN-Szenarien), die Deklaration
-> des `organization`-Fragments auch für weitere Org-Identitätstypen
-> (z. B. `Organization`) sowie die Darstellung einer Entität mit mehreren
-> Typen über ein `@type`-Array.
+> des `organization`-Fragments auch für die LocalBusiness-Familie sowie die
+> Darstellung einer Entität mit mehreren Typen über ein `@type`-Array.
 
 ---
 

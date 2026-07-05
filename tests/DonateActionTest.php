@@ -209,6 +209,88 @@ final class DonateActionTest extends TestCase {
         $this->assertSame([], $suppressed);
     }
 
+    /***************************************************************
+    *
+    * Fahrplan-Schritt 2 (0.4.53-beta): seit Organization.json ein
+    * ui:idFragment "organization" deklariert, kann Organization -
+    * genau wie bisher nur NGO - als globale Identität für
+    * DonateAction.recipient dienen. Guard bleibt No-op (Zielknoten
+    * ist bereits im Graph), buildJsonLdScript() löst recipient danach
+    * korrekt auf.
+    *
+    ***************************************************************/
+    function testRecipientResolvesViaOrganizationAsGlobalIdentity(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $plugin = $this->createPlugin();
+
+        $scopeConfigs = [
+            'global' => [
+                'Organization' => ['name' => 'Muster GmbH', 'url' => 'https://www.example.org'],
+            ],
+            'page' => [
+                'DonateAction' => ['description' => 'Jetzt spenden und helfen!'],
+            ],
+        ];
+
+        [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+        );
+
+        $this->assertSame($scopeConfigs, $result, 'Organization deckt den Zielknoten bereits ab - Guard bleibt No-op');
+        $this->assertSame([], $suppressed);
+
+        $decoded = $this->buildDecoded($plugin, 'DonateAction', $result['page']['DonateAction'], '', $suppressed);
+
+        $this->assertSame('https://www.example.org/#organization', $decoded['recipient']['@id']);
+    }
+
+    /***************************************************************
+    *
+    * Grenzfall des Dangling-Reference-Guards: Weder NGO noch
+    * Organization sind global konfiguriert (Settings enthalten
+    * überhaupt keine config_global-Daten). Die Stub-Erzeugung in
+    * applyDanglingReferenceGuard() liest den Ersatz-Type ausschließlich
+    * aus dem rohen config_global-Bestand - existiert dort gar kein
+    * Type mit passendem ui:idFragment, bleibt der Guard ein No-op.
+    * Bekannte Grenze des Mechanismus (kein Fix in diesem Schritt,
+    * siehe Docblock applyDanglingReferenceGuard()): recipient bleibt
+    * dadurch ein aktives, im finalen Graph unaufgelöstes Fragment -
+    * buildJsonLdScript() emittiert trotzdem ein {"@id": "..."} auf ein
+    * nicht existierendes Ziel, da nur explizit unterdrückte Targets
+    * (keep-Modus) die Emission verhindern.
+    *
+    ***************************************************************/
+    function testGuardCannotStubWhenNoGlobalIdentityTypeExistsAtAll(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $plugin = $this->createPlugin();
+
+        $scopeConfigs = [
+            'page' => [
+                'DonateAction' => ['description' => 'Jetzt spenden und helfen!'],
+            ],
+        ];
+
+        [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+        );
+
+        $this->assertSame($scopeConfigs, $result, 'Ohne jeglichen globalen Identitäts-Type kann kein Stub gebildet werden');
+        $this->assertSame([], $suppressed);
+
+        $decoded = $this->buildDecoded($plugin, 'DonateAction', $result['page']['DonateAction'], '', $suppressed);
+
+        $this->assertSame('https://www.example.org/#organization', $decoded['recipient']['@id'],
+            'Dokumentiert die bekannte Guard-Grenze: @id verweist auf ein Fragment ohne zugehörigen Knoten im Graph');
+    }
+
     // -----------------------------------------------------------
     // validateAgainstSchema(): id_reference überspringen
     // -----------------------------------------------------------

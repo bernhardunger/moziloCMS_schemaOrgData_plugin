@@ -5,6 +5,7 @@
   "type": "object",
   "ui:typeLabel": "schema_type_organization",
   "ui:scopes": ["global"],
+  "ui:idFragment": "organization",
   "required": ["name", "url"],
   "properties": {
     "name": {
