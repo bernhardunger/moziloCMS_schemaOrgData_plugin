@@ -117,6 +117,39 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertSame('', $this->renderer()->renderInfoBlock('nicht-existent', $this->adminLang()));
     }
 
+    /***************************************************************
+    *
+    * UX-Dreier (Fahrplan-Schritt 3, 0.4.54-beta): der allgemeine Absatz
+    * (info_text_general) steckt hinter einem <details>-Element, der
+    * scope-spezifische Absatz bleibt außerhalb sofort sichtbar.
+    *
+    ***************************************************************/
+    function testRenderInfoBlockEnthaeltDetailsMitAllgemeinemAbsatz(): void {
+        $html = $this->renderer()->renderInfoBlock('category', $this->adminLang());
+
+        $this->assertStringContainsString('<details>', $html);
+        $lang = $this->adminLang();
+        $this->assertStringContainsString($lang->getLanguageHtml('label_info_more_details'), $html);
+        $this->assertStringContainsString($lang->getLanguageHtml('info_text_general'), $html);
+
+        $detailsPos = strpos($html, '<details>');
+        $generalPos = strpos($html, $lang->getLanguageHtml('info_text_general'));
+        $categoryPos = strpos($html, $lang->getLanguageHtml('info_text_category'));
+
+        $this->assertLessThan($detailsPos, $categoryPos);
+        $this->assertGreaterThan($detailsPos, $generalPos);
+    }
+
+    function testRenderInfoBlockGlobalTemplateHinweisSteckInDetails(): void {
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderInfoBlock('global', $lang);
+
+        $detailsPos = strpos($html, '<details>');
+        $templatePos = strpos($html, $lang->getLanguageHtml('info_text_template_global'));
+
+        $this->assertGreaterThan($detailsPos, $templatePos);
+    }
+
     // -----------------------------------------------------------
     // buildScopeLabel()
     // -----------------------------------------------------------
@@ -265,6 +298,88 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
         $this->assertStringNotContainsString('data-existing-content="{"', $html);
         $this->assertStringContainsString('data-existing-content=', $html);
+    }
+
+    /***************************************************************
+    *
+    * UX-Dreier (Fahrplan-Schritt 3, 0.4.54-beta): Keep-Konsequenz-
+    * Hinweis, scope-abhängiger Titel, <details>-Wrapper um den
+    * Import-Bereich.
+    *
+    ***************************************************************/
+    function testRenderExistingJsonLdNoticeEnthaeltKeepKonsequenzHinweis(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $lang, $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString($lang->getLanguageHtml('notice_keep_consequence_hint'), $html);
+    }
+
+    function testRenderExistingJsonLdNoticeGlobalScopeZeigtTemplateTitel(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $lang, $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString($lang->getLanguageHtml('notice_existing_jsonld_title_global'), $html);
+        $this->assertStringNotContainsString($lang->getLanguageHtml('notice_existing_jsonld_title'), $html);
+    }
+
+    function testRenderExistingJsonLdNoticeCategoryScopeZeigtStandardTitel(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_cat_ueber-uns', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'category', 'ueber-uns', null, $lang, $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString($lang->getLanguageHtml('notice_existing_jsonld_title'), $html);
+    }
+
+    function testRenderExistingJsonLdNoticeDetailsOffenBeiVorhandenemContent(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
+            ],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('<details open="open">', $html);
+        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
+    }
+
+    function testRenderExistingJsonLdNoticeDetailsGeschlossenOhneContent(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('<details>', $html);
+        $this->assertStringNotContainsString('<details open="open">', $html);
     }
 
     /***************************************************************

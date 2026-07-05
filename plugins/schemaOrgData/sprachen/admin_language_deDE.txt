@@ -14,6 +14,8 @@ info_text_general = Das erzeugte JSON-LD wird unsichtbar im &lt;head&gt;-Bereich
 
 info_text_template_global = Hinweis: Ein direkt im Layout-Template eingebundener JSON-LD-Block gilt für die gesamte Website. Ein solcher Block wird daher ausschließlich hier im Geltungsbereich „Global" erkannt und angezeigt – nicht auf Kategorie- oder Seitenebene.
 
+label_info_more_details = Mehr Details
+
 notice_type_collision = Für den Type "{PARAM1}" ist auch auf Ebene {PARAM2} eine Konfiguration vorhanden. Leere Felder werden von der übergeordneten Ebene übernommen - gefüllte Felder überschreiben die Ausgabe von {PARAM2} für diesen Type.
 
 notice_placeholder_missing_title = Plugin-Platzhalter fehlt im aktiven Layout-Template.
@@ -129,10 +131,12 @@ notice_unsaved_changes = Nicht gespeicherte Eingaben im Bereich {PARAM1} – bei
 error_config_write_failed = Die Konfigurationsdatei konnte nicht geschrieben werden. Bitte Schreibrechte auf das conf/-Verzeichnis prüfen.
 
 notice_existing_jsonld_title = Auf dieser Seite wurde bereits ein JSON-LD-Block gefunden.
+notice_existing_jsonld_title_global = Im Layout-Template wurde bereits ein JSON-LD-Block gefunden.
 notice_existing_jsonld_text = Bitte wähle, wie das Plugin vorgehen soll.
 notice_existing_jsonld_template = Es wurde ein JSON-LD-Block im Website-Template gefunden. Um auf Plugin-Konfiguration umzustellen, muss der Block manuell aus template.html entfernt werden. Es erfolgt kein automatischer Merge.
 option_keep_existing_jsonld = Vorhandenes beibehalten
 option_override_existing_jsonld = Mit Plugin-Konfiguration überschreiben
+notice_keep_consequence_hint = Hinweis: Solange „Vorhandenes beibehalten" gewählt ist, gibt das Plugin für diesen Geltungsbereich keine eigene JSON-LD-Ausgabe aus - auch nicht, wenn das Formular unten ausgefüllt und gespeichert wird. Die Formulardaten wirken sich erst aus, sobald auf „Mit Plugin-Konfiguration überschreiben" umgeschaltet wird.
 
 label_import_jsonld = Vorhandenes JSON-LD importieren
 description_import_jsonld = Fügt einen bestehenden JSON-LD-Block ein. Bekannte Felder werden automatisch übernommen, unbekannte Properties wandern ins Erweiterungsfeld. Überschreibt die aktuelle Konfiguration.

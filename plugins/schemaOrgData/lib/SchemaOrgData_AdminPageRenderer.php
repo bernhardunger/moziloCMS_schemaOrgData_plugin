@@ -77,6 +77,8 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-idrl-container { margin-bottom: .25em; }
 .schemaOrgData-admin .schemaOrgData-idrl-radio-label { display: block; margin: .4em 0 .15em; cursor: pointer; }
 .schemaOrgData-admin .schemaOrgData-idrl-section { padding-left: 1.5em; margin-bottom: .25em; }
+.schemaOrgData-admin .schemaOrgData-jsonld-notice { background: #fff3e0; border: 1px solid #ffb74d; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
+.schemaOrgData-admin .schemaOrgData-jsonld-notice__title { margin-top: 0; }
 ';
     }
 
@@ -113,10 +115,14 @@ class SchemaOrgData_AdminPageRenderer {
             ? '<p>'.$lang->getLanguageHtml('info_text_template_global').'</p>'
             : '';
 
+        // Allgemeiner Absatz (und im Global-Scope der Template-Hinweis) hinter
+        // <details> - der scope-spezifische Absatz bleibt immer sichtbar.
         return '<div class="schemaOrgData-info">'
             .'<p>'.$lang->getLanguageHtml($key).'</p>'
+            .'<details><summary>'.$lang->getLanguageHtml('label_info_more_details').'</summary>'
             .$templateNotice
             .'<p>'.$lang->getLanguageHtml('info_text_general').'</p>'
+            .'</details>'
             .'</div>'."\n";
     }
 
@@ -216,7 +222,12 @@ class SchemaOrgData_AdminPageRenderer {
     * Wichtig: kein automatischer Merge - "Vorhandenes beibehalten"
     * unterdrückt lediglich die eigene Ausgabe dieser Ebene,
     * "Überschreiben" gibt das eigene JSON-LD zusätzlich zum
-    * vorhandenen Block aus.
+    * vorhandenen Block aus - dieser Konsequenz-Hinweis wird unterhalb
+    * der Radio-Gruppe ausgegeben. Im Global-Scope stammt ein erkannter
+    * Block aus dem Layout-Template statt "von dieser Seite", daher
+    * eigener Titel-Sprachschlüssel. Der Import-Bereich ist per
+    * <details> einklappbar, initial offen nur wenn bereits ein
+    * automatisch befüllbarer Block erkannt wurde.
     *
     * @param string $scope 'global' | 'category' | 'page'
     * @param Language $lang Admin-Sprachobjekt
@@ -242,8 +253,13 @@ class SchemaOrgData_AdminPageRenderer {
         $fieldName = 'schemaOrgData_jsonld_mode_'.$scope;
         $options = ['keep' => 'option_keep_existing_jsonld', 'override' => 'option_override_existing_jsonld'];
 
+        // Im Global-Scope stammt ein erkannter Block aus dem Layout-Template,
+        // nicht "von dieser Seite" - eigener Titel-Schlüssel analog zu
+        // renderInfoBlock() (siehe README.md, "Verhalten bei vorhandenem JSON-LD").
+        $titleKey = ($scope === 'global') ? 'notice_existing_jsonld_title_global' : 'notice_existing_jsonld_title';
+
         $html  = '<div class="schemaOrgData-jsonld-notice">'."\n";
-        $html .= '<p class="schemaOrgData-jsonld-notice__title"><strong>'.$lang->getLanguageHtml('notice_existing_jsonld_title').'</strong></p>'."\n";
+        $html .= '<p class="schemaOrgData-jsonld-notice__title"><strong>'.$lang->getLanguageHtml($titleKey).'</strong></p>'."\n";
         $html .= '<p>'.$lang->getLanguageHtml('notice_existing_jsonld_text').'</p>'."\n";
 
         foreach($options as $value => $labelKey) {
@@ -252,6 +268,14 @@ class SchemaOrgData_AdminPageRenderer {
                   .$lang->getLanguageHtml($labelKey).'</label><br />'."\n";
         }
 
+        $html .= '<p class="schemaOrgData-jsonld-notice__keep-hint">'.$lang->getLanguageHtml('notice_keep_consequence_hint').'</p>'."\n";
+
+        // Import-Bereich per <details> einklappbar - initial offen nur wenn ein
+        // Autofill-Button angeboten wird (Nutzer soll ihn sofort sehen),
+        // ansonsten geschlossen, da manuelles Einfügen der Ausnahmefall ist.
+        $detailsOpenAttr = !empty($meta['existing_jsonld_content']) ? ' open="open"' : '';
+        $html .= '<details'.$detailsOpenAttr.'>'."\n";
+        $html .= '<summary>'.$lang->getLanguageHtml('label_import_jsonld').'</summary>'."\n";
         $html .= '<p><label for="schemaOrgData_import_'.$scope.'">'.$lang->getLanguageHtml('label_import_jsonld').'</label><br />'."\n";
 
         if(!empty($meta['existing_jsonld_content'])) {
@@ -264,6 +288,7 @@ class SchemaOrgData_AdminPageRenderer {
 
         $html .= '<textarea id="schemaOrgData_import_'.$scope.'" name="schemaOrgData_import_'.$scope.'" rows="6"></textarea></p>'."\n";
         $html .= '<p class="schemaOrgData-jsonld-notice__hint">'.$lang->getLanguageHtml('description_import_jsonld').'</p>'."\n";
+        $html .= '</details>'."\n";
         $html .= '</div>'."\n";
 
         return $html;
