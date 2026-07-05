@@ -44,8 +44,9 @@ final class AdminControllerTest extends TestCase {
     *
     * FakeCatPageWithPages ist in tests/Fixtures/FakeCatPageWithPages.php
     * deklariert (nicht PSR-4-autoloadbar unter eigenem Dateinamen). Im
-    * normalen Suite-Lauf ist die Klasse durch das Laden von
-    * PersistenceTest.php bereits verfügbar; in
+    * normalen Suite-Lauf wird die Klasse ggf. bereits durch eine andere
+    * Testdatei geladen, die tests/Fixtures/FakeCatPageWithPages.php
+    * referenziert; in
     * #[RunInSeparateProcess]-isolierten Prozessen (siehe
     * testFailedCategorySaveWithSpecialCharsRetainsPostValuesInActiveSection(),
     * testTemplateJsonLdIsPersistedOnlyForGlobalScope()) greift dort nur
@@ -121,8 +122,7 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Minimale, gültige Formulardaten für den Type "LocalBusiness"
-    * (analog PersistenceTest::validLocalBusinessData()).
+    * Minimale, gültige Formulardaten für den Type "LocalBusiness".
     *
     ***************************************************************/
     private function validLocalBusinessData(string $name = 'Muster GmbH'): array {
@@ -154,8 +154,7 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Minimale, gültige Formulardaten für den Type "FAQPage"
-    * (analog PersistenceTest::validFaqPageData()).
+    * Minimale, gültige Formulardaten für den Type "FAQPage".
     *
     ***************************************************************/
     private function validFaqPageData(): array {

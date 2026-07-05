@@ -50,7 +50,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.51-beta';
+    private const PLUGIN_VERSION = '0.4.52-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -102,9 +102,6 @@ class schemaOrgData extends Plugin {
 
     /** Lazy-Instanz von SchemaOrgData_FormRenderer (siehe formRenderer()) */
     private ?SchemaOrgData_FormRenderer $formRendererInstance = null;
-
-    /** Lazy-Instanz von SchemaOrgData_ImportService (siehe importService()) */
-    private ?SchemaOrgData_ImportService $importServiceInstance = null;
 
     /** Lazy-Instanz von SchemaOrgData_AdminController (siehe adminController()) */
     private ?SchemaOrgData_AdminController $adminControllerInstance = null;
@@ -207,11 +204,6 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_FormRenderer. */
     private function formRenderer(): SchemaOrgData_FormRenderer {
         return $this->formRendererInstance ??= new SchemaOrgData_FormRenderer();
-    }
-
-    /** Lazy-Accessor für SchemaOrgData_ImportService. */
-    private function importService(): SchemaOrgData_ImportService {
-        return $this->importServiceInstance ??= new SchemaOrgData_ImportService();
     }
 
     /** Lazy-Accessor für SchemaOrgData_AdminController. */

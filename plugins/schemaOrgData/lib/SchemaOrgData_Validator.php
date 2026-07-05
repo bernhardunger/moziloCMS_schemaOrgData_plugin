@@ -221,14 +221,20 @@ class SchemaOrgData_Validator {
 
         // endDate darf nicht vor startDate liegen (nur wenn beide gültige
         // ISO-8601-Werte sind - ein bereits gemeldeter Formatfehler wird
-        // nicht durch einen zusätzlichen Bereichsfehler verdoppelt).
+        // nicht durch einen zusätzlichen Bereichsfehler verdoppelt). Vergleich
+        // über Unix-Timestamps statt lexikalisch, da unterschiedliche
+        // Zeitzonen-Offset-Notationen (z. B. "+02:00" vs. "Z") denselben
+        // Zeitpunkt sonst fälschlich als "davor"/"danach" einordnen würden.
         $startDateValue = trim((string) ($formData['startDate'] ?? ''));
         $endDateValue = trim((string) ($formData['endDate'] ?? ''));
         if($startDateValue !== '' and $endDateValue !== ''
             and $this->validateIso8601Date($startDateValue, $lang)['status'] !== 'error'
-            and $this->validateIso8601Date($endDateValue, $lang)['status'] !== 'error'
-            and $endDateValue < $startDateValue) {
-            $errors[] = $lang->getLanguageValue('error_date_range_invalid');
+            and $this->validateIso8601Date($endDateValue, $lang)['status'] !== 'error') {
+            $startTimestamp = (new DateTimeImmutable($startDateValue))->getTimestamp();
+            $endTimestamp = (new DateTimeImmutable($endDateValue))->getTimestamp();
+            if($endTimestamp < $startTimestamp) {
+                $errors[] = $lang->getLanguageValue('error_date_range_invalid');
+            }
         }
 
         return $errors;

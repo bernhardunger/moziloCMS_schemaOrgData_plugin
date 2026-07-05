@@ -543,6 +543,21 @@ final class ValidatorTest extends TestCase {
         $this->assertSame([], $errors);
     }
 
+    function testValidateFormDataOkBeiGleichemZeitpunktUnterschiedlicherOffsetNotation(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'name' => 'Sommerfest',
+            // Gleicher Zeitpunkt (17:00 UTC), aber startDate mit "+02:00" und
+            // endDate mit "Z" notiert - ein rein lexikalischer Vergleich hätte
+            // "17:00:00Z" < "19:00:00+02:00" fälschlich als Bereichsfehler gemeldet.
+            'startDate' => '2026-09-15T19:00:00+02:00',
+            'endDate' => '2026-09-15T17:00:00Z',
+        ];
+        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertSame([], $errors);
+    }
+
     function testValidateFormDataMeldetPflichtfeldStartDate(): void {
         $validator = new \SchemaOrgData_Validator();
         $formData = ['name' => 'Sommerfest'];
