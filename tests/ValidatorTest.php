@@ -512,6 +512,97 @@ final class ValidatorTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // validateEventDateInput()
+    // -----------------------------------------------------------
+
+    function testValidateEventDateInputNullBeiLeeremWert(): void {
+        $result = (new \SchemaOrgData_Validator())->validateEventDateInput('', $this->adminLang());
+        $this->assertNull($result['status']);
+    }
+
+    function testValidateEventDateInputOkBeiReinemIsoDatum(): void {
+        $result = (new \SchemaOrgData_Validator())->validateEventDateInput('2026-09-15', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    function testValidateEventDateInputOkBeiIsoDatumZeitUndOffset(): void {
+        $result = (new \SchemaOrgData_Validator())->validateEventDateInput('2026-09-15T19:00:00+02:00', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    function testValidateEventDateInputOkBeiIsoDatumZeitUndZ(): void {
+        $result = (new \SchemaOrgData_Validator())->validateEventDateInput('2026-09-15T19:00:00Z', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    function testValidateEventDateInputOkBeiDeutschemDatum(): void {
+        $result = (new \SchemaOrgData_Validator())->validateEventDateInput('15.09.2026', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    function testValidateEventDateInputOkBeiDeutschemDatumMitUhrzeit(): void {
+        $result = (new \SchemaOrgData_Validator())->validateEventDateInput('15.09.2026 19:00', $this->adminLang());
+        $this->assertSame('ok', $result['status']);
+    }
+
+    function testValidateEventDateInputErrorBeiUngueltigemTagMonat(): void {
+        // 31. Februar existiert nicht.
+        $result = (new \SchemaOrgData_Validator())->validateEventDateInput('31.02.2026', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    function testValidateEventDateInputErrorBeiUnsinnEingabe(): void {
+        $result = (new \SchemaOrgData_Validator())->validateEventDateInput('nicht-ein-datum', $this->adminLang());
+        $this->assertSame('error', $result['status']);
+    }
+
+    // -----------------------------------------------------------
+    // normalizeEventDateInput()
+    // -----------------------------------------------------------
+
+    function testNormalizeEventDateInputLaesstReinesIsoDatumUnveraendert(): void {
+        $result = (new \SchemaOrgData_Validator())->normalizeEventDateInput('2026-09-15');
+        $this->assertSame('2026-09-15', $result);
+    }
+
+    function testNormalizeEventDateInputLaesstIsoDatumZeitOffsetUnveraendert(): void {
+        $result = (new \SchemaOrgData_Validator())->normalizeEventDateInput('2026-09-15T19:00:00+02:00');
+        $this->assertSame('2026-09-15T19:00:00+02:00', $result);
+    }
+
+    function testNormalizeEventDateInputLaesstIsoDatumZeitZUnveraendert(): void {
+        $result = (new \SchemaOrgData_Validator())->normalizeEventDateInput('2026-09-15T19:00:00Z');
+        $this->assertSame('2026-09-15T19:00:00Z', $result);
+    }
+
+    function testNormalizeEventDateInputWandeltDeutschesDatumOhneUhrzeitZuIsoOhneOffset(): void {
+        $result = (new \SchemaOrgData_Validator())->normalizeEventDateInput('15.09.2026');
+        $this->assertSame('2026-09-15', $result);
+    }
+
+    function testNormalizeEventDateInputWandeltDeutschesDatumMitUhrzeitZuIsoMitSommerzeitOffset(): void {
+        $previousTimezone = date_default_timezone_get();
+        date_default_timezone_set('Europe/Berlin');
+        try {
+            $result = (new \SchemaOrgData_Validator())->normalizeEventDateInput('15.09.2026 19:00');
+            $this->assertSame('2026-09-15T19:00:00+02:00', $result);
+        } finally {
+            date_default_timezone_set($previousTimezone);
+        }
+    }
+
+    function testNormalizeEventDateInputWandeltDeutschesDatumMitUhrzeitZuIsoMitWinterzeitOffset(): void {
+        $previousTimezone = date_default_timezone_get();
+        date_default_timezone_set('Europe/Berlin');
+        try {
+            $result = (new \SchemaOrgData_Validator())->normalizeEventDateInput('15.01.2026 19:00');
+            $this->assertSame('2026-01-15T19:00:00+01:00', $result);
+        } finally {
+            date_default_timezone_set($previousTimezone);
+        }
+    }
+
+    // -----------------------------------------------------------
     // validateFormData() - Event: endDate vor startDate
     // -----------------------------------------------------------
 
@@ -564,6 +655,59 @@ final class ValidatorTest extends TestCase {
         $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
 
         $this->assertNotEmpty($errors);
+    }
+
+    function testValidateFormDataOkBeiDeutschemDatumsformat(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'name' => 'Sommerfest',
+            'startDate' => '15.09.2026 19:00',
+            'endDate' => '15.09.2026 22:00',
+        ];
+        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertSame([], $errors);
+    }
+
+    function testValidateFormDataMeldetEndDateVorStartDateBeiGemischtenFormaten(): void {
+        // Deutsche Rohwerte werden über die Server-Zeitzone normalisiert
+        // (normalizeEventDateInput) - Europe/Berlin fest gesetzt, damit der
+        // Vergleich unabhängig von der Umgebungs-Zeitzone deterministisch ist.
+        $previousTimezone = date_default_timezone_get();
+        date_default_timezone_set('Europe/Berlin');
+        try {
+            $validator = new \SchemaOrgData_Validator();
+            $formData = [
+                'name' => 'Sommerfest',
+                'startDate' => '2026-09-15T19:00:00+02:00',
+                // endDate im deutschen Format, zeitlich vor startDate.
+                'endDate' => '15.09.2026 18:00',
+            ];
+            $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+            $this->assertContains($this->adminLang()->getLanguageValue('error_date_range_invalid'), $errors);
+        } finally {
+            date_default_timezone_set($previousTimezone);
+        }
+    }
+
+    function testValidateFormDataOkBeiGemischtenFormatenUndKorrekterReihenfolge(): void {
+        $previousTimezone = date_default_timezone_get();
+        date_default_timezone_set('Europe/Berlin');
+        try {
+            $validator = new \SchemaOrgData_Validator();
+            $formData = [
+                'name' => 'Sommerfest',
+                // startDate deutsches Format, endDate ISO - zeitlich korrekt.
+                'startDate' => '15.09.2026 19:00',
+                'endDate' => '2026-09-15T22:00:00+02:00',
+            ];
+            $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+            $this->assertSame([], $errors);
+        } finally {
+            date_default_timezone_set($previousTimezone);
+        }
     }
 
     function testValidateFormDataPlaceWidgetDelegiertAnValidatePostalAddressData(): void {

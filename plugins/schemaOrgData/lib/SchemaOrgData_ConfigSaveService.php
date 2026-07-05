@@ -95,9 +95,11 @@ class SchemaOrgData_ConfigSaveService {
     * Bereinigt die Formularfeld-Werte eines Schema-Types vor dem
     * Speichern: nur im Schema bekannte Properties, Strings
     * getrimmt und ohne HTML-Tags (strip_tags), Telefonnummern
-    * normalisiert (preg_replace('/[^0-9+]/', '', ...)),
-    * Öffnungszeiten als schema.org-Array (buildOpeningHoursArray)
-    * und FAQ-Einträge ohne vollständige Frage/Antwort entfernt.
+    * normalisiert (preg_replace('/[^0-9+]/', '', ...)), Datumsfelder
+    * (format: date-time) auf ISO-8601 normalisiert
+    * (normalizeEventDateInput()), Öffnungszeiten als schema.org-Array
+    * (buildOpeningHoursArray) und FAQ-Einträge ohne vollständige
+    * Frage/Antwort entfernt.
     *
     * @param array<string, mixed> $formData Formularfeld-Werte (schemaOrgData[scope][data])
     * @param array<string, mixed> $schema aktives JSON-Schema (schemas/{Type}.json)
@@ -222,6 +224,10 @@ class SchemaOrgData_ConfigSaveService {
 
             if($name === 'telephone') {
                 $stringValue = preg_replace('/[^0-9+]/', '', $stringValue);
+            }
+
+            if(($fieldSchema['format'] ?? null) === 'date-time') {
+                $stringValue = $validator->normalizeEventDateInput($stringValue);
             }
 
             $result[$name] = $stringValue;

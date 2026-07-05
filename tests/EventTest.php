@@ -238,6 +238,30 @@ final class EventTest extends TestCase {
         $this->assertSame('organization', $config['organizer']['_fragment']);
     }
 
+    function testSaveConfigRoundTripMitDeutschemDatumsformatSpeichertIso(): void {
+        // Fahrplan-Schritt 4a: startDate wird im deutschen Format
+        // (TT.MM.YYYY HH:MM) eingegeben, muss aber als ISO-8601 gespeichert
+        // werden (normalizeEventDateInput() in sanitizePostData()).
+        $previousTimezone = date_default_timezone_get();
+        date_default_timezone_set('Europe/Berlin');
+        try {
+            $settings = new \InMemorySettings();
+            $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+            $_POST['schemaOrgData_page'] = 'sommerfest';
+
+            $postData = $this->validEventData();
+            $postData['data']['startDate'] = '15.09.2026 19:00';
+
+            $result = $this->callSaveConfig('page', $postData, $settings);
+            $this->assertTrue($result['success'], implode(', ', $result['errors']));
+
+            $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
+            $this->assertSame('2026-09-15T19:00:00+02:00', $config['startDate']);
+        } finally {
+            date_default_timezone_set($previousTimezone);
+        }
+    }
+
     // -----------------------------------------------------------
     // Redisplay nach saveConfig(): id_reference_or_literal-Widget
     // -----------------------------------------------------------

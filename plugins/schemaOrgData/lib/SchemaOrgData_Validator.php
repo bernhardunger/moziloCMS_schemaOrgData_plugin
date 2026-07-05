@@ -209,7 +209,7 @@ class SchemaOrgData_Validator {
             $result = match(true) {
                 $format === 'uri'       => $this->validateUrl($stringValue, $lang),
                 $format === 'email'     => $this->validateEmail($stringValue, $lang),
-                $format === 'date-time' => $this->validateIso8601Date($stringValue, $lang),
+                $format === 'date-time' => $this->validateEventDateInput($stringValue, $lang),
                 $name === 'telephone'   => $this->validateTelephone($stringValue, (string) ($formData['address']['addressCountry'] ?? 'DE'), $lang),
                 default                 => ['status' => null, 'message' => null],
             };
@@ -220,18 +220,21 @@ class SchemaOrgData_Validator {
         }
 
         // endDate darf nicht vor startDate liegen (nur wenn beide gültige
-        // ISO-8601-Werte sind - ein bereits gemeldeter Formatfehler wird
-        // nicht durch einen zusätzlichen Bereichsfehler verdoppelt). Vergleich
-        // über Unix-Timestamps statt lexikalisch, da unterschiedliche
+        // Werte sind - ISO-8601 oder deutsches Format TT.MM.YYYY, siehe
+        // validateEventDateInput(); ein bereits gemeldeter Formatfehler wird
+        // nicht durch einen zusätzlichen Bereichsfehler verdoppelt). Vor dem
+        // Vergleich wird auf ISO normalisiert (normalizeEventDateInput()),
+        // da DateTimeImmutable ein deutsches Rohformat nicht korrekt parst.
+        // Vergleich über Unix-Timestamps statt lexikalisch, da unterschiedliche
         // Zeitzonen-Offset-Notationen (z. B. "+02:00" vs. "Z") denselben
         // Zeitpunkt sonst fälschlich als "davor"/"danach" einordnen würden.
         $startDateValue = trim((string) ($formData['startDate'] ?? ''));
         $endDateValue = trim((string) ($formData['endDate'] ?? ''));
         if($startDateValue !== '' and $endDateValue !== ''
-            and $this->validateIso8601Date($startDateValue, $lang)['status'] !== 'error'
-            and $this->validateIso8601Date($endDateValue, $lang)['status'] !== 'error') {
-            $startTimestamp = (new DateTimeImmutable($startDateValue))->getTimestamp();
-            $endTimestamp = (new DateTimeImmutable($endDateValue))->getTimestamp();
+            and $this->validateEventDateInput($startDateValue, $lang)['status'] !== 'error'
+            and $this->validateEventDateInput($endDateValue, $lang)['status'] !== 'error') {
+            $startTimestamp = (new DateTimeImmutable($this->normalizeEventDateInput($startDateValue)))->getTimestamp();
+            $endTimestamp = (new DateTimeImmutable($this->normalizeEventDateInput($endDateValue)))->getTimestamp();
             if($endTimestamp < $startTimestamp) {
                 $errors[] = $lang->getLanguageValue('error_date_range_invalid');
             }
@@ -392,6 +395,72 @@ class SchemaOrgData_Validator {
         }
 
         return ['status' => 'error', 'message' => $lang->getLanguageValue('error_date_invalid')];
+    }
+
+    /***************************************************************
+    *
+    * Validiert eine Datumseingabe für Event.startDate/endDate:
+    * akzeptiert zusätzlich zu allem, was validateIso8601Date()
+    * bereits akzeptiert, auch das deutsche Format "TT.MM.YYYY",
+    * optional mit Uhrzeit ("TT.MM.YYYY HH:MM"). validateIso8601Date()
+    * selbst bleibt unverändert (siehe ValidatorTest,
+    * testValidateIso8601DateErrorBeiDeutschemFormat()) - die
+    * Formularvalidierung von Event.startDate/endDate ruft
+    * ausschließlich diese Methode auf.
+    *
+    * @param Language $lang für die Fehlermeldung
+    * @return array{status: string|null, message: string|null}
+    *
+    ***************************************************************/
+    public function validateEventDateInput(string $value, Language $lang): array {
+        $isoResult = $this->validateIso8601Date($value, $lang);
+        if($isoResult['status'] !== 'error') {
+            return $isoResult;
+        }
+
+        $value = trim($value);
+        if(preg_match('/^(\d{2})\.(\d{2})\.(\d{4})(?: (?:[01][0-9]|2[0-3]):[0-5][0-9])?$/', $value, $m)
+            and checkdate((int) $m[2], (int) $m[1], (int) $m[3])) {
+            return ['status' => 'ok', 'message' => null];
+        }
+
+        return ['status' => 'error', 'message' => $lang->getLanguageValue('error_date_invalid')];
+    }
+
+    /***************************************************************
+    *
+    * Normalisiert eine bereits als gültig bestätigte Datumseingabe
+    * (validateEventDateInput()) auf ISO-8601. Reine, zustandslose
+    * String-Transformation ohne eigene Fehlerprüfung - wird nur auf
+    * Werte angewendet, die validateEventDateInput() bereits
+    * akzeptiert hat.
+    *
+    * Bereits gültiges ISO bleibt unverändert. Deutsches Datum ohne
+    * Uhrzeit wird zu reinem ISO-Datum ("YYYY-MM-DD") ohne Offset
+    * normalisiert (symmetrisch zum bestehenden Verhalten, dass auch
+    * ein reines ISO-Datum ohne Zeit/Offset gültig ist). Deutsches
+    * Datum mit Uhrzeit wird zu "YYYY-MM-DDTHH:MM:SS+HH:MM"
+    * normalisiert, wobei der Offset aus der PHP-Serverzeitzone für
+    * das konkrete Datum aufgelöst wird (behandelt Sommer-/Winterzeit
+    * korrekt).
+    *
+    ***************************************************************/
+    public function normalizeEventDateInput(string $value): string {
+        $value = trim($value);
+
+        if(preg_match('/^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/', $value, $m)) {
+            $isoDate = $m[3] . '-' . $m[2] . '-' . $m[1];
+
+            if(!isset($m[4])) {
+                return $isoDate;
+            }
+
+            $timezone = new DateTimeZone(date_default_timezone_get());
+            $dateTime = new DateTimeImmutable($isoDate . ' ' . $m[4] . ':' . $m[5] . ':00', $timezone);
+            return $dateTime->format('Y-m-d\TH:i:sP');
+        }
+
+        return $value;
     }
 
     /***************************************************************

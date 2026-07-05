@@ -211,6 +211,17 @@ final class ConfigSaveServiceTest extends TestCase {
         $this->assertSame('01701234567', $result['telephone']);
     }
 
+    function testSanitizePostDataNormalisiertDeutschesDatumsformatAufIso(): void {
+        $schema = ['properties' => ['startDate' => ['type' => 'string', 'format' => 'date-time']]];
+
+        $result = $this->configSaveService()->sanitizePostData(
+            ['startDate' => '15.09.2026'], $schema,
+            $this->schemaRepository(), $this->openingHoursHelper(), $this->validator()
+        );
+
+        $this->assertSame('2026-09-15', $result['startDate']);
+    }
+
     function testSanitizePostDataDelegiertPostalAddressWidgetAnSanitizeAddressData(): void {
         $schema = $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'LocalBusiness');
         $formData = ['address' => [

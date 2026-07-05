@@ -121,7 +121,7 @@ error_opening_hours_order = The start time must be earlier than the end time.
 error_opening_hours_overlap = The second time range must not start before the end of the first.
 error_geo_latitude = Latitude must be between -90 and 90.
 error_geo_longitude = Longitude must be between -180 and 180.
-error_date_invalid = Please enter a valid date in the format YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS+HH:MM.
+error_date_invalid = Please enter a valid date (DD.MM.YYYY or DD.MM.YYYY HH:MM, alternatively YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS+HH:MM).
 error_date_range_invalid = The end must be after the start.
 error_invalid_schema_type = The schema type "{PARAM1}" is not valid for this scope.
 

@@ -240,13 +240,15 @@ Das Feedback ist dreistufig: ✅ grün (OK) · ⚠️ gelb (Warnung) · ❌ rot 
 | `openingHours` | Format + Von-Zeit < Bis-Zeit (24-Stunden-Format) | nein |
 | `addressCountry` | Enum-Prüfung gegen die Länderliste | nein |
 | `geo` (Erweiterungsfeld) | numerisch + Wertebereich (Breite/Länge) | nein |
-| Datumsfelder (`startDate`, `endDate`) | ISO-8601 (`YYYY-MM-DD`, optional mit Uhrzeit und Zeitzonen-Offset), kalendarische Gültigkeit; bei `Event` zusätzlich `endDate` nicht vor `startDate` | nein |
+| Datumsfelder (`startDate`, `endDate`) | ISO-8601 (`YYYY-MM-DD`, optional mit Uhrzeit und Zeitzonen-Offset) **oder** deutsches Format `TT.MM.YYYY` (optional mit Uhrzeit `HH:MM`), kalendarische Gültigkeit; bei `Event` zusätzlich `endDate` nicht vor `startDate` (Vergleich über beide Formate hinweg) | nein |
 
 **PLZ** — nur wenn `addressCountry = DE`: `/^[0-9]{5}$/`
 
 **Telefon** — alle Länder (E.164 ist internationaler Standard): Eingabe wird normalisiert (alle Zeichen außer Ziffern und `+` entfernt), dann gegen E.164 geprüft: `/^(\+|00)[1-9][0-9]{6,14}$/`
 
 **URL** — `http://` ergibt die Warnung „Für Produktivseiten wird HTTPS empfohlen", `https://` ist OK, eine ungültige URL ist ein Fehler.
+
+**Datum** — eine gültige Eingabe im deutschen Format `TT.MM.YYYY`/`TT.MM.YYYY HH:MM` wird beim Speichern serverseitig auf ISO-8601 normalisiert (`YYYY-MM-DD` bzw. `YYYY-MM-DDTHH:MM:SS±HH:MM`, Offset aus der Server-Zeitzone aufgelöst); gespeichert und im JSON-LD ausgegeben wird ausschließlich der ISO-Wert.
 
 ---
 
