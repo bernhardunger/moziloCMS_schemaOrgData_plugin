@@ -55,6 +55,12 @@ class SchemaOrgData_AdminController {
     * @param bool   $active ob diese Sektion initial sichtbar ist
     * @param string|null $idPrefix Präfix für HTML-IDs dieser Sektion
     *                     (z. B. "global", "cat_Startseite"; Fallback: $scope)
+    * @param bool $saveFailed Sektion aus POST-Daten statt gespeicherter
+    *        Konfiguration befüllen - trotz des Namens nicht nur bei
+    *        fehlgeschlagenem Speichern true, sondern auch nach einem
+    *        (erfolgreichen oder fehlgeschlagenen) Import (siehe
+    *        renderAdminPage(), $usePostData, sowie
+    *        doc/adr_import_verdrahtung.md, Entscheidung (e))
     * @param SchemaOrgData_AdminRequestContext $context Laufzeit-Kollaboratoren (siehe dort)
     * @return string HTML-Snippet
     *
@@ -139,7 +145,16 @@ class SchemaOrgData_AdminController {
               . ' data-scope-label="'.$labelAttr.'" data-save-label="'.$saveLabelAttr.'"'.$displayStyle.'>'."\n";
         $html .= '<h3>'.$lang->getLanguageHtml('scope_'.$scope).'</h3>'."\n";
         $html .= $adminPageRenderer->renderInfoBlock($scope, $lang);
-        $html .= $adminPageRenderer->renderExistingJsonLdNotice($scope, $cat, $page, $lang, $scopeResolver, $settings);
+
+        // Rohe Textarea-Eingabe nur erhalten, wenn der Import-Button für
+        // GENAU diese Sektion abgeschickt wurde - handleImportAction()
+        // (SchemaOrgData_AdminRequestHandler) löscht den POST-Rohwert bei
+        // Erfolg, sodass hier zuverlässig nur der Fehlerfall übrig bleibt
+        // (siehe doc/adr_import_verdrahtung.md, Entscheidung (g)).
+        $importTextareaValue = $active && ($_POST['schemaOrgData_import_action'] ?? null) === $scope
+            ? (string) ($_POST['schemaOrgData_import_'.$scope] ?? '')
+            : '';
+        $html .= $adminPageRenderer->renderExistingJsonLdNotice($scope, $cat, $page, $lang, $scopeResolver, $settings, $importTextareaValue);
 
         if($selectedType !== null) {
             $html .= $adminPageRenderer->renderCollisionNotice($scope, $cat, $page, $selectedType, $lang, $scopeResolver, $settings);
@@ -275,14 +290,27 @@ class SchemaOrgData_AdminController {
         $adminRequestHandler = $context->adminRequestHandler;
         $configSaveService = $context->configSaveService;
 
+        $importService = $context->importService;
+        $dataSplitHelper = $context->dataSplitHelper;
+
         $saveResult = ($_POST !== []) ? $adminRequestHandler->handlePostRequest(
-            $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $configSaveService
+            $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper,
+            $adminPageRenderer, $configSaveService, $importService, $dataSplitHelper
         ) : null;
 
         // Bei fehlgeschlagenem Speichern wird die aktive Sektion in
         // renderScopeSection() mit den POST-Daten statt mit dem
         // gespeicherten Konfigurations-Stand befüllt (siehe dort).
         $saveFailed = ($saveResult !== null and $saveResult['success'] === false);
+
+        // Nach einem Import (Erfolg ODER Fehlschlag) muss die aktive Sektion
+        // ebenfalls aus POST-Daten statt aus der gespeicherten Konfiguration
+        // befüllt werden - bei Erfolg enthält $_POST['schemaOrgData'][$scope]
+        // das Import-Ergebnis (siehe handleImportAction()), bei Fehlschlag die
+        // ursprünglichen Formularwerte (siehe doc/adr_import_verdrahtung.md,
+        // Entscheidung (e)).
+        $importApplied = ($saveResult['import'] ?? false) === true;
+        $usePostData = $saveFailed || $importApplied;
 
         // Aktiven Scope ermitteln: $_POST (Formular wurde abgeschickt) hat
         // Vorrang vor $_GET (initialer Aufruf der Admin-Seite)
@@ -309,7 +337,11 @@ class SchemaOrgData_AdminController {
         $html .= '<div class="schemaOrgData-admin">'."\n";
 
         if($saveResult !== null) {
-            $html .= $adminPageRenderer->renderSaveResultNotice($saveResult, $lang);
+            // Import-Erfolg zeigt einen eigenen Hinweis statt der
+            // Speicher-Erfolgsmeldung - es wurde nichts gespeichert (siehe
+            // doc/adr_import_verdrahtung.md, Entscheidung (f)).
+            $successMessageKey = $importApplied ? 'notice_import_success' : 'notice_config_saved';
+            $html .= $adminPageRenderer->renderSaveResultNotice($saveResult, $lang, $successMessageKey);
         }
 
         // Zusätzlicher Speichern-Button am Formularanfang (oben rechts) -
@@ -358,7 +390,7 @@ class SchemaOrgData_AdminController {
             'global', null, null,
             active: $selectedCat === null,
             idPrefix: 'global',
-            saveFailed: $saveFailed,
+            saveFailed: $usePostData,
             context: $context
         );
 
@@ -382,7 +414,7 @@ class SchemaOrgData_AdminController {
                 'category', $cat, null,
                 active: $catActive,
                 idPrefix: 'cat_' . $safeCat,
-                saveFailed: $saveFailed,
+                saveFailed: $usePostData,
                 context: $context
             );
 
@@ -397,7 +429,7 @@ class SchemaOrgData_AdminController {
                         'page', $cat, $page,
                         active: $pageActive,
                         idPrefix: 'page_' . $safeCat . '_' . $safePage,
-                        saveFailed: $saveFailed,
+                        saveFailed: $usePostData,
                         context: $context
                     );
                 }

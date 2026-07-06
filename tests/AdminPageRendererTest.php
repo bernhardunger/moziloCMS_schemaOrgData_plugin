@@ -456,6 +456,94 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
     }
 
+    /***************************************************************
+    *
+    * Import-Verdrahtung (doc/adr_import_verdrahtung.md): echter
+    * Submit-Button, Doppel-Label-Fix (i), Textarea-Erhalt bei Fehler (g).
+    *
+    ***************************************************************/
+    function testRenderExistingJsonLdNoticeEnthaeltImportButton(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $lang, $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString($lang->getLanguageHtml('button_import'), $html);
+        $this->assertStringContainsString('name="schemaOrgData_import_action" value="global"', $html);
+        $this->assertStringContainsString('type="submit"', $html);
+    }
+
+    function testRenderExistingJsonLdNoticeTextareaWertBleibtBeiFehlerErhalten(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings,
+            '{"@type":"LocalBusiness"'
+        );
+
+        $this->assertStringContainsString('>{&quot;@type&quot;:&quot;LocalBusiness&quot;</textarea>', $html);
+    }
+
+    function testRenderExistingJsonLdNoticeTextareaOhneParameterBleibtLeer(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertMatchesRegularExpression('/<textarea[^>]*><\/textarea>/', $html);
+    }
+
+    /***************************************************************
+    *
+    * Doppel-Label-Fix (i): das redundante innere
+    * <label for="schemaOrgData_import_{scope}"> entfällt, <summary>
+    * bleibt die einzige sichtbare Beschriftung; das Textarea trägt
+    * stattdessen ein aria-label mit demselben Wortlaut.
+    *
+    ***************************************************************/
+    function testRenderExistingJsonLdNoticeInnerLabelEntfernt(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringNotContainsString('<label for="schemaOrgData_import_', $html);
+    }
+
+    function testRenderExistingJsonLdNoticeAriaLabelAmTextareaVorhanden(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $lang, $this->scopeResolver(), $settings
+        );
+
+        $ariaLabelAttr = htmlspecialchars($lang->getLanguageValue('label_import_jsonld'), ENT_QUOTES, CHARSET);
+        $this->assertMatchesRegularExpression(
+            '/<textarea[^>]*aria-label="'.preg_quote($ariaLabelAttr, '/').'"[^>]*>/',
+            $html
+        );
+    }
+
     // -----------------------------------------------------------
     // renderCollisionNotice()
     // -----------------------------------------------------------

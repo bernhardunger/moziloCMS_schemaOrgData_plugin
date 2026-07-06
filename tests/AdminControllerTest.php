@@ -120,6 +120,10 @@ final class AdminControllerTest extends TestCase {
         return new \SchemaOrgData_ConfigSaveService();
     }
 
+    private function importService(): \SchemaOrgData_ImportService {
+        return new \SchemaOrgData_ImportService();
+    }
+
     /***************************************************************
     *
     * Minimale, gültige Formulardaten für den Type "LocalBusiness".
@@ -193,7 +197,8 @@ final class AdminControllerTest extends TestCase {
             $this->pluginSelfDir(), $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
             'deDE', $this->pluginSelfDir(), $this->weekdayLang(), $this->idReferenceService(),
             $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(),
-            $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService()
+            $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService(),
+            $this->importService()
         );
     }
 
@@ -665,6 +670,88 @@ final class AdminControllerTest extends TestCase {
     * darf renderAdminPage() den Hinweis nicht anzeigen.
     *
     ***************************************************************/
+    /***************************************************************
+    *
+    * Import-Verdrahtung (doc/adr_import_verdrahtung.md): Ende-zu-Ende
+    * über renderAdminPage() - Import-POST füllt das Formular mit den
+    * importierten Werten, zeigt notice_import_success statt
+    * notice_config_saved, unbekannte Property landet im
+    * Erweiterungsfeld, Settings bleiben unverändert (kein Auto-Save).
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageEndeZuEndeImportBefuelltFormularUndZeigtEigenenHinweis(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_import_action'] = 'global';
+        $_POST['schemaOrgData_import_global'] = json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'LocalBusiness',
+            'name' => 'Importierte Firma',
+            'url' => 'https://www.example.com',
+            'hasMap' => 'https://maps.example.org/importiert',
+        ]);
+
+        $html = $this->callRenderAdminPage($settings);
+
+        $this->assertStringContainsString('Importierte Firma', $html);
+        $this->assertStringContainsString('hasMap', $html);
+        $this->assertStringContainsString('maps.example.org/importiert', $html);
+
+        $lang = $this->adminLang();
+        $this->assertStringContainsString($lang->getLanguageHtml('notice_import_success'), $html);
+        $this->assertStringNotContainsString($lang->getLanguageHtml('notice_config_saved'), $html);
+
+        $this->assertFalse($settings->keyExists('config_global'));
+    }
+
+    /***************************************************************
+    *
+    * ADR (k): Import eines Types, der bereits auf einer anderen Ebene
+    * konfiguriert ist, zeigt den bestehenden Type-Kollisionshinweis
+    * bereits im Import-Redisplay - vor dem eigentlichen Speichern.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageImportZeigtTypeKollisionsHinweisVorDemSpeichern(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+        global $CatPage;
+        $cat = 'ueber-uns';
+        $CatPage = new FakeCatPageWithPages([$cat]);
+
+        $settings = new \InMemorySettings();
+        $this->callSaveConfig('global', $this->validLocalBusinessData('Global GmbH'), $settings);
+
+        $_POST['schemaOrgData_cat'] = $cat;
+        $_POST['schemaOrgData_page'] = '';
+        $_POST['schemaOrgData_import_action'] = 'category';
+        $_POST['schemaOrgData_import_category'] = json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'LocalBusiness',
+            'name' => 'Filiale Über-uns',
+            'url' => 'https://www.example.com/ueber-uns',
+        ]);
+
+        $html = $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+
+        $lang = $this->adminLang();
+        $this->assertStringContainsString('schemaOrgData-notice--info', $html);
+        $this->assertStringContainsString($lang->getLanguageValue('scope_global'), $html);
+    }
+
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
     function testRenderAdminPageZeigtKeinenHinweisBeiVorhandenemPlatzhalter(): void {

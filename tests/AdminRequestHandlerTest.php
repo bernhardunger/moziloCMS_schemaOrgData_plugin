@@ -63,6 +63,14 @@ final class AdminRequestHandlerTest extends TestCase {
         return new \SchemaOrgData_AdminRequestHandler();
     }
 
+    private function importService(): \SchemaOrgData_ImportService {
+        return new \SchemaOrgData_ImportService();
+    }
+
+    private function dataSplitHelper(): \SchemaOrgData_DataSplitHelper {
+        return new \SchemaOrgData_DataSplitHelper();
+    }
+
     /***************************************************************
     *
     * Minimale, gültige Formulardaten für den Type "LocalBusiness"
@@ -104,7 +112,7 @@ final class AdminRequestHandlerTest extends TestCase {
         return $this->adminRequestHandler()->handlePostRequest(
             $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
             $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(), $this->adminPageRenderer(),
-            $this->configSaveService()
+            $this->configSaveService(), $this->importService(), $this->dataSplitHelper()
         );
     }
 
@@ -137,6 +145,89 @@ final class AdminRequestHandlerTest extends TestCase {
         $result = $this->callHandlePostRequest($settings);
 
         $this->assertTrue($result['success']);
+        $this->assertFalse($settings->keyExists('config_global'));
+    }
+
+    // -----------------------------------------------------------
+    // handlePostRequest() - Import-Dispatch (doc/adr_import_verdrahtung.md)
+    // -----------------------------------------------------------
+
+    private function validLocalBusinessJsonLd(): string {
+        return json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'LocalBusiness',
+            'name' => 'Muster GmbH',
+            'url' => 'https://www.example.com',
+            'hasMap' => 'https://maps.example.org',
+        ]);
+    }
+
+    function testImportMitGueltigemJsonLdFuelltPostZurueckUndSpeichertNichts(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_import_action'] = 'global';
+        $_POST['schemaOrgData_import_global'] = $this->validLocalBusinessJsonLd();
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertTrue($result['import']);
+        $this->assertFalse($settings->keyExists('config_global'));
+
+        $this->assertSame('LocalBusiness', $_POST['schemaOrgData']['global']['type']);
+        $this->assertSame('Muster GmbH', $_POST['schemaOrgData']['global']['data']['name']);
+        $this->assertSame('https://www.example.com', $_POST['schemaOrgData']['global']['data']['url']);
+        $this->assertStringContainsString('hasMap', $_POST['schemaOrgData']['global']['extension']['LocalBusiness']);
+
+        // Rohe Textarea-Eingabe wird bei Erfolg gelöscht (ADR, Entscheidung (g))
+        $this->assertArrayNotHasKey('schemaOrgData_import_global', $_POST);
+    }
+
+    function testImportMitUngueltigemJsonLiefertFehler(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_import_action'] = 'global';
+        $_POST['schemaOrgData_import_global'] = '{ungültiges json';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertTrue($result['import']);
+        $this->assertSame($this->adminLang()->getLanguageValue('error_json_invalid'), $result['errors'][0]);
+        $this->assertFalse($settings->keyExists('config_global'));
+    }
+
+    function testImportMitFuerScopeUnzulaessigemTypeLiefertFehler(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+        $_POST['schemaOrgData_import_action'] = 'global';
+        $_POST['schemaOrgData_import_global'] = json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'Event',
+            'name' => 'Sommerfest',
+        ]);
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertTrue($result['import']);
+        $this->assertSame(
+            $this->adminLang()->getLanguageValue('error_invalid_schema_type', 'Event'),
+            $result['errors'][0]
+        );
+    }
+
+    function testImportAktionHatVorrangVorMitgesendetenFormulardaten(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_import_action'] = 'global';
+        $_POST['schemaOrgData_import_global'] = $this->validLocalBusinessJsonLd();
+        // gleichzeitig mitgesendete (gültige) Formulardaten der aktiven Sektion -
+        // dürfen bei gesetzter Import-Aktion NICHT gespeichert werden (ADR (b))
+        $_POST['schemaOrgData'] = ['global' => $this->validLocalBusinessData('Andere Firma')];
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertTrue($result['import']);
         $this->assertFalse($settings->keyExists('config_global'));
     }
 }

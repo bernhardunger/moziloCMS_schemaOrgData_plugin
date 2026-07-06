@@ -50,7 +50,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.4.57-beta';
+    private const PLUGIN_VERSION = '0.4.58-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -115,6 +115,9 @@ class schemaOrgData extends Plugin {
     /** Lazy-Instanz von SchemaOrgData_ConfigSaveService (siehe configSaveService()) */
     private ?SchemaOrgData_ConfigSaveService $configSaveServiceInstance = null;
 
+    /** Lazy-Instanz von SchemaOrgData_ImportService (siehe importService()) */
+    private ?SchemaOrgData_ImportService $importServiceInstance = null;
+
     /** Lazy-Instanz von SchemaOrgData_FrontendRenderer (siehe frontendRenderer()) */
     private ?SchemaOrgData_FrontendRenderer $frontendRendererInstance = null;
 
@@ -141,7 +144,8 @@ class schemaOrgData extends Plugin {
                     $this->PLUGIN_SELF_DIR, $this->formRenderer(), $this->dataSplitHelper(), $this->urlHelper(),
                     $this->pluginLang, $this->PLUGIN_SELF_URL, $this->loadWeekdayLanguage(), $this->idReferenceService(),
                     $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(),
-                    $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService()
+                    $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService(),
+                    $this->importService()
                 )
             );
         }
@@ -224,6 +228,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_ConfigSaveService. */
     private function configSaveService(): SchemaOrgData_ConfigSaveService {
         return $this->configSaveServiceInstance ??= new SchemaOrgData_ConfigSaveService();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_ImportService. */
+    private function importService(): SchemaOrgData_ImportService {
+        return $this->importServiceInstance ??= new SchemaOrgData_ImportService();
     }
 
     /** Lazy-Accessor für SchemaOrgData_FrontendRenderer. */

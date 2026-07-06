@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 *
 * Tests für SchemaOrgData_AdminRequestContext:
 *
-*   - Konstruktor setzt alle 18 Properties korrekt
+*   - Konstruktor setzt alle 19 Properties korrekt
 *   - Properties sind readonly (Schreibversuch wirft Error)
 *
 ***************************************************************/
@@ -45,7 +45,8 @@ final class AdminRequestContextTest extends TestCase {
             new \SchemaOrgData_CollisionDetector(),
             new \SchemaOrgData_AdminPageRenderer(),
             new \SchemaOrgData_AdminRequestHandler(),
-            new \SchemaOrgData_ConfigSaveService()
+            new \SchemaOrgData_ConfigSaveService(),
+            new \SchemaOrgData_ImportService()
         );
     }
 
@@ -66,6 +67,7 @@ final class AdminRequestContextTest extends TestCase {
         $adminPageRenderer = new \SchemaOrgData_AdminPageRenderer();
         $adminRequestHandler = new \SchemaOrgData_AdminRequestHandler();
         $configSaveService = new \SchemaOrgData_ConfigSaveService();
+        $importService = new \SchemaOrgData_ImportService();
 
         $context = new \SchemaOrgData_AdminRequestContext(
             $settings,
@@ -85,7 +87,8 @@ final class AdminRequestContextTest extends TestCase {
             $collisionDetector,
             $adminPageRenderer,
             $adminRequestHandler,
-            $configSaveService
+            $configSaveService,
+            $importService
         );
 
         $this->assertSame($settings, $context->settings);
@@ -106,6 +109,7 @@ final class AdminRequestContextTest extends TestCase {
         $this->assertSame($adminPageRenderer, $context->adminPageRenderer);
         $this->assertSame($adminRequestHandler, $context->adminRequestHandler);
         $this->assertSame($configSaveService, $context->configSaveService);
+        $this->assertSame($importService, $context->importService);
     }
 
     function testSchreibversuchAufReadonlyPropertyWirftError(): void {

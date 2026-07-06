@@ -186,13 +186,17 @@ class SchemaOrgData_AdminPageRenderer {
     *
     * @param array{success: bool, errors: string[]} $result
     * @param Language $lang Admin-Sprachobjekt
+    * @param string $successMessageKey Sprachschlüssel für den Erfolgsfall -
+    *        abweichend z. B. "notice_import_success" statt der Standard-
+    *        Speicher-Meldung, siehe doc/adr_import_verdrahtung.md,
+    *        Entscheidung (f)
     * @return string HTML-Snippet
     *
     ***************************************************************/
-    public function renderSaveResultNotice(array $result, Language $lang): string {
+    public function renderSaveResultNotice(array $result, Language $lang, string $successMessageKey = 'notice_config_saved'): string {
         if($result['success']) {
             return '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--success">'
-                .$lang->getLanguageHtml('notice_config_saved')
+                .$lang->getLanguageHtml($successMessageKey)
                 .'</div>'."\n";
         }
 
@@ -232,6 +236,9 @@ class SchemaOrgData_AdminPageRenderer {
     * @param string $scope 'global' | 'category' | 'page'
     * @param Language $lang Admin-Sprachobjekt
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
+    * @param string $importTextareaValue Rohwert für das Import-Textarea, z. B. nach
+    *        fehlgeschlagenem Import (siehe doc/adr_import_verdrahtung.md,
+    *        Entscheidung (g)) - sonst leer
     * @return string HTML-Snippet (Hinweis, Radio-Buttons, Import-Textarea)
     *                 oder '' wenn kein vorhandenes JSON-LD erkannt wurde
     *
@@ -242,7 +249,8 @@ class SchemaOrgData_AdminPageRenderer {
         ?string $page,
         Language $lang,
         SchemaOrgData_ScopeResolver $scopeResolver,
-        $settings
+        $settings,
+        string $importTextareaValue = ''
     ): string {
         $meta = $scopeResolver->loadScopeMeta($settings, $scope, $cat, $page);
 
@@ -276,7 +284,7 @@ class SchemaOrgData_AdminPageRenderer {
         $detailsOpenAttr = !empty($meta['existing_jsonld_content']) ? ' open="open"' : '';
         $html .= '<details'.$detailsOpenAttr.'>'."\n";
         $html .= '<summary>'.$lang->getLanguageHtml('label_import_jsonld').'</summary>'."\n";
-        $html .= '<p><label for="schemaOrgData_import_'.$scope.'">'.$lang->getLanguageHtml('label_import_jsonld').'</label><br />'."\n";
+        $html .= '<p>'."\n";
 
         if(!empty($meta['existing_jsonld_content'])) {
             $escaped = htmlspecialchars((string) $meta['existing_jsonld_content'], ENT_QUOTES, CHARSET);
@@ -286,7 +294,15 @@ class SchemaOrgData_AdminPageRenderer {
                 .$lang->getLanguageHtml('button_use_detected_jsonld').'</button><br />'."\n";
         }
 
-        $html .= '<textarea id="schemaOrgData_import_'.$scope.'" name="schemaOrgData_import_'.$scope.'" rows="6"></textarea></p>'."\n";
+        // Doppel-Label-Fix (ADR (i)): <summary> ist bereits die sichtbare
+        // Beschriftung, das Textarea erhält stattdessen ein aria-label.
+        $importAriaLabel = htmlspecialchars($lang->getLanguageValue('label_import_jsonld'), ENT_QUOTES, CHARSET);
+        $importValueAttr = htmlspecialchars($importTextareaValue, ENT_QUOTES, CHARSET);
+        $html .= '<textarea id="schemaOrgData_import_'.$scope.'" name="schemaOrgData_import_'.$scope.'"'
+            .' rows="6" aria-label="'.$importAriaLabel.'">'.$importValueAttr.'</textarea><br />'."\n";
+        $html .= '<button type="submit" name="schemaOrgData_import_action" value="'.$scope.'" class="mo-btn">'
+            .$lang->getLanguageHtml('button_import').'</button>'."\n";
+        $html .= '</p>'."\n";
         $html .= '<p class="schemaOrgData-jsonld-notice__hint">'.$lang->getLanguageHtml('description_import_jsonld').'</p>'."\n";
         $html .= '</details>'."\n";
         $html .= '</div>'."\n";

@@ -43,7 +43,8 @@ final class SchemaOrgData_AdminRequestContext {
         public readonly SchemaOrgData_CollisionDetector $collisionDetector,
         public readonly SchemaOrgData_AdminPageRenderer $adminPageRenderer,
         public readonly SchemaOrgData_AdminRequestHandler $adminRequestHandler,
-        public readonly SchemaOrgData_ConfigSaveService $configSaveService
+        public readonly SchemaOrgData_ConfigSaveService $configSaveService,
+        public readonly SchemaOrgData_ImportService $importService
     ) {
     }
 }
