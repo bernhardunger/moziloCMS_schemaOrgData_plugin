@@ -230,4 +230,79 @@ final class AdminRequestHandlerTest extends TestCase {
         $this->assertTrue($result['import']);
         $this->assertFalse($settings->keyExists('config_global'));
     }
+
+    // -----------------------------------------------------------
+    // handlePostRequest() - Import-Dispatch: openingHours-Konvertierung
+    // (doc/adr_import_verdrahtung.md, Entscheidung (l))
+    // -----------------------------------------------------------
+
+    function testImportMitKomprimiertenOpeningHoursKonvertiertZuProTagStruktur(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_import_action'] = 'global';
+        $_POST['schemaOrgData_import_global'] = json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'LocalBusiness',
+            'name' => 'Muster GmbH',
+            'url' => 'https://www.example.com',
+            'openingHours' => ['Mo-Th 08:00-12:00', 'Mo-Th 13:00-17:00', 'Fr 08:00-12:00'],
+        ]);
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+
+        $openingHours = $_POST['schemaOrgData']['global']['data']['openingHours'];
+
+        foreach(['Mo', 'Tu', 'We', 'Th'] as $day) {
+            $this->assertSame('08:00', $openingHours[$day]['from']);
+            $this->assertSame('12:00', $openingHours[$day]['to']);
+            $this->assertSame('13:00', $openingHours[$day]['from2']);
+            $this->assertSame('17:00', $openingHours[$day]['to2']);
+        }
+
+        $this->assertSame('08:00', $openingHours['Fr']['from']);
+        $this->assertSame('12:00', $openingHours['Fr']['to']);
+        $this->assertSame('', $openingHours['Fr']['from2']);
+        $this->assertSame('', $openingHours['Fr']['to2']);
+
+        foreach(['Sa', 'Su'] as $day) {
+            $this->assertSame('', $openingHours[$day]['from']);
+            $this->assertSame('', $openingHours[$day]['to']);
+        }
+    }
+
+    function testImportOhneOpeningHoursBleibtUnveraendert(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_import_action'] = 'global';
+        $_POST['schemaOrgData_import_global'] = $this->validLocalBusinessJsonLd();
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertArrayNotHasKey('openingHours', $_POST['schemaOrgData']['global']['data']);
+    }
+
+    function testImportMitBereitsProTagArtigemOpeningHoursWirdNichtDoppeltKonvertiert(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_import_action'] = 'global';
+        // Praxisfremder Randfall (echtes JSON-LD liefert nie Pro-Tag-Objekte je Eintrag),
+        // dient nur als Absicherung des isPerDayOpeningHoursValue()-Guards.
+        $_POST['schemaOrgData_import_global'] = json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'LocalBusiness',
+            'name' => 'Muster GmbH',
+            'url' => 'https://www.example.com',
+            'openingHours' => [
+                'Mo' => ['from' => '09:00', 'to' => '18:00'],
+            ],
+        ]);
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(
+            ['Mo' => ['from' => '09:00', 'to' => '18:00']],
+            $_POST['schemaOrgData']['global']['data']['openingHours']
+        );
+    }
 }

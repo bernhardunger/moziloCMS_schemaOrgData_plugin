@@ -61,7 +61,7 @@ class SchemaOrgData_AdminRequestHandler {
         if(isset($_POST['schemaOrgData_import_action'])) {
             return $this->handleImportAction(
                 (string) $_POST['schemaOrgData_import_action'],
-                $schemaRepository, $pluginSelfDir, $lang, $importService, $dataSplitHelper
+                $schemaRepository, $pluginSelfDir, $lang, $importService, $dataSplitHelper, $openingHoursHelper
             );
         }
 
@@ -141,8 +141,22 @@ class SchemaOrgData_AdminRequestHandler {
     * Entscheidung (g)) - das signalisiert renderScopeSection() zugleich
     * eindeutig, dass kein Import-Fehler für diesen Scope vorliegt.
     *
+    * openingHours (doc/adr_import_verdrahtung.md, Entscheidung (l)):
+    * importJsonLd() liefert openingHours unverändert in der
+    * komprimierten schema.org-Notation ("Mo-Th 08:00-12:00"), wie sie
+    * auch im importierten JSON-LD steht. Der $_POST-Redisplay-Pfad
+    * (renderScopeSection()/renderOpeningHoursWidget()) erwartet dort
+    * aber bereits die Pro-Tag-Formularstruktur (dieser Pfad wurde
+    * ursprünglich nur für das Redisplay nach fehlgeschlagenem Save
+    * gebaut, wo sanitizePostData() erst nach erfolgreicher Validierung
+    * komprimiert) - daher wird ein noch komprimierter Wert hier über
+    * parseOpeningHours() (dieselbe Methode, die auch beim regulären
+    * Rendering aus gespeicherter Config verwendet wird) in die
+    * Pro-Tag-Struktur konvertiert, bevor er zurückgeschrieben wird.
+    *
     * @param string $rawScope Wert des Import-Buttons ("global"|"category"|"page")
     * @param SchemaOrgData_DataSplitHelper $dataSplitHelper Mapper für importJsonLd()
+    * @param SchemaOrgData_OpeningHoursHelper $openingHoursHelper für die openingHours-Konvertierung
     * @return array{success: bool, errors: string[], import: bool}
     *
     ***************************************************************/
@@ -152,7 +166,8 @@ class SchemaOrgData_AdminRequestHandler {
         string $pluginSelfDir,
         Language $lang,
         SchemaOrgData_ImportService $importService,
-        SchemaOrgData_DataSplitHelper $dataSplitHelper
+        SchemaOrgData_DataSplitHelper $dataSplitHelper,
+        SchemaOrgData_OpeningHoursHelper $openingHoursHelper
     ): array {
         if(!in_array($rawScope, ['global', 'category', 'page'], true)) {
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_json_invalid')], 'import' => true];
@@ -179,6 +194,18 @@ class SchemaOrgData_AdminRequestHandler {
 
         if(!$result['success']) {
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_json_invalid')], 'import' => true];
+        }
+
+        // openingHours liegt nach dem Import noch in komprimierter
+        // schema.org-Notation vor - siehe Docblock oben (ADR, Entscheidung (l)).
+        if(isset($result['formData']['openingHours'])
+            and is_array($result['formData']['openingHours'])
+            and !$openingHoursHelper->isPerDayOpeningHoursValue($result['formData']['openingHours'])) {
+            $fieldSchema = $schema['properties']['openingHours'] ?? [];
+            $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+            $result['formData']['openingHours'] = $openingHoursHelper->parseOpeningHours(
+                $result['formData']['openingHours'], $days
+            );
         }
 
         $extensionJson = ($result['extensionData'] === [])
