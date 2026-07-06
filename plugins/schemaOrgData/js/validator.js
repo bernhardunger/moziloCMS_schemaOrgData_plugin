@@ -494,12 +494,18 @@
      * gerendert). Ein gemeinsames Element statt je eines pro Feld
      * verhindert doppelte/verschobene Fehlermeldungen (Fix 2).
      *
+     * Es gibt vier Feld-Suffixe (_from/_to für den Hauptzeitraum,
+     * _from2/_to2 für die Pause) - die Von/Bis-Zuordnung muss daher
+     * beide "Von"-Suffixe gleichermaßen erkennen, sonst werden bei
+     * einem Pausen-Feld Von und Bis vertauscht.
+     *
      * @param {HTMLElement} input das gerade geänderte Von- oder Bis-Feld
      * @param {boolean} [onlyClearErrors] siehe showFieldFeedback()
      */
     function runOpeningHoursValidation(input, onlyClearErrors) {
         var pairInput = document.getElementById(input.getAttribute('data-pair'));
-        var isFrom = input.id.endsWith('_from');
+        var isSecondRange = /_(from2|to2)$/.test(input.id);
+        var isFrom = /_from2?$/.test(input.id);
         var fromInput = isFrom ? input : pairInput;
         var from = isFrom ? input.value : (pairInput ? pairInput.value : '');
         var to = isFrom ? (pairInput ? pairInput.value : '') : input.value;
@@ -520,6 +526,26 @@
             }
         } else {
             result = validateOpeningHoursTime(from, to);
+        }
+
+        // Pause darf nicht vor dem Ende des Hauptzeitraums beginnen
+        // (serverseitiges Vorbild: renderOpeningHoursWidget() in
+        // SchemaOrgData_FormRenderer.php, $from2 < $to). Nur relevant
+        // für die Pause und nur wenn diese selbst keinen eigenen
+        // Format-/Reihenfolgefehler hat (eigener Fehler hat Vorrang,
+        // analog updateEndDateFeedback()). "!fromEmpty && !toEmpty"
+        // schließt bereits den Leerfall aus, result.status ist an
+        // dieser Stelle also immer "ok" oder "error" (nie null) -
+        // die Prüfung greift daher bewusst bei "!== 'error'", nicht
+        // bei "=== null".
+        if (result.status !== 'error' && isSecondRange && !fromEmpty && !toEmpty) {
+            var mainToId = fromInput.id.replace(/_from2$/, '_to');
+            var mainToInput = document.getElementById(mainToId);
+            var mainTo = mainToInput ? mainToInput.value.trim() : '';
+
+            if (mainTo !== '' && from.trim() < mainTo) {
+                result = { status: 'error', message: getMessages().openingHoursOverlap || null };
+            }
         }
 
         var group = input.closest('.schemaOrgData-opening-hours-group');

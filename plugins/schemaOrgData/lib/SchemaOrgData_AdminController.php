@@ -467,6 +467,7 @@ class SchemaOrgData_AdminController {
             'openingHoursFormat'     => $lang->getLanguageValue('error_opening_hours_format'),
             'openingHoursIncomplete' => $lang->getLanguageValue('error_opening_hours_incomplete'),
             'openingHoursOrder'      => $lang->getLanguageValue('error_opening_hours_order'),
+            'openingHoursOverlap'    => $lang->getLanguageValue('error_opening_hours_overlap'),
             'dateInvalid'        => $lang->getLanguageValue('error_date_invalid'),
             'dateRangeInvalid'   => $lang->getLanguageValue('error_date_range_invalid'),
             // '{PARAM1}' wird hier als Wert übergeben, damit
