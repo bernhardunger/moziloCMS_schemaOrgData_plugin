@@ -616,7 +616,13 @@ class SchemaOrgData_FormRenderer {
             $feedback = $this->renderValidationFeedback($validator->validateOpeningHoursTime($from, $to, $lang), $fromId.'_feedback');
 
             $feedback2Result = $validator->validateOpeningHoursTime($from2, $to2, $lang);
-            if($feedback2Result['status'] === null && $from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
+            // Eigener Format-/Reihenfolgefehler der Pause hat Vorrang: nur wenn
+            // validateOpeningHoursTime() nicht bereits 'error' liefert, wird die
+            // Überlappungs-Prüfung angewandt (analog zu runOpeningHoursValidation()
+            // in js/validator.js, Commit 94ef495). Der ursprüngliche Vergleich auf
+            // status === null war unerreichbar, da diese Methode bei nicht-leeren
+            // $from2/$to2-Werten nie null zurückliefert.
+            if($feedback2Result['status'] !== 'error' && $from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
                 $feedback2Result = ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_overlap')];
             }
             $feedback2 = $this->renderValidationFeedback($feedback2Result, $from2Id.'_feedback');

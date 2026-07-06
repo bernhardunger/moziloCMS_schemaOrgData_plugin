@@ -169,6 +169,32 @@ final class FormRendererComponentTest extends TestCase {
         }
     }
 
+    function testRenderOpeningHoursWidgetZeigtUeberlappungsfehlerBeiRedisplay(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+        $value = ['Mo' => ['from' => '08:00', 'to' => '12:00', 'from2' => '07:00', 'to2' => '09:00']];
+
+        $html = $renderer->renderOpeningHoursWidget(
+            'global', 'openingHours', $schema['properties']['openingHours'], $value, null,
+            $this->adminLang(), $this->weekdayLang(), new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(),
+        );
+
+        $this->assertStringContainsString($this->adminLang()->getLanguageValue('error_opening_hours_overlap'), $html);
+    }
+
+    function testRenderOpeningHoursWidgetZeigtKeinenUeberlappungsfehlerOhneUeberlappung(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+        $value = ['Mo' => ['from' => '08:00', 'to' => '12:00', 'from2' => '13:00', 'to2' => '17:00']];
+
+        $html = $renderer->renderOpeningHoursWidget(
+            'global', 'openingHours', $schema['properties']['openingHours'], $value, null,
+            $this->adminLang(), $this->weekdayLang(), new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(),
+        );
+
+        $this->assertStringNotContainsString($this->adminLang()->getLanguageValue('error_opening_hours_overlap'), $html);
+    }
+
     // -----------------------------------------------------------
     // renderFaqListWidget()
     // -----------------------------------------------------------
