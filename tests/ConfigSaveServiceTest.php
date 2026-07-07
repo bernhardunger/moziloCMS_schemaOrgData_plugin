@@ -96,6 +96,24 @@ final class ConfigSaveServiceTest extends TestCase {
 
     /***************************************************************
     *
+    * Minimale, gültige Formulardaten für einen Type der
+    * LocalBusiness-Familie ohne Pflicht-Adresse (AccountingService,
+    * MedicalBusiness, ...) - siehe doc/adr_localbusiness_familie_scope.md.
+    *
+    ***************************************************************/
+    private function validFamilyTypeData(string $type, string $name = 'Muster GmbH'): array {
+        return [
+            'type' => $type,
+            'data' => [
+                'name' => $name,
+                'url' => 'https://www.example.com',
+            ],
+            'extension' => [$type => ''],
+        ];
+    }
+
+    /***************************************************************
+    *
     * Minimale, gültige Formulardaten für den Type "FAQPage"
     * (analog PersistenceTest::validFaqPageData()).
     *
@@ -485,5 +503,56 @@ final class ConfigSaveServiceTest extends TestCase {
 
         $meta = $this->scopeResolver()->loadScopeMeta($settings, 'global');
         $this->assertSame('override', $meta['jsonld_mode']);
+    }
+
+    // -----------------------------------------------------------
+    // saveConfig() - LocalBusiness-Familie (doc/adr_localbusiness_familie_scope.md)
+    // -----------------------------------------------------------
+
+    function testSaveConfigLehntAbweichendenFamilienTypeBeiKategorieAb(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['AccountingService' => ['name' => 'Kanzlei Muster', 'url' => 'https://www.example.com']]);
+        $_POST['schemaOrgData_cat'] = 'ueber-uns';
+
+        $result = $this->callSaveConfig('category', $this->validFamilyTypeData('MedicalBusiness'), $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertFalse($settings->keyExists('config_cat_ueber-uns'));
+    }
+
+    function testSaveConfigErlaubtIdentischenFamilienTypeBeiKategorie(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['AccountingService' => ['name' => 'Kanzlei Muster', 'url' => 'https://www.example.com']]);
+        $_POST['schemaOrgData_cat'] = 'ueber-uns';
+
+        $result = $this->callSaveConfig('category', $this->validFamilyTypeData('AccountingService', 'Filiale Nord'), $settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame([], $result['errors']);
+        $this->assertSame('Filiale Nord', $settings->get('config_cat_ueber-uns')['AccountingService']['name']);
+    }
+
+    function testSaveConfigErlaubtContentTypeBeiKategorieUnabhaengigVonGlobalerFamilie(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['AccountingService' => ['name' => 'Kanzlei Muster', 'url' => 'https://www.example.com']]);
+        $_POST['schemaOrgData_cat'] = 'ueber-uns';
+
+        $result = $this->callSaveConfig('category', [
+            'type' => 'Article',
+            'data' => ['headline' => 'Neuigkeiten', 'articleBody' => 'Text', 'datePublished' => '2026-07-07'],
+            'extension' => ['Article' => ''],
+        ], $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+    }
+
+    function testSaveConfigGlobalIgnoriertFamilienCheckUnabhaengigVomGewaehltenType(): void {
+        $settings = new \InMemorySettings();
+
+        $result = $this->callSaveConfig('global', $this->validFamilyTypeData('MedicalBusiness'), $settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('Muster GmbH', $settings->get('config_global')['MedicalBusiness']['name']);
     }
 }

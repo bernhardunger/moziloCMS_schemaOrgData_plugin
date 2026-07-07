@@ -199,4 +199,41 @@ final class SchemaRepositoryTest extends TestCase {
 
         $this->removeDirectory($pluginSelfDir);
     }
+
+    // resolveActiveType() (doc/adr_localbusiness_familie_scope.md) ------------
+
+    function testResolveActiveTypeLiefertErstenTypeMitBekanntemSchema(): void {
+        $config = ['AccountingService' => ['name' => 'Kanzlei Muster']];
+
+        $result = $this->repository()->resolveActiveType($config, $this->pluginSelfDir());
+
+        $this->assertSame('AccountingService', $result);
+    }
+
+    function testResolveActiveTypeUeberspringtReservierteSchluessel(): void {
+        $config = [
+            '_meta' => ['jsonld_mode' => 'keep'],
+            'excluded_cats' => 'impressum',
+            'debug_output' => true,
+            'AccountingService' => ['name' => 'Kanzlei Muster'],
+        ];
+
+        $result = $this->repository()->resolveActiveType($config, $this->pluginSelfDir());
+
+        $this->assertSame('AccountingService', $result);
+    }
+
+    function testResolveActiveTypeLiefertNullBeiLeeremConfig(): void {
+        $result = $this->repository()->resolveActiveType([], $this->pluginSelfDir());
+
+        $this->assertNull($result);
+    }
+
+    function testResolveActiveTypeLiefertNullWennKeinSchluesselBekanntesSchemaReferenziert(): void {
+        $config = ['_meta' => [], 'excluded_cats' => '', 'debug_output' => false];
+
+        $result = $this->repository()->resolveActiveType($config, $this->pluginSelfDir());
+
+        $this->assertNull($result);
+    }
 }

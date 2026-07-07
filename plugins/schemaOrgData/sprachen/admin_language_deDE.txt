@@ -17,6 +17,7 @@ info_text_template_global = Hinweis: Ein direkt im Layout-Template eingebundener
 label_info_more_details = Mehr Details
 
 notice_type_collision = Für den Type "{PARAM1}" ist auch auf Ebene {PARAM2} eine Konfiguration vorhanden. Leere Felder werden von der übergeordneten Ebene übernommen - gefüllte Felder überschreiben die Ausgabe von {PARAM2} für diesen Type.
+notice_family_options_filtered = Weitere Geschäftsklassifikationen sind ausgeblendet, da die globale Konfiguration bereits "{PARAM1}" festlegt.
 
 notice_placeholder_missing_title = Plugin-Platzhalter fehlt im aktiven Layout-Template.
 notice_placeholder_missing_text = Im aktiven Layout-Template wurde kein Platzhalter {PARAM1} gefunden. Ohne diesen Platzhalter gibt das Plugin im Frontend keinerlei JSON-LD aus - unabhängig davon, wie es hier konfiguriert ist. Bitte den Platzhalter {PARAM1} an passender Stelle im &lt;head&gt;-Bereich des Layout-Templates ergänzen.
@@ -124,6 +125,7 @@ error_geo_longitude = Der Längengrad (longitude) muss zwischen -180 und 180 lie
 error_date_invalid = Bitte ein gültiges Datum eingeben (TT.MM.YYYY oder TT.MM.YYYY HH:MM, alternativ JJJJ-MM-TT oder JJJJ-MM-TTTHH:MM:SS+HH:MM).
 error_date_range_invalid = Das Ende muss nach dem Beginn liegen.
 error_invalid_schema_type = Der Schema-Type "{PARAM1}" ist für diesen Geltungsbereich nicht gültig.
+error_family_type_mismatch = Für diesen Geltungsbereich ist nur der bei Global konfigurierte Geschäftstyp (oder ein Inhalts-Type ohne Geschäftsklassifikation) zulässig, da beide Types zur selben Schema.org-Familie gehören.
 
 notice_config_saved = Die Konfiguration wurde gespeichert.
 notice_import_success = Import übernommen - bitte die befüllten Felder unten prüfen und anschließend speichern.

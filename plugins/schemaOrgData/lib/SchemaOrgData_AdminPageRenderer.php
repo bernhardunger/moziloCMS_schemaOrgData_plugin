@@ -520,6 +520,25 @@ class SchemaOrgData_AdminPageRenderer {
 
     /***************************************************************
     *
+    * Rendert den Hinweis, dass in der LocalBusiness-Familie weitere
+    * Geschäftsklassifikationen ausgeblendet wurden, weil bei Global
+    * bereits ein Familien-Type konfiguriert ist (siehe
+    * doc/adr_localbusiness_familie_scope.md).
+    *
+    * @param string $globalTypeLabelHtml bereits sprachaufgelöstes,
+    *        HTML-escaptes Label des bei Global aktiven Types
+    * @param Language $lang Admin-Sprachobjekt
+    * @return string HTML-Snippet
+    *
+    ***************************************************************/
+    public function renderFamilyFilterNotice(string $globalTypeLabelHtml, Language $lang): string {
+        return '<p class="schemaOrgData-hint schemaOrgData-hint--family-filtered">'
+            .$lang->getLanguageHtml('notice_family_options_filtered', $globalTypeLabelHtml)
+            .'</p>'."\n";
+    }
+
+    /***************************************************************
+    *
     * Rendert die Schema-Type-Auswahl (<select>) einer Geltungsebene.
     * Enthält zusätzlich die Option "– kein Schema –"
     * (schema_type_none).

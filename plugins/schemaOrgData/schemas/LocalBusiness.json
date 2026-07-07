@@ -5,6 +5,7 @@
   "type": "object",
   "ui:typeLabel": "schema_type_localbusiness",
   "ui:scopes": ["global", "category"],
+  "ui:family": "localBusiness",
   "required": ["name", "url"],
   "properties": {
     "name": {

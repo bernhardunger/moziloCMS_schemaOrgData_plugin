@@ -362,8 +362,29 @@ class SchemaOrgData_ConfigSaveService {
         if($type !== '') {
             $schema = $schemaRepository->loadSchema($pluginSelfDir, $type);
 
+            // LocalBusiness-Familie: bei Kategorie/Seite nur der bei Global
+            // aktive Familien-Type zulässig, siehe
+            // doc/adr_localbusiness_familie_scope.md. Schutz gegen
+            // Formular-Manipulation (das gefilterte Dropdown verhindert die
+            // Auswahl bereits clientseitig, siehe
+            // SchemaOrgData_AdminController::renderScopeSection()).
+            $familyMismatch = false;
+            if($schema !== null and $scope !== 'global' and isset($schema['ui:family'])) {
+                $globalConfig = $scopeResolver->loadScopeConfig($settings, 'global');
+                $globalActiveType = $schemaRepository->resolveActiveType($globalConfig, $pluginSelfDir);
+                $globalSchema = $globalActiveType !== null
+                    ? $schemaRepository->loadSchema($pluginSelfDir, $globalActiveType) : null;
+                $globalFamily = $globalSchema['ui:family'] ?? null;
+
+                if($globalFamily !== null and $globalFamily === $schema['ui:family'] and $globalActiveType !== $type) {
+                    $familyMismatch = true;
+                }
+            }
+
             if($schema === null or !in_array($scope, $schema['ui:scopes'] ?? [], true)) {
                 $errors[] = $lang->getLanguageValue('error_invalid_schema_type', $type);
+            } elseif($familyMismatch) {
+                $errors[] = $lang->getLanguageValue('error_family_type_mismatch');
             } else {
                 $formData = is_array($postData['data'] ?? null) ? $postData['data'] : [];
                 $extensionRaw = trim((string) ($postData['extension'][$type] ?? ''));

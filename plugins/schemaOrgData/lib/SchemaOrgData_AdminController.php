@@ -112,6 +112,28 @@ class SchemaOrgData_AdminController {
             }
         }
 
+        // LocalBusiness-Familie: bei Kategorie/Seite nur den bei Global
+        // aktiven Familien-Type anbieten, siehe
+        // doc/adr_localbusiness_familie_scope.md.
+        $familyFilterGlobalLabel = null;
+        if($scope !== 'global') {
+            $globalConfig = $scopeResolver->loadScopeConfig($settings, 'global');
+            $globalActiveType = $schemaRepository->resolveActiveType($globalConfig, $pluginSelfDir);
+            $globalSchema = $globalActiveType !== null
+                ? $schemaRepository->loadSchema($pluginSelfDir, $globalActiveType) : null;
+            $globalFamily = $globalSchema['ui:family'] ?? null;
+
+            if($globalFamily !== null) {
+                foreach($availableTypes as $type => $schema) {
+                    $family = $schema['ui:family'] ?? null;
+                    if($family === $globalFamily and $type !== $globalActiveType) {
+                        unset($availableTypes[$type]);
+                        $familyFilterGlobalLabel = $lang->getLanguageHtml($globalSchema['ui:typeLabel'] ?? $globalActiveType);
+                    }
+                }
+            }
+        }
+
         // aktuell konfigurierten Type ermitteln: nach fehlgeschlagenem
         // Speichern der vom Nutzer im Formular gewählte Type (POST), sonst
         // der erste bekannte Type in $config
@@ -164,6 +186,10 @@ class SchemaOrgData_AdminController {
             .'<div class="mo-in-li-l"><label for="schemaOrgData_'.$idPrefix.'_type">'.$lang->getLanguageHtml('label_schema_type').'</label></div>'
             .'<div class="mo-in-li-r">'.$adminPageRenderer->renderTypeSelector($scope, $availableTypes, $selectedType, $idPrefix, $lang).'</div>'
             .'</div>'."\n";
+
+        if($familyFilterGlobalLabel !== null) {
+            $html .= $adminPageRenderer->renderFamilyFilterNotice($familyFilterGlobalLabel, $lang);
+        }
 
         // @id-Referenz-Fragmente (id_reference/id_reference_or_literal-Widgets)
         // je Sektion einmalig ermitteln - siehe SchemaOrgData_IdReferenceService.

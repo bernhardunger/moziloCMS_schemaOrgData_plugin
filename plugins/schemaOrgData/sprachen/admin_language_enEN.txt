@@ -17,6 +17,7 @@ info_text_template_global = Note: A JSON-LD block embedded directly in the layou
 label_info_more_details = More details
 
 notice_type_collision = A configuration for type "{PARAM1}" also exists at the {PARAM2} level. Empty fields here inherit their value from that level - filled fields override the output of {PARAM2} for this type.
+notice_family_options_filtered = Other business classifications are hidden because the global configuration already specifies "{PARAM1}".
 
 notice_placeholder_missing_title = Plugin placeholder is missing from the active layout template.
 notice_placeholder_missing_text = No {PARAM1} placeholder was found in the active layout template. Without this placeholder, the plugin outputs no JSON-LD on the frontend at all - regardless of how it is configured here. Please add the {PARAM1} placeholder at a suitable place in the layout template's &lt;head&gt; section.
@@ -124,6 +125,7 @@ error_geo_longitude = Longitude must be between -180 and 180.
 error_date_invalid = Please enter a valid date (DD.MM.YYYY or DD.MM.YYYY HH:MM, alternatively YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS+HH:MM).
 error_date_range_invalid = The end must be after the start.
 error_invalid_schema_type = The schema type "{PARAM1}" is not valid for this scope.
+error_family_type_mismatch = For this scope, only the business type configured at Global (or a content type without a business classification) is allowed, since both types belong to the same schema.org family.
 
 notice_config_saved = The configuration has been saved.
 notice_import_success = Import applied - please review the populated fields below, then save.

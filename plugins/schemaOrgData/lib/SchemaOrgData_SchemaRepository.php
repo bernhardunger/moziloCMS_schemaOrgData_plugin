@@ -102,4 +102,28 @@ class SchemaOrgData_SchemaRepository {
         sort($types);
         return $this->availableTypesCache[$pluginSelfDir] = $types;
     }
+
+    /***************************************************************
+    *
+    * Ermittelt den aktiven Schema-Type einer Scope-Konfiguration
+    * (erster Array-Schlüssel, der ein bekanntes Schema referenziert -
+    * reservierte Schlüssel wie "_meta"/"excluded_cats"/"debug_output"
+    * werden übersprungen). Wird u. a. für die LocalBusiness-Familie-
+    * Einschränkung verwendet (siehe doc/adr_localbusiness_familie_scope.md),
+    * um den bei Global konfigurierten Type zu ermitteln.
+    *
+    * @param array<string, mixed> $scopeConfig z. B. Ergebnis von
+    *        SchemaOrgData_ScopeResolver::loadScopeConfig()
+    * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
+    * @return string|null aktiver Type oder null, wenn keiner gefunden wurde
+    *
+    ***************************************************************/
+    public function resolveActiveType(array $scopeConfig, string $pluginSelfDir): ?string {
+        foreach(array_keys($scopeConfig) as $type) {
+            if($this->loadSchema($pluginSelfDir, (string) $type) !== null) {
+                return (string) $type;
+            }
+        }
+        return null;
+    }
 }

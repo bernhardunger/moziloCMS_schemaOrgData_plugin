@@ -336,6 +336,55 @@ final class AdminControllerTest extends TestCase {
         );
     }
 
+    /***************************************************************
+    *
+    * LocalBusiness-Familie (doc/adr_localbusiness_familie_scope.md):
+    * ist bei Global bereits ein Familien-Type konfiguriert, darf das
+    * Kategorie-Dropdown nur diesen einen Familien-Type anbieten -
+    * andere Familienmitglieder werden ausgeblendet, Content-Types
+    * bleiben vollständig erhalten, und der Hinweistext erscheint.
+    *
+    ***************************************************************/
+    function testRenderScopeSectionFiltertLocalBusinessFamilieAufGlobalenTypeBeiKategorie(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['AccountingService' => ['name' => 'Kanzlei Muster', 'url' => 'https://www.example.com']]);
+
+        $html = $this->callRenderScopeSection('category', 'ueber-uns', null, true, 'category', false, $settings);
+
+        $this->assertStringContainsString('value="AccountingService"', $html);
+        $this->assertStringNotContainsString('value="LocalBusiness"', $html);
+        $this->assertStringNotContainsString('value="ProfessionalService"', $html);
+        $this->assertStringNotContainsString('value="LegalService"', $html);
+        $this->assertStringNotContainsString('value="MedicalBusiness"', $html);
+        // Content-Types bleiben unberührt
+        $this->assertStringContainsString('value="Article"', $html);
+        $this->assertStringContainsString('value="FAQPage"', $html);
+
+        $lang = $this->adminLang();
+        $this->assertStringContainsString(
+            $lang->getLanguageValue('schema_type_accountingservice'),
+            html_entity_decode(strip_tags($html))
+        );
+    }
+
+    /***************************************************************
+    *
+    * Ohne bei Global konfigurierten Familien-Type (kein Schema
+    * gewählt) gilt keine Einschränkung - alle Familienmitglieder
+    * bleiben im Kategorie-Dropdown verfügbar, kein Hinweistext.
+    *
+    ***************************************************************/
+    function testRenderScopeSectionOhneGlobalenFamilienTypeZeigtAlleFamilienmitgliederUngefiltert(): void {
+        $html = $this->callRenderScopeSection('category', 'ueber-uns', null, true, 'category', false, new \InMemorySettings());
+
+        $this->assertStringContainsString('value="LocalBusiness"', $html);
+        $this->assertStringContainsString('value="ProfessionalService"', $html);
+        $this->assertStringContainsString('value="LegalService"', $html);
+        $this->assertStringContainsString('value="MedicalBusiness"', $html);
+        $this->assertStringContainsString('value="AccountingService"', $html);
+        $this->assertStringNotContainsString('schemaOrgData-hint--family-filtered', $html);
+    }
+
     // -----------------------------------------------------------
     // renderAdminPage()
     // -----------------------------------------------------------
