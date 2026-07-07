@@ -113,10 +113,10 @@ final class IdAnchorTest extends TestCase {
     // buildJsonLdScript() - @id-Einbettung nach dem Leerfilter
     // -----------------------------------------------------------
 
-    private function buildDecoded(string $type, array $data, string $nodeId): array {
+    private function buildDecoded(string $type, array $data, string $nodeId, array $suppressedIdTargets = []): array {
         $script = (new \SchemaOrgData_JsonLdBuilder())->buildJsonLdScript(
             new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(),
-            \BASE_DIR.'plugins/schemaOrgData/', $type, $data, $nodeId
+            \BASE_DIR.'plugins/schemaOrgData/', $type, $data, $nodeId, $suppressedIdTargets
         );
 
         preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
@@ -124,6 +124,10 @@ final class IdAnchorTest extends TestCase {
         $this->assertIsArray($decoded);
 
         return $decoded;
+    }
+
+    private function adminLang(\schemaOrgData $plugin): \Language {
+        return new \Language($plugin->PLUGIN_SELF_DIR.'sprachen/admin_language_deDE.txt');
     }
 
     function testBuildJsonLdScriptWithoutIdHasNoIdKey(): void {
@@ -288,5 +292,192 @@ final class IdAnchorTest extends TestCase {
         $this->assertCount(2, $blocks);
         $this->assertSame('https://www.example.org/#organization', $byType['Organization']['@id']);
         $this->assertArrayNotHasKey('@id', $byType['NGO']);
+    }
+
+    // -----------------------------------------------------------
+    // LocalBusiness-Familie: ui:idFragment "organization"
+    // (doc/adr_globale_id_fragmente.md)
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Erweiterung von testDeDupGuardAcrossNgoAndOrganizationSharingFragment()
+    * auf drei gleichzeitig (fehlerhaft) global konfigurierte Types, die
+    * alle das Fragment "organization" teilen - NGO und zwei Types aus der
+    * LocalBusiness-Familie. Nur der erste in Ausgabereihenfolge erhält
+    * den Anker, die übrigen bleiben ohne @id.
+    *
+    ***************************************************************/
+    function testDeDupGuardAcrossThreeTypesInLocalBusinessFamilySharingFragment(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $plugin = $this->createPluginWithSettings();
+
+        $this->settings->set('config_global', [
+            'NGO' => ['name' => 'Beispiel e. V.', 'url' => 'https://www.example.org'],
+            'AccountingService' => ['name' => 'Muster Steuerberatung', 'url' => 'https://www.example.org'],
+            'LegalService' => ['name' => 'Muster Kanzlei', 'url' => 'https://www.example.org'],
+        ]);
+
+        $blocks = $this->getJsonLdBlocks($plugin);
+        $byType = [];
+        foreach($blocks as $block) {
+            $byType[$block['@type']] = $block;
+        }
+
+        $this->assertCount(3, $blocks);
+        $this->assertSame('https://www.example.org/#organization', $byType['NGO']['@id']);
+        $this->assertArrayNotHasKey('@id', $byType['AccountingService']);
+        $this->assertArrayNotHasKey('@id', $byType['LegalService']);
+    }
+
+    /***************************************************************
+    *
+    * resolveAvailableGlobalFragments() liefert bei global konfiguriertem
+    * AccountingService (ohne NGO/Organization) einen Eintrag für das
+    * Fragment "organization" mit dem AccountingService-Typlabel - zeigt,
+    * dass die Fragment-Liste nicht auf NGO/Organization/Person beschränkt
+    * ist, sondern jeden Type mit ui:idFragment berücksichtigt.
+    *
+    ***************************************************************/
+    function testResolveAvailableGlobalFragmentsListsAccountingServiceTypeLabel(): void {
+        $plugin = $this->createPluginWithSettings();
+        $this->settings->set('config_global', [
+            'AccountingService' => ['name' => 'Muster Steuerberatung', 'url' => 'https://www.example.org'],
+        ]);
+
+        $fragments = (new \SchemaOrgData_IdReferenceService())->resolveAvailableGlobalFragments(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $this->adminLang($plugin)
+        );
+
+        $this->assertArrayHasKey('organization', $fragments);
+        $this->assertStringContainsString('AccountingService', $fragments['organization']);
+        $this->assertStringContainsString('Muster Steuerberatung', $fragments['organization']);
+    }
+
+    /***************************************************************
+    *
+    * DonateAction.recipient (id_reference) löst korrekt auf, wenn eine
+    * als AccountingService konfigurierte globale Identität - statt wie
+    * bisher nur NGO/Organization - den Zielknoten stellt. Der Guard
+    * bleibt No-op, weil der Zielknoten bereits im Graph vorhanden ist.
+    *
+    ***************************************************************/
+    function testDonateActionRecipientResolvesViaAccountingServiceAsSoleGlobalIdentity(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $plugin = $this->createPluginWithSettings();
+
+        $scopeConfigs = [
+            'global' => [
+                'AccountingService' => ['name' => 'Muster Steuerberatung', 'url' => 'https://www.example.org'],
+            ],
+            'page' => [
+                'DonateAction' => ['description' => 'Jetzt spenden und helfen!'],
+            ],
+        ];
+
+        [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+        );
+
+        $this->assertSame($scopeConfigs, $result, 'AccountingService deckt den Zielknoten bereits ab - Guard bleibt No-op');
+        $this->assertSame([], $suppressed);
+
+        $decoded = $this->buildDecoded('DonateAction', $result['page']['DonateAction'], '', $suppressed);
+
+        $this->assertSame('https://www.example.org/#organization', $decoded['recipient']['@id']);
+    }
+
+    /***************************************************************
+    *
+    * Event.organizer (id_reference_or_literal, Referenz-Modus) löst
+    * korrekt auf, wenn eine als LegalService konfigurierte globale
+    * Identität den Zielknoten stellt - Kernaussage von ADR-Entscheidung
+    * (b): die Fragment-Auflösung ist unabhängig vom konkreten @type.
+    *
+    ***************************************************************/
+    function testEventOrganizerResolvesViaLegalServiceAsSoleGlobalIdentity(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $plugin = $this->createPluginWithSettings();
+
+        $scopeConfigs = [
+            'global' => [
+                'LegalService' => ['name' => 'Muster Kanzlei', 'url' => 'https://www.example.org'],
+            ],
+            'page' => [
+                'Event' => [
+                    'name' => 'Tag der offenen Tür',
+                    'startDate' => '2026-09-15T19:00:00+02:00',
+                    'organizer' => ['_mode' => 'reference', '_fragment' => 'organization'],
+                ],
+            ],
+        ];
+
+        [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+        );
+
+        $this->assertSame($scopeConfigs, $result, 'LegalService deckt den Zielknoten bereits ab - Guard bleibt No-op');
+        $this->assertSame([], $suppressed);
+
+        $decoded = $this->buildDecoded('Event', $result['page']['Event'], '', $suppressed);
+
+        $this->assertSame('https://www.example.org/#organization', $decoded['organizer']['@id']);
+        $this->assertArrayNotHasKey('name', $decoded['organizer']);
+    }
+
+    /***************************************************************
+    *
+    * Type-Wechsel-Regressionstest (ADR-Entscheidung b): die globale
+    * Identität wechselt von AccountingService zu LegalService (z. B.
+    * Rebranding) - eine zuvor gespeicherte "_fragment: organization"-
+    * Referenz (DonateAction.recipient) bleibt ohne manuelles Nachziehen
+    * auflösbar, weil beide Types dasselbe Fragment teilen.
+    *
+    ***************************************************************/
+    function testGlobalIdentityTypeChangeFromAccountingServiceToLegalServiceKeepsReferenceResolvable(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $plugin = $this->createPluginWithSettings();
+        $donateActionScope = ['DonateAction' => ['description' => 'Jetzt spenden und helfen!']];
+
+        // Vorher: AccountingService als globale Identität.
+        $scopeConfigsBefore = [
+            'global' => ['AccountingService' => ['name' => 'Muster Steuerberatung', 'url' => 'https://www.example.org']],
+            'page' => $donateActionScope,
+        ];
+        [$resultBefore, $suppressedBefore] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigsBefore, false
+        );
+        $decodedBefore = $this->buildDecoded('DonateAction', $resultBefore['page']['DonateAction'], '', $suppressedBefore);
+
+        // Nachher: Rebranding auf LegalService, dieselbe Referenz bleibt auflösbar.
+        $scopeConfigsAfter = [
+            'global' => ['LegalService' => ['name' => 'Muster Kanzlei', 'url' => 'https://www.example.org']],
+            'page' => $donateActionScope,
+        ];
+        [$resultAfter, $suppressedAfter] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigsAfter, false
+        );
+        $decodedAfter = $this->buildDecoded('DonateAction', $resultAfter['page']['DonateAction'], '', $suppressedAfter);
+
+        $this->assertSame('https://www.example.org/#organization', $decodedBefore['recipient']['@id']);
+        $this->assertSame($decodedBefore['recipient']['@id'], $decodedAfter['recipient']['@id'],
+            'Type-Wechsel der globalen Identität darf eine bestehende Fragment-Referenz nicht dangling machen');
     }
 }

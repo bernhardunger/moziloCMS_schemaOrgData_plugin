@@ -392,9 +392,11 @@ Organisationsblock auf jeder Seite zu wiederholen.
 **Generisch und schema-getrieben.** Ob und unter welchem URI-Fragment ein Type
 eine `@id` bekommt, wird ausschließlich in der jeweiligen Schema-Datei über die
 Property `ui:idFragment` festgelegt — es gibt keine Type-Namen im PHP-Code.
-Aktuell deklarieren `NGO` und `Organization` gemeinsam das Fragment
-`organization` (geteiltes Fragment für unterschiedliche Org-Identitätstypen)
-und `Person` das Fragment `person`. Pro Seite trägt **genau ein** Knoten ein
+Aktuell deklarieren `NGO`, `Organization` sowie die LocalBusiness-Familie
+(`LocalBusiness`, `ProfessionalService`, `LegalService`,
+`MedicalBusiness`, `AccountingService`) gemeinsam das Fragment
+`organization` (geteiltes Fragment für unterschiedliche
+Org-Identitätstypen) und `Person` das Fragment `person`. Pro Seite trägt **genau ein** Knoten ein
 gegebenes Fragment — sind auf derselben Seite z. B. sowohl `NGO` als auch
 `Organization` global konfiguriert, erhält nur der in Ausgabereihenfolge
 erste Knoten die `@id` (De-Dup-Guard, siehe unten). Schema-Dateien ohne
@@ -467,8 +469,7 @@ aktiv, hat dieser ausdrückliche Nutzerwunsch Vorrang — in diesem Fall wird di
 `id_reference` **nicht** emittiert (kein Dangling-`@id` gegen den Nutzerwillen).
 
 > **Künftige Optionen (noch nicht umgesetzt):** ein optionales manuelles
-> Basis-URL-/Domain-Setting (für Reverse-Proxy-/CDN-Szenarien), die Deklaration
-> des `organization`-Fragments auch für die LocalBusiness-Familie sowie die
+> Basis-URL-/Domain-Setting (für Reverse-Proxy-/CDN-Szenarien) sowie die
 > Darstellung einer Entität mit mehreren Typen über ein `@type`-Array.
 
 ---

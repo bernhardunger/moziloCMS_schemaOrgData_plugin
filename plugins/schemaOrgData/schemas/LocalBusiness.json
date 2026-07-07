@@ -6,6 +6,7 @@
   "ui:typeLabel": "schema_type_localbusiness",
   "ui:scopes": ["global", "category"],
   "ui:family": "localBusiness",
+  "ui:idFragment": "organization",
   "required": ["name", "url"],
   "properties": {
     "name": {

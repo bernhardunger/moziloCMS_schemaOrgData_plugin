@@ -282,7 +282,7 @@ final class JsonLdBuilderTest extends TestCase {
         $_SERVER['SCRIPT_NAME'] = '/index.php';
 
         $assigned = [];
-        $id = $builder->resolveNodeId($schemaRepo, $urlHelper, $this->pluginSelfDir(), 'LocalBusiness', $assigned);
+        $id = $builder->resolveNodeId($schemaRepo, $urlHelper, $this->pluginSelfDir(), 'WebSite', $assigned);
 
         $this->assertSame('', $id);
         $this->assertSame([], $assigned);
