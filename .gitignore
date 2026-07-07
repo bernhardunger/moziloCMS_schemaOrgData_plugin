@@ -11,4 +11,6 @@ tests/PLAYWRIGHT-VERIFICATION.md
 /.claude/
 .git-doku/
 /scripts/doku-commit.sh
+tests/js/node_modules/
+tests/js/package-lock.json
 

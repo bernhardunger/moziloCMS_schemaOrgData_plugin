@@ -551,6 +551,21 @@
         var group = input.closest('.schemaOrgData-opening-hours-group');
         var feedbackId = (fromInput ? fromInput.id : input.id) + '_feedback';
         showFieldFeedback(group || input, feedbackId, result, onlyClearErrors);
+
+        // Wird ein Hauptzeitraum-Feld geändert (nicht die Pause selbst), kann sich
+        // dadurch die Überlappungslage einer bereits eingetragenen Pause ändern
+        // (die Pause wurde nicht angefasst, ihr zuletzt angezeigtes Feedback bezieht
+        // sich aber auf den jetzt veralteten Hauptzeitraum-Wert) - siehe Befund aus
+        // /code-review high (2026-07-06). Die Pause wird daher zusätzlich (nicht
+        // anstatt) mit-revalidiert, analog zu runEventDateValidation()/
+        // updateEndDateFeedback(), wo eine startDate-Änderung ebenfalls die
+        // Bereichsprüfung des zugehörigen endDate-Felds auslöst.
+        if (!isSecondRange) {
+            var from2Input = document.getElementById(input.id.replace(/_(from|to)$/, '_from2'));
+            if (from2Input) {
+                runOpeningHoursValidation(from2Input, onlyClearErrors);
+            }
+        }
     }
 
     /**
