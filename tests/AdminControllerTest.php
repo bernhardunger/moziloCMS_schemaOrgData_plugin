@@ -237,6 +237,52 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
+    * [TEMP] Dev-Reset-Button (SchemaOrgData_AdminController::
+    * DEV_RESET_BUTTON_ENABLED) - vor Fahrplan-Schritt 7
+    * (Feature-Freeze) wieder entfernen, siehe doc/TODO.md.
+    * Deckt alle drei Geltungsbereiche ab, da der Button je Scope
+    * einen eigenen Namen (schemaOrgData_delete_{scope}) trägt, der
+    * vom bestehenden handlePostRequest()-Pfad ausgewertet wird.
+    *
+    ***************************************************************/
+    function testRenderScopeSectionEnthaeltDevResetButtonFuerAlleScopes(): void {
+        $globalHtml = $this->callRenderScopeSection('global', null, null, true, 'global', false, new \InMemorySettings());
+        $this->assertStringContainsString('name="schemaOrgData_delete_global"', $globalHtml);
+
+        $catHtml = $this->callRenderScopeSection('category', 'ueber-uns', null, true, 'category', false, new \InMemorySettings());
+        $this->assertStringContainsString('name="schemaOrgData_delete_category"', $catHtml);
+
+        $pageHtml = $this->callRenderScopeSection('page', 'ueber-uns', 'team', true, 'page', false, new \InMemorySettings());
+        $this->assertStringContainsString('name="schemaOrgData_delete_page"', $pageHtml);
+    }
+
+    /***************************************************************
+    *
+    * [TEMP] Sicherheitsnetz-Verifikation für den Dev-Reset-Button:
+    * <button> wird vom generischen input/select/textarea-disabled-
+    * Mechanismus NICHT erfasst - die Klick-Sperre einer inaktiven
+    * Sektion greift stattdessen über das umschließende
+    * style="display:none" auf dem .schemaOrgData-scope-Container
+    * (gilt element-unabhängig für jeden Nachfahren, siehe
+    * validator.js activateSection()). Dieser Test stellt sicher,
+    * dass der Button weiterhin innerhalb dieses Containers liegt.
+    *
+    ***************************************************************/
+    function testRenderScopeSectionDevResetButtonInInaktiverSektionIstDurchDisplayNoneGeschuetzt(): void {
+        $html = $this->callRenderScopeSection('global', null, null, false, 'global', false, new \InMemorySettings());
+
+        $scopeDivPos = strpos($html, 'data-scope="global"');
+        $buttonPos = strpos($html, 'name="schemaOrgData_delete_global"');
+        $displayNonePos = strpos($html, 'style="display:none"');
+
+        $this->assertNotFalse($scopeDivPos);
+        $this->assertNotFalse($buttonPos);
+        $this->assertNotFalse($displayNonePos);
+        $this->assertLessThan($buttonPos, $displayNonePos);
+    }
+
+    /***************************************************************
+    *
     * Regressionstest für 0.2.2-beta: schlägt das Speichern fehl
     * (z. B. wegen ungültiger url), müssen die vom Nutzer
     * eingegebenen POST-Werte erhalten bleiben - auch wenn bereits
