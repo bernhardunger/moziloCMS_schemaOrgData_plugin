@@ -408,6 +408,92 @@ final class ConfigSaveServiceTest extends TestCase {
 
     /***************************************************************
     *
+    * Article.datePublished erhielt format: date-time (Befund aus dem
+    * manuellen AccountingService-Use-Case, siehe README.md) - der
+    * generische date-time-Mechanismus (normalizeEventDateInput() in
+    * sanitizePostData(), validateEventDateInput() in validateFormData())
+    * greift dadurch ohne Article-spezifischen Code.
+    *
+    ***************************************************************/
+    function testSaveConfigRoundTripArticleDatePublishedDeutschesFormatSpeichertIso(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'blog';
+
+        $postData = [
+            'type' => 'Article',
+            'data' => ['headline' => 'Testartikel', 'datePublished' => '15.03.2026'],
+            'extension' => ['Article' => ''],
+        ];
+
+        $result = $this->callSaveConfig('category', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame('2026-03-15', $settings->get('config_cat_blog')['Article']['datePublished']);
+    }
+
+    function testSaveConfigLehntUngueltigesArticleDatePublishedAb(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'blog';
+
+        $postData = [
+            'type' => 'Article',
+            'data' => ['headline' => 'Testartikel', 'datePublished' => 'nicht-valide'],
+            'extension' => ['Article' => ''],
+        ];
+
+        $result = $this->callSaveConfig('category', $postData, $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertFalse($settings->keyExists('config_cat_blog'));
+    }
+
+    /***************************************************************
+    *
+    * JobPosting.employmentType wurde im Nachzieh-Schritt auf volle
+    * schema.org-URIs umgestellt (siehe README.md) - die neu ergänzte
+    * generische Enum-Prüfung in validateFormData() muss einen noch
+    * gespeicherten alten rohen Wert ("FULL_TIME") beim Speichern ablehnen,
+    * statt ihn stillschweigend zu übernehmen.
+    *
+    ***************************************************************/
+    function testSaveConfigSpeichertGueltigeVolleUriBeiEmploymentType(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'jobs';
+        $_POST['schemaOrgData_page'] = 'entwickler';
+
+        $postData = [
+            'type' => 'JobPosting',
+            'data' => ['title' => 'Entwickler', 'description' => 'Stellenbeschreibung', 'employmentType' => 'https://schema.org/FULL_TIME'],
+            'extension' => ['JobPosting' => ''],
+        ];
+
+        $result = $this->callSaveConfig('page', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame('https://schema.org/FULL_TIME', $settings->get('config_page_jobs_entwickler')['JobPosting']['employmentType']);
+    }
+
+    function testSaveConfigLehntAltenRohenEnumWertBeiEmploymentTypeAb(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'jobs';
+        $_POST['schemaOrgData_page'] = 'entwickler';
+
+        $postData = [
+            'type' => 'JobPosting',
+            'data' => ['title' => 'Entwickler', 'description' => 'Stellenbeschreibung', 'employmentType' => 'FULL_TIME'],
+            'extension' => ['JobPosting' => ''],
+        ];
+
+        $result = $this->callSaveConfig('page', $postData, $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertFalse($settings->keyExists('config_page_jobs_entwickler'));
+    }
+
+    /***************************************************************
+    *
     * Eigenständiger, von config_global getrennter settings-Key gemäß
     * getScopeSettingsKey()-Konvention.
     *

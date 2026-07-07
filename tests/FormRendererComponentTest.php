@@ -581,4 +581,41 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertStringContainsString('placeholder="15.09.2026 19:00"', $html);
         $this->assertStringNotContainsString('2026-09-15T19:00:00', $html);
     }
+
+    // -----------------------------------------------------------
+    // renderField() - date-time-Redisplay Article.datePublished /
+    // renderSelectWidget() - JobPosting.employmentType-Labels
+    // -----------------------------------------------------------
+
+    private function articleSchema(): array {
+        return $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'Article');
+    }
+
+    private function jobPostingSchema(): array {
+        return $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'JobPosting');
+    }
+
+    function testRenderFieldZeigtGespeichertesIsoDatumBeiArticleDatePublishedAlsDeutschesDatum(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->articleSchema();
+
+        $html = $renderer->renderField(
+            'category', 'datePublished', $schema['properties']['datePublished'], '2026-03-15', $schema, [], null, null, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('value="15.03.2026"', $html);
+        $this->assertStringNotContainsString('value="2026-03-15"', $html);
+    }
+
+    function testRenderSelectWidgetZeigtUebersetztesLabelFuerJobPostingEmploymentType(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $fieldSchema = $this->jobPostingSchema()['properties']['employmentType'];
+
+        $html = $renderer->renderSelectWidget('fid', 'fname', $fieldSchema, 'https://schema.org/FULL_TIME', $this->adminLang(), 'deDE');
+
+        $this->assertMatchesRegularExpression('#<option value="https://schema\.org/FULL_TIME" selected="selected">Vollzeit</option>#', $html);
+        $this->assertStringNotContainsString('>https://schema.org/FULL_TIME<', $html);
+    }
 }

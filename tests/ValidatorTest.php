@@ -753,4 +753,81 @@ final class ValidatorTest extends TestCase {
 
         $this->assertNotEmpty($errors, 'fehlender addressLocality-Pflichtwert muss über das place-Widget gemeldet werden');
     }
+
+    // -----------------------------------------------------------
+    // validateFormData() / validatePostalAddressData() - generische
+    // Enum-Prüfung (Nachzieh-Schritt zur employmentType-URI-Umstellung)
+    // -----------------------------------------------------------
+
+    private function jobPostingSchema(): array {
+        return $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'JobPosting');
+    }
+
+    function testValidateFormDataOkBeiGueltigemEnumWertEventAttendanceMode(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'name' => 'Sommerfest',
+            'startDate' => '2026-09-15T19:00:00+02:00',
+            'eventAttendanceMode' => 'https://schema.org/OfflineEventAttendanceMode',
+        ];
+        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertSame([], $errors);
+    }
+
+    function testValidateFormDataMeldetUngueltigenEnumWertEventStatus(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'name' => 'Sommerfest',
+            'startDate' => '2026-09-15T19:00:00+02:00',
+            'eventStatus' => 'FOO',
+        ];
+        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertContains(
+            $this->adminLang()->getLanguageValue('error_invalid_format', $this->adminLang()->getLanguageValue('label_event_status')),
+            $errors
+        );
+    }
+
+    function testValidateFormDataOkBeiGueltigerVollerUriEmploymentType(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = ['title' => 'Entwickler', 'description' => 'Stellenbeschreibung', 'employmentType' => 'https://schema.org/FULL_TIME'];
+        $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertSame([], $errors);
+    }
+
+    function testValidateFormDataMeldetAltenRohenEnumWertEmploymentType(): void {
+        // Regressionstest für den Nachzieh-Schritt: nach der Umstellung von
+        // employmentType auf volle schema.org-URIs muss ein noch gespeicherter,
+        // alter roher Wert ("FULL_TIME") als ungültig erkannt werden - ohne
+        // diese Prüfung würde renderSelectWidget() kein <option> mehr als
+        // "selected" markieren und ein Resave den Wert stillschweigend verlieren.
+        $validator = new \SchemaOrgData_Validator();
+        $formData = ['title' => 'Entwickler', 'description' => 'Stellenbeschreibung', 'employmentType' => 'FULL_TIME'];
+        $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertNotEmpty($errors);
+    }
+
+    function testValidatePostalAddressDataOkBeiGueltigemAddressCountry(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $errors = $validator->validatePostalAddressData(
+            ['addressCountry' => 'DE', 'addressLocality' => 'Musterstadt'],
+            $this->postalAddressFieldSchema(), [], $this->adminLang()
+        );
+
+        $this->assertSame([], $errors);
+    }
+
+    function testValidatePostalAddressDataMeldetUngueltigenAddressCountry(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $errors = $validator->validatePostalAddressData(
+            ['addressCountry' => 'XX', 'addressLocality' => 'Musterstadt'],
+            $this->postalAddressFieldSchema(), [], $this->adminLang()
+        );
+
+        $this->assertNotEmpty($errors);
+    }
 }

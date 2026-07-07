@@ -206,11 +206,22 @@ class SchemaOrgData_Validator {
             }
 
             $format = $fieldSchema['format'] ?? null;
+            $enum = $fieldSchema['enum'] ?? null;
+
+            // Enum-Zugehörigkeit prüfen: ohne diese Prüfung würde ein nicht mehr
+            // zur enum-Liste passender gespeicherter Wert (z. B. nach einer
+            // Enum-Wertänderung im Schema) in renderSelectWidget() kein <option>
+            // als "selected" markieren; der Browser zeigt dann optisch die erste
+            // Option an, ein nachfolgendes Speichern würde diesen Wert
+            // stillschweigend übernehmen. Siehe README.md, Abschnitt
+            // "Formularvalidierung".
             $result = match(true) {
                 $format === 'uri'       => $this->validateUrl($stringValue, $lang),
                 $format === 'email'     => $this->validateEmail($stringValue, $lang),
                 $format === 'date-time' => $this->validateEventDateInput($stringValue, $lang),
                 $name === 'telephone'   => $this->validateTelephone($stringValue, (string) ($formData['address']['addressCountry'] ?? 'DE'), $lang),
+                is_array($enum) and !in_array($stringValue, $enum, true)
+                    => ['status' => 'error', 'message' => $lang->getLanguageValue('error_invalid_format', $label)],
                 default                 => ['status' => null, 'message' => null],
             };
 
@@ -633,6 +644,14 @@ class SchemaOrgData_Validator {
                     $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
                     $errors[] = $lang->getLanguageValue('error_required_field', $subLabel);
                 }
+            }
+
+            // Enum-Zugehörigkeit (z. B. addressCountry), additiv analog zu
+            // validateFormData() - siehe README.md, Abschnitt "Formularvalidierung".
+            $subEnum = $subSchema['enum'] ?? null;
+            if($subValue !== '' and is_array($subEnum) and !in_array($subValue, $subEnum, true)) {
+                $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
+                $errors[] = $lang->getLanguageValue('error_invalid_format', $subLabel);
             }
         }
 

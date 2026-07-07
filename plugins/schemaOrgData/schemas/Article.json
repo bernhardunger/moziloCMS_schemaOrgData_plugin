@@ -37,16 +37,18 @@
     },
     "datePublished": {
       "type": "string",
+      "format": "date-time",
       "ui:widget": "text",
       "ui:label": "label_date_published",
-      "ui:placeholder": "YYYY-MM-DD",
+      "ui:placeholder": "15.03.2026",
       "ui:required": false
     },
     "dateModified": {
       "type": "string",
+      "format": "date-time",
       "ui:widget": "text",
       "ui:label": "label_date_modified",
-      "ui:placeholder": "YYYY-MM-DD",
+      "ui:placeholder": "15.03.2026",
       "ui:required": false
     },
     "url": {
