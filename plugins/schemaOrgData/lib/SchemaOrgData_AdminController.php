@@ -32,14 +32,6 @@
 class SchemaOrgData_AdminController {
 
     /***************************************************************
-    * ⚠️ TEMPORÄR - VOR PRODUKTIONS-RELEASE ENTFERNEN ⚠️
-    * Schaltet den Dev-Reset-Button (siehe renderScopeSection()) für
-    * schnelleres manuelles Testen frei. Pflichtpunkt vor
-    * Fahrplan-Schritt 7 (Feature-Freeze), siehe doc/TODO.md.
-    ***************************************************************/
-    private const DEV_RESET_BUTTON_ENABLED = true;
-
-    /***************************************************************
     *
     * Rendert den vollständigen Konfigurationsblock einer
     * Geltungsebene: Info-Block, Hinweis auf vorhandenes JSON-LD
@@ -174,13 +166,6 @@ class SchemaOrgData_AdminController {
               . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'"'
               . ' data-scope-label="'.$labelAttr.'" data-save-label="'.$saveLabelAttr.'"'.$displayStyle.'>'."\n";
         $html .= '<h3>'.$lang->getLanguageHtml('scope_'.$scope).'</h3>'."\n";
-
-        if(self::DEV_RESET_BUTTON_ENABLED) {
-            $html .= '<button type="submit" name="schemaOrgData_delete_'.$scope.'" value="1" '
-                . 'class="mo-btn" style="background:#c0392b;color:#fff;margin-bottom:1em;" '
-                . 'onclick="return confirm(\'[TEMP] Konfiguration für diese Ebene wirklich unwiderruflich löschen?\');">'
-                . '🗑 [TEMP] Diese Ebene löschen</button>'."\n";
-        }
 
         $html .= $adminPageRenderer->renderInfoBlock($scope, $lang);
 
