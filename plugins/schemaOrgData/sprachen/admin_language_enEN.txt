@@ -145,6 +145,7 @@ option_override_existing_jsonld = Overwrite with plugin configuration
 notice_keep_consequence_hint = Note: As long as "Keep existing" is selected, the plugin does not output any JSON-LD of its own for this scope - even if the form below is filled in and saved. The form data only takes effect once you switch to "Overwrite with plugin configuration".
 
 label_import_jsonld = Import existing JSON-LD
+label_import_target = JSON-LD block to import:
 description_import_jsonld = Insert an existing JSON-LD block. Known fields are filled in automatically, unknown properties are moved to the extension field. This overwrites the current configuration. After clicking "Import", the form fields below are filled in with the detected values - nothing is saved until you click the save button.
 button_import = Import
 

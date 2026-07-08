@@ -145,6 +145,7 @@ option_override_existing_jsonld = Mit Plugin-Konfiguration überschreiben
 notice_keep_consequence_hint = Hinweis: Solange „Vorhandenes beibehalten" gewählt ist, gibt das Plugin für diesen Geltungsbereich keine eigene JSON-LD-Ausgabe aus - auch nicht, wenn das Formular unten ausgefüllt und gespeichert wird. Die Formulardaten wirken sich erst aus, sobald auf „Mit Plugin-Konfiguration überschreiben" umgeschaltet wird.
 
 label_import_jsonld = Vorhandenes JSON-LD importieren
+label_import_target = Zu importierender JSON-LD-Block:
 description_import_jsonld = Fügt einen bestehenden JSON-LD-Block ein. Bekannte Felder werden automatisch übernommen, unbekannte Properties wandern ins Erweiterungsfeld. Überschreibt die aktuelle Konfiguration. Nach dem Klick auf „Importieren" werden die Formularfelder unten mit den erkannten Werten befüllt - gespeichert wird erst über den Speichern-Button.
 button_import = Importieren
 

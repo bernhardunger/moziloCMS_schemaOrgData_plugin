@@ -451,6 +451,28 @@ final class AdminPageRendererTest extends TestCase {
     * und rows="8" statt bisher rows="6".
     *
     ***************************************************************/
+    /***************************************************************
+    *
+    * Batch A Punkt 6 (Import-Textarea sichtbar beschriften): eine
+    * sichtbare <p>-Beschriftung erscheint direkt über der Textarea
+    * (kein <label for="...">, sonst Doppel-Label-Regression - Test
+    * testRenderExistingJsonLdNoticeInnerLabelEntfernt() bleibt grün).
+    *
+    ***************************************************************/
+    function testRenderExistingJsonLdNoticeZeigtSichtbareImportBeschriftung(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('schemaOrgData-import-target-label', $html);
+        $this->assertStringContainsString($this->adminLang()->getLanguageValue('label_import_target'), $html);
+    }
+
     function testRenderExistingJsonLdNoticeImportTextareaHatKlasseUndAchtZeilen(): void {
         [$plugin, $settings] = $this->pluginWithInMemorySettings();
         (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($settings, 'global', ['existing_jsonld' => true]);
