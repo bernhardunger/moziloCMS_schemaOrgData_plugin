@@ -43,6 +43,21 @@
       "ui:placeholder": "https://www.beispiel.de/logo.png",
       "ui:required": false
     },
+    "telephone": {
+      "type": "string",
+      "ui:widget": "text",
+      "ui:label": "label_telephone",
+      "ui:placeholder": "+49 89 12345678",
+      "ui:required": false
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "ui:widget": "text",
+      "ui:label": "label_email",
+      "ui:placeholder": "info@beispiel.de",
+      "ui:required": false
+    },
     "nonprofitStatus": {
       "type": "string",
       "ui:widget": "select",

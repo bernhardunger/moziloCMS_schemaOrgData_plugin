@@ -206,4 +206,50 @@ final class FormRendererTest extends TestCase {
     * erhält den geerbten Wert als Placeholder und das "ü"-Badge.
     *
     ***************************************************************/
+
+    /***************************************************************
+    *
+    * Batch A Punkt 2: NGO/Organization-Feldsymmetrie - beide Types
+    * beschreiben denselben globalen Organisationsknoten, daher dürfen
+    * die verfügbaren Kontaktfelder nicht von der Type-Wahl abhängen.
+    * NGO erhält telephone/email (aus Organization.json), Organization
+    * erhält address (aus NGO.json).
+    *
+    ***************************************************************/
+    function testNgoSchemaEnthaeltTelephoneUndEmail(): void {
+        $plugin = new \schemaOrgData();
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'NGO');
+
+        $this->assertNotNull($schema);
+        $this->assertSame('text', $schema['properties']['telephone']['ui:widget']);
+        $this->assertSame('text', $schema['properties']['email']['ui:widget']);
+
+        $html = (new \SchemaOrgData_FormRenderer())->renderTypeFields(
+            'global', 'NGO', $schema, [], null, null, ['data' => [], 'originLabel' => []],
+            new \SchemaOrgData_DataSplitHelper(), $this->adminLang(), new \SchemaOrgData_SchemaRepository(),
+            new \SchemaOrgData_UrlHelper(), 'deDE', $plugin->PLUGIN_SELF_URL, new \SchemaOrgData_OpeningHoursHelper(),
+            new \SchemaOrgData_Validator(), $this->weekdayLang(), $this->availableFragments($plugin)
+        );
+
+        $this->assertStringContainsString('name="schemaOrgData[global][data][telephone]"', $html);
+        $this->assertStringContainsString('name="schemaOrgData[global][data][email]"', $html);
+    }
+
+    function testOrganizationSchemaEnthaeltAddress(): void {
+        $plugin = new \schemaOrgData();
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'Organization');
+
+        $this->assertNotNull($schema);
+        $this->assertSame('#/definitions/PostalAddress', $schema['properties']['address']['$ref']);
+        $this->assertSame('postal_address', $schema['definitions']['PostalAddress']['ui:widget']);
+
+        $html = (new \SchemaOrgData_FormRenderer())->renderTypeFields(
+            'global', 'Organization', $schema, [], null, null, ['data' => [], 'originLabel' => []],
+            new \SchemaOrgData_DataSplitHelper(), $this->adminLang(), new \SchemaOrgData_SchemaRepository(),
+            new \SchemaOrgData_UrlHelper(), 'deDE', $plugin->PLUGIN_SELF_URL, new \SchemaOrgData_OpeningHoursHelper(),
+            new \SchemaOrgData_Validator(), $this->weekdayLang(), $this->availableFragments($plugin)
+        );
+
+        $this->assertStringContainsString('schemaOrgData_global_address_addressLocality', $html);
+    }
 }

@@ -631,5 +631,39 @@ final class JsonLdBuilderTest extends TestCase {
 
         $this->assertSame('https://www.example.org/#organization', $decoded['hiringOrganization']['@id']);
     }
+
+    // -----------------------------------------------------------
+    // Batch A Punkt 2: NGO/Organization-Feldsymmetrie - beide Types
+    // beschreiben denselben globalen Organisationsknoten, daher dürfen
+    // die verfügbaren Kontaktfelder nicht von der Type-Wahl abhängen.
+    // -----------------------------------------------------------
+
+    function testNgoOutputsTelephoneAndEmailDirekt(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'NGO', [
+            'name' => 'Beispiel e. V.',
+            'url' => 'https://www.example.org',
+            'telephone' => '+49 89 12345678',
+            'email' => 'info@example.org',
+        ]);
+
+        $this->assertSame('+49 89 12345678', $decoded['telephone']);
+        $this->assertSame('info@example.org', $decoded['email']);
+    }
+
+    function testOrganizationOutputsNestedPostalAddressDirekt(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'Organization', [
+            'name' => 'Muster GmbH',
+            'url' => 'https://www.example.org',
+            'address' => [
+                'streetAddress' => 'Musterstraße 12',
+                'postalCode' => '12345',
+                'addressLocality' => 'Musterstadt',
+                'addressCountry' => 'DE',
+            ],
+        ]);
+
+        $this->assertSame('PostalAddress', $decoded['address']['@type']);
+        $this->assertSame('Musterstadt', $decoded['address']['addressLocality']);
+    }
 }
 
