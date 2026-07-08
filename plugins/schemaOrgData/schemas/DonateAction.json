@@ -5,6 +5,7 @@
   "type": "object",
   "ui:typeLabel": "schema_type_donateaction",
   "ui:scopes": ["page"],
+  "required": ["recipient"],
   "properties": {
     "description": {
       "type": "string",

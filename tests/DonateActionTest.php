@@ -157,6 +157,20 @@ final class DonateActionTest extends TestCase {
         $this->assertFalse((bool) ($description['ui:required'] ?? false));
     }
 
+    /***************************************************************
+    *
+    * Freeze-Fix-Batch Punkt 7: DonateAction.json hatte als einzige
+    * Schema-Datei gar kein Top-Level "required"-Array, obwohl
+    * "recipient" bereits ui:required: true trägt.
+    *
+    ***************************************************************/
+    function testDonateActionSchemaHasRequiredArrayMatchingUiRequired(): void {
+        $plugin = $this->createPlugin();
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'DonateAction');
+
+        $this->assertSame(['recipient'], $schema['required']);
+    }
+
     // -----------------------------------------------------------
     // buildJsonLdScript(): id_reference-Emission
     // -----------------------------------------------------------
