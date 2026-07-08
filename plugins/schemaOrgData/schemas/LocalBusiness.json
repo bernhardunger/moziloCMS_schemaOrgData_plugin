@@ -56,6 +56,28 @@
     "address": {
       "$ref": "#/definitions/PostalAddress"
     },
+    "geo": {
+      "type": "object",
+      "ui:widget": "geo",
+      "ui:label": "label_geo",
+      "ui:required": false,
+      "properties": {
+        "latitude": {
+          "type": "number",
+          "ui:widget": "text",
+          "ui:label": "label_geo_latitude",
+          "ui:placeholder": "48.12567",
+          "ui:required": false
+        },
+        "longitude": {
+          "type": "number",
+          "ui:widget": "text",
+          "ui:label": "label_geo_longitude",
+          "ui:placeholder": "11.64278",
+          "ui:required": false
+        }
+      }
+    },
     "openingHours": {
       "type": "array",
       "items": {
