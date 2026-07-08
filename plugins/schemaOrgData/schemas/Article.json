@@ -40,7 +40,7 @@
       "format": "date-time",
       "ui:widget": "text",
       "ui:label": "label_date_published",
-      "ui:placeholder": "15.03.2026",
+      "ui:placeholder": "TT.MM.YYYY",
       "ui:required": false
     },
     "dateModified": {
@@ -48,7 +48,7 @@
       "format": "date-time",
       "ui:widget": "text",
       "ui:label": "label_date_modified",
-      "ui:placeholder": "15.03.2026",
+      "ui:placeholder": "TT.MM.YYYY",
       "ui:required": false
     },
     "url": {

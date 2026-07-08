@@ -26,7 +26,7 @@
       "format": "date-time",
       "ui:widget": "text",
       "ui:label": "label_date_posted",
-      "ui:placeholder": "15.03.2026",
+      "ui:placeholder": "TT.MM.YYYY",
       "ui:required": true
     },
     "validThrough": {
@@ -34,7 +34,7 @@
       "format": "date-time",
       "ui:widget": "text",
       "ui:label": "label_valid_through",
-      "ui:placeholder": "15.03.2026",
+      "ui:placeholder": "TT.MM.YYYY",
       "ui:required": false
     },
     "employmentType": {
