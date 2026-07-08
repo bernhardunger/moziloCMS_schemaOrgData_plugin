@@ -75,7 +75,8 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-address-field--narrow { flex: 0 0 80px !important; }
 .schemaOrgData-admin .schemaOrgData-address-field--narrow input { max-width: 80px; }
 .schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
-.schemaOrgData-admin .schemaOrgData-extension-field { font-family: monospace; resize: vertical; }
+.schemaOrgData-admin .schemaOrgData-extension-field { width: 100%; box-sizing: border-box; font-family: monospace; resize: vertical; }
+.schemaOrgData-admin .schemaOrgData-import-textarea { width: 100%; box-sizing: border-box; }
 .schemaOrgData-admin select[id$="_addressCountry"] { max-width: 200px; }
 .schemaOrgData-admin input[id$="_addressRegion"] { max-width: 300px; }
 .schemaOrgData-admin .schemaOrgData-idrl-container { margin-bottom: .25em; }
@@ -343,7 +344,7 @@ class SchemaOrgData_AdminPageRenderer {
         $importAriaLabel = htmlspecialchars($lang->getLanguageValue('label_import_jsonld'), ENT_QUOTES, CHARSET);
         $importValueAttr = htmlspecialchars($importTextareaValue, ENT_QUOTES, CHARSET);
         $html .= '<textarea id="schemaOrgData_import_'.$scope.'" name="schemaOrgData_import_'.$scope.'"'
-            .' rows="6" aria-label="'.$importAriaLabel.'">'.$importValueAttr.'</textarea><br />'."\n";
+            .' class="schemaOrgData-import-textarea" rows="8" aria-label="'.$importAriaLabel.'">'.$importValueAttr.'</textarea><br />'."\n";
         $html .= '<button type="submit" name="schemaOrgData_import_action" value="'.$scope.'" class="mo-btn">'
             .$lang->getLanguageHtml('button_import').'</button>'."\n";
         $html .= '</p>'."\n";

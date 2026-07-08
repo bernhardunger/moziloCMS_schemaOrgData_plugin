@@ -446,6 +446,24 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
+    * Batch A Punkt 5 (Breiten-Fix Textareas): Import-Textarea erhält
+    * die Klasse schemaOrgData-import-textarea (width:100% via CSS)
+    * und rows="8" statt bisher rows="6".
+    *
+    ***************************************************************/
+    function testRenderExistingJsonLdNoticeImportTextareaHatKlasseUndAchtZeilen(): void {
+        [$plugin, $settings] = $this->pluginWithInMemorySettings();
+        (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($settings, 'global', ['existing_jsonld' => true]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), new \SchemaOrgData_ScopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('class="schemaOrgData-import-textarea" rows="8"', $html);
+    }
+
+    /***************************************************************
+    *
     * UX-Mini-Batch (Import-Vorschau, 2026-07-08): die Vorschau des
     * erkannten Blocks ist ein read-only <pre>, keine Textarea - eine
     * Textarea würde fälschlich Editierbarkeit suggerieren.
