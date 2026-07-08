@@ -1118,27 +1118,35 @@
      * @param {object} result Rückgabe von validateExtensionField()
      */
     function showExtensionFeedback(feedback, result) {
-        var html = '';
+        while (feedback.firstChild) {
+            feedback.removeChild(feedback.firstChild);
+        }
+
+        // Sicheres DOM-Bauen statt innerHTML - Property-Namen und
+        // AJV-Fehlermeldungen können Nutzereingaben enthalten (DOM-XSS-Schutz).
+        function appendFeedbackSpan(status, text) {
+            var span = document.createElement('span');
+            span.className = 'schemaOrgData-feedback schemaOrgData-feedback--' + status;
+            span.textContent = text;
+            feedback.appendChild(span);
+        }
 
         if (result.syntaxError) {
-            html = '<span class="schemaOrgData-feedback schemaOrgData-feedback--error">❌ ' + result.syntaxError + '</span>';
+            appendFeedbackSpan('error', '❌ ' + result.syntaxError);
         } else {
             result.unknownProperties.forEach(function (property) {
-                html += '<span class="schemaOrgData-feedback schemaOrgData-feedback--warning">⚠️ '
-                    + (getMessages().unknownProperty || property).replace('{PARAM1}', property) + '</span>';
+                appendFeedbackSpan('warning', '⚠️ '
+                    + (getMessages().unknownProperty || property).replace('{PARAM1}', property));
             });
 
             result.formatErrors.forEach(function (error) {
-                html += '<span class="schemaOrgData-feedback schemaOrgData-feedback--error">❌ '
-                    + (error.instancePath || '') + ' ' + error.message + '</span>';
+                appendFeedbackSpan('error', '❌ ' + (error.instancePath || '') + ' ' + error.message);
             });
 
-            if (html === '') {
-                html = '<span class="schemaOrgData-feedback schemaOrgData-feedback--ok">✅</span>';
+            if (feedback.children.length === 0) {
+                appendFeedbackSpan('ok', '✅');
             }
         }
-
-        feedback.innerHTML = html;
     }
 
     /**
@@ -1287,6 +1295,7 @@
         validateRequiredField: validateRequiredField,
         validateOpeningHoursTime: validateOpeningHoursTime,
         validateEventDateInput: validateEventDateInput,
+        showExtensionFeedback: showExtensionFeedback,
         initExcludedCatsSelectAll: initExcludedCatsSelectAll,
         initAutofillButton: initAutofillButton,
         initAdminForm: initAdminForm

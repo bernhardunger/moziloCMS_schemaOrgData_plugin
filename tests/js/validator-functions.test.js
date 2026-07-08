@@ -217,4 +217,58 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
             expect(result.formatErrors.length).toBeGreaterThan(0);
         });
     });
+
+    describe('showExtensionFeedback() - DOM-XSS-Schutz (Freeze-Fix-Batch Punkt 3)', function () {
+        var feedback;
+
+        beforeEach(function () {
+            feedback = document.createElement('div');
+            document.body.appendChild(feedback);
+        });
+
+        test('Property-Name mit script-artigem Inhalt landet als Text, nicht als Markup', function () {
+            var result = {
+                syntaxError: null,
+                unknownProperties: ['<img src=x onerror=alert(1)>'],
+                formatErrors: []
+            };
+
+            validator.showExtensionFeedback(feedback, result);
+
+            expect(feedback.querySelector('script')).toBeNull();
+            expect(feedback.querySelector('img')).toBeNull();
+            expect(feedback.textContent).toContain('<img src=x onerror=alert(1)>');
+        });
+
+        test('AJV-Fehlermeldung mit script-artigem Inhalt landet als Text, nicht als Markup', function () {
+            var result = {
+                syntaxError: null,
+                unknownProperties: [],
+                formatErrors: [{ instancePath: '</span><script>alert(1)</script>', message: 'kaputt' }]
+            };
+
+            validator.showExtensionFeedback(feedback, result);
+
+            expect(feedback.querySelector('script')).toBeNull();
+            expect(feedback.textContent).toContain('</span><script>alert(1)</script>');
+        });
+
+        test('syntaxError mit script-artigem Inhalt landet als Text, nicht als Markup', function () {
+            var result = { syntaxError: '<script>alert(1)</script>', unknownProperties: [], formatErrors: [] };
+
+            validator.showExtensionFeedback(feedback, result);
+
+            expect(feedback.querySelector('script')).toBeNull();
+            expect(feedback.textContent).toContain('<script>alert(1)</script>');
+        });
+
+        test('valide Daten ohne Warnungen/Fehler zeigen genau ein OK-Feedback', function () {
+            var result = { syntaxError: null, unknownProperties: [], formatErrors: [] };
+
+            validator.showExtensionFeedback(feedback, result);
+
+            expect(feedback.children.length).toBe(1);
+            expect(feedback.querySelector('.schemaOrgData-feedback--ok')).not.toBeNull();
+        });
+    });
 });
