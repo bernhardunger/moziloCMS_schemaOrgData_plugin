@@ -87,6 +87,38 @@ final class FormRendererTest extends TestCase {
 
     /***************************************************************
     *
+    * Freeze-Fix-Batch Punkt 4: ProfessionalService.json fehlten
+    * address/openingHours/image im Vergleich zu den übrigen Mitgliedern
+    * der LocalBusiness-Familie (LocalBusiness/LegalService/
+    * MedicalBusiness/AccountingService) - Nachtrag, 1:1 aus
+    * LegalService.json übernommen.
+    *
+    ***************************************************************/
+    function testProfessionalServiceSchemaEnthaeltAdressOeffnungszeitenBildFelder(): void {
+        $plugin = new \schemaOrgData();
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'ProfessionalService');
+
+        $this->assertNotNull($schema);
+        $this->assertSame('opening_hours', $schema['properties']['openingHours']['ui:widget']);
+        $this->assertSame('text', $schema['properties']['image']['ui:widget']);
+
+        $addressSchema = (new \SchemaOrgData_SchemaRepository())->resolveSchemaRef($schema['properties']['address'], $schema);
+        $this->assertSame('postal_address', $addressSchema['ui:widget']);
+
+        $html = (new \SchemaOrgData_FormRenderer())->renderTypeFields(
+            'global', 'ProfessionalService', $schema, [], null, null, ['data' => [], 'originLabel' => []],
+            new \SchemaOrgData_DataSplitHelper(), $this->adminLang(), new \SchemaOrgData_SchemaRepository(),
+            new \SchemaOrgData_UrlHelper(), 'deDE', $plugin->PLUGIN_SELF_URL, new \SchemaOrgData_OpeningHoursHelper(),
+            new \SchemaOrgData_Validator(), $this->weekdayLang(), $this->availableFragments($plugin)
+        );
+
+        $this->assertStringContainsString('schemaOrgData-opening-hours', $html);
+        $this->assertStringContainsString('name="schemaOrgData[global][data][image]"', $html);
+        $this->assertStringContainsString('schemaOrgData_global_address_addressLocality', $html);
+    }
+
+    /***************************************************************
+    *
     * Regressionstest für die addressLocality-Pflichtfeld-Validierung
     * (Fix in 0.2.0-beta): das Feld muss data-validate="required" und
     * eine vollständig aufgelöste data-required-message tragen, damit

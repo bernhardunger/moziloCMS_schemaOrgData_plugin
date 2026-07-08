@@ -567,5 +567,30 @@ final class JsonLdBuilderTest extends TestCase {
         $this->assertSame('Place', $decoded['location']['@type']);
         $this->assertSame('PostalAddress', $decoded['location']['address']['@type']);
     }
+
+    // -----------------------------------------------------------
+    // Freeze-Fix-Batch Punkt 4: ProfessionalService.json jetzt mit
+    // address/openingHours/image (Nachtrag zur LocalBusiness-Familie)
+    // -----------------------------------------------------------
+
+    function testProfessionalServiceWithAddressProducesNestedPostalAddressDirekt(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'ProfessionalService', [
+            'name' => 'Musterkanzlei',
+            'url' => 'https://example.com',
+            'address' => [
+                'streetAddress' => 'Musterstraße 12',
+                'postalCode' => '12345',
+                'addressLocality' => 'Musterstadt',
+                'addressCountry' => 'DE',
+            ],
+            'openingHours' => ['Mo-Fr 09:00-18:00'],
+            'image' => 'https://example.com/bild.jpg',
+        ]);
+
+        $this->assertSame('PostalAddress', $decoded['address']['@type']);
+        $this->assertSame('Musterstadt', $decoded['address']['addressLocality']);
+        $this->assertSame(['Mo-Fr 09:00-18:00'], $decoded['openingHours']);
+        $this->assertSame('https://example.com/bild.jpg', $decoded['image']);
+    }
 }
 
