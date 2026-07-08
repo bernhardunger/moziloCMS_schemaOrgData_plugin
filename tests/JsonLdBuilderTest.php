@@ -518,5 +518,54 @@ final class JsonLdBuilderTest extends TestCase {
 
         $this->assertArrayNotHasKey('organizer', $decoded);
     }
+
+    // -----------------------------------------------------------
+    // Erweiterungsfeld darf reservierte Schlüssel nicht überschreiben
+    // (Freeze-Fix-Batch Punkt 2)
+    // -----------------------------------------------------------
+
+    function testExtensionFieldCannotOverrideContextTypeOrIdDirekt(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'Organization', [
+            'name' => 'Beispiel GmbH',
+            '@context' => 'https://evil.example/',
+            '@type' => 'Person',
+            '@id' => 'https://evil.example/',
+        ], 'https://example.com/#organization');
+
+        $this->assertSame('https://schema.org', $decoded['@context']);
+        $this->assertSame('Organization', $decoded['@type']);
+        $this->assertSame('https://example.com/#organization', $decoded['@id']);
+    }
+
+    function testExtensionFieldCannotOverrideNestedAddressTypeDirekt(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'LocalBusiness', [
+            'name' => 'Muster GmbH',
+            'address' => [
+                '@type' => 'Thing',
+                'addressLocality' => 'Musterstadt',
+                'addressCountry' => 'DE',
+            ],
+        ]);
+
+        $this->assertSame('PostalAddress', $decoded['address']['@type']);
+    }
+
+    function testExtensionFieldCannotOverrideNestedLocationAddressTypeDirekt(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'Event', [
+            'name' => 'Sommerfest',
+            'startDate' => '2026-09-15T19:00:00+02:00',
+            'location' => [
+                'name' => 'Stadtpark',
+                'address' => [
+                    '@type' => 'Thing',
+                    'addressLocality' => 'Musterstadt',
+                    'addressCountry' => 'DE',
+                ],
+            ],
+        ]);
+
+        $this->assertSame('Place', $decoded['location']['@type']);
+        $this->assertSame('PostalAddress', $decoded['location']['address']['@type']);
+    }
 }
 

@@ -145,9 +145,13 @@ class SchemaOrgData_JsonLdBuilder {
         $data = $this->removeEmptyJsonLdProperties($data);
 
         // Adresse, Geokoordinaten, Mitarbeiter und Veranstaltungsort als
-        // verschachtelte, typisierte schema.org-Objekte ausgeben.
+        // verschachtelte, typisierte schema.org-Objekte ausgeben. Ein
+        // eventuell im Erweiterungsfeld mitgeliefertes "@type" wird vorher
+        // entfernt, damit der schema-vorgegebene Type nicht überschreibbar ist
+        // (analoges Muster zu den reservierten Top-Level-Schlüsseln oben).
         foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person', 'location' => 'Place'] as $property => $nestedType) {
             if(isset($data[$property]) and is_array($data[$property])) {
+                unset($data[$property]['@type']);
                 $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
             }
         }
@@ -155,6 +159,7 @@ class SchemaOrgData_JsonLdBuilder {
         // location.address ist eine Ebene tiefer als die obige Map reicht -
         // eigener PostalAddress-@type für die verschachtelte Adresse (Event.location).
         if(isset($data['location']['address']) and is_array($data['location']['address'])) {
+            unset($data['location']['address']['@type']);
             $data['location']['address'] = array_merge(['@type' => 'PostalAddress'], $data['location']['address']);
         }
 
@@ -207,6 +212,13 @@ class SchemaOrgData_JsonLdBuilder {
                     }
                 }
             }
+        }
+
+        // Reservierte Top-Level-Schlüssel dürfen vom Erweiterungsfeld
+        // (bereits mit den Formulardaten in $data zusammengeführt) nicht
+        // überschrieben werden - $head gewinnt für @context/@type/@id immer.
+        foreach(['@context', '@type', '@id'] as $reservedKey) {
+            unset($data[$reservedKey]);
         }
 
         // @id-Anker erst NACH dem Leerfilter setzen, damit ein gesetzter
