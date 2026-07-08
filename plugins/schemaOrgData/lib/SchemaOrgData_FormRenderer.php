@@ -499,6 +499,125 @@ class SchemaOrgData_FormRenderer {
 
     /***************************************************************
     *
+    * Rendert das Geo-Widget (GeoCoordinates: latitude/longitude) als
+    * gruppierte Zeile (analog renderAddressFieldGroup(), PLZ+Ort).
+    * Paar-Pflicht "beides oder nichts": ist nur eines der beiden Felder
+    * gefüllt, wird am jeweils leeren Feld error_geo_incomplete
+    * angezeigt (siehe resolveGeoFieldFeedback()); sind beide gefüllt,
+    * wird jedes einzeln gegen seinen Wertebereich geprüft
+    * (validateGeoLatitude/validateGeoLongitude - dieselben Methoden,
+    * die bereits für das Erweiterungsfeld verwendet werden, siehe
+    * validateExtensionGeo()).
+    *
+    * @param string $scope Geltungsbereich ('global'|'category'|'page')
+    * @param string $name  Property-Name (üblicherweise "geo")
+    * @param array<string, mixed> $fieldSchema bereits via resolveSchemaRef() aufgelöstes Schema
+    * @param array<string, mixed> $value gespeicherte latitude/longitude-Werte
+    * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
+    * @param array|null $inheritedValue latitude/longitude, die von einer
+    *        übergeordneten Ebene geerbt würden - nur für Placeholder +
+    *        "ü"-Badge, wird nicht übernommen (analog renderAddressSubField())
+    * @param string|null $inheritedLabel lesbares Label der Ursprungsebene
+    *        (siehe buildScopeLabel()), für den Badge-Tooltip
+    * @param Language $lang für Labels/Badges/Fehlermeldungen
+    * @param SchemaOrgData_Validator $validator für validateGeoLatitude()/validateGeoLongitude()
+    *
+    ***************************************************************/
+    public function renderGeoWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator): string {
+        $idPrefix = $idPrefix ?? $scope;
+        $properties = $fieldSchema['properties'] ?? [];
+        $latSchema = $properties['latitude'] ?? [];
+        $lonSchema = $properties['longitude'] ?? [];
+
+        $latValue = $value['latitude'] ?? null;
+        $lonValue = $value['longitude'] ?? null;
+        $latString = trim((string) ($latValue ?? ''));
+        $lonString = trim((string) ($lonValue ?? ''));
+
+        $latId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_latitude';
+        $lonId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_longitude';
+        $latName = 'schemaOrgData['.$scope.'][data]['.$name.'][latitude]';
+        $lonName = 'schemaOrgData['.$scope.'][data]['.$name.'][longitude]';
+
+        // Placeholder + "ü"-Badge für ein leeres Sub-Feld, dessen Wert von
+        // einer übergeordneten Ebene geerbt würde, analog
+        // renderAddressSubField() - das Feld selbst bleibt leer.
+        $latBadge = '';
+        $lonBadge = '';
+        $inheritedLat = $inheritedValue['latitude'] ?? null;
+        $inheritedLon = $inheritedValue['longitude'] ?? null;
+        if($latString === '' and is_scalar($inheritedLat) and (string) $inheritedLat !== '') {
+            $latSchema['ui:placeholder'] = (string) $inheritedLat;
+            $latBadge = $this->renderInheritedBadge($inheritedLabel, $lang);
+        }
+        if($lonString === '' and is_scalar($inheritedLon) and (string) $inheritedLon !== '') {
+            $lonSchema['ui:placeholder'] = (string) $inheritedLon;
+            $lonBadge = $this->renderInheritedBadge($inheritedLabel, $lang);
+        }
+
+        $latInput = $this->renderTextWidget($latId, $latName, $latSchema, $latValue, [
+            'data-validate' => 'geo', 'data-pair' => $lonId,
+        ]);
+        $lonInput = $this->renderTextWidget($lonId, $lonName, $lonSchema, $lonValue, [
+            'data-validate' => 'geo', 'data-pair' => $latId,
+        ]);
+
+        $latFeedback = $this->renderValidationFeedback(
+            $this->resolveGeoFieldFeedback($latString, $lonString, true, $validator, $lang), $latId.'_feedback'
+        );
+        $lonFeedback = $this->renderValidationFeedback(
+            $this->resolveGeoFieldFeedback($lonString, $latString, false, $validator, $lang), $lonId.'_feedback'
+        );
+
+        $latLabel = $lang->getLanguageHtml($latSchema['ui:label'] ?? 'latitude');
+        $lonLabel = $lang->getLanguageHtml($lonSchema['ui:label'] ?? 'longitude');
+
+        return '<div class="c-content schemaOrgData-field-row">'
+            .'<div class="mo-in-li-l"></div>'
+            .'<div class="mo-in-li-r"><div class="schemaOrgData-address-row">'."\n"
+            .'<div class="schemaOrgData-address-field">'
+            .'<label for="'.$latId.'">'.$latLabel.$latBadge.'</label>'
+            .$latInput.$latFeedback
+            .'</div>'."\n"
+            .'<div class="schemaOrgData-address-field">'
+            .'<label for="'.$lonId.'">'.$lonLabel.$lonBadge.'</label>'
+            .$lonInput.$lonFeedback
+            .'</div>'."\n"
+            .'</div></div></div>'."\n";
+    }
+
+    /***************************************************************
+    *
+    * Ermittelt das Validierungs-Feedback für ein einzelnes Feld des
+    * Geo-Widgets (siehe renderGeoWidget()): Paar-Pflicht hat Vorrang -
+    * ist das Gegenstück gefüllt, dieses Feld aber leer, ist das ein
+    * Fehler (error_geo_incomplete), unabhängig vom eigenen Wertebereich.
+    * Sind beide Felder leer, gilt das Paar als nicht angegeben (kein
+    * Fehler). Sind beide gefüllt, entscheidet der eigene Wertebereich
+    * (validateGeoLatitude()/validateGeoLongitude()).
+    *
+    * @param string $ownValue  getrimmter Wert dieses Feldes
+    * @param string $pairValue getrimmter Wert des Gegenstücks
+    * @param bool $isLatitude  true = $ownValue ist latitude, false = longitude
+    * @param SchemaOrgData_Validator $validator für validateGeoLatitude()/validateGeoLongitude()
+    * @param Language $lang für error_geo_incomplete
+    * @return array{status: string|null, message: string|null}
+    *
+    ***************************************************************/
+    public function resolveGeoFieldFeedback(string $ownValue, string $pairValue, bool $isLatitude, SchemaOrgData_Validator $validator, Language $lang): array {
+        if($ownValue === '' and $pairValue === '') {
+            return ['status' => null, 'message' => null];
+        }
+
+        if($ownValue === '') {
+            return ['status' => 'error', 'message' => $lang->getLanguageValue('error_geo_incomplete')];
+        }
+
+        return $isLatitude ? $validator->validateGeoLatitude($ownValue, $lang) : $validator->validateGeoLongitude($ownValue, $lang);
+    }
+
+    /***************************************************************
+    *
     * Rendert das Place-Widget (Event.location): ein einfaches
     * Textfeld für "name" sowie eine verschachtelte PostalAddress
     * unter "location.address" (siehe renderPostalAddressWidget(),
@@ -916,17 +1035,24 @@ class SchemaOrgData_FormRenderer {
                 .'</fieldset>'."\n";
         }
 
-        if(in_array($widget, ['postal_address', 'opening_hours', 'faq_list'], true)) {
+        if(in_array($widget, ['postal_address', 'opening_hours', 'faq_list', 'geo'], true)) {
             $inner = match($widget) {
                 'postal_address' => $this->renderPostalAddressWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, is_array($inheritedValue) ? $inheritedValue : null, $inheritedLabel, $lang, $validator, $pluginLang),
                 'opening_hours'  => $this->renderOpeningHoursWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, $lang, $weekdayLang, $openingHoursHelper, $validator),
                 'faq_list'       => $this->renderFaqListWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, $lang),
+                'geo'            => $this->renderGeoWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, is_array($inheritedValue) ? $inheritedValue : null, $inheritedLabel, $lang, $validator),
                 default          => '',
             };
 
             if($widget === 'postal_address') {
                 $inner = '<p class="schemaOrgData-hint">'
                     .$lang->getLanguageHtml('hint_address_conditional_required')
+                    .'</p>'."\n".$inner;
+            }
+
+            if($widget === 'geo') {
+                $inner = '<p class="schemaOrgData-hint">'
+                    .$lang->getLanguageHtml('hint_geo_conditional_required')
                     .'</p>'."\n".$inner;
             }
 

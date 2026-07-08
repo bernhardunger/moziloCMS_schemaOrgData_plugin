@@ -85,6 +85,11 @@ label_address_region = Region / Bundesland
 label_address_country = Land
 hint_address_conditional_required = Wird ein Adressfeld ausgefüllt, werden Ort und Land zur Pflichtangabe.
 
+label_geo = Geo-Koordinaten
+label_geo_latitude = Breitengrad (latitude)
+label_geo_longitude = Längengrad (longitude)
+hint_geo_conditional_required = Wird eines der beiden Felder ausgefüllt, wird auch das andere zur Pflichtangabe.
+
 label_opening_hours = Öffnungszeiten
 label_opening_hours_from = Von
 label_opening_hours_to = Bis
@@ -125,6 +130,7 @@ error_opening_hours_order = Die Von-Zeit muss vor der Bis-Zeit liegen.
 error_opening_hours_overlap = Der zweite Zeitraum muss nach dem Ende des ersten beginnen.
 error_geo_latitude = Der Breitengrad (latitude) muss zwischen -90 und 90 liegen.
 error_geo_longitude = Der Längengrad (longitude) muss zwischen -180 und 180 liegen.
+error_geo_incomplete = Bitte beide Geo-Koordinaten-Felder ausfüllen oder beide leer lassen.
 error_date_invalid = Bitte ein gültiges Datum eingeben (TT.MM.YYYY oder TT.MM.YYYY HH:MM, alternativ JJJJ-MM-TT oder JJJJ-MM-TTTHH:MM:SS+HH:MM).
 error_date_range_invalid = Das Ende muss nach dem Beginn liegen.
 error_invalid_schema_type = Der Schema-Type "{PARAM1}" ist für diesen Geltungsbereich nicht gültig.

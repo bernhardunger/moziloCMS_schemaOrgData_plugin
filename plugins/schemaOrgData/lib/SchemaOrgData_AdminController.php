@@ -495,6 +495,9 @@ class SchemaOrgData_AdminController {
             'openingHoursIncomplete' => $lang->getLanguageValue('error_opening_hours_incomplete'),
             'openingHoursOrder'      => $lang->getLanguageValue('error_opening_hours_order'),
             'openingHoursOverlap'    => $lang->getLanguageValue('error_opening_hours_overlap'),
+            'geoLatitude'        => $lang->getLanguageValue('error_geo_latitude'),
+            'geoLongitude'       => $lang->getLanguageValue('error_geo_longitude'),
+            'geoIncomplete'      => $lang->getLanguageValue('error_geo_incomplete'),
             'dateInvalid'        => $lang->getLanguageValue('error_date_invalid'),
             'dateRangeInvalid'   => $lang->getLanguageValue('error_date_range_invalid'),
             // '{PARAM1}' wird hier als Wert übergeben, damit

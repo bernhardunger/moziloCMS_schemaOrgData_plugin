@@ -188,6 +188,21 @@ class SchemaOrgData_ConfigSaveService {
                 continue;
             }
 
+            if($widget === 'geo') {
+                // Paar-Pflicht ("beides oder nichts") wurde bereits in
+                // validateFormData() geprüft - sind wir hier, sind beide
+                // Werte gefüllt oder beide leer. Numerische Umwandlung
+                // (statt String), damit buildJsonLdScript() korrekte
+                // JSON-Zahlen statt gequoteter Strings ausgibt.
+                $geo = is_array($value) ? $value : [];
+                $latValue = trim(strip_tags((string) ($geo['latitude'] ?? '')));
+                $lonValue = trim(strip_tags((string) ($geo['longitude'] ?? '')));
+                if($latValue !== '' and $lonValue !== '') {
+                    $result[$name] = ['latitude' => (float) $latValue, 'longitude' => (float) $lonValue];
+                }
+                continue;
+            }
+
             if($widget === 'id_reference_or_literal') {
                 if(!is_array($value)) {
                     continue;

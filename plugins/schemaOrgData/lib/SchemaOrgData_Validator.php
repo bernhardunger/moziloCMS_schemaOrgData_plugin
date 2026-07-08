@@ -147,6 +147,11 @@ class SchemaOrgData_Validator {
                 continue;
             }
 
+            if($widget === 'geo') {
+                $errors = array_merge($errors, $this->validateGeoPair(is_array($value) ? $value : [], $lang));
+                continue;
+            }
+
             if($widget === 'faq_list') {
                 if($required and !$this->hasFaqEntry(is_array($value) ? $value : [])) {
                     // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
@@ -539,6 +544,51 @@ class SchemaOrgData_Validator {
     /** Validiert geo.longitude (-180 .. 180), siehe validateGeoCoordinate(). */
     public function validateGeoLongitude(string $value, Language $lang): array {
         return $this->validateGeoCoordinate($value, -180, 180, 'error_geo_longitude', $lang);
+    }
+
+    /***************************************************************
+    *
+    * Validiert das geo-Widget-Feldpaar (latitude/longitude, siehe
+    * SchemaOrgData_FormRenderer::renderGeoWidget()): Paar-Pflicht
+    * "beides oder nichts" - sind beide Felder leer, ist geo insgesamt
+    * nicht angegeben (kein Fehler, wird von removeEmptyJsonLdProperties()
+    * ohnehin aus der Ausgabe entfernt). Ist nur eines der beiden Felder
+    * gefüllt, ist das jeweils andere ein Pflichtfeld-Fehler
+    * (error_geo_incomplete). Sind beide gefüllt, wird jedes einzeln
+    * gegen seinen Wertebereich geprüft (validateGeoLatitude/
+    * validateGeoLongitude - dieselben Methoden wie für das
+    * Erweiterungsfeld, siehe validateExtensionGeo()).
+    *
+    * @param array<string, mixed> $geo latitude/longitude-Werte des Formularfelds
+    * @param Language $lang für die Fehlermeldungen
+    * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
+    *
+    ***************************************************************/
+    public function validateGeoPair(array $geo, Language $lang): array {
+        $errors = [];
+        $latValue = trim((string) ($geo['latitude'] ?? ''));
+        $lonValue = trim((string) ($geo['longitude'] ?? ''));
+
+        if($latValue === '' and $lonValue === '') {
+            return $errors;
+        }
+
+        if($latValue === '' or $lonValue === '') {
+            $errors[] = $lang->getLanguageValue('error_geo_incomplete');
+            return $errors;
+        }
+
+        $latResult = $this->validateGeoLatitude($latValue, $lang);
+        if($latResult['status'] === 'error') {
+            $errors[] = $latResult['message'];
+        }
+
+        $lonResult = $this->validateGeoLongitude($lonValue, $lang);
+        if($lonResult['status'] === 'error') {
+            $errors[] = $lonResult['message'];
+        }
+
+        return $errors;
     }
 
     /***************************************************************

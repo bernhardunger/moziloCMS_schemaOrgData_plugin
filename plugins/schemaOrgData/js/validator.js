@@ -428,6 +428,88 @@
     }
 
     /**
+     * Validiert eine Geo-Koordinate (latitude/longitude), siehe
+     * index.php, validateGeoCoordinate(). Leerer Wert wird hier nicht
+     * geprüft (Paar-Pflicht siehe runGeoValidation()).
+     *
+     * @param {string} value
+     * @param {number} min
+     * @param {number} max
+     * @param {string|null} message
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function validateGeoCoordinate(value, min, max, message) {
+        if (value.trim() === '') {
+            return { status: null, message: null };
+        }
+
+        var numeric = Number(value);
+
+        if (isNaN(numeric) || numeric < min || numeric > max) {
+            return { status: 'error', message: message || null };
+        }
+
+        return { status: 'ok', message: null };
+    }
+
+    /** Validiert geo.latitude (-90..90), siehe validateGeoCoordinate(). */
+    function validateGeoLatitude(value) {
+        return validateGeoCoordinate(value, -90, 90, getMessages().geoLatitude);
+    }
+
+    /** Validiert geo.longitude (-180..180), siehe validateGeoCoordinate(). */
+    function validateGeoLongitude(value) {
+        return validateGeoCoordinate(value, -180, 180, getMessages().geoLongitude);
+    }
+
+    /**
+     * Validiert ein Feld des Geo-Widgets (latitude/longitude, siehe
+     * index.php, renderGeoWidget()) und bezieht das über data-pair
+     * verknüpfte Gegenstück mit ein (Paar-Pflicht "beides oder
+     * nichts", analog runOpeningHoursValidation()). Sind beide Felder
+     * leer, gilt das Paar als nicht angegeben (kein Fehler). Ist nur
+     * eines der beiden Felder gefüllt, ist das jeweils leere Feld ein
+     * Fehler (geoIncomplete). Sind beide gefüllt, entscheidet der
+     * eigene Wertebereich des soeben geänderten Feldes.
+     *
+     * @param {HTMLElement} input das gerade geänderte latitude- oder longitude-Feld
+     * @param {boolean} [onlyClearErrors] siehe showFieldFeedback()
+     */
+    function runGeoValidation(input, onlyClearErrors) {
+        var pairInput = document.getElementById(input.getAttribute('data-pair'));
+        var isLatitude = /_latitude$/.test(input.id);
+        var ownValue = input.value.trim();
+        var pairValue = pairInput ? pairInput.value.trim() : '';
+        var result = { status: null, message: null };
+
+        if (ownValue === '' && pairValue === '') {
+            // beide leer - kein Fehler
+        } else if (ownValue === '') {
+            result = { status: 'error', message: getMessages().geoIncomplete || null };
+        } else {
+            result = isLatitude ? validateGeoLatitude(ownValue) : validateGeoLongitude(ownValue);
+        }
+
+        showFieldFeedback(input, input.id + '_feedback', result, onlyClearErrors);
+
+        // Das Gegenstück revalidieren, damit eine Korrektur an diesem Feld
+        // sofort im bereits sichtbaren Feedback des anderen Feldes honoriert
+        // wird (analog runOpeningHoursValidation()/runEventDateValidation()).
+        if (pairInput) {
+            var pairIsLatitude = !isLatitude;
+            var pairResult = { status: null, message: null };
+            if (pairValue === '' && ownValue === '') {
+                // beide leer - kein Fehler
+            } else if (pairValue === '') {
+                pairResult = { status: 'error', message: getMessages().geoIncomplete || null };
+            } else {
+                pairResult = pairIsLatitude ? validateGeoLatitude(pairValue) : validateGeoLongitude(pairValue);
+            }
+            showFieldFeedback(pairInput, pairInput.id + '_feedback', pairResult, onlyClearErrors);
+        }
+    }
+
+    /**
      * Zeigt das Validierungsergebnis in dem Element mit der ID
      * "feedbackId" an. Existiert das Element noch nicht (server-seitig
      * wird ein Feedback-<span> nur bei status !== null gerendert, siehe
@@ -701,6 +783,9 @@
                 break;
             case 'opening_hours':
                 runOpeningHoursValidation(input, onlyClearErrors);
+                return;
+            case 'geo':
+                runGeoValidation(input, onlyClearErrors);
                 return;
             case 'date-time':
                 runEventDateValidation(input, onlyClearErrors);
