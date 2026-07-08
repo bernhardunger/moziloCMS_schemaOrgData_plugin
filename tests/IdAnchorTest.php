@@ -237,9 +237,8 @@ final class IdAnchorTest extends TestCase {
     *
     * Analog zu testDeDupGuardAcrossTwoTypesSharingFragment(), aber mit
     * den beiden echten Schema-Types NGO und Organization statt einem
-    * synthetischen Zweit-Schema - seit Fahrplan-Schritt 2 (0.4.53-beta)
-    * teilen beide real das Fragment "organization" (ui:idFragment in
-    * Organization.json).
+    * synthetischen Zweit-Schema - beide teilen real das Fragment
+    * "organization" (ui:idFragment in Organization.json).
     *
     ***************************************************************/
     function testDeDupGuardAcrossNgoAndOrganizationSharingFragment(): void {
@@ -296,7 +295,6 @@ final class IdAnchorTest extends TestCase {
 
     // -----------------------------------------------------------
     // LocalBusiness-Familie: ui:idFragment "organization"
-    // (doc/adr_globale_id_fragmente.md)
     // -----------------------------------------------------------
 
     /***************************************************************

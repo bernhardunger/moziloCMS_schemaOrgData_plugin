@@ -10,8 +10,7 @@
 *
 * Zustandslos gegenüber der Fassade; cacht Schema-Lesevorgänge für
 * die Lebensdauer der Instanz (siehe README.md, Abschnitt
-* "Schema-getriebenes Formular", und doc/adr_komponenten_refactoring.md,
-* Entscheidung (k)).
+* "Schema-getriebenes Formular").
 *
 ***************************************************************/
 class SchemaOrgData_SchemaRepository {
@@ -34,8 +33,7 @@ class SchemaOrgData_SchemaRepository {
     public function loadSchema(string $pluginSelfDir, string $type): ?array {
         $cacheKey = $pluginSelfDir.'|'.$type;
         // array_key_exists() statt isset(): auch ein gecachtes null-Ergebnis
-        // (Schema nicht gefunden) gilt als Cache-Treffer, siehe
-        // doc/adr_komponenten_refactoring.md, Entscheidung (k).
+        // (Schema nicht gefunden) gilt als Cache-Treffer.
         if(array_key_exists($cacheKey, $this->schemaCache)) {
             return $this->schemaCache[$cacheKey];
         }
@@ -109,8 +107,8 @@ class SchemaOrgData_SchemaRepository {
     * (erster Array-Schlüssel, der ein bekanntes Schema referenziert -
     * reservierte Schlüssel wie "_meta"/"excluded_cats"/"debug_output"
     * werden übersprungen). Wird u. a. für die LocalBusiness-Familie-
-    * Einschränkung verwendet (siehe doc/adr_localbusiness_familie_scope.md),
-    * um den bei Global konfigurierten Type zu ermitteln.
+    * Einschränkung verwendet, um den bei Global konfigurierten Type
+    * zu ermitteln.
     *
     * @param array<string, mixed> $scopeConfig z. B. Ergebnis von
     *        SchemaOrgData_ScopeResolver::loadScopeConfig()

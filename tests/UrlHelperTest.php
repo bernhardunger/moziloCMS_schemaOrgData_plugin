@@ -104,7 +104,7 @@ final class UrlHelperTest extends TestCase {
     *
     * Tests für SchemaOrgData_UrlHelper::resolveFrontendBaseUrl()
     * (F3: Admin-Anzeige der Referenz-URI zeigte fälschlich den
-    * Admin-Pfad, siehe README.md, "@id-Anker und Knotenreferenzen").
+    * Admin-Pfad, siehe README.md, "@id-Anker (stabile Knoten-Identität)").
     * ADMIN_DIR_NAME kann im Testlauf bereits durch andere Testdateien
     * definiert sein (PHP-Konstanten sind prozessweit einmalig) -
     * daher defined()-Guard analog zu AdminControllerTest.php.

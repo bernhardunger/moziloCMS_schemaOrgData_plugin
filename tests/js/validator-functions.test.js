@@ -4,8 +4,7 @@ var loadPluginScripts = require('./helpers/load-plugin-scripts');
 
 // Repräsentatives Mini-Schema für checkFormats()/checkUnknownProperties()/
 // validateExtensionField() - bewusst kein Laden einer echten schemas/*.json-
-// Datei (das wäre Schema-Validierung, nicht Validator-Logik-Test, siehe
-// doc/adr_js_test_infrastructure.md, Entscheidung e/g).
+// Datei (das wäre Schema-Validierung, nicht Validator-Logik-Test).
 // Hinweis: js/ajv.min.js bündelt kein "ajv-formats" - getAjv() ruft
 // ajv.addFormat() nirgends auf, daher wird das "format"-Keyword (z. B.
 // "uri" für hasMap) von checkFormats()/validateExtensionField() aktuell
@@ -263,7 +262,7 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
         });
     });
 
-    describe('showExtensionFeedback() - DOM-XSS-Schutz (Freeze-Fix-Batch Punkt 3)', function () {
+    describe('showExtensionFeedback() - DOM-XSS-Schutz', function () {
         var feedback;
 
         beforeEach(function () {

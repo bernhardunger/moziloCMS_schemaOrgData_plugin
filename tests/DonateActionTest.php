@@ -159,7 +159,7 @@ final class DonateActionTest extends TestCase {
 
     /***************************************************************
     *
-    * Freeze-Fix-Batch Punkt 7: DonateAction.json hatte als einzige
+    * DonateAction.json hatte als einzige
     * Schema-Datei gar kein Top-Level "required"-Array, obwohl
     * "recipient" bereits ui:required: true trägt.
     *
@@ -225,9 +225,8 @@ final class DonateActionTest extends TestCase {
 
     /***************************************************************
     *
-    * Fahrplan-Schritt 2 (0.4.53-beta): seit Organization.json ein
-    * ui:idFragment "organization" deklariert, kann Organization -
-    * genau wie bisher nur NGO - als globale Identität für
+    * Organization.json deklariert ein ui:idFragment "organization",
+    * daher kann Organization - genau wie NGO - als globale Identität für
     * DonateAction.recipient dienen. Guard bleibt No-op (Zielknoten
     * ist bereits im Graph), buildJsonLdScript() löst recipient danach
     * korrekt auf.

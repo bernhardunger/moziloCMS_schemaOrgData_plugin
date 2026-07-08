@@ -7,7 +7,7 @@
 * Zustandsloser Helfer zur Ableitung der absoluten Basis-URL
 * der Installation. Wird von der Fassade schemaOrgData über
 * einen Lazy-Accessor verdrahtet (siehe README.md, Abschnitt
-* "@id-Anker und Knotenreferenzen").
+* "@id-Anker (stabile Knoten-Identität)").
 *
 ***************************************************************/
 class SchemaOrgData_UrlHelper {
@@ -62,11 +62,11 @@ class SchemaOrgData_UrlHelper {
     * Emission (buildJsonLdScript()/resolveNodeId(), unverändert über
     * resolveBaseUrl()) dieses Segment nie enthält.
     *
-    * Kein Kern-Konstante liefert die Frontend-Basis-URL direkt (siehe
-    * README.md, Rechercheergebnis in der begleitenden ADR-Notiz):
-    * URL_BASE bildet zwar dasselbe Prinzip im Core nach (Kürzung um
-    * ADMIN_DIR_NAME."/index.php" statt nur "index.php"), enthält aber
-    * nur den Pfad ohne Protokoll/Host - eine Wiederverwendung würde
+    * Kein Kern-Konstante liefert die Frontend-Basis-URL direkt
+    * (Rechercheergebnis): URL_BASE bildet zwar dasselbe Prinzip im
+    * Core nach (Kürzung um ADMIN_DIR_NAME."/index.php" statt nur
+    * "index.php"), enthält aber nur den Pfad ohne Protokoll/Host -
+    * eine Wiederverwendung würde
     * eine eigene Kern-Konstanten-Abhängigkeit an dieser Stelle nötig
     * machen, die der Rest des Plugins bewusst vermeidet (siehe
     * resolveBaseUrl()-Kommentar zum fehlenden Domain-Setting).

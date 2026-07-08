@@ -7,8 +7,7 @@
 * Trennt gespeicherte bzw. importierte Properties eines Schema-Types
 * anhand des aktiven JSON-Schemas in bekannte Formularfelder und
 * unbekannte Erweiterungs-Properties auf. Geteilter Mapper für
-* FormRenderer (renderTypeFields()) und ImportService (importJsonLd())
-* - siehe doc/adr_komponenten_refactoring.md, Entscheidung e.
+* FormRenderer (renderTypeFields()) und ImportService (importJsonLd()).
 * Zustandslos, keine CMS-Abhängigkeiten.
 *
 ***************************************************************/

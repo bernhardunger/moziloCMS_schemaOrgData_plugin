@@ -878,8 +878,8 @@ final class ValidatorTest extends TestCase {
 
     /***************************************************************
     *
-    * Freeze-Fix-Batch Punkt 5: hiringOrganization (id_reference_or_literal)
-    * ist jetzt ui:required - fehlt der Wert vollständig, muss
+    * hiringOrganization (id_reference_or_literal)
+    * ist ui:required - fehlt der Wert vollständig, muss
     * validateFormData() einen Pflichtfeld-Fehler melden.
     *
     ***************************************************************/
@@ -896,7 +896,7 @@ final class ValidatorTest extends TestCase {
 
     /***************************************************************
     *
-    * Batch A Punkt 1: datePosted ist jetzt ui:required (Google-Richtlinie
+    * datePosted ist ui:required (Google-Richtlinie
     * für JobPosting-Rich-Results) - fehlt der Wert vollständig, muss
     * validateFormData() einen Pflichtfeld-Fehler melden.
     *

@@ -4,8 +4,7 @@
 *
 * SchemaOrgData_AdminPageRenderer
 *
-* Reine Anzeige-Bausteine der Admin-Seite (Fahrplan-Schritt 4, siehe
-* doc/adr_ziel_architektur.md): Info-Block, Scope-Label/Selektor,
+* Reine Anzeige-Bausteine der Admin-Seite: Info-Block, Scope-Label/Selektor,
 * Speichern-Button-Beschriftung, Speicher-Ergebnis-Hinweis, Hinweis
 * auf vorhandenes/kollidierendes JSON-LD, Ausschlussliste, Admin-CSS
 * sowie die Schema-Type-Auswahl.
@@ -199,8 +198,7 @@ class SchemaOrgData_AdminPageRenderer {
     * @param Language $lang Admin-Sprachobjekt
     * @param string $successMessageKey Sprachschlüssel für den Erfolgsfall -
     *        abweichend z. B. "notice_import_success" statt der Standard-
-    *        Speicher-Meldung, siehe doc/adr_import_verdrahtung.md,
-    *        Entscheidung (f)
+    *        Speicher-Meldung
     * @return string HTML-Snippet
     *
     ***************************************************************/
@@ -248,8 +246,7 @@ class SchemaOrgData_AdminPageRenderer {
     * @param Language $lang Admin-Sprachobjekt
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $importTextareaValue Rohwert für das Import-Textarea, z. B. nach
-    *        fehlgeschlagenem Import (siehe doc/adr_import_verdrahtung.md,
-    *        Entscheidung (g)) - sonst leer
+    *        fehlgeschlagenem Import - sonst leer
     * @return string HTML-Snippet (Hinweis, Radio-Buttons, Import-Textarea)
     *                 oder '' wenn kein vorhandenes JSON-LD erkannt wurde
     *
@@ -310,14 +307,14 @@ class SchemaOrgData_AdminPageRenderer {
                 : $rawContent;
             $escapedPretty = htmlspecialchars($prettyContent, ENT_QUOTES, CHARSET);
 
-            // Batch A Punkt 7: existing_jsonld_content entsteht durch
-            // implode("\n\n", ...) mehrerer erkannter <script>-Blöcke (siehe
+            // existing_jsonld_content entsteht durch implode("\n\n", ...)
+            // mehrerer erkannter <script>-Blöcke (siehe
             // AdminController::renderAdminPage()/FrontendRenderer::renderFrontend()) -
             // bei mehr als einem Block ist das Ergebnis kein gültiges Einzel-JSON
             // mehr. Einfache Heuristik statt eines Parsers: ungültiges JSON UND
             // ein "}"-gefolgt-von-"{"-Übergang deutet auf mehrere aneinandergereihte
-            // Root-Objekte hin. Bewusst kein automatischer Block-Splitter (siehe
-            // doc/adr_import_verdrahtung.md), nur ein transparenter Hinweis.
+            // Root-Objekte hin. Bewusst kein automatischer Block-Splitter,
+            // nur ein transparenter Hinweis.
             $looksLikeMultipleBlocks = json_last_error() !== JSON_ERROR_NONE
                 && preg_match('/\}\s*\{/', $rawContent) === 1;
 
@@ -356,10 +353,10 @@ class SchemaOrgData_AdminPageRenderer {
                 .$lang->getLanguageHtml('button_use_detected_jsonld').'</button><br />'."\n";
         }
 
-        // Doppel-Label-Fix (ADR (i)): <summary> ist bereits die sichtbare
+        // Doppel-Label-Fix: <summary> ist bereits die sichtbare
         // Beschriftung, das Textarea erhält stattdessen ein aria-label.
-        // Batch A Punkt 6: zusätzliche sichtbare <p>-Beschriftung direkt über
-        // der Textarea (kein <label for="...">, sonst Doppel-Label-Regression).
+        // Zusätzliche sichtbare <p>-Beschriftung direkt über der Textarea
+        // (kein <label for="...">, sonst Doppel-Label-Regression).
         $html .= '<p class="schemaOrgData-import-target-label">'.$lang->getLanguageHtml('label_import_target').'</p>'."\n";
         $importAriaLabel = htmlspecialchars($lang->getLanguageValue('label_import_jsonld'), ENT_QUOTES, CHARSET);
         $importValueAttr = htmlspecialchars($importTextareaValue, ENT_QUOTES, CHARSET);
@@ -442,7 +439,7 @@ class SchemaOrgData_AdminPageRenderer {
     * Rendert die Ausschlussliste für die globale Ausgabe (nur
     * Geltungsbereich "global"): eine Checkbox je vorhandener
     * Kategorie. Angehakte Kategorien erhalten keine globale
-    * JSON-LD-Ausgabe (siehe README.md, "excluded_cats").
+    * JSON-LD-Ausgabe (siehe README.md, Abschnitt "Ausschlussliste").
     * Zusätzlich wird die Debug-Modus-Checkbox gerendert.
     *
     * @param string[] $excludedCats aktuell ausgeschlossene Kategorien
@@ -587,8 +584,7 @@ class SchemaOrgData_AdminPageRenderer {
     *
     * Rendert den Hinweis, dass in der LocalBusiness-Familie weitere
     * Geschäftsklassifikationen ausgeblendet wurden, weil bei Global
-    * bereits ein Familien-Type konfiguriert ist (siehe
-    * doc/adr_localbusiness_familie_scope.md).
+    * bereits ein Familien-Type konfiguriert ist.
     *
     * @param string $globalTypeLabelHtml bereits sprachaufgelöstes,
     *        HTML-escaptes Label des bei Global aktiven Types

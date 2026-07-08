@@ -4,20 +4,17 @@
 *
 * SchemaOrgData_AdminController
 *
-* Admin-Formular: Orchestrierung (Refactoring-Schritt 12b, "Ebene B"):
-* Sektions-Rendering (renderScopeSection()) und die vollständige
-* Admin-Seite (renderAdminPage()). Siehe doc/adr_komponenten_refactoring.md.
-* Die reinen Anzeige-Bausteine (Info-Block, Scope-Label/Selektor,
-* Speichern-Button-Beschriftung, Speicher-Ergebnis-Hinweis, Hinweis
-* auf vorhandenes/kollidierendes JSON-LD, Ausschlussliste, Admin-CSS,
-* Schema-Type-Auswahl) sind seit Fahrplan-Schritt 4 in
+* Admin-Formular: Orchestrierung von Sektions-Rendering
+* (renderScopeSection()) und der vollständigen Admin-Seite
+* (renderAdminPage()). Die reinen Anzeige-Bausteine (Info-Block,
+* Scope-Label/Selektor, Speichern-Button-Beschriftung, Speicher-
+* Ergebnis-Hinweis, Hinweis auf vorhandenes/kollidierendes JSON-LD,
+* Ausschlussliste, Admin-CSS, Schema-Type-Auswahl) sind in
 * SchemaOrgData_AdminPageRenderer ausgelagert, die POST-Verarbeitung
-* (handlePostRequest()) seit Fahrplan-Schritt 5 in
-* SchemaOrgData_AdminRequestHandler, die feldweise Vererbungsanzeige
-* (resolveInheritableFields()), POST-Sanitizing (sanitizePostData(),
-* sanitizeAddressData()) und Speichern/Validieren (saveConfig()) seit
-* Fahrplan-Schritt 6 in SchemaOrgData_ConfigSaveService - alle drei
-* siehe doc/adr_ziel_architektur.md.
+* (handlePostRequest()) in SchemaOrgData_AdminRequestHandler, die
+* feldweise Vererbungsanzeige (resolveInheritableFields()),
+* POST-Sanitizing (sanitizePostData(), sanitizeAddressData()) und
+* Speichern/Validieren (saveConfig()) in SchemaOrgData_ConfigSaveService.
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
 * SchemaOrgData_SchemaRepository, SchemaOrgData_FormRenderer,
@@ -59,8 +56,7 @@ class SchemaOrgData_AdminController {
     *        Konfiguration befüllen - trotz des Namens nicht nur bei
     *        fehlgeschlagenem Speichern true, sondern auch nach einem
     *        (erfolgreichen oder fehlgeschlagenen) Import (siehe
-    *        renderAdminPage(), $usePostData, sowie
-    *        doc/adr_import_verdrahtung.md, Entscheidung (e))
+    *        renderAdminPage(), $usePostData)
     * @param SchemaOrgData_AdminRequestContext $context Laufzeit-Kollaboratoren (siehe dort)
     * @return string HTML-Snippet
     *
@@ -113,8 +109,7 @@ class SchemaOrgData_AdminController {
         }
 
         // LocalBusiness-Familie: bei Kategorie/Seite nur den bei Global
-        // aktiven Familien-Type anbieten, siehe
-        // doc/adr_localbusiness_familie_scope.md.
+        // aktiven Familien-Type anbieten.
         $familyFilterGlobalLabel = null;
         if($scope !== 'global') {
             $globalConfig = $scopeResolver->loadScopeConfig($settings, 'global');
@@ -172,8 +167,7 @@ class SchemaOrgData_AdminController {
         // Rohe Textarea-Eingabe nur erhalten, wenn der Import-Button für
         // GENAU diese Sektion abgeschickt wurde - handleImportAction()
         // (SchemaOrgData_AdminRequestHandler) löscht den POST-Rohwert bei
-        // Erfolg, sodass hier zuverlässig nur der Fehlerfall übrig bleibt
-        // (siehe doc/adr_import_verdrahtung.md, Entscheidung (g)).
+        // Erfolg, sodass hier zuverlässig nur der Fehlerfall übrig bleibt.
         $importTextareaValue = $active && ($_POST['schemaOrgData_import_action'] ?? null) === $scope
             ? (string) ($_POST['schemaOrgData_import_'.$scope] ?? '')
             : '';
@@ -333,9 +327,8 @@ class SchemaOrgData_AdminController {
         // Nach einem Import (Erfolg ODER Fehlschlag) muss die aktive Sektion
         // ebenfalls aus POST-Daten statt aus der gespeicherten Konfiguration
         // befüllt werden - bei Erfolg enthält $_POST['schemaOrgData'][$scope]
-        // das Import-Ergebnis (siehe handleImportAction()), bei Fehlschlag die
-        // ursprünglichen Formularwerte (siehe doc/adr_import_verdrahtung.md,
-        // Entscheidung (e)).
+        // das Import-Ergebnis (siehe handleImportAction()), bei Fehlschlag
+        // die ursprünglichen Formularwerte.
         $importApplied = ($saveResult['import'] ?? false) === true;
         $usePostData = $saveFailed || $importApplied;
 
@@ -365,8 +358,7 @@ class SchemaOrgData_AdminController {
 
         if($saveResult !== null) {
             // Import-Erfolg zeigt einen eigenen Hinweis statt der
-            // Speicher-Erfolgsmeldung - es wurde nichts gespeichert (siehe
-            // doc/adr_import_verdrahtung.md, Entscheidung (f)).
+            // Speicher-Erfolgsmeldung - es wurde nichts gespeichert.
             $successMessageKey = $importApplied ? 'notice_import_success' : 'notice_config_saved';
             $html .= $adminPageRenderer->renderSaveResultNotice($saveResult, $lang, $successMessageKey);
         }
@@ -519,7 +511,7 @@ class SchemaOrgData_AdminController {
         // Escapes und verhindert so einen Script-Break-out, falls ein
         // Sprachdatei-Wert jemals "</script>" enthalten sollte (analoges
         // Härtungsmuster zu buildJsonLdScript()/buildDebugWidget(), siehe
-        // README.md, Abschnitt "JSON-LD-Ausgabe").
+        // README.md, Abschnitt "Sicherheit").
         $html .= '<script>window.schemaOrgDataMessages = '
             .json_encode($messages, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG).';</script>'."\n";
         $html .= '<script src="'.$pluginSelfUrl.'js/ajv.min.js"></script>'."\n";

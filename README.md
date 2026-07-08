@@ -1,6 +1,6 @@
 # schemaOrgData — moziloCMS Plugin
 
-**Version:** 0.4.51-beta  
+**Version:** 0.4.85-beta  
 **Kompatibilität:** moziloCMS 3.0.4 oder höher  
 **PHP:** 8.1+  
 **Lizenz:** GPL-3.0  
@@ -658,7 +658,7 @@ composer install
 ./vendor/bin/phpunit
 ```
 
-Stand `0.4.51-beta`: **486 Tests / 938 Assertions** (4 dokumentierte Skips für strukturell im Unit-Test nicht erreichbare Fälle). Ergänzend wird das Plugin per Browser-Regressionstests (Playwright) gegen eine reale moziloCMS-Installation verifiziert.
+Das Plugin ist umfassend automatisiert getestet (PHPUnit + Jest), inkl. einiger dokumentierter Skips für strukturell im Unit-Test nicht erreichbare Fälle. Ergänzend wird das Plugin per Browser-Regressionstests (Playwright) gegen eine reale moziloCMS-Installation verifiziert.
 
 > `vendor/` ist in `.gitignore` — PHPUnit wird nicht ins Repository eingecheckt. Die Tests liegen im Entwicklungs-Repository eine Ebene über dem Plugin-Ordner und sind nicht Teil des Deployment-Pakets.
 

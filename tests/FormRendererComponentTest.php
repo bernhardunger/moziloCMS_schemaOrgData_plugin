@@ -359,7 +359,7 @@ final class FormRendererComponentTest extends TestCase {
 
     /***************************************************************
     *
-    * Freeze-Fix-Batch Punkt 8: Schemas ohne address-Property (Person,
+    * Schemas ohne address-Property (Person,
     * Organization) dürfen kein data-country-field setzen - das
     * Attribut zeigte zuvor auf ein nie gerendertes Element.
     *
@@ -611,7 +611,7 @@ final class FormRendererComponentTest extends TestCase {
 
     /***************************************************************
     *
-    * Batch A Punkt 4 (UX-Trio Admin-Formular): renderTypeFields()
+    * renderTypeFields()
     * rendert die Pflichtfeld-Legende nur, wenn der Type mindestens
     * ein ui:required-Feld hat.
     *
@@ -713,7 +713,7 @@ final class FormRendererComponentTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // renderField() - date-time-Redisplay (Nachtrag zu Fahrplan-Schritt 4)
+    // renderField() - date-time-Redisplay
     // -----------------------------------------------------------
 
     function testRenderFieldZeigtGespeichertesIsoDatumAlsDeutschesDatumOhneUhrzeit(): void {

@@ -42,8 +42,8 @@ final class ImportServiceTest extends TestCase {
 
     /***************************************************************
     *
-    * Nebeneffekt der geo-Schema-Ergänzung (Batch B): "geo" ist jetzt
-    * eine bekannte Property des Haupt-Schemas (siehe schemas/
+    * Nebeneffekt der geo-Schema-Ergänzung: "geo" ist eine bekannte
+    * Property des Haupt-Schemas (siehe schemas/
     * LocalBusiness.json etc.) - splitDataForRendering() arbeitet rein
     * property-namens-basiert (siehe DataSplitHelperTest), ein
     * importiertes "geo"-Objekt landet daher automatisch in formData

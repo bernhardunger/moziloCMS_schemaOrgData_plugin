@@ -10,15 +10,13 @@ use PHPUnit\Framework\Attributes\PreserveGlobalState;
 *
 * Direkt-Tests der Komponente SchemaOrgData_AdminController:
 * Orchestrierung - renderScopeSection(), renderAdminPage(). Die reinen
-* Anzeige-Bausteine sind seit Fahrplan-Schritt 4 in
-* SchemaOrgData_AdminPageRenderer ausgelagert (siehe
-* tests/AdminPageRendererTest.php), die POST-Verarbeitung
-* (handlePostRequest()) seit Fahrplan-Schritt 5 in
-* SchemaOrgData_AdminRequestHandler (siehe
+* Anzeige-Bausteine sind in SchemaOrgData_AdminPageRenderer ausgelagert
+* (siehe tests/AdminPageRendererTest.php), die POST-Verarbeitung
+* (handlePostRequest()) in SchemaOrgData_AdminRequestHandler (siehe
 * tests/AdminRequestHandlerTest.php), die feldweise Vererbungsanzeige
 * (resolveInheritableFields()), POST-Sanitizing (sanitizePostData(),
-* sanitizeAddressData()) und Speichern/Validieren (saveConfig()) seit
-* Fahrplan-Schritt 6 in SchemaOrgData_ConfigSaveService (siehe
+* sanitizeAddressData()) und Speichern/Validieren (saveConfig()) in
+* SchemaOrgData_ConfigSaveService (siehe
 * tests/ConfigSaveServiceTest.php). Echte, zustandslose
 * Language-/SchemaOrgData_ScopeResolver-/SchemaOrgData_SchemaRepository-/
 * SchemaOrgData_FormRenderer-/SchemaOrgData_Validator-/
@@ -237,7 +235,7 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Regressionstest für 0.2.2-beta: schlägt das Speichern fehl
+    * Regressionstest: schlägt das Speichern fehl
     * (z. B. wegen ungültiger url), müssen die vom Nutzer
     * eingegebenen POST-Werte erhalten bleiben - auch wenn bereits
     * eine andere, gespeicherte Konfiguration existiert.
@@ -292,7 +290,7 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Regressionstest für 0.4.12-beta: schlägt das Speichern fehl
+    * Regressionstest: schlägt das Speichern fehl
     * (z. B. wegen ungültiger url), müssen from2/to2 des zweiten
     * Öffnungszeiten-Zeitraums erhalten bleiben — analog zu
     * testFailedSaveRetainsInvalidOpeningHoursTime().
@@ -321,7 +319,7 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * saveConfig() lebt seit Fahrplan-Schritt 6 auf
+    * saveConfig() lebt auf
     * SchemaOrgData_ConfigSaveService (siehe tests/ConfigSaveServiceTest.php)
     * - dieser Helper wird von testFailedSaveRetainsPostedScalarValuesInActiveSection()
     * benötigt, um vor der eigentlichen renderScopeSection()-Prüfung eine
@@ -338,8 +336,8 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * LocalBusiness-Familie (doc/adr_localbusiness_familie_scope.md):
-    * ist bei Global bereits ein Familien-Type konfiguriert, darf das
+    * LocalBusiness-Familie: ist bei Global bereits ein Familien-Type
+    * konfiguriert, darf das
     * Kategorie-Dropdown nur diesen einen Familien-Type anbieten -
     * andere Familienmitglieder werden ausgeblendet, Content-Types
     * bleiben vollständig erhalten, und der Hinweistext erscheint.
@@ -416,7 +414,7 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Fahrplan-Schritt 4b: js/validator.js liest getMessages().dateInvalid
+    * js/validator.js liest getMessages().dateInvalid
     * bzw. getMessages().dateRangeInvalid für die date-time-Live-
     * Validierung von Event.startDate/endDate - ohne diese beiden Keys in
     * window.schemaOrgDataMessages liefen die Aufrufe dort ins Leere.
@@ -453,9 +451,9 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Regressionstest 0.4.45-beta: window.schemaOrgDataMessages wird per
-    * json_encode() mit JSON_HEX_TAG kodiert (Escaping-Audit,
-    * Fahrplan-Schritt 9). Enthält ein Sprachdatei-Wert "</script>",
+    * Regressionstest: window.schemaOrgDataMessages wird per
+    * json_encode() mit JSON_HEX_TAG kodiert. Enthält ein
+    * Sprachdatei-Wert "</script>",
     * darf dieser NICHT literal im erzeugten <script>-Block erscheinen
     * (Script-Break-out), sondern muss als Unicode-Escape kodiert sein.
     *
@@ -491,7 +489,7 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Regressionstest 0.3.7-beta: renderAdminPage() ermittelt
+    * Regressionstest: renderAdminPage() ermittelt
     * $selectedCat aus sanitizeScopeIdentifier($_POST['schemaOrgData_cat'])
     * und verglich diesen Wert bislang direkt mit dem UNSANIERTEN
     * Kategorie-Bezeichner aus get_CatArray(). Enthält dieser
@@ -500,7 +498,7 @@ final class AdminControllerTest extends TestCase {
     * (display:none, disabled) und renderScopeSection() füllte das
     * Formular aus $config statt aus den POST-Daten. Bei einer noch
     * nie gespeicherten Kategorie (erster Speicherversuch, der wegen
-    * der seit 0.3.6-beta bedingungslosen addressLocality-Prüfung
+    * der bedingungslosen addressLocality-Prüfung
     * fehlschlägt) ist $config leer - alle Feldwerte erschienen
     * dadurch als geleert.
     *
@@ -538,7 +536,7 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Regressionstest 0.4.8-beta: Ein im Layout-Template gefundener
+    * Regressionstest: Ein im Layout-Template gefundener
     * JSON-LD-Block ist layoutweit und damit kein seiten-/kategorie-
     * spezifisches Signal. renderAdminPage() darf das existing_jsonld-
     * Flag deshalb nur für 'global' setzen, nicht für die gerade
@@ -589,7 +587,7 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Regressionstest 0.4.51-beta (Playwright-Fund, Phase 7): Nach dem
+    * Playwright-Regressionstest: Nach dem
     * Speichern von Event.organizer im Referenz-Modus zeigte das
     * Admin-Formular beim Neuladen keinen der beiden Radio-Buttons
     * (Referenz/Manuell) mehr als ausgewählt an. Ursache: renderAdminPage()
@@ -721,7 +719,7 @@ final class AdminControllerTest extends TestCase {
     ***************************************************************/
     /***************************************************************
     *
-    * Import-Verdrahtung (doc/adr_import_verdrahtung.md): Ende-zu-Ende
+    * Import-Verdrahtung: Ende-zu-Ende
     * über renderAdminPage() - Import-POST füllt das Formular mit den
     * importierten Werten, zeigt notice_import_success statt
     * notice_config_saved, unbekannte Property landet im

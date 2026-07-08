@@ -7,9 +7,7 @@ use PHPUnit\Framework\TestCase;
 /***************************************************************
 *
 * Direkt-Tests der Komponente SchemaOrgData_AdminRequestHandler:
-* POST-Verarbeitung des Admin-Formulars (handlePostRequest()) - seit
-* Fahrplan-Schritt 5 aus SchemaOrgData_AdminController ausgelagert
-* (siehe doc/adr_ziel_architektur.md). Echte, zustandslose
+* POST-Verarbeitung des Admin-Formulars (handlePostRequest()). Echte, zustandslose
 * Language-/SchemaOrgData_ScopeResolver-/SchemaOrgData_SchemaRepository-/
 * SchemaOrgData_Validator-/SchemaOrgData_OpeningHoursHelper-/
 * SchemaOrgData_AdminPageRenderer-/SchemaOrgData_ConfigSaveService-
@@ -149,7 +147,7 @@ final class AdminRequestHandlerTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // handlePostRequest() - Import-Dispatch (doc/adr_import_verdrahtung.md)
+    // handlePostRequest() - Import-Dispatch
     // -----------------------------------------------------------
 
     private function validLocalBusinessJsonLd(): string {
@@ -233,7 +231,6 @@ final class AdminRequestHandlerTest extends TestCase {
 
     // -----------------------------------------------------------
     // handlePostRequest() - Import-Dispatch: openingHours-Konvertierung
-    // (doc/adr_import_verdrahtung.md, Entscheidung (l))
     // -----------------------------------------------------------
 
     function testImportMitKomprimiertenOpeningHoursKonvertiertZuProTagStruktur(): void {

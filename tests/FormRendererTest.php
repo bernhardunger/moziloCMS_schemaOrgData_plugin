@@ -87,8 +87,8 @@ final class FormRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Freeze-Fix-Batch Punkt 4: ProfessionalService.json fehlten
-    * address/openingHours/image im Vergleich zu den übrigen Mitgliedern
+    * ProfessionalService.json fehlten address/openingHours/image im
+    * Vergleich zu den übrigen Mitgliedern
     * der LocalBusiness-Familie (LocalBusiness/LegalService/
     * MedicalBusiness/AccountingService) - Nachtrag, 1:1 aus
     * LegalService.json übernommen.
@@ -119,8 +119,8 @@ final class FormRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Freeze-Fix-Batch Punkt 5: JobPosting.json erhält hiringOrganization
-    * (id_reference_or_literal, analog Event.organizer) und jobLocation
+    * JobPosting.json erhält hiringOrganization (id_reference_or_literal,
+    * analog Event.organizer) und jobLocation
     * (place-Widget, analog Event.location) - beide gemäß Google-
     * Richtlinie für JobPosting als Pflichtfeld.
     *
@@ -149,9 +149,9 @@ final class FormRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Regressionstest für die addressLocality-Pflichtfeld-Validierung
-    * (Fix in 0.2.0-beta): das Feld muss data-validate="required" und
-    * eine vollständig aufgelöste data-required-message tragen, damit
+    * Regressionstest für die addressLocality-Pflichtfeld-Validierung:
+    * das Feld muss data-validate="required" und eine vollständig
+    * aufgelöste data-required-message tragen, damit
     * validator.js beim Blur sofort "Pflichtfeld "Ort" fehlt." anzeigt.
     *
     ***************************************************************/
@@ -181,7 +181,7 @@ final class FormRendererTest extends TestCase {
     ***************************************************************/
     /***************************************************************
     *
-    * resolveInheritableFields() (Feature 0.4.1-beta): Für eine
+    * resolveInheritableFields(): Für eine
     * Kategorie-Sektion liefert die Methode die Properties der
     * globalen Konfiguration desselben Types als "geerbte" Werte
     * inkl. Ursprungs-Label "Global" - rein zur Anzeige
@@ -190,18 +190,17 @@ final class FormRendererTest extends TestCase {
     ***************************************************************/
     /***************************************************************
     *
-    * Geerbtes Feld (Feature 0.4.1-beta): renderField() rendert für
-    * ein leeres Feld, dessen Wert von einer übergeordneten Ebene
-    * geerbt würde, einen grauen Placeholder mit dem geerbten Wert
-    * und ein "ü"-Badge mit Herkunfts-Tooltip - das Feld selbst
-    * bleibt leer (value=""), damit die feldweise Vererbung aus
-    * 0.2.4-beta beim Speichern unverändert bleibt.
+    * Geerbtes Feld: renderField() rendert für ein leeres Feld,
+    * dessen Wert von einer übergeordneten Ebene geerbt würde, einen
+    * grauen Placeholder mit dem geerbten Wert und ein "ü"-Badge mit
+    * Herkunfts-Tooltip - das Feld selbst bleibt leer (value=""),
+    * damit die feldweise Vererbung beim Speichern unverändert bleibt.
     *
     ***************************************************************/
     /***************************************************************
     *
-    * Geerbtes PostalAddress-Sub-Feld (Feature 0.4.1-beta):
-    * renderPostalAddressWidget() reicht $inheritedValue/$inheritedLabel
+    * Geerbtes PostalAddress-Sub-Feld: renderPostalAddressWidget()
+    * reicht $inheritedValue/$inheritedLabel
     * an renderAddressSubField() durch - ein leeres streetAddress-Feld
     * erhält den geerbten Wert als Placeholder und das "ü"-Badge.
     *
@@ -209,7 +208,7 @@ final class FormRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Batch A Punkt 2: NGO/Organization-Feldsymmetrie - beide Types
+    * NGO/Organization-Feldsymmetrie - beide Types
     * beschreiben denselben globalen Organisationsknoten, daher dürfen
     * die verfügbaren Kontaktfelder nicht von der Type-Wahl abhängen.
     * NGO erhält telephone/email (aus Organization.json), Organization

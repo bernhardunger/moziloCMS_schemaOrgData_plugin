@@ -738,7 +738,7 @@ class SchemaOrgData_FormRenderer {
             // Eigener Format-/Reihenfolgefehler der Pause hat Vorrang: nur wenn
             // validateOpeningHoursTime() nicht bereits 'error' liefert, wird die
             // Überlappungs-Prüfung angewandt (analog zu runOpeningHoursValidation()
-            // in js/validator.js, Commit 94ef495). Der ursprüngliche Vergleich auf
+            // in js/validator.js). Der ursprüngliche Vergleich auf
             // status === null war unerreichbar, da diese Methode bei nicht-leeren
             // $from2/$to2-Werten nie null zurückliefert.
             if($feedback2Result['status'] !== 'error' && $from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
@@ -988,9 +988,9 @@ class SchemaOrgData_FormRenderer {
 
         // date-time-Felder (Event.startDate/endDate): gespeicherter
         // ISO-8601-Wert wird für die Anzeige nach TT.MM.YYYY[ HH:MM]
-        // zurückformatiert (Redisplay-Nachtrag zu Fahrplan-Schritt 4,
-        // symmetrisch zu normalizeEventDateInput()) - wirkt sich nicht
-        // auf das Speicherformat aus, nur auf Eingabefeld und Feedback.
+        // zurückformatiert (symmetrisch zu normalizeEventDateInput()) -
+        // wirkt sich nicht auf das Speicherformat aus, nur auf
+        // Eingabefeld und Feedback.
         if(($fieldSchema['format'] ?? null) === 'date-time' and is_string($value) and $value !== '') {
             $value = $validator->formatEventDateForDisplay($value);
         }

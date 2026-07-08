@@ -4,11 +4,10 @@
 *
 * SchemaOrgData_AdminRequestHandler
 *
-* POST/Actions-Dispatch des Admin-Formulars (Fahrplan-Schritt 5, siehe
-* doc/adr_ziel_architektur.md): handlePostRequest() verarbeitet die
-* $_POST-Daten je Geltungsebene und delegiert an deleteConfig()
-* (SchemaOrgData_ScopeResolver) bzw. saveConfig()
-* (SchemaOrgData_ConfigSaveService, seit Fahrplan-Schritt 6).
+* POST/Actions-Dispatch des Admin-Formulars: handlePostRequest()
+* verarbeitet die $_POST-Daten je Geltungsebene und delegiert an
+* deleteConfig() (SchemaOrgData_ScopeResolver) bzw. saveConfig()
+* (SchemaOrgData_ConfigSaveService).
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
 * SchemaOrgData_SchemaRepository, SchemaOrgData_Validator,
@@ -31,8 +30,7 @@ class SchemaOrgData_AdminRequestHandler {
     * Ist "schemaOrgData_import_action" gesetzt, wird stattdessen
     * ausschließlich der Import verarbeitet (siehe handleImportAction())
     * - kein saveConfig()/deleteConfig() in diesem Request, auch wenn
-    * das Formular zusätzlich Felddaten der aktiven Sektion mitsendet
-    * (doc/adr_import_verdrahtung.md, Entscheidung (b)).
+    * das Formular zusätzlich Felddaten der aktiven Sektion mitsendet.
     *
     * Wird von renderAdminPage() aufgerufen, bevor das Formular
     * gerendert wird, sofern $_POST nicht leer ist.
@@ -122,8 +120,7 @@ class SchemaOrgData_AdminRequestHandler {
     /***************************************************************
     *
     * Verarbeitet den Import-Submit (Button "schemaOrgData_import_action",
-    * siehe SchemaOrgData_AdminPageRenderer::renderExistingJsonLdNotice()
-    * und doc/adr_import_verdrahtung.md, Entscheidung (c)).
+    * siehe SchemaOrgData_AdminPageRenderer::renderExistingJsonLdNotice()).
     *
     * Ermittelt den Schema-Type aus dem eingefügten JSON-LD selbst
     * (Henne-Ei-Problem: importJsonLd() benötigt das Schema bereits für
@@ -135,14 +132,12 @@ class SchemaOrgData_AdminRequestHandler {
     * Bei Erfolg wird das Ergebnis nach $_POST['schemaOrgData'][$scope]
     * zurückgeschrieben, damit der bestehende Redisplay-Pfad
     * (SchemaOrgData_AdminController::renderScopeSection(), $postScope)
-    * das importierte Formular ohne eigenen Mechanismus anzeigt (ADR,
-    * Entscheidung (d)). Die rohe Textarea-Eingabe wird dabei gelöscht,
-    * da sie nach erfolgreichem Import leer bleiben soll (ADR,
-    * Entscheidung (g)) - das signalisiert renderScopeSection() zugleich
-    * eindeutig, dass kein Import-Fehler für diesen Scope vorliegt.
+    * das importierte Formular ohne eigenen Mechanismus anzeigt. Die rohe
+    * Textarea-Eingabe wird dabei gelöscht, da sie nach erfolgreichem
+    * Import leer bleiben soll - das signalisiert renderScopeSection()
+    * zugleich eindeutig, dass kein Import-Fehler für diesen Scope vorliegt.
     *
-    * openingHours (doc/adr_import_verdrahtung.md, Entscheidung (l)):
-    * importJsonLd() liefert openingHours unverändert in der
+    * openingHours: importJsonLd() liefert openingHours unverändert in der
     * komprimierten schema.org-Notation ("Mo-Th 08:00-12:00"), wie sie
     * auch im importierten JSON-LD steht. Der $_POST-Redisplay-Pfad
     * (renderScopeSection()/renderOpeningHoursWidget()) erwartet dort
@@ -197,7 +192,7 @@ class SchemaOrgData_AdminRequestHandler {
         }
 
         // openingHours liegt nach dem Import noch in komprimierter
-        // schema.org-Notation vor - siehe Docblock oben (ADR, Entscheidung (l)).
+        // schema.org-Notation vor - siehe Docblock oben.
         if(isset($result['formData']['openingHours'])
             and is_array($result['formData']['openingHours'])
             and !$openingHoursHelper->isPerDayOpeningHoursValue($result['formData']['openingHours'])) {
@@ -212,7 +207,7 @@ class SchemaOrgData_AdminRequestHandler {
             ? ''
             : json_encode($result['extensionData'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // $_POST-Rückschreibung, siehe Docblock oben und ADR, Entscheidung (d).
+        // $_POST-Rückschreibung, siehe Docblock oben.
         $_POST['schemaOrgData'][$rawScope] = [
             'type' => $result['type'],
             'data' => $result['formData'],

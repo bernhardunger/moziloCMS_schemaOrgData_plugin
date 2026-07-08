@@ -200,7 +200,7 @@ final class SchemaRepositoryTest extends TestCase {
         $this->removeDirectory($pluginSelfDir);
     }
 
-    // resolveActiveType() (doc/adr_localbusiness_familie_scope.md) ------------
+    // resolveActiveType() ------------
 
     function testResolveActiveTypeLiefertErstenTypeMitBekanntemSchema(): void {
         $config = ['AccountingService' => ['name' => 'Kanzlei Muster']];

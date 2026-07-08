@@ -22,7 +22,7 @@ final class SchemaConsistencyTest extends TestCase {
     /**
      * Dateien, die einen definitions.PostalAddress-Block führen
      * (per grep gegen "PostalAddress"/"ui:widget":"postal_address"
-     * ermittelt, Stand Batch C).
+     * ermittelt).
      */
     private const POSTAL_ADDRESS_FILES = [
         'LocalBusiness.json',

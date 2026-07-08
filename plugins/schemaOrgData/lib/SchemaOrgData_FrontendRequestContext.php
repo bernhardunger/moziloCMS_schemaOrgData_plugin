@@ -6,8 +6,7 @@
 *
 * Bündelt die Laufzeit-Kollaboratoren und -Parameter, die
 * SchemaOrgData_FrontendRenderer::renderFrontend() für den
-* Aufbau der Frontend-Ausgabepipeline benötigt (siehe
-* doc/adr_ziel_architektur.md, Abschnitt 1 "Context-Objekte").
+* Aufbau der Frontend-Ausgabepipeline benötigt.
 *
 * Enthält bewusst nicht den Seiteninhalt ($value) - dieser ist
 * Methoden-Input für die Kollisionserkennung, kein Laufzeit-

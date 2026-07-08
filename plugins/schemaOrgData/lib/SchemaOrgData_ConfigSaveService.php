@@ -4,8 +4,7 @@
 *
 * SchemaOrgData_ConfigSaveService
 *
-* Save-Flow-Pipeline des Admin-Formulars (Fahrplan-Schritt 6+7, siehe
-* doc/adr_ziel_architektur.md, Abschnitt 4 + 11): bündelt die
+* Save-Flow-Pipeline des Admin-Formulars: bündelt die
 * vererbungsbewusste Feld-Auflösung (resolveInheritableFields()),
 * die POST-Bereinigung (sanitizePostData(), sanitizeAddressData())
 * sowie Validieren/Speichern (saveConfig()) - vorher auf
@@ -13,8 +12,8 @@
 * aus SchemaOrgData_AdminRequestHandler damit aufgelöst ist.
 * saveConfig() macht die Vier-Phasen-Struktur (Rohdaten/Validieren/
 * Normalisieren/Speichern) per Kommentar-Abschnitten sichtbar; die
-* Erweiterungsfeld-Validierung ist seit Fahrplan-Schritt 7 in die
-* eigenständige, ein SchemaOrgData_ValidationResult liefernde Methode
+* Erweiterungsfeld-Validierung ist in die eigenständige, ein
+* SchemaOrgData_ValidationResult liefernde Methode
 * validateExtensionField() ausgelagert.
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
@@ -38,8 +37,7 @@ class SchemaOrgData_ConfigSaveService {
     * ausschließlich der Anzeige im Formular (Placeholder + "ü"-Badge,
     * siehe SchemaOrgData_FormRenderer::renderInheritedBadge()) - die
     * zurückgegebenen Werte werden NICHT in die Formularfelder
-    * übernommen und nicht gespeichert, damit die feldweise Vererbung
-    * aus 0.2.4-beta unverändert bleibt.
+    * übernommen und nicht gespeichert.
     *
     * Bei mehreren übergeordneten Ebenen gewinnt die spezifischere
     * (Kategorie vor Global) - analog mergeConfigs()/
@@ -284,8 +282,7 @@ class SchemaOrgData_ConfigSaveService {
     *
     * Validiert das Erweiterungsfeld (freies JSON-Textarea, siehe
     * README.md "Erweiterungsfeld"): dekodiert die Rohdaten und prüft
-    * Geo-Properties (validateExtensionGeo()). Aus saveConfig() ausgelagert
-    * (Fahrplan-Schritt 7, siehe doc/adr_ziel_architektur.md, Abschnitt 4),
+    * Geo-Properties (validateExtensionGeo()). Aus saveConfig() ausgelagert,
     * damit saveConfig() nur noch orchestriert und keine Validierungslogik
     * selbst enthält.
     *
@@ -319,9 +316,8 @@ class SchemaOrgData_ConfigSaveService {
     *
     * Validiert und speichert die Konfiguration einer Geltungsebene.
     *
-    * Ablauf (Save-Flow-Pipeline, siehe doc/adr_ziel_architektur.md,
-    * Abschnitt 4): Schema des gewählten Types laden, Formularfelder
-    * und Erweiterungsfeld validieren (validateFormData()/
+    * Ablauf (Save-Flow-Pipeline): Schema des gewählten Types laden,
+    * Formularfelder und Erweiterungsfeld validieren (validateFormData()/
     * validateExtensionField()). Bei Validierungsfehlern wird nicht
     * gespeichert. Andernfalls werden die Formularfelder bereinigt
     * (sanitizePostData) und mit dem Erweiterungsfeld zusammengeführt
@@ -378,9 +374,8 @@ class SchemaOrgData_ConfigSaveService {
             $schema = $schemaRepository->loadSchema($pluginSelfDir, $type);
 
             // LocalBusiness-Familie: bei Kategorie/Seite nur der bei Global
-            // aktive Familien-Type zulässig, siehe
-            // doc/adr_localbusiness_familie_scope.md. Schutz gegen
-            // Formular-Manipulation (das gefilterte Dropdown verhindert die
+            // aktive Familien-Type zulässig. Schutz gegen Formular-
+            // Manipulation (das gefilterte Dropdown verhindert die
             // Auswahl bereits clientseitig, siehe
             // SchemaOrgData_AdminController::renderScopeSection()).
             $familyMismatch = false;
@@ -405,9 +400,9 @@ class SchemaOrgData_ConfigSaveService {
                 $extensionRaw = trim((string) ($postData['extension'][$type] ?? ''));
 
                 // 2. Validieren
-                // Bewusste Reihenfolge (siehe doc/adr_ziel_architektur.md, Abschnitt 4):
-                // Validierung arbeitet auf den Rohdaten, nicht auf der bereits
-                // bereinigten Normalisierungs-Zwischenform - Fehlermeldungen sollen sich
+                // Bewusste Reihenfolge: Validierung arbeitet auf den Rohdaten,
+                // nicht auf der bereits bereinigten Normalisierungs-
+                // Zwischenform - Fehlermeldungen sollen sich
                 // auf das beziehen, was der Nutzer tatsächlich eingegeben hat.
                 $inheritable = $this->resolveInheritableFields($scope, $cat, $page, $type, $lang, $scopeResolver, $settings, $adminPageRenderer);
                 $formErrors = $validator->validateFormData($formData, $schema, $inheritable, $lang, $schemaRepository);

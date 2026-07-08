@@ -315,8 +315,8 @@ final class FrontendRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Freeze-Fix-Batch Punkt 6: buildDebugWidget() zeigte location als
-    * schema-typloses Objekt und id_reference_or_literal-Werte (z. B.
+    * buildDebugWidget() zeigte location als schema-typloses Objekt
+    * und id_reference_or_literal-Werte (z. B.
     * Event.organizer) als rohe {"_mode": ...}-Repräsentation, statt
     * denselben Transformationen wie buildJsonLdScript() zu folgen.
     *

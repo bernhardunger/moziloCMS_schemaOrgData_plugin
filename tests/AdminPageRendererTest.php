@@ -12,9 +12,8 @@ require_once __DIR__ . '/Fixtures/FakeCatPage.php';
 * reine Anzeige-Bausteine der Admin-Seite (Info-Block, Scope-Label/
 * Selektor, Speichern-Button-Beschriftung, Speicher-Ergebnis-Hinweis,
 * Hinweis auf vorhandenes/kollidierendes JSON-LD, Ausschlussliste,
-* Admin-CSS, Schema-Type-Auswahl) - seit Fahrplan-Schritt 4 aus
-* SchemaOrgData_AdminController bzw. SchemaOrgData_FormRenderer
-* ausgelagert (siehe doc/adr_ziel_architektur.md). Echte, zustandslose
+* Admin-CSS, Schema-Type-Auswahl) - aus SchemaOrgData_AdminController
+* bzw. SchemaOrgData_FormRenderer ausgelagert. Echte, zustandslose
 * Language-/SchemaOrgData_ScopeResolver-Instanzen, $pluginSelfDir
 * zeigt auf die realen Schema-/Sprach-Fixtures des Plugins, $settings
 * ist ein isolierter InMemorySettings-Stub.
@@ -105,7 +104,7 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Batch A Punkt 4 (UX-Trio Admin-Formular): max-width für den
+    * UX-Trio Admin-Formular: max-width für den
     * Formularbereich, top-bündiges Label bei Textarea-Zeilen
     * (":has(textarea)") und CSS-Klasse der Pflichtfeld-Legende.
     *
@@ -134,7 +133,7 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * UX-Dreier (Fahrplan-Schritt 3, 0.4.54-beta): der allgemeine Absatz
+    * UX-Dreier: der allgemeine Absatz
     * (info_text_general) steckt hinter einem <details>-Element, der
     * scope-spezifische Absatz bleibt außerhalb sofort sichtbar.
     *
@@ -317,7 +316,7 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * UX-Dreier (Fahrplan-Schritt 3, 0.4.54-beta): Keep-Konsequenz-
+    * UX-Dreier: Keep-Konsequenz-
     * Hinweis, scope-abhängiger Titel, <details>-Wrapper um den
     * Import-Bereich.
     *
@@ -419,7 +418,6 @@ final class AdminPageRendererTest extends TestCase {
     function testDebugOutputCheckboxIsUncheckedWhenDisabled(): void {
         $html = $this->renderer()->renderExcludedCatsField([], false, $this->adminLang());
 
-        // Das Eingabefeld darf kein checked-Attribut tragen
         $this->assertMatchesRegularExpression(
             '/name="schemaOrgData\[global\]\[debug_output\]"[^>]*>/',
             $html
@@ -429,7 +427,6 @@ final class AdminPageRendererTest extends TestCase {
 
     function testAutofillButtonRenderedWhenContentPresent(): void {
         [$plugin, $settings] = $this->pluginWithInMemorySettings();
-        // existing_jsonld=true + Inhalt gesetzt → Button soll erscheinen
         (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($settings, 'global', [
             'existing_jsonld' => true,
             'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
@@ -446,14 +443,13 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Batch A Punkt 5 (Breiten-Fix Textareas): Import-Textarea erhält
-    * die Klasse schemaOrgData-import-textarea (width:100% via CSS)
-    * und rows="8" statt bisher rows="6".
+    * Import-Textarea erhält die Klasse schemaOrgData-import-textarea
+    * (width:100% via CSS) und rows="8" statt bisher rows="6".
     *
     ***************************************************************/
     /***************************************************************
     *
-    * Batch A Punkt 6 (Import-Textarea sichtbar beschriften): eine
+    * Import-Textarea sichtbar beschriften: eine
     * sichtbare <p>-Beschriftung erscheint direkt über der Textarea
     * (kein <label for="...">, sonst Doppel-Label-Regression - Test
     * testRenderExistingJsonLdNoticeInnerLabelEntfernt() bleibt grün).
@@ -486,12 +482,11 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Batch A Punkt 7 (Analyse Mehrblock-Vorschau): existing_jsonld_content
-    * entsteht in AdminController/FrontendRenderer per
-    * implode("\n\n", ...) mehrerer erkannter <script>-Blöcke. Enthält
+    * existing_jsonld_content entsteht in AdminController/FrontendRenderer
+    * per implode("\n\n", ...) mehrerer erkannter <script>-Blöcke. Enthält
     * der gespeicherte Inhalt mehr als ein Root-Objekt (ungültiges JSON
     * + "}"-gefolgt-von-"{"-Übergang), erscheint ein Hinweistext -
-    * bewusst kein automatischer Block-Splitter (adr_import_verdrahtung.md).
+    * bewusst kein automatischer Block-Splitter.
     *
     ***************************************************************/
     function testRenderExistingJsonLdNoticeZeigtHinweisBeiMehrerenBloecken(): void {
@@ -531,7 +526,7 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * UX-Mini-Batch (Import-Vorschau, 2026-07-08): die Vorschau des
+    * Import-Vorschau: die Vorschau des
     * erkannten Blocks ist ein read-only <pre>, keine Textarea - eine
     * Textarea würde fälschlich Editierbarkeit suggerieren.
     *
@@ -623,7 +618,6 @@ final class AdminPageRendererTest extends TestCase {
 
     function testAutofillButtonAbsentWhenContentEmpty(): void {
         [$plugin, $settings] = $this->pluginWithInMemorySettings();
-        // existing_jsonld=true, aber kein Inhalt gespeichert → kein Button
         (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($settings, 'global', [
             'existing_jsonld' => true,
             'existing_jsonld_content' => '',
@@ -638,7 +632,6 @@ final class AdminPageRendererTest extends TestCase {
 
     function testAutofillButtonAbsentWhenNoExistingJsonLd(): void {
         [$plugin, $settings] = $this->pluginWithInMemorySettings();
-        // existing_jsonld=false → gesamter Notice-Block fehlt → kein Button
 
         $html = $this->renderer()->renderExistingJsonLdNotice(
             'global', null, null, $this->adminLang(), new \SchemaOrgData_ScopeResolver(), $settings
@@ -650,8 +643,8 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Import-Verdrahtung (doc/adr_import_verdrahtung.md): echter
-    * Submit-Button, Doppel-Label-Fix (i), Textarea-Erhalt bei Fehler (g).
+    * Import-Verdrahtung: echter
+    * Submit-Button, Doppel-Label-Fix, Textarea-Erhalt bei Fehler.
     *
     ***************************************************************/
     function testRenderExistingJsonLdNoticeEnthaeltImportButton(): void {
@@ -699,7 +692,7 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Doppel-Label-Fix (i): das redundante innere
+    * Doppel-Label-Fix: das redundante innere
     * <label for="schemaOrgData_import_{scope}"> entfällt, <summary>
     * bleibt die einzige sichtbare Beschriftung; das Textarea trägt
     * stattdessen ein aria-label mit demselben Wortlaut.

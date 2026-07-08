@@ -9,17 +9,15 @@
 * verfügbaren @id-Fragmente für das id_reference_or_literal-Widget
 * sowie der Dangling-Reference-Guard, der hängende id_reference-
 * Verweise auf fehlende Zielknoten abfängt. Erhält ScopeResolver
-* und SchemaRepository als Abhängigkeiten (siehe
-* doc/adr_komponenten_refactoring.md, Entscheidung c) - wird
-* bewusst nicht auf drei Komponenten verteilt, damit der
-* De-Dup-/Dangling-Mechanismus nicht zerrissen wird.
+* und SchemaRepository als Abhängigkeiten - wird bewusst nicht auf
+* drei Komponenten verteilt, damit der De-Dup-/Dangling-Mechanismus
+* nicht zerrissen wird.
 *
 * Zustandslos - kein Caching. Kollaboratoren, Settings und
-* PLUGIN_SELF_DIR werden je Aufruf als Parameter übergeben,
-* analog zur Linie aus den Schritten 3-5. Sprache wird als bereits
-* aufgelöstes Language-Objekt übergeben (kein loadAdminLanguage()-
-* Aufruf hier - Cache-Guard und pluginLang-Seiteneffekt bleiben
-* auf der Fassade, siehe Entscheidung i).
+* PLUGIN_SELF_DIR werden je Aufruf als Parameter übergeben.
+* Sprache wird als bereits aufgelöstes Language-Objekt übergeben
+* (kein loadAdminLanguage()-Aufruf hier - Cache-Guard und
+* pluginLang-Seiteneffekt bleiben auf der Fassade).
 *
 ***************************************************************/
 class SchemaOrgData_IdReferenceService {

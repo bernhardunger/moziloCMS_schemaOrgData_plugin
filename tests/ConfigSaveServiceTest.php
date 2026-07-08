@@ -6,8 +6,7 @@ use PHPUnit\Framework\TestCase;
 
 /***************************************************************
 *
-* Direkt-Tests der Komponente SchemaOrgData_ConfigSaveService
-* (Fahrplan-Schritt 6, siehe doc/adr_ziel_architektur.md):
+* Direkt-Tests der Komponente SchemaOrgData_ConfigSaveService:
 * feldweise Vererbungsanzeige (resolveInheritableFields()),
 * POST-Sanitizing (sanitizePostData(), sanitizeAddressData())
 * sowie Validieren/Speichern (saveConfig()) - vorher auf
@@ -98,7 +97,7 @@ final class ConfigSaveServiceTest extends TestCase {
     *
     * Minimale, gültige Formulardaten für einen Type der
     * LocalBusiness-Familie ohne Pflicht-Adresse (AccountingService,
-    * MedicalBusiness, ...) - siehe doc/adr_localbusiness_familie_scope.md.
+    * MedicalBusiness, ...).
     *
     ***************************************************************/
     private function validFamilyTypeData(string $type, string $name = 'Muster GmbH'): array {
@@ -646,7 +645,7 @@ final class ConfigSaveServiceTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // saveConfig() - LocalBusiness-Familie (doc/adr_localbusiness_familie_scope.md)
+    // saveConfig() - LocalBusiness-Familie
     // -----------------------------------------------------------
 
     function testSaveConfigLehntAbweichendenFamilienTypeBeiKategorieAb(): void {

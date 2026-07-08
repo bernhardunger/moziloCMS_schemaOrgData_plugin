@@ -239,9 +239,9 @@ final class EventTest extends TestCase {
     }
 
     function testSaveConfigRoundTripMitDeutschemDatumsformatSpeichertIso(): void {
-        // Fahrplan-Schritt 4a: startDate wird im deutschen Format
-        // (TT.MM.YYYY HH:MM) eingegeben, muss aber als ISO-8601 gespeichert
-        // werden (normalizeEventDateInput() in sanitizePostData()).
+        // startDate wird im deutschen Format (TT.MM.YYYY HH:MM) eingegeben,
+        // muss aber als ISO-8601 gespeichert werden (normalizeEventDateInput()
+        // in sanitizePostData()).
         $previousTimezone = date_default_timezone_get();
         date_default_timezone_set('Europe/Berlin');
         try {
@@ -425,14 +425,13 @@ final class EventTest extends TestCase {
 
     // -----------------------------------------------------------
     // Redisplay nach saveConfig(): startDate TT.MM.YYYY-Round-Trip
-    // (Nachtrag zu Fahrplan-Schritt 4)
     // -----------------------------------------------------------
 
     /***************************************************************
     *
     * Ende-zu-Ende-Test zum Redisplay-Nachtrag: startDate wird im
     * deutschen Format eingegeben, von saveConfig() als ISO-8601
-    * gespeichert (Fahrplan-Schritt 4a) und muss beim erneuten
+    * gespeichert und muss beim erneuten
     * renderField() wieder als TT.MM.YYYY HH:MM angezeigt werden -
     * nicht als das zwischenzeitlich gespeicherte ISO.
     *

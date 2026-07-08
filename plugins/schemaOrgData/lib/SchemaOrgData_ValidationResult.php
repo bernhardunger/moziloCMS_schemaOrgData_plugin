@@ -4,8 +4,7 @@
 *
 * SchemaOrgData_ValidationResult
 *
-* Ergebnis-Objekt der Validierungsphase in SchemaOrgData_ConfigSaveService
-* (Fahrplan-Schritt 7, siehe doc/adr_ziel_architektur.md, Abschnitt 4):
+* Ergebnis-Objekt der Validierungsphase in SchemaOrgData_ConfigSaveService:
 * ersetzt implizite Rückgabewerte durch ein explizites, unveränderliches
 * Objekt. Wird ausschließlich intern von SchemaOrgData_ConfigSaveService
 * verwendet - die äußere Rückgabe von saveConfig() bleibt unverändert

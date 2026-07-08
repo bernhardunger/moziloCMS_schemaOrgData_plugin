@@ -663,7 +663,6 @@ final class JsonLdOutputTest extends TestCase {
 
         $output = $plugin->getContent('');
 
-        // Scope-Herkunft und Type-Name müssen im Widget auftauchen
         $this->assertStringContainsString('>global &mdash; LocalBusiness<', $output);
     }
 
@@ -715,7 +714,6 @@ final class JsonLdOutputTest extends TestCase {
     }
 
     function testScriptBlocksIdenticalRegardlessOfDebugOutput(): void {
-        // Ohne Debug
         $plugin1 = $this->createPlugin();
         (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'global',
@@ -731,7 +729,6 @@ final class JsonLdOutputTest extends TestCase {
         );
         $output1 = $plugin1->getContent('');
 
-        // Mit Debug
         $plugin2 = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
         $postData['debug_output'] = '1';

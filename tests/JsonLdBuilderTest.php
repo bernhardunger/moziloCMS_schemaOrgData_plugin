@@ -382,7 +382,7 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     function testIdReferenceInsertedAfterEmptyPropertyFilterDirekt(): void {
-        // Regressionsschutz analog NGO-Test aus 0.4.9-beta:
+        // Regressionsschutz analog zum NGO-Test:
         // id_reference muss NACH removeEmptyJsonLdProperties() eingefügt werden,
         // damit auch bei leerem $data-Array die Emission erfolgt.
         $_SERVER['HTTPS'] = 'on';
@@ -551,7 +551,6 @@ final class JsonLdBuilderTest extends TestCase {
 
     // -----------------------------------------------------------
     // Erweiterungsfeld darf reservierte Schlüssel nicht überschreiben
-    // (Freeze-Fix-Batch Punkt 2)
     // -----------------------------------------------------------
 
     function testExtensionFieldCannotOverrideContextTypeOrIdDirekt(): void {
@@ -599,7 +598,7 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // Freeze-Fix-Batch Punkt 4: ProfessionalService.json jetzt mit
+    // ProfessionalService.json jetzt mit
     // address/openingHours/image (Nachtrag zur LocalBusiness-Familie)
     // -----------------------------------------------------------
 
@@ -624,7 +623,7 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // Freeze-Fix-Batch Punkt 5: JobPosting.hiringOrganization/jobLocation
+    // JobPosting.hiringOrganization/jobLocation
     // -----------------------------------------------------------
 
     function testJobPostingHiringOrganizationLiteralModeAndJobLocationAreNestedDirekt(): void {
@@ -663,7 +662,7 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // Batch A Punkt 2: NGO/Organization-Feldsymmetrie - beide Types
+    // NGO/Organization-Feldsymmetrie - beide Types
     // beschreiben denselben globalen Organisationsknoten, daher dürfen
     // die verfügbaren Kontaktfelder nicht von der Type-Wahl abhängen.
     // -----------------------------------------------------------
