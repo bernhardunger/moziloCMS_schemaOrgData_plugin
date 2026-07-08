@@ -241,25 +241,44 @@ final class FormRendererComponentTest extends TestCase {
         $renderer = new \SchemaOrgData_FormRenderer();
         $fieldSchema = ['ui:required' => true, 'ui:label' => 'label_name'];
 
-        $attrs = $renderer->buildValidationAttrs('global', 'name', $fieldSchema, null, $this->adminLang());
+        $attrs = $renderer->buildValidationAttrs('global', 'name', $fieldSchema, [], null, $this->adminLang());
 
         $this->assertSame('required', $attrs['data-validate']);
         $this->assertArrayHasKey('data-required-message', $attrs);
     }
 
-    function testBuildValidationAttrsTelephoneNutztCountryFieldAusIdPrefix(): void {
+    function testBuildValidationAttrsTelephoneNutztCountryFieldAusIdPrefixWennAddressImSchema(): void {
         $renderer = new \SchemaOrgData_FormRenderer();
-        $attrs = $renderer->buildValidationAttrs('global', 'telephone', [], 'cat_testkat', $this->adminLang());
+        $rootSchema = ['properties' => ['telephone' => [], 'address' => ['ui:widget' => 'postal_address']]];
+
+        $attrs = $renderer->buildValidationAttrs('global', 'telephone', [], $rootSchema, 'cat_testkat', $this->adminLang());
 
         $this->assertSame('telephone', $attrs['data-validate']);
         $this->assertSame('schemaOrgData_cat_testkat_address_addressCountry', $attrs['data-country-field']);
+    }
+
+    /***************************************************************
+    *
+    * Freeze-Fix-Batch Punkt 8: Schemas ohne address-Property (Person,
+    * Organization) dürfen kein data-country-field setzen - das
+    * Attribut zeigte zuvor auf ein nie gerendertes Element.
+    *
+    ***************************************************************/
+    function testBuildValidationAttrsTelephoneOhneCountryFieldWennKeinAddressImSchema(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $rootSchema = ['properties' => ['telephone' => []]];
+
+        $attrs = $renderer->buildValidationAttrs('global', 'telephone', [], $rootSchema, 'global', $this->adminLang());
+
+        $this->assertSame('telephone', $attrs['data-validate']);
+        $this->assertArrayNotHasKey('data-country-field', $attrs);
     }
 
     function testBuildValidationAttrsDateTimeEndDateVerweistAufStartDateFeld(): void {
         $renderer = new \SchemaOrgData_FormRenderer();
         $fieldSchema = ['format' => 'date-time'];
 
-        $attrs = $renderer->buildValidationAttrs('page', 'endDate', $fieldSchema, 'page_kat_seite', $this->adminLang());
+        $attrs = $renderer->buildValidationAttrs('page', 'endDate', $fieldSchema, [], 'page_kat_seite', $this->adminLang());
 
         $this->assertSame('date-time', $attrs['data-validate']);
         $this->assertSame('schemaOrgData_page_kat_seite_startDate', $attrs['data-range-start-field']);
@@ -269,7 +288,7 @@ final class FormRendererComponentTest extends TestCase {
         $renderer = new \SchemaOrgData_FormRenderer();
         $fieldSchema = ['format' => 'date-time', 'ui:required' => true, 'ui:label' => 'label_startDate'];
 
-        $attrs = $renderer->buildValidationAttrs('page', 'startDate', $fieldSchema, 'page_kat_seite', $this->adminLang());
+        $attrs = $renderer->buildValidationAttrs('page', 'startDate', $fieldSchema, [], 'page_kat_seite', $this->adminLang());
 
         $this->assertSame('date-time', $attrs['data-validate']);
         $this->assertArrayNotHasKey('data-range-start-field', $attrs);

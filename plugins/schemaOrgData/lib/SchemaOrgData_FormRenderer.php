@@ -738,17 +738,20 @@ class SchemaOrgData_FormRenderer {
     *
     * Ermittelt zusätzliche HTML-Attribute für die clientseitige
     * Live-Validierung eines Feldes (data-validate, ggf.
-    * data-country-field für telephone). Pflichtfelder ("ui:required")
-    * erhalten zusätzlich data-required-message, damit der Blur-Handler
-    * (validator.js, runFieldValidation()) leere Pflichtfelder sofort
-    * meldet.
+    * data-country-field für telephone - nur wenn das Schema
+    * überhaupt ein address-Property besitzt, siehe README.md).
+    * Pflichtfelder ("ui:required") erhalten zusätzlich
+    * data-required-message, damit der Blur-Handler (validator.js,
+    * runFieldValidation()) leere Pflichtfelder sofort meldet.
     *
+    * @param array<string, mixed> $rootSchema aktives Schema des Types (für
+    *        die address-Property-Prüfung des telephone-Zweigs)
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     * @param Language $lang für die Pflichtfeld-Meldung (nur bei ui:required)
     * @return array<string,string>
     *
     ***************************************************************/
-    public function buildValidationAttrs(string $scope, string $name, array $fieldSchema, ?string $idPrefix, Language $lang): array {
+    public function buildValidationAttrs(string $scope, string $name, array $fieldSchema, array $rootSchema, ?string $idPrefix, Language $lang): array {
         $idPrefix = $idPrefix ?? $scope;
         $format = $fieldSchema['format'] ?? null;
         $required = (bool) ($fieldSchema['ui:required'] ?? false);
@@ -767,10 +770,13 @@ class SchemaOrgData_FormRenderer {
                 $attrs['data-range-start-field'] = 'schemaOrgData_'.$idPrefix.'_startDate';
             }
         } elseif($name === 'telephone') {
-            $attrs = [
-                'data-validate' => 'telephone',
-                'data-country-field' => 'schemaOrgData_'.$idPrefix.'_address_addressCountry',
-            ];
+            $attrs = ['data-validate' => 'telephone'];
+            // Nur setzen, wenn das Schema tatsächlich ein address-Property
+            // hat (Person/Organization haben keins - das Attribut zeigte
+            // dort zuvor auf ein nie gerendertes Element).
+            if(isset($rootSchema['properties']['address'])) {
+                $attrs['data-country-field'] = 'schemaOrgData_'.$idPrefix.'_address_addressCountry';
+            }
         } elseif($required) {
             $attrs = ['data-validate' => 'required'];
         } else {
@@ -949,7 +955,7 @@ class SchemaOrgData_FormRenderer {
         $widgetHtml = match($widget) {
             'select'   => $this->renderSelectWidget($fieldId, $fieldName, $fieldSchema, $value, $lang, $pluginLang),
             'textarea' => $this->renderTextareaWidget($fieldId, $fieldName, $fieldSchema, $value),
-            default    => $this->renderTextWidget($fieldId, $fieldName, $fieldSchema, $value, $this->buildValidationAttrs($scope, $name, $fieldSchema, $idPrefix, $lang)),
+            default    => $this->renderTextWidget($fieldId, $fieldName, $fieldSchema, $value, $this->buildValidationAttrs($scope, $name, $fieldSchema, $rootSchema, $idPrefix, $lang)),
         };
 
         $feedback = ($value !== null and $value !== '' and is_scalar($value))

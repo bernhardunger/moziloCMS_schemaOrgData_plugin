@@ -144,12 +144,12 @@ class SchemaOrgData_JsonLdBuilder {
         // (z. B. unvollständige PostalAddress/GeoCoordinates-Angaben).
         $data = $this->removeEmptyJsonLdProperties($data);
 
-        // Adresse, Geokoordinaten, Mitarbeiter und Veranstaltungsort als
-        // verschachtelte, typisierte schema.org-Objekte ausgeben. Ein
-        // eventuell im Erweiterungsfeld mitgeliefertes "@type" wird vorher
-        // entfernt, damit der schema-vorgegebene Type nicht überschreibbar ist
+        // Adresse, Geokoordinaten und Veranstaltungsort als verschachtelte,
+        // typisierte schema.org-Objekte ausgeben. Ein eventuell im
+        // Erweiterungsfeld mitgeliefertes "@type" wird vorher entfernt,
+        // damit der schema-vorgegebene Type nicht überschreibbar ist
         // (analoges Muster zu den reservierten Top-Level-Schlüsseln oben).
-        foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person', 'location' => 'Place', 'jobLocation' => 'Place'] as $property => $nestedType) {
+        foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'location' => 'Place', 'jobLocation' => 'Place'] as $property => $nestedType) {
             if(isset($data[$property]) and is_array($data[$property])) {
                 unset($data[$property]['@type']);
                 $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
