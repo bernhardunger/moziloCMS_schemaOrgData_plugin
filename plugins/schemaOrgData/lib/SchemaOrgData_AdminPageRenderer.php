@@ -28,6 +28,9 @@ class SchemaOrgData_AdminPageRenderer {
     ***************************************************************/
     public function getAdminCss(): string {
         return '
+.schemaOrgData-admin { max-width: 900px; }
+.schemaOrgData-admin .schemaOrgData-required-legend { color: #666; font-size: .85em; margin: 0 0 .75em; }
+.schemaOrgData-admin .schemaOrgData-field-row:has(textarea) { align-items: flex-start !important; }
 .schemaOrgData-admin .schemaOrgData-info { background: #eef6ff; border: 1px solid #b6d4f5; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--info, .schemaOrgData-admin .schemaOrgData-notice--unsaved { background: #fff8e1; border: 1px solid #ffe082; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--success { background: #e8f5e9; border: 1px solid #a5d6a7; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }

@@ -102,6 +102,7 @@ label_extension_field = Erweiterte Properties (JSON)
 description_extension_field = Zusätzliche schema.org-Properties als JSON-Objekt. Werden beim Speichern mit den Formularfeldern zusammengeführt, das Formular hat Vorrang.
 
 label_required_field = Pflichtfeld
+label_required_legend = * Pflichtfeld
 label_select_placeholder = – bitte wählen –
 
 badge_inherited = ü

@@ -1012,7 +1012,17 @@ class SchemaOrgData_FormRenderer {
                 : '';
         }
 
-        $html = '';
+        $hasRequiredField = false;
+        foreach($schema['properties'] ?? [] as $fieldSchema) {
+            if(!empty($fieldSchema['ui:required'])) {
+                $hasRequiredField = true;
+                break;
+            }
+        }
+
+        $html = $hasRequiredField
+            ? '<p class="schemaOrgData-required-legend">'.$lang->getLanguageHtml('label_required_legend').'</p>'."\n"
+            : '';
         foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
             $html .= $this->renderField(
                 $scope, $name, $fieldSchema, $formData[$name] ?? null, $schema, $formData, $idPrefix,

@@ -490,6 +490,45 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertStringContainsString('customProp', $html);
     }
 
+    /***************************************************************
+    *
+    * Batch A Punkt 4 (UX-Trio Admin-Formular): renderTypeFields()
+    * rendert die Pflichtfeld-Legende nur, wenn der Type mindestens
+    * ein ui:required-Feld hat.
+    *
+    ***************************************************************/
+    function testRenderTypeFieldsZeigtPflichtfeldLegendeBeiRequiredFeldern(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+
+        $html = $renderer->renderTypeFields(
+            'global', 'LocalBusiness', $schema, [], null, null,
+            ['data' => [], 'originLabel' => []], new \SchemaOrgData_DataSplitHelper(), $this->adminLang(),
+            $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE', 'https://example.com/plugins/schemaOrgData/',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('schemaOrgData-required-legend', $html);
+    }
+
+    function testRenderTypeFieldsZeigtKeineLegendeOhneRequiredFelder(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = [
+            'properties' => [
+                'name' => ['type' => 'string', 'ui:widget' => 'text', 'ui:label' => 'label_name', 'ui:required' => false],
+            ],
+        ];
+
+        $html = $renderer->renderTypeFields(
+            'global', 'TestType', $schema, [], null, null,
+            ['data' => [], 'originLabel' => []], new \SchemaOrgData_DataSplitHelper(), $this->adminLang(),
+            $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE', 'https://example.com/plugins/schemaOrgData/',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringNotContainsString('schemaOrgData-required-legend', $html);
+    }
+
     // -----------------------------------------------------------
     // renderField() - id_reference_or_literal
     // -----------------------------------------------------------

@@ -103,6 +103,21 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringContainsString('.schemaOrgData-required', $css);
     }
 
+    /***************************************************************
+    *
+    * Batch A Punkt 4 (UX-Trio Admin-Formular): max-width für den
+    * Formularbereich, top-bündiges Label bei Textarea-Zeilen
+    * (":has(textarea)") und CSS-Klasse der Pflichtfeld-Legende.
+    *
+    ***************************************************************/
+    function testGetAdminCssEnthaeltUxTrioRegeln(): void {
+        $css = $this->renderer()->getAdminCss();
+
+        $this->assertStringContainsString('.schemaOrgData-admin { max-width: 900px; }', $css);
+        $this->assertStringContainsString(':has(textarea)', $css);
+        $this->assertStringContainsString('.schemaOrgData-required-legend', $css);
+    }
+
     // -----------------------------------------------------------
     // renderInfoBlock()
     // -----------------------------------------------------------

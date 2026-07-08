@@ -102,6 +102,7 @@ label_extension_field = Additional Properties (JSON)
 description_extension_field = Additional schema.org properties as a JSON object. Merged with the form fields on save, form fields take precedence.
 
 label_required_field = Required field
+label_required_legend = * Required field
 label_select_placeholder = – please select –
 
 badge_inherited = i
