@@ -792,7 +792,12 @@ final class ValidatorTest extends TestCase {
 
     function testValidateFormDataOkBeiGueltigerVollerUriEmploymentType(): void {
         $validator = new \SchemaOrgData_Validator();
-        $formData = ['title' => 'Entwickler', 'description' => 'Stellenbeschreibung', 'employmentType' => 'https://schema.org/FULL_TIME'];
+        $formData = [
+            'title' => 'Entwickler',
+            'description' => 'Stellenbeschreibung',
+            'employmentType' => 'https://schema.org/FULL_TIME',
+            'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+        ];
         $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
 
         $this->assertSame([], $errors);
@@ -809,6 +814,24 @@ final class ValidatorTest extends TestCase {
         $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
 
         $this->assertNotEmpty($errors);
+    }
+
+    /***************************************************************
+    *
+    * Freeze-Fix-Batch Punkt 5: hiringOrganization (id_reference_or_literal)
+    * ist jetzt ui:required - fehlt der Wert vollständig, muss
+    * validateFormData() einen Pflichtfeld-Fehler melden.
+    *
+    ***************************************************************/
+    function testValidateFormDataMeldetPflichtfeldFehlerBeiFehlenderHiringOrganization(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = ['title' => 'Entwickler', 'description' => 'Stellenbeschreibung'];
+        $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertContains(
+            $this->adminLang()->getLanguageValue('error_required_field', $this->adminLang()->getLanguageValue('label_hiring_organization')),
+            $errors
+        );
     }
 
     function testValidatePostalAddressDataOkBeiGueltigemAddressCountry(): void {

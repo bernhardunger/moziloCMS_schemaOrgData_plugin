@@ -464,7 +464,13 @@ final class ConfigSaveServiceTest extends TestCase {
 
         $postData = [
             'type' => 'JobPosting',
-            'data' => ['title' => 'Entwickler', 'description' => 'Stellenbeschreibung', 'employmentType' => 'https://schema.org/FULL_TIME'],
+            'data' => [
+                'title' => 'Entwickler',
+                'description' => 'Stellenbeschreibung',
+                'employmentType' => 'https://schema.org/FULL_TIME',
+                'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+                'jobLocation' => ['address' => ['addressLocality' => 'Musterstadt', 'addressCountry' => 'DE']],
+            ],
             'extension' => ['JobPosting' => ''],
         ];
 

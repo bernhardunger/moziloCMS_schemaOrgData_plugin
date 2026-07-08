@@ -149,18 +149,21 @@ class SchemaOrgData_JsonLdBuilder {
         // eventuell im Erweiterungsfeld mitgeliefertes "@type" wird vorher
         // entfernt, damit der schema-vorgegebene Type nicht überschreibbar ist
         // (analoges Muster zu den reservierten Top-Level-Schlüsseln oben).
-        foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person', 'location' => 'Place'] as $property => $nestedType) {
+        foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person', 'location' => 'Place', 'jobLocation' => 'Place'] as $property => $nestedType) {
             if(isset($data[$property]) and is_array($data[$property])) {
                 unset($data[$property]['@type']);
                 $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
             }
         }
 
-        // location.address ist eine Ebene tiefer als die obige Map reicht -
-        // eigener PostalAddress-@type für die verschachtelte Adresse (Event.location).
-        if(isset($data['location']['address']) and is_array($data['location']['address'])) {
-            unset($data['location']['address']['@type']);
-            $data['location']['address'] = array_merge(['@type' => 'PostalAddress'], $data['location']['address']);
+        // {location,jobLocation}.address ist eine Ebene tiefer als die obige
+        // Map reicht - eigener PostalAddress-@type für die verschachtelte
+        // Adresse (Event.location, JobPosting.jobLocation).
+        foreach(['location', 'jobLocation'] as $placeProperty) {
+            if(isset($data[$placeProperty]['address']) and is_array($data[$placeProperty]['address'])) {
+                unset($data[$placeProperty]['address']['@type']);
+                $data[$placeProperty]['address'] = array_merge(['@type' => 'PostalAddress'], $data[$placeProperty]['address']);
+            }
         }
 
         // id_reference-Properties aus dem Schema einsetzen (Build-Zeit-Emitter).

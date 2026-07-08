@@ -119,6 +119,36 @@ final class FormRendererTest extends TestCase {
 
     /***************************************************************
     *
+    * Freeze-Fix-Batch Punkt 5: JobPosting.json erhält hiringOrganization
+    * (id_reference_or_literal, analog Event.organizer) und jobLocation
+    * (place-Widget, analog Event.location) - beide gemäß Google-
+    * Richtlinie für JobPosting als Pflichtfeld.
+    *
+    ***************************************************************/
+    function testJobPostingSchemaEnthaeltHiringOrganizationUndJobLocation(): void {
+        $plugin = new \schemaOrgData();
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'JobPosting');
+
+        $this->assertNotNull($schema);
+        $this->assertSame(['title', 'description', 'hiringOrganization', 'jobLocation'], $schema['required']);
+        $this->assertSame('id_reference_or_literal', $schema['properties']['hiringOrganization']['ui:widget']);
+        $this->assertTrue((bool) $schema['properties']['hiringOrganization']['ui:required']);
+        $this->assertSame('place', $schema['properties']['jobLocation']['ui:widget']);
+        $this->assertTrue((bool) $schema['properties']['jobLocation']['ui:required']);
+
+        $html = (new \SchemaOrgData_FormRenderer())->renderTypeFields(
+            'page', 'JobPosting', $schema, [], null, null, ['data' => [], 'originLabel' => []],
+            new \SchemaOrgData_DataSplitHelper(), $this->adminLang(), new \SchemaOrgData_SchemaRepository(),
+            new \SchemaOrgData_UrlHelper(), 'deDE', $plugin->PLUGIN_SELF_URL, new \SchemaOrgData_OpeningHoursHelper(),
+            new \SchemaOrgData_Validator(), $this->weekdayLang(), $this->availableFragments($plugin)
+        );
+
+        $this->assertStringContainsString('name="schemaOrgData[page][data][hiringOrganization]', $html);
+        $this->assertStringContainsString('name="schemaOrgData[page][data][jobLocation][address][addressLocality]"', $html);
+    }
+
+    /***************************************************************
+    *
     * Regressionstest für die addressLocality-Pflichtfeld-Validierung
     * (Fix in 0.2.0-beta): das Feld muss data-validate="required" und
     * eine vollständig aufgelöste data-required-message tragen, damit

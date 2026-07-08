@@ -68,6 +68,8 @@ label_title = Job Title
 label_date_posted = Date Posted
 label_valid_through = Application Deadline
 label_employment_type = Employment Type
+label_hiring_organization = Hiring Organization
+label_job_location = Job Location
 
 label_location = Event Location
 label_start_date = Start (Date/Time)

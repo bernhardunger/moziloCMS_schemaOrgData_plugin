@@ -592,5 +592,44 @@ final class JsonLdBuilderTest extends TestCase {
         $this->assertSame(['Mo-Fr 09:00-18:00'], $decoded['openingHours']);
         $this->assertSame('https://example.com/bild.jpg', $decoded['image']);
     }
+
+    // -----------------------------------------------------------
+    // Freeze-Fix-Batch Punkt 5: JobPosting.hiringOrganization/jobLocation
+    // -----------------------------------------------------------
+
+    function testJobPostingHiringOrganizationLiteralModeAndJobLocationAreNestedDirekt(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'JobPosting', [
+            'title' => 'Entwickler',
+            'description' => 'Stellenbeschreibung',
+            'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+            'jobLocation' => [
+                'name' => 'Hauptsitz',
+                'address' => [
+                    'addressLocality' => 'Musterstadt',
+                    'addressCountry' => 'DE',
+                ],
+            ],
+        ]);
+
+        $this->assertSame('Organization', $decoded['hiringOrganization']['@type']);
+        $this->assertSame('Muster GmbH', $decoded['hiringOrganization']['name']);
+        $this->assertSame('Place', $decoded['jobLocation']['@type']);
+        $this->assertSame('PostalAddress', $decoded['jobLocation']['address']['@type']);
+        $this->assertSame('Musterstadt', $decoded['jobLocation']['address']['addressLocality']);
+    }
+
+    function testJobPostingHiringOrganizationReferenceModeEmitsAtIdDirekt(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'JobPosting', [
+            'title' => 'Entwickler',
+            'description' => 'Stellenbeschreibung',
+            'hiringOrganization' => ['_mode' => 'reference', '_fragment' => 'organization'],
+        ]);
+
+        $this->assertSame('https://www.example.org/#organization', $decoded['hiringOrganization']['@id']);
+    }
 }
 
