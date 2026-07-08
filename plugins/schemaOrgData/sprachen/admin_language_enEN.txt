@@ -148,6 +148,8 @@ description_import_jsonld = Insert an existing JSON-LD block. Known fields are f
 button_import = Import
 
 button_use_detected_jsonld = Use detected block
+button_show_full_jsonld = Full view
+label_full_jsonld_preview = Detected JSON-LD block (full view)
 
 hint_id_reference_auto_link = Automatically linked to:
 

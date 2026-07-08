@@ -429,6 +429,98 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringContainsString('data-existing-content="{&quot;@type&quot;:&quot;LocalBusiness&quot;}"', $html);
     }
 
+    /***************************************************************
+    *
+    * UX-Mini-Batch (Import-Vorschau, 2026-07-08): die Vorschau des
+    * erkannten Blocks ist ein read-only <pre>, keine Textarea - eine
+    * Textarea würde fälschlich Editierbarkeit suggerieren.
+    *
+    ***************************************************************/
+    function testExistingJsonLdVorschauIstReadOnlyPre(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '{"@type":"LocalBusiness","name":"Müller & Söhne"}',
+            ],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('class="schemaOrgData-jsonld-preview"', $html);
+        $this->assertStringContainsString('<pre class="schemaOrgData-jsonld-preview">', $html);
+        $this->assertStringContainsString('Müller &amp; Söhne', $html);
+        $this->assertStringNotContainsString('<textarea class="schemaOrgData-jsonld-preview"', $html);
+    }
+
+    function testExistingJsonLdVorschauEnthaeltVollansichtDialogMitScopeEindeutigerId(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_cat_ueber-uns', [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
+            ],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'category', 'ueber-uns', null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('id="schemaOrgData-preview-dialog-category"', $html);
+        $this->assertStringContainsString('id="schemaOrgData-preview-trigger-category"', $html);
+        $this->assertStringContainsString('id="schemaOrgData-preview-close-category"', $html);
+        $this->assertStringContainsString('class="schemaOrgData-jsonld-preview-dialog"', $html);
+        $this->assertStringContainsString('schemaOrgData-jsonld-preview-full', $html);
+    }
+
+    function testExistingJsonLdVorschauWirdBeiUngueltigemJsonAlsRohtextAngezeigt(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '{"@type":"LocalBusiness"',
+            ],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('{&quot;@type&quot;:&quot;LocalBusiness&quot;', $html);
+    }
+
+    /***************************************************************
+    *
+    * Übernehmen-Pfad (data-existing-content) liefert weiterhin den
+    * rohen, nicht pretty-geprinteten JSON-Text - der Autofill-Button
+    * liest per JS aus diesem Attribut, nicht aus der <pre>-Vorschau.
+    *
+    ***************************************************************/
+    function testAutofillButtonDataAttributBleibtRoherJsonText(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '{"@type":"LocalBusiness","name":"Muster"}',
+            ],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString(
+            'data-existing-content="{&quot;@type&quot;:&quot;LocalBusiness&quot;,&quot;name&quot;:&quot;Muster&quot;}"',
+            $html
+        );
+    }
+
     function testAutofillButtonAbsentWhenContentEmpty(): void {
         [$plugin, $settings] = $this->pluginWithInMemorySettings();
         // existing_jsonld=true, aber kein Inhalt gespeichert → kein Button

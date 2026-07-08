@@ -148,6 +148,8 @@ description_import_jsonld = Fügt einen bestehenden JSON-LD-Block ein. Bekannte 
 button_import = Importieren
 
 button_use_detected_jsonld = Erkannten Block übernehmen
+button_show_full_jsonld = Vollansicht
+label_full_jsonld_preview = Erkannter JSON-LD-Block (Vollansicht)
 
 hint_id_reference_auto_link = Wird automatisch verknüpft mit:
 

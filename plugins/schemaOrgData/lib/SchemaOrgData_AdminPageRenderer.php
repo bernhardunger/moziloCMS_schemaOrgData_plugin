@@ -79,6 +79,11 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-idrl-section { padding-left: 1.5em; margin-bottom: .25em; }
 .schemaOrgData-admin .schemaOrgData-jsonld-notice { background: #fff3e0; border: 1px solid #ffb74d; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-jsonld-notice__title { margin-top: 0; }
+.schemaOrgData-admin .schemaOrgData-jsonld-preview { width: 100%; max-height: 300px; overflow: auto; box-sizing: border-box; font-family: monospace; font-size: .85em; background: #fafafa; border: 1px solid #ddd; border-radius: 4px; padding: .6em .75em; margin: .5em 0; }
+.schemaOrgData-admin .schemaOrgData-jsonld-preview-dialog { max-width: 800px; width: 90vw; max-height: 85vh; overflow: auto; border-radius: 6px; border: 1px solid #ccc; box-shadow: 0 4px 24px rgba(0,0,0,.2); padding: 1.25em; }
+.schemaOrgData-admin .schemaOrgData-jsonld-preview-dialog__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1em; border-bottom: 1px solid #eee; padding-bottom: .75em; }
+.schemaOrgData-admin .schemaOrgData-jsonld-preview-dialog__close { background: none; border: none; font-size: 1.3em; cursor: pointer; color: #666; padding: .1em .4em; }
+.schemaOrgData-admin .schemaOrgData-jsonld-preview-full { font-family: monospace; font-size: .85em; background: #fafafa; border: 1px solid #ddd; border-radius: 4px; padding: .75em; overflow: auto; white-space: pre-wrap; margin: 0; }
 ';
     }
 
@@ -287,7 +292,42 @@ class SchemaOrgData_AdminPageRenderer {
         $html .= '<p>'."\n";
 
         if(!empty($meta['existing_jsonld_content'])) {
-            $escaped = htmlspecialchars((string) $meta['existing_jsonld_content'], ENT_QUOTES, CHARSET);
+            $rawContent = (string) $meta['existing_jsonld_content'];
+            $escaped    = htmlspecialchars($rawContent, ENT_QUOTES, CHARSET);
+
+            // Pretty-Print nur für die Anzeige - der Autofill-Button
+            // überträgt weiterhin $rawContent (data-existing-content), damit
+            // "Erkannten Block übernehmen" den unveränderten Rohtext liefert.
+            $decoded = json_decode($rawContent, true);
+            $prettyContent = (json_last_error() === JSON_ERROR_NONE)
+                ? (string) json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                : $rawContent;
+            $escapedPretty = htmlspecialchars($prettyContent, ENT_QUOTES, CHARSET);
+
+            $dialogId  = 'schemaOrgData-preview-dialog-'.$scope;
+            $triggerId = 'schemaOrgData-preview-trigger-'.$scope;
+            $closeId   = 'schemaOrgData-preview-close-'.$scope;
+
+            $html .= '<pre class="schemaOrgData-jsonld-preview">'.$escapedPretty.'</pre>'."\n";
+            $html .= '<button type="button" id="'.$triggerId.'" class="mo-btn schemaOrgData-preview-trigger-btn">'
+                .$lang->getLanguageHtml('button_show_full_jsonld').'</button>'."\n";
+
+            $html .= '<dialog id="'.$dialogId.'" class="schemaOrgData-jsonld-preview-dialog">'."\n";
+            $html .= '<div class="schemaOrgData-jsonld-preview-dialog__header">'."\n";
+            $html .= '<strong>'.$lang->getLanguageHtml('label_full_jsonld_preview').'</strong>'."\n";
+            $html .= '<button type="button" id="'.$closeId.'" class="schemaOrgData-jsonld-preview-dialog__close" aria-label="&#x2715;">&#x2715;</button>'."\n";
+            $html .= '</div>'."\n";
+            $html .= '<pre class="schemaOrgData-jsonld-preview-full">'.$escapedPretty.'</pre>'."\n";
+            $html .= '</dialog>'."\n";
+
+            $html .= '<script>(function(){'
+                .'var t=document.getElementById("'.$triggerId.'");'
+                .'var d=document.getElementById("'.$dialogId.'");'
+                .'var c=document.getElementById("'.$closeId.'");'
+                .'if(t&&d&&d.showModal){t.addEventListener("click",function(){d.showModal();});}'
+                .'if(c&&d){c.addEventListener("click",function(){d.close();});}'
+                .'})();</script>'."\n";
+
             $html .= '<button type="button" class="mo-btn schemaOrgData-autofill-btn"'
                 .' data-target="schemaOrgData_import_'.$scope.'"'
                 .' data-existing-content="'.$escaped.'">'
