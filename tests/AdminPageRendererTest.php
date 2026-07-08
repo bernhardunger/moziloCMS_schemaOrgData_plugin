@@ -486,6 +486,51 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
+    * Batch A Punkt 7 (Analyse Mehrblock-Vorschau): existing_jsonld_content
+    * entsteht in AdminController/FrontendRenderer per
+    * implode("\n\n", ...) mehrerer erkannter <script>-Blöcke. Enthält
+    * der gespeicherte Inhalt mehr als ein Root-Objekt (ungültiges JSON
+    * + "}"-gefolgt-von-"{"-Übergang), erscheint ein Hinweistext -
+    * bewusst kein automatischer Block-Splitter (adr_import_verdrahtung.md).
+    *
+    ***************************************************************/
+    function testRenderExistingJsonLdNoticeZeigtHinweisBeiMehrerenBloecken(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '{"@type":"LocalBusiness"}'."\n\n".'{"@context":"https://schema.org","@type":"AccountingService"}',
+            ],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('schemaOrgData-jsonld-notice__multiblock-hint', $html);
+        $this->assertStringContainsString($this->adminLang()->getLanguageHtml('notice_multiple_jsonld_blocks'), $html);
+    }
+
+    function testRenderExistingJsonLdNoticeZeigtKeinenHinweisBeiEinzelnemBlock(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
+            ],
+        ]);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringNotContainsString('schemaOrgData-jsonld-notice__multiblock-hint', $html);
+    }
+
+    /***************************************************************
+    *
     * UX-Mini-Batch (Import-Vorschau, 2026-07-08): die Vorschau des
     * erkannten Blocks ist ein read-only <pre>, keine Textarea - eine
     * Textarea würde fälschlich Editierbarkeit suggerieren.

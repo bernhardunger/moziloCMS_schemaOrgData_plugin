@@ -152,6 +152,7 @@ button_import = Import
 button_use_detected_jsonld = Use detected block
 button_show_full_jsonld = Full view
 label_full_jsonld_preview = Detected JSON-LD block (full view)
+notice_multiple_jsonld_blocks = Multiple JSON-LD blocks were detected. After using the button below, please remove any extra blocks from the import field - only a single block can be imported.
 
 hint_id_reference_auto_link = Automatically linked to:
 

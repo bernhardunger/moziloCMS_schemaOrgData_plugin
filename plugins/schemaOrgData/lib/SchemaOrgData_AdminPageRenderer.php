@@ -84,6 +84,7 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-idrl-section { padding-left: 1.5em; margin-bottom: .25em; }
 .schemaOrgData-admin .schemaOrgData-jsonld-notice { background: #fff3e0; border: 1px solid #ffb74d; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-jsonld-notice__title { margin-top: 0; }
+.schemaOrgData-admin .schemaOrgData-jsonld-notice__multiblock-hint { color: #b8860b; font-weight: bold; }
 .schemaOrgData-admin .schemaOrgData-jsonld-preview { width: 100%; max-height: 300px; overflow: auto; box-sizing: border-box; font-family: monospace; font-size: .85em; background: #fafafa; border: 1px solid #ddd; border-radius: 4px; padding: .6em .75em; margin: .5em 0; }
 .schemaOrgData-admin .schemaOrgData-jsonld-preview-dialog { max-width: 800px; width: 90vw; max-height: 85vh; overflow: auto; border-radius: 6px; border: 1px solid #ccc; box-shadow: 0 4px 24px rgba(0,0,0,.2); padding: 1.25em; }
 .schemaOrgData-admin .schemaOrgData-jsonld-preview-dialog__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1em; border-bottom: 1px solid #eee; padding-bottom: .75em; }
@@ -309,6 +310,17 @@ class SchemaOrgData_AdminPageRenderer {
                 : $rawContent;
             $escapedPretty = htmlspecialchars($prettyContent, ENT_QUOTES, CHARSET);
 
+            // Batch A Punkt 7: existing_jsonld_content entsteht durch
+            // implode("\n\n", ...) mehrerer erkannter <script>-Blöcke (siehe
+            // AdminController::renderAdminPage()/FrontendRenderer::renderFrontend()) -
+            // bei mehr als einem Block ist das Ergebnis kein gültiges Einzel-JSON
+            // mehr. Einfache Heuristik statt eines Parsers: ungültiges JSON UND
+            // ein "}"-gefolgt-von-"{"-Übergang deutet auf mehrere aneinandergereihte
+            // Root-Objekte hin. Bewusst kein automatischer Block-Splitter (siehe
+            // doc/adr_import_verdrahtung.md), nur ein transparenter Hinweis.
+            $looksLikeMultipleBlocks = json_last_error() !== JSON_ERROR_NONE
+                && preg_match('/\}\s*\{/', $rawContent) === 1;
+
             $dialogId  = 'schemaOrgData-preview-dialog-'.$scope;
             $triggerId = 'schemaOrgData-preview-trigger-'.$scope;
             $closeId   = 'schemaOrgData-preview-close-'.$scope;
@@ -332,6 +344,11 @@ class SchemaOrgData_AdminPageRenderer {
                 .'if(t&&d&&d.showModal){t.addEventListener("click",function(){d.showModal();});}'
                 .'if(c&&d){c.addEventListener("click",function(){d.close();});}'
                 .'})();</script>'."\n";
+
+            if($looksLikeMultipleBlocks) {
+                $html .= '<p class="schemaOrgData-jsonld-notice__multiblock-hint">'
+                    .$lang->getLanguageHtml('notice_multiple_jsonld_blocks').'</p>'."\n";
+            }
 
             $html .= '<button type="button" class="mo-btn schemaOrgData-autofill-btn"'
                 .' data-target="schemaOrgData_import_'.$scope.'"'

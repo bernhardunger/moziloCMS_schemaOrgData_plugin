@@ -152,6 +152,7 @@ button_import = Importieren
 button_use_detected_jsonld = Erkannten Block übernehmen
 button_show_full_jsonld = Vollansicht
 label_full_jsonld_preview = Erkannter JSON-LD-Block (Vollansicht)
+notice_multiple_jsonld_blocks = Es wurden mehrere JSON-LD-Blöcke erkannt. Bitte nach dem Übernehmen überzählige Blöcke im Import-Feld entfernen - importiert werden kann nur ein einzelner Block.
 
 hint_id_reference_auto_link = Wird automatisch verknüpft mit:
 
