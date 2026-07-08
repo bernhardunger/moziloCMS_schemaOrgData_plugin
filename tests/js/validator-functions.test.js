@@ -24,6 +24,21 @@ var MINI_SCHEMA = {
     }
 };
 
+// Bildet den AccountingService-Use-Case des Bugs nach (doc/TODO.md,
+// "Bug (lokalisiert)"): Haupt-Schema mit required: [name, url] - das
+// Erweiterungsfeld enthält aber ausschließlich unbekannte Properties
+// (priceRange, geo), keine der beiden Pflichtfelder.
+var MINI_SCHEMA_WITH_REQUIRED = {
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+    title: 'MiniTestSchemaWithRequired',
+    type: 'object',
+    required: ['name', 'url'],
+    properties: {
+        name: { type: 'string' },
+        url: { type: 'string' }
+    }
+};
+
 describe('js/validator.js - reine Validierungsfunktionen', function () {
     var validator;
 
@@ -215,6 +230,36 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
             var result = validator.validateExtensionField('{"count": "keine-zahl"}', MINI_SCHEMA);
             expect(result.valid).toBe(false);
             expect(result.formatErrors.length).toBeGreaterThan(0);
+        });
+    });
+
+    /***************************************************************
+    *
+    * Regressionstest für den in doc/TODO.md dokumentierten Bug:
+    * checkFormats() kompilierte bislang das volle Type-Schema inkl.
+    * required-Keyword und meldete dadurch Pflichtfeld-Fehler des
+    * HAUPT-Schemas ("must have required property 'name'/'url'")
+    * unter einem Erweiterungsfeld, das nur unbekannte Zusatz-
+    * Properties enthält. Unbekannte Properties bleiben weiterhin als
+    * Warnung erhalten (checkUnknownProperties ist unabhängig).
+    *
+    ***************************************************************/
+    describe('checkFormats()/validateExtensionField() - required-Keyword des Haupt-Schemas (doc/TODO.md)', function () {
+        test('checkFormats(): keine required-Fehler bei Erweiterungsfeld ohne Pflichtfelder', function () {
+            var errors = validator.checkFormats({ priceRange: '$$', geo: {} }, MINI_SCHEMA_WITH_REQUIRED);
+            var requiredErrors = errors.filter(function (error) {
+                return error.keyword === 'required';
+            });
+
+            expect(requiredErrors).toEqual([]);
+        });
+
+        test('validateExtensionField(): gültig trotz fehlender Pflichtfelder des Haupt-Schemas, unbekannte Properties weiterhin als Warnung', function () {
+            var result = validator.validateExtensionField('{"priceRange": "$$", "geo": {}}', MINI_SCHEMA_WITH_REQUIRED);
+
+            expect(result.valid).toBe(true);
+            expect(result.formatErrors).toEqual([]);
+            expect(result.unknownProperties.sort()).toEqual(['geo', 'priceRange']);
         });
     });
 
