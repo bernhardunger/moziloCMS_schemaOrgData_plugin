@@ -231,6 +231,7 @@ final class FormRendererComponentTest extends TestCase {
             'data-schema-url="https://example.com/plugins/schemaOrgData/schemas/LocalBusiness.json"', $html
         );
         $this->assertStringContainsString('{&quot;geo&quot;:{}}', $html);
+        $this->assertStringContainsString('rows="12"', $html);
     }
 
     // -----------------------------------------------------------

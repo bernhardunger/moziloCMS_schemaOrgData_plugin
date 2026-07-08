@@ -72,6 +72,7 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-address-field--narrow { flex: 0 0 80px !important; }
 .schemaOrgData-admin .schemaOrgData-address-field--narrow input { max-width: 80px; }
 .schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
+.schemaOrgData-admin .schemaOrgData-extension-field { font-family: monospace; resize: vertical; }
 .schemaOrgData-admin select[id$="_addressCountry"] { max-width: 200px; }
 .schemaOrgData-admin input[id$="_addressRegion"] { max-width: 300px; }
 .schemaOrgData-admin .schemaOrgData-idrl-container { margin-bottom: .25em; }

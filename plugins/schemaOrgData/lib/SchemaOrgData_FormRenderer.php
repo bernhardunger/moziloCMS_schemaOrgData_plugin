@@ -726,7 +726,7 @@ class SchemaOrgData_FormRenderer {
         $html .= '<legend>'.$lang->getLanguageHtml('label_extension_field').'</legend>'."\n";
         $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_extension_field').'</p>'."\n";
         $html .= '<textarea id="'.$fieldId.'" name="'.$fieldName.'" class="mo-input-text schemaOrgData-extension-field" '
-            .'rows="6" data-schema-url="'.htmlspecialchars($schemaUrl, ENT_QUOTES, CHARSET).'">'
+            .'rows="12" data-schema-url="'.htmlspecialchars($schemaUrl, ENT_QUOTES, CHARSET).'">'
             .htmlspecialchars($extensionJson, ENT_QUOTES, CHARSET).'</textarea>'."\n";
         $html .= '<div id="'.$fieldId.'_feedback" class="schemaOrgData-extension-feedback"></div>'."\n";
         $html .= '</fieldset>'."\n";
