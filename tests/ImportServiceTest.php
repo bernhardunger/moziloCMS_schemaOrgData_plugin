@@ -40,6 +40,37 @@ final class ImportServiceTest extends TestCase {
         $this->assertSame(['hasMap' => 'https://maps.example.org'], $result['extensionData']);
     }
 
+    /***************************************************************
+    *
+    * Nebeneffekt der geo-Schema-Ergänzung (Batch B): "geo" ist jetzt
+    * eine bekannte Property des Haupt-Schemas (siehe schemas/
+    * LocalBusiness.json etc.) - splitDataForRendering() arbeitet rein
+    * property-namens-basiert (siehe DataSplitHelperTest), ein
+    * importiertes "geo"-Objekt landet daher automatisch in formData
+    * statt extensionData, ohne dass importJsonLd() selbst geo-spezifisch
+    * wissen muss.
+    *
+    ***************************************************************/
+    function testImportiertesGeoLandetInFormDataStattExtensionData(): void {
+        $service = new \SchemaOrgData_ImportService();
+        $dataSplitHelper = new \SchemaOrgData_DataSplitHelper();
+        $schema = $this->schema();
+        $schema['properties']['geo'] = ['type' => 'object'];
+
+        $json = json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'LocalBusiness',
+            'name' => 'Muster GmbH',
+            'geo' => ['@type' => 'GeoCoordinates', 'latitude' => 48.12567, 'longitude' => 11.64278],
+        ]);
+
+        $result = $service->importJsonLd($json, $schema, $dataSplitHelper);
+
+        $this->assertTrue($result['success']);
+        $this->assertArrayHasKey('geo', $result['formData']);
+        $this->assertArrayNotHasKey('geo', $result['extensionData']);
+    }
+
     function testUngueltigesJsonWirdAlsFehlerGemeldet(): void {
         $service = new \SchemaOrgData_ImportService();
         $dataSplitHelper = new \SchemaOrgData_DataSplitHelper();
