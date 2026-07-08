@@ -234,22 +234,27 @@ final class FrontendRendererTest extends TestCase {
         return ['scope' => $scope, 'type' => $type, 'data' => $data, 'id' => $id];
     }
 
+    private function buildDebugWidget(array $blocks, array $suppressedIdTargets = []): string {
+        return $this->renderer()->buildDebugWidget(
+            $blocks, $this->jsonLdBuilder(), $this->schemaRepository(),
+            $this->urlHelper(), $this->pluginDir, $suppressedIdTargets
+        );
+    }
+
     function testBuildDebugWidgetSingularBeiEinemBlock(): void {
-        $html = $this->renderer()->buildDebugWidget(
-            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])],
-            $this->jsonLdBuilder()
+        $html = $this->buildDebugWidget(
+            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
         );
 
         $this->assertStringContainsString('1 JSON-LD-Block<', $html);
     }
 
     function testBuildDebugWidgetPluralUndEinPreBlockJeEintrag(): void {
-        $html = $this->renderer()->buildDebugWidget(
+        $html = $this->buildDebugWidget(
             [
                 $this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH']),
                 $this->debugBlock('global', 'WebSite', ['name' => 'Beispiel-Website']),
-            ],
-            $this->jsonLdBuilder()
+            ]
         );
 
         $this->assertStringContainsString('2 JSON-LD-Blöcke<', $html);
@@ -257,9 +262,8 @@ final class FrontendRendererTest extends TestCase {
     }
 
     function testBuildDebugWidgetJsonInhaltEntsprichtBuildJsonLdScriptTransformation(): void {
-        $html = $this->renderer()->buildDebugWidget(
-            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Müller &amp; Partner', 'description' => ''])],
-            $this->jsonLdBuilder()
+        $html = $this->buildDebugWidget(
+            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Müller &amp; Partner', 'description' => ''])]
         );
 
         // decodeJsonLdValues() dekodiert "&amp;" zu "&" (anschließend erneut
@@ -271,9 +275,8 @@ final class FrontendRendererTest extends TestCase {
     }
 
     function testBuildDebugWidgetEnthaeltValidatorLink(): void {
-        $html = $this->renderer()->buildDebugWidget(
-            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])],
-            $this->jsonLdBuilder()
+        $html = $this->buildDebugWidget(
+            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
         );
 
         $this->assertStringContainsString('href="https://validator.schema.org"', $html);
@@ -283,9 +286,8 @@ final class FrontendRendererTest extends TestCase {
         $payload = '</script><script>alert(1)</script>';
         $data = ['name' => $payload];
 
-        $html = $this->renderer()->buildDebugWidget(
-            [$this->debugBlock('global', 'Organization', $data)],
-            $this->jsonLdBuilder()
+        $html = $this->buildDebugWidget(
+            [$this->debugBlock('global', 'Organization', $data)]
         );
 
         preg_match('#<pre id="schemaOrgData-debug-pre-0"[^>]*>(.*)</pre>#s', $html, $preMatches);
@@ -309,5 +311,51 @@ final class FrontendRendererTest extends TestCase {
         $actualJson = htmlspecialchars_decode($preContent, ENT_QUOTES);
 
         $this->assertSame($expectedJson, $actualJson);
+    }
+
+    /***************************************************************
+    *
+    * Freeze-Fix-Batch Punkt 6: buildDebugWidget() zeigte location als
+    * schema-typloses Objekt und id_reference_or_literal-Werte (z. B.
+    * Event.organizer) als rohe {"_mode": ...}-Repräsentation, statt
+    * denselben Transformationen wie buildJsonLdScript() zu folgen.
+    *
+    ***************************************************************/
+    function testBuildDebugWidgetZeigtLocationAlsPlaceMitVerschachtelterPostalAddress(): void {
+        $data = [
+            'name' => 'Sommerfest',
+            'startDate' => '2026-09-15T19:00:00+02:00',
+            'location' => [
+                'name' => 'Stadtpark',
+                'address' => ['addressLocality' => 'Musterstadt', 'addressCountry' => 'DE'],
+            ],
+        ];
+
+        $html = $this->buildDebugWidget([$this->debugBlock('page_x_y', 'Event', $data)]);
+
+        $this->assertStringContainsString('&quot;@type&quot;: &quot;Place&quot;', $html);
+        $this->assertStringContainsString('&quot;@type&quot;: &quot;PostalAddress&quot;', $html);
+    }
+
+    function testBuildDebugWidgetLoestIdReferenceOrLiteralAufStattRohemModeZuZeigen(): void {
+        $serverBackup = $_SERVER;
+        try {
+            $_SERVER['HTTPS'] = 'on';
+            $_SERVER['HTTP_HOST'] = 'www.example.org';
+            $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+            $data = [
+                'name' => 'Sommerfest',
+                'startDate' => '2026-09-15T19:00:00+02:00',
+                'organizer' => ['_mode' => 'reference', '_fragment' => 'organization'],
+            ];
+
+            $html = $this->buildDebugWidget([$this->debugBlock('page_x_y', 'Event', $data)]);
+
+            $this->assertStringNotContainsString('_mode', $html);
+            $this->assertStringContainsString('&quot;@id&quot;: &quot;https://www.example.org/#organization&quot;', $html);
+        } finally {
+            $_SERVER = $serverBackup;
+        }
     }
 }

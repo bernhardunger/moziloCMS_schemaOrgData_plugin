@@ -140,7 +140,10 @@ class SchemaOrgData_FrontendRenderer {
         }
 
         if($debugOutput and $debugBlocks !== []) {
-            $output .= $this->buildDebugWidget($debugBlocks, $context->jsonLdBuilder);
+            $output .= $this->buildDebugWidget(
+                $debugBlocks, $context->jsonLdBuilder, $context->schemaRepository,
+                $context->urlHelper, $context->pluginSelfDir, $suppressedIdTargets
+            );
         }
 
         // Kollisionserkennung: vorhandenes JSON-LD scope-genau persistieren
@@ -194,12 +197,28 @@ class SchemaOrgData_FrontendRenderer {
     * globalen CSS-Klassen, da dies auf der echten Frontend-Seite
     * landet.
     *
+    * Die Vorschau je Block wird über buildJsonLdScript() erzeugt (statt
+    * über eine eigene, partielle Nachbildung dessen Transformationen) -
+    * das garantiert byte-identisches JSON zum echten <script>-Block,
+    * inklusive Place-/PostalAddress-Verschachtelung (address/geo/
+    * employee/location/jobLocation) und id_reference(_or_literal)-
+    * Auflösung (z. B. Event.organizer), statt der rohen
+    * {"_mode": ...}-Repräsentation.
+    *
     * @param array<int, array{scope: string, type: string, data: array<string, mixed>, id: string}> $blocks
     *              je Block Scope ('global'|'cat_x'|'page_x_y'), Type, Properties und @id-Anker
+    * @param string[] $suppressedIdTargets siehe buildJsonLdScript()
     * @return string HTML-Snippet inkl. <script>
     *
     ***************************************************************/
-    public function buildDebugWidget(array $blocks, SchemaOrgData_JsonLdBuilder $jsonLdBuilder): string {
+    public function buildDebugWidget(
+        array $blocks,
+        SchemaOrgData_JsonLdBuilder $jsonLdBuilder,
+        SchemaOrgData_SchemaRepository $schemaRepository,
+        SchemaOrgData_UrlHelper $urlHelper,
+        string $pluginSelfDir,
+        array $suppressedIdTargets = []
+    ): string {
         $count = count($blocks);
         $plural = $count !== 1 ? 'Blöcke' : 'Block';
 
@@ -234,23 +253,16 @@ class SchemaOrgData_FrontendRenderer {
             $preId  = 'schemaOrgData-debug-pre-'.$i;
             $copyId = 'schemaOrgData-debug-copy-'.$i;
 
-            // Dieselben Transformationen wie buildJsonLdScript(), damit die
-            // Vorschau byte-identisch mit dem echten <script>-Block ist.
-            $data = $jsonLdBuilder->decodeJsonLdValues($data);
-            $data = $jsonLdBuilder->removeEmptyJsonLdProperties($data);
-            foreach(['address' => 'PostalAddress', 'geo' => 'GeoCoordinates', 'employee' => 'Person'] as $property => $nestedType) {
-                if(isset($data[$property]) and is_array($data[$property])) {
-                    $data[$property] = array_merge(['@type' => $nestedType], $data[$property]);
-                }
-            }
-            $head = ['@context' => 'https://schema.org', '@type' => $type];
-            if($nodeId !== '') {
-                $head['@id'] = $nodeId;
-            }
-            $jsonLd = array_merge($head, $data);
-            // JSON_HEX_TAG ergänzt, damit die Vorschau byte-identisch mit dem
-            // echten <script>-Block aus buildJsonLdScript() bleibt.
-            $prettyJson = json_encode($jsonLd, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
+            // buildJsonLdScript() liefert denselben <script>-Block wie die
+            // echte Ausgabe - die Vorschau extrahiert daraus nur den
+            // JSON-Teil, statt dessen Transformationen (Leerfilter, Place-/
+            // PostalAddress-Verschachtelung, id_reference(_or_literal)-
+            // Auflösung) hier ein zweites Mal nachzubilden.
+            $script = $jsonLdBuilder->buildJsonLdScript(
+                $schemaRepository, $urlHelper, $pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets
+            );
+            preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $scriptMatches);
+            $prettyJson = $scriptMatches[1] ?? '';
 
             $html .= '<div style="margin-bottom:1.5em;">'."\n";
             $html .= '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4em;">'."\n";
@@ -264,7 +276,7 @@ class SchemaOrgData_FrontendRenderer {
             $html .= '<pre id="'.$preId.'" '
                 .'style="background:#f8f8f8;border:1px solid #ddd;border-radius:4px;padding:.75em;'
                 .'overflow:auto;font-size:.8em;white-space:pre-wrap;margin:0;">'
-                .htmlspecialchars($prettyJson !== false ? $prettyJson : '', ENT_QUOTES, CHARSET)
+                .htmlspecialchars($prettyJson, ENT_QUOTES, CHARSET)
                 .'</pre>'."\n";
             $html .= '</div>'."\n";
         }
