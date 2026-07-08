@@ -795,6 +795,7 @@ final class ValidatorTest extends TestCase {
         $formData = [
             'title' => 'Entwickler',
             'description' => 'Stellenbeschreibung',
+            'datePosted' => '2026-03-15T00:00:00+01:00',
             'employmentType' => 'https://schema.org/FULL_TIME',
             'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
         ];
@@ -825,11 +826,33 @@ final class ValidatorTest extends TestCase {
     ***************************************************************/
     function testValidateFormDataMeldetPflichtfeldFehlerBeiFehlenderHiringOrganization(): void {
         $validator = new \SchemaOrgData_Validator();
-        $formData = ['title' => 'Entwickler', 'description' => 'Stellenbeschreibung'];
+        $formData = ['title' => 'Entwickler', 'description' => 'Stellenbeschreibung', 'datePosted' => '2026-03-15T00:00:00+01:00'];
         $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
 
         $this->assertContains(
             $this->adminLang()->getLanguageValue('error_required_field', $this->adminLang()->getLanguageValue('label_hiring_organization')),
+            $errors
+        );
+    }
+
+    /***************************************************************
+    *
+    * Batch A Punkt 1: datePosted ist jetzt ui:required (Google-Richtlinie
+    * für JobPosting-Rich-Results) - fehlt der Wert vollständig, muss
+    * validateFormData() einen Pflichtfeld-Fehler melden.
+    *
+    ***************************************************************/
+    function testValidateFormDataMeldetPflichtfeldFehlerBeiFehlenderDatePosted(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'title' => 'Entwickler',
+            'description' => 'Stellenbeschreibung',
+            'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+        ];
+        $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertContains(
+            $this->adminLang()->getLanguageValue('error_required_field', $this->adminLang()->getLanguageValue('label_date_posted')),
             $errors
         );
     }

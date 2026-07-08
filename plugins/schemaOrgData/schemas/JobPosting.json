@@ -5,7 +5,7 @@
   "type": "object",
   "ui:typeLabel": "schema_type_jobposting",
   "ui:scopes": ["page"],
-  "required": ["title", "description", "hiringOrganization", "jobLocation"],
+  "required": ["title", "description", "datePosted", "hiringOrganization", "jobLocation"],
   "properties": {
     "title": {
       "type": "string",
@@ -27,7 +27,7 @@
       "ui:widget": "text",
       "ui:label": "label_date_posted",
       "ui:placeholder": "15.03.2026",
-      "ui:required": false
+      "ui:required": true
     },
     "validThrough": {
       "type": "string",

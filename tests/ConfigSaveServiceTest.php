@@ -467,6 +467,7 @@ final class ConfigSaveServiceTest extends TestCase {
             'data' => [
                 'title' => 'Entwickler',
                 'description' => 'Stellenbeschreibung',
+                'datePosted' => '2026-03-15',
                 'employmentType' => 'https://schema.org/FULL_TIME',
                 'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
                 'jobLocation' => ['address' => ['addressLocality' => 'Musterstadt', 'addressCountry' => 'DE']],

@@ -130,7 +130,7 @@ final class FormRendererTest extends TestCase {
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'JobPosting');
 
         $this->assertNotNull($schema);
-        $this->assertSame(['title', 'description', 'hiringOrganization', 'jobLocation'], $schema['required']);
+        $this->assertSame(['title', 'description', 'datePosted', 'hiringOrganization', 'jobLocation'], $schema['required']);
         $this->assertSame('id_reference_or_literal', $schema['properties']['hiringOrganization']['ui:widget']);
         $this->assertTrue((bool) $schema['properties']['hiringOrganization']['ui:required']);
         $this->assertSame('place', $schema['properties']['jobLocation']['ui:widget']);
