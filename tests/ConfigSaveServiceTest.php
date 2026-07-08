@@ -284,6 +284,29 @@ final class ConfigSaveServiceTest extends TestCase {
         $this->assertArrayNotHasKey('location', $result);
     }
 
+    function testSanitizePostDataSpeichertGeoAlsFloatBeiVollstaendigemPaar(): void {
+        $schema = $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'LocalBusiness');
+        $formData = ['geo' => ['latitude' => '48.12567', 'longitude' => '11.64278']];
+
+        $result = $this->configSaveService()->sanitizePostData(
+            $formData, $schema, $this->schemaRepository(), $this->openingHoursHelper(), $this->validator()
+        );
+
+        $this->assertSame(48.12567, $result['geo']['latitude']);
+        $this->assertSame(11.64278, $result['geo']['longitude']);
+    }
+
+    function testSanitizePostDataGeoOhneAngabenLiefertKeinGeoProperty(): void {
+        $schema = $this->schemaRepository()->loadSchema($this->pluginSelfDir(), 'LocalBusiness');
+        $formData = ['geo' => ['latitude' => '', 'longitude' => '']];
+
+        $result = $this->configSaveService()->sanitizePostData(
+            $formData, $schema, $this->schemaRepository(), $this->openingHoursHelper(), $this->validator()
+        );
+
+        $this->assertArrayNotHasKey('geo', $result);
+    }
+
     // -----------------------------------------------------------
     // validateExtensionField()
     // -----------------------------------------------------------
@@ -370,6 +393,30 @@ final class ConfigSaveServiceTest extends TestCase {
         $this->assertSame('Musterstadt', $loaded['LocalBusiness']['address']['addressLocality']);
         $this->assertSame('DE', $loaded['LocalBusiness']['address']['addressCountry']);
         $this->assertSame(['Mo 09:00-18:00'], $loaded['LocalBusiness']['openingHours']);
+    }
+
+    function testSaveConfigSpeichertVollstaendigesGeoPaar(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['geo'] = ['latitude' => '48.12567', 'longitude' => '11.64278'];
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(48.12567, $settings->get('config_global')['LocalBusiness']['geo']['latitude']);
+        $this->assertSame(11.64278, $settings->get('config_global')['LocalBusiness']['geo']['longitude']);
+    }
+
+    function testSaveConfigLehntUnvollstaendigesGeoPaarAb(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['geo'] = ['latitude' => '48.12567', 'longitude' => ''];
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertContains($this->adminLang()->getLanguageValue('error_geo_incomplete'), $result['errors']);
+        $this->assertFalse($settings->keyExists('config_global'));
     }
 
     function testSaveConfigMergtGueltigesErweiterungsJson(): void {

@@ -1387,6 +1387,8 @@
         validateEmail: validateEmail,
         validateRequiredField: validateRequiredField,
         validateOpeningHoursTime: validateOpeningHoursTime,
+        validateGeoLatitude: validateGeoLatitude,
+        validateGeoLongitude: validateGeoLongitude,
         validateEventDateInput: validateEventDateInput,
         showExtensionFeedback: showExtensionFeedback,
         initExcludedCatsSelectAll: initExcludedCatsSelectAll,

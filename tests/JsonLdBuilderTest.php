@@ -66,6 +66,36 @@ final class JsonLdBuilderTest extends TestCase {
         ], $decoded);
     }
 
+    /***************************************************************
+    *
+    * Regressionstest: geo->GeoCoordinates-Mapping war bereits vor dem
+    * geo-Formularfeld vorhanden (nur über das Erweiterungsfeld
+    * erreichbar) - jetzt erstmals über den Formularpfad
+    * (SchemaOrgData_ConfigSaveService::sanitizePostData() speichert
+    * latitude/longitude als float, siehe ConfigSaveServiceTest).
+    * json_encode() darf die Werte daher NICHT als Strings quoten.
+    *
+    ***************************************************************/
+    function testBuildJsonLdScriptGibtGeoAlsVerschachtelteZahlenAus(): void {
+        $builder = new \SchemaOrgData_JsonLdBuilder();
+        $schemaRepo = new \SchemaOrgData_SchemaRepository();
+        $urlHelper = new \SchemaOrgData_UrlHelper();
+
+        $script = $builder->buildJsonLdScript(
+            $schemaRepo, $urlHelper, $this->pluginSelfDir(),
+            'LocalBusiness', ['name' => 'Muster GmbH', 'geo' => ['latitude' => 48.12567, 'longitude' => 11.64278]]
+        );
+
+        $this->assertStringContainsString('"latitude": 48.12567', $script);
+        $this->assertStringContainsString('"longitude": 11.64278', $script);
+        $this->assertStringNotContainsString('"latitude": "48.12567"', $script);
+
+        preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
+        $decoded = json_decode($matches[1], true);
+
+        $this->assertSame(['@type' => 'GeoCoordinates', 'latitude' => 48.12567, 'longitude' => 11.64278], $decoded['geo']);
+    }
+
     function testBuildJsonLdScriptEscapedScriptBreakoutInFeldwertPerJsonHexTag(): void {
         $builder = new \SchemaOrgData_JsonLdBuilder();
         $schemaRepo = new \SchemaOrgData_SchemaRepository();

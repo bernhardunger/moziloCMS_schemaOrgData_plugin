@@ -151,6 +151,105 @@ final class FormRendererComponentTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // renderGeoWidget()
+    // -----------------------------------------------------------
+
+    function testRenderGeoWidgetEnthaeltLatitudeUndLongitudeFelder(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+
+        $html = $renderer->renderGeoWidget(
+            'global', 'geo', $schema['properties']['geo'], [], null, null, null,
+            $this->adminLang(), new \SchemaOrgData_Validator(),
+        );
+
+        $this->assertStringContainsString('schemaOrgData_global_geo_latitude', $html);
+        $this->assertStringContainsString('schemaOrgData_global_geo_longitude', $html);
+        $this->assertStringContainsString('schemaOrgData[global][data][geo][latitude]', $html);
+        $this->assertStringContainsString('schemaOrgData[global][data][geo][longitude]', $html);
+    }
+
+    function testRenderGeoWidgetZeigtGeerbtenPlatzhalterUndBadge(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+        $inherited = ['latitude' => '48.12567', 'longitude' => '11.64278'];
+
+        $html = $renderer->renderGeoWidget(
+            'category', 'geo', $schema['properties']['geo'], [], 'cat_testkat', $inherited, 'Global',
+            $this->adminLang(), new \SchemaOrgData_Validator(),
+        );
+
+        $this->assertStringContainsString('placeholder="48.12567"', $html);
+        $this->assertStringContainsString('placeholder="11.64278"', $html);
+        $this->assertStringContainsString('schemaOrgData-inherited', $html);
+    }
+
+    function testRenderGeoWidgetOhneWerteZeigtKeinenFehler(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+
+        $html = $renderer->renderGeoWidget(
+            'global', 'geo', $schema['properties']['geo'], [], null, null, null,
+            $this->adminLang(), new \SchemaOrgData_Validator(),
+        );
+
+        $this->assertStringNotContainsString($this->adminLang()->getLanguageValue('error_geo_incomplete'), $html);
+    }
+
+    function testRenderGeoWidgetZeigtIncompleteFehlerBeiNurEinemGefuelltenFeld(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+        $value = ['latitude' => '48.12567', 'longitude' => ''];
+
+        $html = $renderer->renderGeoWidget(
+            'global', 'geo', $schema['properties']['geo'], $value, null, null, null,
+            $this->adminLang(), new \SchemaOrgData_Validator(),
+        );
+
+        $this->assertStringContainsString($this->adminLang()->getLanguageValue('error_geo_incomplete'), $html);
+    }
+
+    function testRenderGeoWidgetZeigtWertebereichsfehlerBeiBeidenGefuelltUndUngueltigemWert(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+        $value = ['latitude' => '999', 'longitude' => '11.64278'];
+
+        $html = $renderer->renderGeoWidget(
+            'global', 'geo', $schema['properties']['geo'], $value, null, null, null,
+            $this->adminLang(), new \SchemaOrgData_Validator(),
+        );
+
+        $this->assertStringContainsString($this->adminLang()->getLanguageValue('error_geo_latitude'), $html);
+        $this->assertStringNotContainsString($this->adminLang()->getLanguageValue('error_geo_incomplete'), $html);
+    }
+
+    // -----------------------------------------------------------
+    // resolveGeoFieldFeedback()
+    // -----------------------------------------------------------
+
+    function testResolveGeoFieldFeedbackNullBeiBeidenLeer(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $result = $renderer->resolveGeoFieldFeedback('', '', true, new \SchemaOrgData_Validator(), $this->adminLang());
+
+        $this->assertNull($result['status']);
+    }
+
+    function testResolveGeoFieldFeedbackErrorBeiFehlendemGegenstueck(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $result = $renderer->resolveGeoFieldFeedback('', '11.64278', false, new \SchemaOrgData_Validator(), $this->adminLang());
+
+        $this->assertSame('error', $result['status']);
+        $this->assertSame($this->adminLang()->getLanguageValue('error_geo_incomplete'), $result['message']);
+    }
+
+    function testResolveGeoFieldFeedbackOkBeiBeidenGueltigGefuellt(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $result = $renderer->resolveGeoFieldFeedback('48.12567', '11.64278', true, new \SchemaOrgData_Validator(), $this->adminLang());
+
+        $this->assertSame('ok', $result['status']);
+    }
+
+    // -----------------------------------------------------------
     // renderOpeningHoursWidget()
     // -----------------------------------------------------------
 
@@ -416,6 +515,26 @@ final class FormRendererComponentTest extends TestCase {
 
         $this->assertStringContainsString('schemaOrgData-hint', $html);
         $this->assertStringContainsString('Adressfeld', $html);
+    }
+
+    // -----------------------------------------------------------
+    // renderField() - geo
+    // -----------------------------------------------------------
+
+    function testRenderFieldGeoZeigtBedingtenPflichtfeldHinweisDirekt(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->localBusinessSchema();
+
+        $html = $renderer->renderField(
+            'global', 'geo', $schema['properties']['geo'], [], $schema, [], null, null, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString('schemaOrgData-hint', $html);
+        $this->assertStringContainsString($this->adminLang()->getLanguageHtml('hint_geo_conditional_required'), $html);
+        $this->assertStringContainsString('schemaOrgData_global_geo_latitude', $html);
+        $this->assertStringContainsString('schemaOrgData_global_geo_longitude', $html);
     }
 
     // -----------------------------------------------------------

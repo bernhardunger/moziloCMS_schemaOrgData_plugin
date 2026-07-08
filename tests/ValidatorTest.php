@@ -324,6 +324,45 @@ final class ValidatorTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // validateGeoPair() - Paar-Pflicht "beides oder nichts" (renderGeoWidget())
+    // -----------------------------------------------------------
+
+    function testValidateGeoPairLeerBeiBeidenFeldernLeer(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $errors = $validator->validateGeoPair(['latitude' => '', 'longitude' => ''], $this->adminLang());
+
+        $this->assertSame([], $errors);
+    }
+
+    function testValidateGeoPairOkBeiBeidenFeldernGueltigGefuellt(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $errors = $validator->validateGeoPair(['latitude' => '48.137', 'longitude' => '11.575'], $this->adminLang());
+
+        $this->assertSame([], $errors);
+    }
+
+    function testValidateGeoPairMeldetFehlerBeiNurLatitudeGefuellt(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $errors = $validator->validateGeoPair(['latitude' => '48.137', 'longitude' => ''], $this->adminLang());
+
+        $this->assertSame([$this->adminLang()->getLanguageValue('error_geo_incomplete')], $errors);
+    }
+
+    function testValidateGeoPairMeldetFehlerBeiNurLongitudeGefuellt(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $errors = $validator->validateGeoPair(['latitude' => '', 'longitude' => '11.575'], $this->adminLang());
+
+        $this->assertSame([$this->adminLang()->getLanguageValue('error_geo_incomplete')], $errors);
+    }
+
+    function testValidateGeoPairMeldetWertebereichsfehlerBeiBeidenGefuelltUndUngueltig(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $errors = $validator->validateGeoPair(['latitude' => '999', 'longitude' => '-999'], $this->adminLang());
+
+        $this->assertCount(2, $errors);
+    }
+
+    // -----------------------------------------------------------
     // validateExtensionGeo()
     // -----------------------------------------------------------
 
@@ -437,6 +476,26 @@ final class ValidatorTest extends TestCase {
     function testValidateFormDataOkBeiVollstaendigenPflichtfeldern(): void {
         $validator = new \SchemaOrgData_Validator();
         $formData = ['name' => 'Muster GmbH', 'url' => 'https://example.com'];
+        $errors = $validator->validateFormData(
+            $formData, $this->localBusinessSchema(), [], $this->adminLang(), $this->schemaRepository()
+        );
+
+        $this->assertSame([], $errors);
+    }
+
+    function testValidateFormDataMeldetGeoPaarPflichtBeiNurEinemGefuelltenFeld(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = ['name' => 'Muster GmbH', 'url' => 'https://example.com', 'geo' => ['latitude' => '48.137', 'longitude' => '']];
+        $errors = $validator->validateFormData(
+            $formData, $this->localBusinessSchema(), [], $this->adminLang(), $this->schemaRepository()
+        );
+
+        $this->assertContains($this->adminLang()->getLanguageValue('error_geo_incomplete'), $errors);
+    }
+
+    function testValidateFormDataOkBeiVollstaendigemGeoPaar(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = ['name' => 'Muster GmbH', 'url' => 'https://example.com', 'geo' => ['latitude' => '48.137', 'longitude' => '11.575']];
         $errors = $validator->validateFormData(
             $formData, $this->localBusinessSchema(), [], $this->adminLang(), $this->schemaRepository()
         );
