@@ -1,6 +1,6 @@
 # schemaOrgData — moziloCMS Plugin
 
-**Version:** 0.4.85-beta  
+**Version:** 0.9.0-rc  
 **Kompatibilität:** moziloCMS 3.0.4 oder höher  
 **PHP:** 8.1+  
 **Lizenz:** GPL-3.0  
