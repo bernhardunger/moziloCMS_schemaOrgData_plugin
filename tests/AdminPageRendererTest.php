@@ -117,6 +117,71 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringContainsString('.schemaOrgData-required-legend', $css);
     }
 
+    /***************************************************************
+    *
+    * Regressionstest 8.14 (Playwright-Testlauf 2): Freitext-Textareas
+    * (z. B. description) stecken in keinem umschließenden Element mit
+    * eigenem Padding, das Erweiterungsfeld-Textarea aber in einem
+    * schemaOrgData-fieldset (Padding + Rahmen). Die bloße gemeinsame
+    * CSS-Klasse "schemaOrgData-wide-textarea" (bereits durch
+    * testRenderTextareaWidgetUndExtensionFieldTeilenSichBreitenKlasse()
+    * in FormRendererComponentTest.php abgedeckt) reicht daher NICHT als
+    * Breitengleichheits-Nachweis - "width: 100%" ergibt für das
+    * Erweiterungsfeld einen kleineren absoluten Wert, weil der
+    * verfügbare Innenraum des Fieldsets bereits um dessen Padding/Rahmen
+    * verengt ist. Dieser Test koppelt algebraisch die tatsächlichen
+    * Fieldset-Werte (Padding, Rahmenbreite) an die kompensierenden
+    * negativen Margins/die width-calc() des Erweiterungsfeld-Textarea -
+    * ändert sich künftig eines der beiden CSS-Regelsets ohne das andere
+    * nachzuziehen, schlägt dieser Test fehl (anders als ein reiner
+    * Klassen-Vorhandensein-Check).
+    *
+    ***************************************************************/
+    function testExtensionFieldTextareaKompensiertFieldsetPaddingUndRahmenFuerGleicheBreite(): void {
+        $css = $this->renderer()->getAdminCss();
+
+        $this->assertMatchesRegularExpression(
+            '/\.schemaOrgData-fieldset\s*\{[^}]*padding:\s*([0-9.]+)(em|px);/',
+            $css,
+            'Fieldset-Padding-Deklaration nicht gefunden - Testannahme ungültig geworden'
+        );
+        preg_match('/\.schemaOrgData-fieldset\s*\{[^}]*padding:\s*([0-9.]+)(em|px);/', $css, $paddingMatch);
+        $paddingNumber = (float) $paddingMatch[1];
+        $paddingUnit = $paddingMatch[2];
+        $padding = $paddingMatch[1].$paddingUnit;
+        $doubledPadding = self::formatCssNumber($paddingNumber * 2).$paddingUnit;
+
+        $this->assertMatchesRegularExpression(
+            '/\.schemaOrgData-fieldset\s*\{[^}]*border:\s*([0-9.]+)px\s+solid/',
+            $css,
+            'Fieldset-Rahmenbreiten-Deklaration nicht gefunden - Testannahme ungültig geworden'
+        );
+        preg_match('/\.schemaOrgData-fieldset\s*\{[^}]*border:\s*([0-9.]+)px\s+solid/', $css, $borderMatch);
+        $borderNumber = (float) $borderMatch[1];
+        $borderWidth = $borderMatch[1].'px';
+        $doubledBorderWidth = self::formatCssNumber($borderNumber * 2).'px';
+
+        $this->assertStringContainsString(
+            '.schemaOrgData-extension-field { font-family: monospace; resize: vertical; '
+            .'width: calc(100% + '.$doubledPadding.' + '.$doubledBorderWidth.'); '
+            .'margin-left: calc(-'.$padding.' - '.$borderWidth.'); '
+            .'margin-right: calc(-'.$padding.' - '.$borderWidth.'); }',
+            $css
+        );
+    }
+
+    /***************************************************************
+    *
+    * Formatiert eine CSS-Zahl ohne unnötige Nachkommastellen (z. B.
+    * 2.0 -> "2" statt "2.0"), analog dazu, wie CSS-Werte üblicherweise
+    * von Hand geschrieben werden - siehe
+    * testExtensionFieldTextareaKompensiertFieldsetPaddingUndRahmenFuerGleicheBreite().
+    *
+    ***************************************************************/
+    private static function formatCssNumber(float $value): string {
+        return rtrim(rtrim(number_format($value, 3, '.', ''), '0'), '.');
+    }
+
     // -----------------------------------------------------------
     // renderInfoBlock()
     // -----------------------------------------------------------

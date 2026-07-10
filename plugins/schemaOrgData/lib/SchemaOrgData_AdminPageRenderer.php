@@ -78,7 +78,13 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-address-field--narrow input { max-width: 80px; }
 .schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
 .schemaOrgData-admin .schemaOrgData-wide-textarea { width: 100%; box-sizing: border-box; }
-.schemaOrgData-admin .schemaOrgData-extension-field { font-family: monospace; resize: vertical; }
+/* Das Erweiterungsfeld-Textarea steckt (anders als Freitext-Textareas wie description)
+   in einem schemaOrgData-fieldset mit eigenem Padding/Rahmen (s. o.) - "width: 100%"
+   allein bezieht sich auf den dadurch bereits verengten Innenraum des Fieldsets und
+   ergibt eine sichtbar schmalere Textarea als bei den ungerahmten Freitextfeldern.
+   Negative Margins kompensieren exakt das Fieldset-Padding+Rahmen (1em + 1px je Seite),
+   sodass beide Textarea-Typen auf dieselbe absolute Breite kommen. */
+.schemaOrgData-admin .schemaOrgData-extension-field { font-family: monospace; resize: vertical; width: calc(100% + 2em + 2px); margin-left: calc(-1em - 1px); margin-right: calc(-1em - 1px); }
 .schemaOrgData-admin .schemaOrgData-import-textarea { width: 100%; box-sizing: border-box; }
 .schemaOrgData-admin select[id$="_addressCountry"] { max-width: 200px; }
 .schemaOrgData-admin input[id$="_addressRegion"] { max-width: 300px; }
