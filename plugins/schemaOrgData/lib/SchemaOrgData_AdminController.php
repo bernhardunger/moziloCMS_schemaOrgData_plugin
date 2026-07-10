@@ -226,10 +226,16 @@ class SchemaOrgData_AdminController {
                 // des verlustbehafteten Roundtrips über buildOpeningHoursArray()/
                 // parseOpeningHours() verwenden, damit Felder mit ungültigem
                 // Zeitformat beim Re-Display nicht geleert werden (siehe
-                // renderOpeningHoursWidget).
+                // renderOpeningHoursWidget). Geo: dieselbe Regel - sanitizePostData()
+                // liefert für "geo" nur dann ein Ergebnis, wenn BEIDE Werte gefüllt
+                // sind (Paar-Pflicht); wird das Speichern durch genau diese
+                // Paar-Pflicht blockiert (nur eines der beiden Felder gefüllt),
+                // ginge ohne diesen Override auch der bereits gültige Wert des
+                // angefassten Feldes beim Re-Display verloren (Regressionsfall 1.15).
                 foreach($schema['properties'] ?? [] as $propName => $propSchema) {
                     $propSchema = $schemaRepository->resolveSchemaRef($propSchema, $schema);
-                    if(($propSchema['ui:widget'] ?? '') === 'opening_hours' and is_array($postData[$propName] ?? null)) {
+                    $rawWidget = $propSchema['ui:widget'] ?? '';
+                    if(($rawWidget === 'opening_hours' or $rawWidget === 'geo') and is_array($postData[$propName] ?? null)) {
                         $data[$propName] = $postData[$propName];
                     }
                 }

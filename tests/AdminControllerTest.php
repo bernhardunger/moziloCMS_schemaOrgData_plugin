@@ -383,6 +383,31 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
+    * Regressionstest 1.15 (Playwright-Testlauf 2): schlägt das Speichern
+    * durch die Geo-Paar-Pflicht fehl (nur latitude befüllt, longitude
+    * leer), darf das Re-Display nicht BEIDE Geo-Felder leeren -
+    * sanitizePostData() liefert für "geo" nur bei vollständigem Paar ein
+    * Ergebnis, würde also ohne Override auch den bereits gültigen
+    * latitude-Wert verwerfen (analog testFailedSaveRetainsInvalidOpeningHoursTime()).
+    *
+    ***************************************************************/
+    function testFailedSaveRetainsPartiallyFilledGeoPair(): void {
+        $settings = new \InMemorySettings();
+
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['url'] = 'nicht-eine-url';
+        $postData['data']['geo'] = ['latitude' => '48.12567', 'longitude' => ''];
+        $_POST['schemaOrgData'] = ['global' => $postData];
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', true, $settings);
+
+        $this->assertStringContainsString('value="48.12567"', $html);
+    }
+
+    /***************************************************************
+    *
     * saveConfig() lebt auf
     * SchemaOrgData_ConfigSaveService (siehe tests/ConfigSaveServiceTest.php)
     * - dieser Helper wird von testFailedSaveRetainsPostedScalarValuesInActiveSection()
