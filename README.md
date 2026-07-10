@@ -357,10 +357,13 @@ Das Plugin gibt das JSON-LD als `<script>`-Tag im `<head>` aus — an der Stelle
 </script>
 ```
 
-> **Hinweis:** Der Platzhalter `{schemaOrgData}` sollte nicht in
-> `gallerytemplate.html` platziert werden. Galerie-Vollansichten haben
+> **Hinweis:** Der Platzhalter `{schemaOrgData}` muss in `template.html`
+> stehen, nicht in `gallerytemplate.html`. Galerie-Vollansichten haben
 > keine eigene Kategorie-/Seiten-Identität — das Plugin erkennt diesen
-> Fall und gibt dort ohnehin kein JSON-LD aus.
+> Fall und gibt dort ohnehin kein JSON-LD aus. Der Admin-Bereich prüft
+> beim Platzhalter-Hinweis ausschließlich `template.html`; ein
+> Platzhalter, der nur in `gallerytemplate.html` steht, gilt daher
+> korrekt als fehlend.
 
 > **Tipp:** Das erzeugte JSON-LD kann mit dem offiziellen Schema.org-Validator geprüft werden:  
 > 🔗 [https://validator.schema.org](https://validator.schema.org)
@@ -638,6 +641,8 @@ Die Einstellung wird pro Geltungsbereich (Global / Kategorie / Seite) gespeicher
 Im Admin-Bereich steht ein **Import-Feld** zur Verfügung. Ein bestehender JSON-LD-Block kann dort eingefügt werden — das Plugin parst den Block und befüllt automatisch die bekannten Formularfelder. Properties die das Formular nicht abbildet, werden automatisch ins Erweiterungsfeld übernommen.
 
 Wurde ein JSON-LD-Block im Template oder Seiteninhalt erkannt, erscheint oberhalb des Import-Felds ein **„Erkannten Block übernehmen"**-Button. Ein Klick überträgt den erkannten Block direkt ins Import-Feld — ohne sofortiges Speichern. Anschließend kann der Import über den „Importieren"-Button ausgelöst werden.
+
+> ⚠️ Wurden mehrere JSON-LD-Blöcke erkannt, wird dieser Button durch einen erklärenden Hinweistext ersetzt — der passende Block muss dann manuell aus der Vorschau kopiert werden, da eine automatische Übernahme kein gültiges Einzel-JSON ergäbe.
 
 > ⚠️ Der Import überschreibt die aktuelle Formularkonfiguration. Es erfolgt kein Merge.
 

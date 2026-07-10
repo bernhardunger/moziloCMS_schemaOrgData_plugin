@@ -21,6 +21,7 @@ notice_family_options_filtered = Weitere Geschäftsklassifikationen sind ausgebl
 
 notice_placeholder_missing_title = Plugin-Platzhalter fehlt im aktiven Layout-Template.
 notice_placeholder_missing_text = Im aktiven Layout-Template wurde kein Platzhalter {PARAM1} gefunden. Ohne diesen Platzhalter gibt das Plugin im Frontend keinerlei JSON-LD aus - unabhängig davon, wie es hier konfiguriert ist. Bitte den Platzhalter {PARAM1} an passender Stelle im &lt;head&gt;-Bereich des Layout-Templates ergänzen.
+notice_placeholder_outside_head = Der Platzhalter {PARAM1} wurde im aktiven Layout-Template gefunden, steht dort aber hinter &lt;/head&gt;. Das funktioniert in der Praxis meist trotzdem, empfohlen wird aber eine Platzierung innerhalb des &lt;head&gt;-Bereichs.
 
 label_excluded_cats = Ausnahmen (Kategorien ohne globale Ausgabe)
 description_excluded_cats = Auf den hier angehakten Kategorien (und deren Seiten) wird die globale Konfiguration nicht ausgegeben, z. B. Impressum, Datenschutz, Sitemap.
@@ -158,7 +159,7 @@ button_import = Importieren
 button_use_detected_jsonld = Erkannten Block übernehmen
 button_show_full_jsonld = Vollansicht
 label_full_jsonld_preview = Erkannter JSON-LD-Block (Vollansicht)
-notice_multiple_jsonld_blocks = Es wurden mehrere JSON-LD-Blöcke erkannt. Bitte nach dem Übernehmen überzählige Blöcke im Import-Feld entfernen - importiert werden kann nur ein einzelner Block.
+notice_multiple_jsonld_blocks = Es wurden mehrere JSON-LD-Blöcke erkannt. Die automatische Übernahme ist deshalb deaktiviert - bitte den passenden Block manuell aus der Vorschau oben kopieren und ins Import-Feld einfügen, importiert werden kann nur ein einzelner Block.
 
 hint_id_reference_auto_link = Wird automatisch verknüpft mit:
 

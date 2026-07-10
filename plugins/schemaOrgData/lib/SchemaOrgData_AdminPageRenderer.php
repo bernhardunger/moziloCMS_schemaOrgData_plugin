@@ -240,7 +240,11 @@ class SchemaOrgData_AdminPageRenderer {
     * Block aus dem Layout-Template statt "von dieser Seite", daher
     * eigener Titel-Sprachschlüssel. Der Import-Bereich ist per
     * <details> einklappbar, initial offen nur wenn bereits ein
-    * automatisch befüllbarer Block erkannt wurde.
+    * automatisch befüllbarer Block erkannt wurde. Deutet der Inhalt auf
+    * mehrere aneinandergereihte Root-Objekte hin (Mehrblock-Heuristik),
+    * wird der Autofill-Button durch einen erklärenden Hinweistext
+    * ersetzt statt den ungültigen konkatenierten Text ins Import-Feld
+    * zu übernehmen.
     *
     * @param string $scope 'global' | 'category' | 'page'
     * @param Language $lang Admin-Sprachobjekt
@@ -343,14 +347,19 @@ class SchemaOrgData_AdminPageRenderer {
                 .'})();</script>'."\n";
 
             if($looksLikeMultipleBlocks) {
+                // Der Autofill-Button würde hier den konkatenierten, ungültigen
+                // Mehrblock-Text ins Import-Feld schreiben und den Import mit
+                // einem JSON-Fehler abbrechen lassen - daher hier bewusst
+                // unterdrückt statt angeboten. Der Hinweistext leitet zum
+                // manuellen Kopieren des passenden Blocks aus der Vorschau an.
                 $html .= '<p class="schemaOrgData-jsonld-notice__multiblock-hint">'
                     .$lang->getLanguageHtml('notice_multiple_jsonld_blocks').'</p>'."\n";
+            } else {
+                $html .= '<button type="button" class="mo-btn schemaOrgData-autofill-btn"'
+                    .' data-target="schemaOrgData_import_'.$scope.'"'
+                    .' data-existing-content="'.$escaped.'">'
+                    .$lang->getLanguageHtml('button_use_detected_jsonld').'</button><br />'."\n";
             }
-
-            $html .= '<button type="button" class="mo-btn schemaOrgData-autofill-btn"'
-                .' data-target="schemaOrgData_import_'.$scope.'"'
-                .' data-existing-content="'.$escaped.'">'
-                .$lang->getLanguageHtml('button_use_detected_jsonld').'</button><br />'."\n";
         }
 
         // Doppel-Label-Fix: <summary> ist bereits die sichtbare
@@ -410,22 +419,33 @@ class SchemaOrgData_AdminPageRenderer {
 
     /***************************************************************
     *
-    * Rendert einen scope-unabhängigen Hinweis, dass der Plugin-
-    * Platzhalter im aktiven Layout-Template fehlt (siehe
+    * Rendert einen scope-unabhängigen Hinweis zum Plugin-Platzhalter
+    * im aktiven Layout-Template (siehe
     * SchemaOrgData_CollisionDetector::detectPluginPlaceholderInTemplateAdmin()).
     * Fehlt der Platzhalter, ruft der Kern getContent() des Plugins im
     * Frontend nirgends auf - das Plugin bleibt dann unabhängig von
-    * seiner Konfiguration wirkungslos.
+    * seiner Konfiguration wirkungslos. Steht der Platzhalter zwar im
+    * Template, aber hinter </head>, erscheint stattdessen ein
+    * zurückhaltender Hinweis (keine Fehlermeldung), da die Ausgabe in
+    * der Praxis meist trotzdem funktioniert (Browser reichen den
+    * Platzhalterinhalt faktisch in den <body> durch).
     *
-    * @param bool $placeholderFound Ergebnis von detectPluginPlaceholderInTemplateAdmin()
+    * @param string $placeholderStatus Ergebnis von detectPluginPlaceholderInTemplateAdmin()
+    *               (eine der SchemaOrgData_CollisionDetector::PLACEHOLDER_*-Konstanten)
     * @param string $pluginName Klassenname/Platzhaltername des Plugins
     * @param Language $lang Admin-Sprachobjekt
-    * @return string HTML-Snippet oder '' wenn der Platzhalter gefunden wurde
+    * @return string HTML-Snippet oder '' wenn der Platzhalter innerhalb <head> gefunden wurde
     *
     ***************************************************************/
-    public function renderPlaceholderMissingNotice(bool $placeholderFound, string $pluginName, Language $lang): string {
-        if($placeholderFound) {
+    public function renderPlaceholderMissingNotice(string $placeholderStatus, string $pluginName, Language $lang): string {
+        if($placeholderStatus === SchemaOrgData_CollisionDetector::PLACEHOLDER_OK) {
             return '';
+        }
+
+        if($placeholderStatus === SchemaOrgData_CollisionDetector::PLACEHOLDER_OUTSIDE_HEAD) {
+            return '<div class="schemaOrgData-notice schemaOrgData-notice--info">'
+                .'<p>'.$lang->getLanguageHtml('notice_placeholder_outside_head', $pluginName).'</p>'
+                .'</div>'."\n";
         }
 
         return '<div class="schemaOrgData-notice schemaOrgData-placeholder-notice">'

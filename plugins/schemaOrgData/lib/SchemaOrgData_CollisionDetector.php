@@ -18,6 +18,11 @@
 ***************************************************************/
 class SchemaOrgData_CollisionDetector {
 
+    /** Rückgabewerte von detectPluginPlaceholderInTemplateAdmin() */
+    public const PLACEHOLDER_OK = 'ok';
+    public const PLACEHOLDER_MISSING = 'missing';
+    public const PLACEHOLDER_OUTSIDE_HEAD = 'outside_head';
+
     /***************************************************************
     *
     * Extrahiert alle JSON-LD-Blöcke aus einem HTML-String und gibt
@@ -105,20 +110,24 @@ class SchemaOrgData_CollisionDetector {
 
     /***************************************************************
     *
-    * Liest im Admin-Kontext die aktiv ausgelieferten Layout-Templates
-    * vom Dateisystem und gibt alle darin enthaltenen JSON-LD-Blöcke
-    * zurück.
+    * Liest im Admin-Kontext das aktiv ausgelieferte Layout-Template
+    * (template.html) vom Dateisystem und gibt alle darin enthaltenen
+    * JSON-LD-Blöcke zurück.
     *
     * Der Template-Pfad wird aus $cmsConf->get('cmslayout') abgeleitet.
     * Bei aktivem Draftmode wird zusätzlich das Draftlayout geprüft
     * (mirrors moziloCMS-Frontend-index.php:87–91). Inaktive Layouts
     * werden bewusst NICHT geprüft (False-Positive-Schutz).
     *
-    * Je ermitteltem Layout werden template.html und
-    * gallerytemplate.html geprüft (Pfadbildung analog
-    * admin/template.php:46 / admin/editsite.php:346). Defensiv:
-    * $cmsConf / LAYOUT_DIR_NAME / BASE_DIR auf Verfügbarkeit geprüft,
-    * file_exists/Lesbarkeit abgesichert.
+    * Geprüft wird ausschließlich template.html je ermitteltem Layout
+    * (Pfadbildung analog admin/template.php:46 / admin/editsite.php:346) -
+    * gallerytemplate.html rendert strukturell nie echten Seiteninhalt
+    * (eigenständiges Voll-Layout für die Galerie-Vollansicht ohne
+    * {CONTENT}-Platzhalter), ein dort gefundener Block ist für die
+    * reale Seiten-/Kategorie-Ausgabe irrelevant und würde sonst
+    * fälschlich mit dem realen Block aus template.html konkateniert.
+    * Defensiv: $cmsConf / LAYOUT_DIR_NAME / BASE_DIR auf Verfügbarkeit
+    * geprüft, file_exists/Lesbarkeit abgesichert.
     *
     * @param mixed $cmsConf moziloCMS-Konfigurationsobjekt (entspricht
     *                       $CMS_CONF), bewusst kein Type-Hint (analog
@@ -151,15 +160,13 @@ class SchemaOrgData_CollisionDetector {
 
         $allBlocks = [];
         foreach ($layoutsToCheck as $layout) {
-            foreach (['template.html', 'gallerytemplate.html'] as $tplFile) {
-                $path = BASE_DIR . LAYOUT_DIR_NAME . '/' . $layout . '/' . $tplFile;
-                if (!file_exists($path) || !is_readable($path)) {
-                    continue;
-                }
-                $content = file_get_contents($path);
-                if ($content !== false) {
-                    $allBlocks = array_merge($allBlocks, $this->extractExistingJsonLdBlocks($content));
-                }
+            $path = BASE_DIR . LAYOUT_DIR_NAME . '/' . $layout . '/template.html';
+            if (!file_exists($path) || !is_readable($path)) {
+                continue;
+            }
+            $content = file_get_contents($path);
+            if ($content !== false) {
+                $allBlocks = array_merge($allBlocks, $this->extractExistingJsonLdBlocks($content));
             }
         }
 
@@ -182,40 +189,47 @@ class SchemaOrgData_CollisionDetector {
     /***************************************************************
     *
     * Prüft im Admin-Kontext, ob das aktiv ausgelieferte Layout-Template
-    * den Plugin-Platzhalter ({$pluginName} oder {$pluginName|param})
-    * enthält. Fehlt der Platzhalter, ruft der Kern getContent() des
-    * Plugins im Frontend nirgends auf - das Plugin bleibt dann
-    * unabhängig von seiner Konfiguration wirkungslos (siehe README.md).
+    * (template.html) den Plugin-Platzhalter ({$pluginName} oder
+    * {$pluginName|param}) enthält, und - falls ja - ob er innerhalb
+    * von <head> steht. Fehlt der Platzhalter, ruft der Kern
+    * getContent() des Plugins im Frontend nirgends auf - das Plugin
+    * bleibt dann unabhängig von seiner Konfiguration wirkungslos
+    * (siehe README.md).
     *
-    * Layout-Auflösung analog extractExistingJsonLdBlocksFromTemplateAdmin()
+    * Geprüft wird ausschließlich template.html (siehe
+    * extractExistingJsonLdBlocksFromTemplateAdmin() für die Begründung,
+    * warum gallerytemplate.html hier bewusst nicht mitzählt). Layout-
+    * Auflösung ansonsten analog extractExistingJsonLdBlocksFromTemplateAdmin()
     * (bewusst dupliziert statt über einen gemeinsamen privaten Helper
     * extrahiert, siehe README.md).
     *
     * Fail-safe statt Fail-loud: Kann die Prüfung mangels Grundlage nicht
     * durchgeführt werden (BASE_DIR/LAYOUT_DIR_NAME undefiniert, $cmsConf
     * fehlt/kein Objekt, cmslayout leer/'false'), liefert die Methode
-    * true (= Platzhalter gilt als vorhanden, kein Fehlalarm auf Basis
-    * unklarer Umgebung).
+    * PLACEHOLDER_OK (= Platzhalter gilt als vorhanden, kein Fehlalarm
+    * auf Basis unklarer Umgebung).
     *
     * @param mixed $cmsConf moziloCMS-Konfigurationsobjekt (entspricht
     *                       $CMS_CONF), bewusst kein Type-Hint (siehe
     *                       extractExistingJsonLdBlocksFromTemplateAdmin())
     * @param string $pluginName Klassenname/Platzhaltername des Plugins
     *                           (z. B. "schemaOrgData")
-    * @return bool true wenn der Platzhalter gefunden wurde oder die
-    *              Prüfung mangels Grundlage nicht durchgeführt werden
-    *              konnte, sonst false
+    * @return string eine der PLACEHOLDER_*-Konstanten dieser Klasse:
+    *                PLACEHOLDER_OK (gefunden innerhalb <head>, oder
+    *                Prüfung mangels Grundlage nicht durchführbar),
+    *                PLACEHOLDER_OUTSIDE_HEAD (gefunden, aber hinter
+    *                </head>) oder PLACEHOLDER_MISSING (nicht gefunden)
     *
     ***************************************************************/
-    public function detectPluginPlaceholderInTemplateAdmin($cmsConf, string $pluginName): bool {
+    public function detectPluginPlaceholderInTemplateAdmin($cmsConf, string $pluginName): string {
         if (!defined('BASE_DIR') || !defined('LAYOUT_DIR_NAME')
             || !isset($cmsConf) || !is_object($cmsConf)) {
-            return true;
+            return self::PLACEHOLDER_OK;
         }
 
         $activeLayout = (string) ($cmsConf->get('cmslayout') ?? '');
         if ($activeLayout === '' || $activeLayout === 'false') {
-            return true;
+            return self::PLACEHOLDER_OK;
         }
 
         $layoutsToCheck = [$activeLayout];
@@ -230,18 +244,24 @@ class SchemaOrgData_CollisionDetector {
         $placeholderPattern = '/\{'.preg_quote($pluginName, '/').'(\|[^\[\]\{\}]*)?\}/';
 
         foreach ($layoutsToCheck as $layout) {
-            foreach (['template.html', 'gallerytemplate.html'] as $tplFile) {
-                $path = BASE_DIR . LAYOUT_DIR_NAME . '/' . $layout . '/' . $tplFile;
-                if (!file_exists($path) || !is_readable($path)) {
-                    continue;
-                }
-                $content = file_get_contents($path);
-                if ($content !== false && preg_match($placeholderPattern, $content) === 1) {
-                    return true;
-                }
+            $path = BASE_DIR . LAYOUT_DIR_NAME . '/' . $layout . '/template.html';
+            if (!file_exists($path) || !is_readable($path)) {
+                continue;
+            }
+            $content = file_get_contents($path);
+            if ($content === false) {
+                continue;
+            }
+            if (preg_match($placeholderPattern, $content, $match, PREG_OFFSET_CAPTURE) === 1) {
+                $matchPos = $match[0][1];
+                $headEndPos = strpos($content, '</head>');
+
+                return ($headEndPos !== false && $matchPos > $headEndPos)
+                    ? self::PLACEHOLDER_OUTSIDE_HEAD
+                    : self::PLACEHOLDER_OK;
             }
         }
 
-        return false;
+        return self::PLACEHOLDER_MISSING;
     }
 }

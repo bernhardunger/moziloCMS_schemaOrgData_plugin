@@ -398,8 +398,8 @@ class SchemaOrgData_AdminController {
         // Platzhalter-Hinweis: scope-unabhängig, da ein fehlender
         // {schemaOrgData}-Platzhalter im Layout-Template alle
         // Geltungsebenen gleichermaßen betrifft (siehe README.md).
-        $placeholderFound = $collisionDetector->detectPluginPlaceholderInTemplateAdmin($CMS_CONF, 'schemaOrgData');
-        $html .= $adminPageRenderer->renderPlaceholderMissingNotice($placeholderFound, 'schemaOrgData', $lang);
+        $placeholderStatus = $collisionDetector->detectPluginPlaceholderInTemplateAdmin($CMS_CONF, 'schemaOrgData');
+        $html .= $adminPageRenderer->renderPlaceholderMissingNotice($placeholderStatus, 'schemaOrgData', $lang);
 
         // Template-Kollisionserkennung: im Admin-Kontext (IS_ADMIN) live prüfen.
         // Ein im Layout-Template eingebundener JSON-LD-Block ist layoutweit

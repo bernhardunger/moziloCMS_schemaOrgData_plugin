@@ -21,6 +21,7 @@ notice_family_options_filtered = Other business classifications are hidden becau
 
 notice_placeholder_missing_title = Plugin placeholder is missing from the active layout template.
 notice_placeholder_missing_text = No {PARAM1} placeholder was found in the active layout template. Without this placeholder, the plugin outputs no JSON-LD on the frontend at all - regardless of how it is configured here. Please add the {PARAM1} placeholder at a suitable place in the layout template's &lt;head&gt; section.
+notice_placeholder_outside_head = The {PARAM1} placeholder was found in the active layout template, but it is placed after &lt;/head&gt;. This usually still works in practice, but placing it inside the &lt;head&gt; section is recommended.
 
 label_excluded_cats = Exceptions (categories without global output)
 description_excluded_cats = The global configuration is not output on the categories checked here (and their pages), e.g. imprint, privacy policy, sitemap.
@@ -158,7 +159,7 @@ button_import = Import
 button_use_detected_jsonld = Use detected block
 button_show_full_jsonld = Full view
 label_full_jsonld_preview = Detected JSON-LD block (full view)
-notice_multiple_jsonld_blocks = Multiple JSON-LD blocks were detected. After using the button below, please remove any extra blocks from the import field - only a single block can be imported.
+notice_multiple_jsonld_blocks = Multiple JSON-LD blocks were detected. Automatic takeover is therefore disabled - please copy the matching block from the preview above into the import field manually, only a single block can be imported.
 
 hint_id_reference_auto_link = Automatically linked to:
 

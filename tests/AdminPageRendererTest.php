@@ -521,6 +521,10 @@ final class AdminPageRendererTest extends TestCase {
 
         $this->assertStringContainsString('schemaOrgData-jsonld-notice__multiblock-hint', $html);
         $this->assertStringContainsString($this->adminLang()->getLanguageHtml('notice_multiple_jsonld_blocks'), $html);
+        // Der Autofill-Button würde den ungültigen, konkatenierten Text ins
+        // Import-Feld schreiben - bei erkannter Mehrblock-Konstellation daher
+        // bewusst unterdrückt statt angeboten.
+        $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
     }
 
     function testRenderExistingJsonLdNoticeZeigtKeinenHinweisBeiEinzelnemBlock(): void {
@@ -833,15 +837,37 @@ final class AdminPageRendererTest extends TestCase {
     // -----------------------------------------------------------
 
     function testRenderPlaceholderMissingNoticeLeerWennGefunden(): void {
-        $html = $this->renderer()->renderPlaceholderMissingNotice(true, 'schemaOrgData', $this->adminLang());
+        $html = $this->renderer()->renderPlaceholderMissingNotice(
+            \SchemaOrgData_CollisionDetector::PLACEHOLDER_OK, 'schemaOrgData', $this->adminLang()
+        );
 
         $this->assertSame('', $html);
     }
 
     function testRenderPlaceholderMissingNoticeEnthaeltPluginNamenWennFehlend(): void {
-        $html = $this->renderer()->renderPlaceholderMissingNotice(false, 'schemaOrgData', $this->adminLang());
+        $html = $this->renderer()->renderPlaceholderMissingNotice(
+            \SchemaOrgData_CollisionDetector::PLACEHOLDER_MISSING, 'schemaOrgData', $this->adminLang()
+        );
 
         $this->assertStringContainsString('schemaOrgData-placeholder-notice', $html);
+        $this->assertStringContainsString('schemaOrgData', $html);
+    }
+
+    /***************************************************************
+    *
+    * Positions-Hinweis (Platzhalter gefunden, aber hinter </head>):
+    * bewusst zurückhaltend als Info-Hinweis formuliert, nicht als
+    * Fehlermeldung (schemaOrgData-notice--info statt
+    * schemaOrgData-placeholder-notice).
+    *
+    ***************************************************************/
+    function testRenderPlaceholderMissingNoticeZeigtZurueckhaltendenHinweisBeiOutsideHead(): void {
+        $html = $this->renderer()->renderPlaceholderMissingNotice(
+            \SchemaOrgData_CollisionDetector::PLACEHOLDER_OUTSIDE_HEAD, 'schemaOrgData', $this->adminLang()
+        );
+
+        $this->assertStringContainsString('schemaOrgData-notice--info', $html);
+        $this->assertStringNotContainsString('schemaOrgData-placeholder-notice', $html);
         $this->assertStringContainsString('schemaOrgData', $html);
     }
 
