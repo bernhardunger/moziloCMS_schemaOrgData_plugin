@@ -260,6 +260,15 @@ final class FrontendRendererTest extends TestCase {
 
     // -----------------------------------------------------------
     // buildDebugWidget()
+    //
+    // Das Widget-Markup (Trigger-Button, <dialog>, Vorschau-Blöcke) wird
+    // seit dem <head>-Validitäts-Fix nicht mehr als statisches HTML
+    // zurückgegeben, sondern als JSON-Nutzlast in den einzigen
+    // <script>-Block eingebettet und erst zur Laufzeit per JS aufgebaut
+    // (siehe README.md, Abschnitt "JSON-LD-Ausgabe"). Die folgenden Tests
+    // extrahieren die Nutzlast (schemaOrgDataDebugData = {...};) und
+    // prüfen sie strukturiert per json_decode(), statt <button>/<dialog>/
+    // <pre>-Tags direkt im Rückgabewert zu suchen.
     // -----------------------------------------------------------
 
     private function debugBlock(string $scope, string $type, array $data, string $id = ''): array {
@@ -273,37 +282,78 @@ final class FrontendRendererTest extends TestCase {
         );
     }
 
-    function testBuildDebugWidgetSingularBeiEinemBlock(): void {
+    private function extractDebugPayload(string $html): array {
+        $this->assertMatchesRegularExpression(
+            '#var schemaOrgDataDebugData = (\{.*\});\n#s', $html,
+            'Erwartete schemaOrgDataDebugData-Zuweisung nicht im <script>-Block gefunden.'
+        );
+        preg_match('#var schemaOrgDataDebugData = (\{.*\});\n#s', $html, $matches);
+
+        return json_decode($matches[1], true);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest gegen invalides HTML an der {schemaOrgData}-
+    * Platzhalterstelle im <head>: <button>/<dialog> sind dort keine
+    * gültigen Metadaten-Elemente. Der Rückgabewert darf daher außerhalb
+    * eines <script>-Blocks kein <button- oder <dialog-Tag mehr enthalten.
+    *
+    ***************************************************************/
+    function testBuildDebugWidgetEnthaeltKeinButtonOderDialogAusserhalbDesScriptBlocks(): void {
         $html = $this->buildDebugWidget(
             [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
         );
 
-        $this->assertStringContainsString('1 JSON-LD-Block<', $html);
+        $withoutScripts = preg_replace('#<script\b[^>]*>.*?</script>#s', '', $html);
+
+        $this->assertStringNotContainsString('<button', $withoutScripts);
+        $this->assertStringNotContainsString('<dialog', $withoutScripts);
+    }
+
+    function testBuildDebugWidgetGibtAusschliesslichEinenScriptBlockZurueck(): void {
+        $html = trim($this->buildDebugWidget(
+            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
+        ));
+
+        $this->assertMatchesRegularExpression('#^<script>.*</script>$#s', $html);
+        $this->assertSame(1, substr_count($html, '<script>'));
+    }
+
+    function testBuildDebugWidgetSingularBeiEinemBlock(): void {
+        $payload = $this->extractDebugPayload($this->buildDebugWidget(
+            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
+        ));
+
+        $this->assertSame('1 JSON-LD-Block', $payload['label']);
+        $this->assertCount(1, $payload['blocks']);
     }
 
     function testBuildDebugWidgetPluralUndEinPreBlockJeEintrag(): void {
-        $html = $this->buildDebugWidget(
+        $payload = $this->extractDebugPayload($this->buildDebugWidget(
             [
                 $this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH']),
                 $this->debugBlock('global', 'WebSite', ['name' => 'Beispiel-Website']),
             ]
-        );
+        ));
 
-        $this->assertStringContainsString('2 JSON-LD-Blöcke<', $html);
-        $this->assertSame(2, substr_count($html, '<pre id="schemaOrgData-debug-pre-'));
+        $this->assertSame('2 JSON-LD-Blöcke', $payload['label']);
+        $this->assertCount(2, $payload['blocks']);
+        $this->assertSame('LocalBusiness', $payload['blocks'][0]['type']);
+        $this->assertSame('WebSite', $payload['blocks'][1]['type']);
     }
 
     function testBuildDebugWidgetJsonInhaltEntsprichtBuildJsonLdScriptTransformation(): void {
-        $html = $this->buildDebugWidget(
+        $payload = $this->extractDebugPayload($this->buildDebugWidget(
             [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Müller &amp; Partner', 'description' => ''])]
-        );
+        ));
 
-        // decodeJsonLdValues() dekodiert "&amp;" zu "&" (anschließend erneut
-        // per htmlspecialchars() im <pre> escaped), removeEmptyJsonLdProperties()
+        // decodeJsonLdValues() dekodiert "&amp;" zu "&", removeEmptyJsonLdProperties()
         // entfernt die leere Property "description" - dieselben Transformationen
-        // wie in buildJsonLdScript().
-        $this->assertStringContainsString('&quot;name&quot;: &quot;Müller &amp; Partner&quot;', $html);
-        $this->assertStringNotContainsString('&quot;description&quot;', $html);
+        // wie in buildJsonLdScript(). Die Vorschau wird zur Laufzeit per
+        // textContent gesetzt (kein HTML-Escaping mehr nötig/vorhanden).
+        $this->assertStringContainsString('"name": "Müller & Partner"', $payload['blocks'][0]['json']);
+        $this->assertStringNotContainsString('"description"', $payload['blocks'][0]['json']);
     }
 
     function testBuildDebugWidgetEnthaeltValidatorLink(): void {
@@ -311,7 +361,7 @@ final class FrontendRendererTest extends TestCase {
             [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
         );
 
-        $this->assertStringContainsString('href="https://validator.schema.org"', $html);
+        $this->assertStringContainsString('validatorLink.href = "https://validator.schema.org"', $html);
     }
 
     function testBuildDebugWidgetJsonHexTagBleibtByteIdentischZuBuildJsonLdScript(): void {
@@ -322,16 +372,13 @@ final class FrontendRendererTest extends TestCase {
             [$this->debugBlock('global', 'Organization', $data)]
         );
 
-        preg_match('#<pre id="schemaOrgData-debug-pre-0"[^>]*>(.*)</pre>#s', $html, $preMatches);
-        $preContent = $preMatches[1];
+        // Kein literales </script> irgendwo im Rückgabewert - würde sonst
+        // den umgebenden <script>-Block der Seite aufbrechen. JSON_HEX_TAG
+        // greift hier identisch wie in buildJsonLdScript().
+        $this->assertStringNotContainsString('</script><script>alert', $html);
 
-        // Kein literales </script> im <pre>-Block - JSON_HEX_TAG greift hier
-        // identisch wie in buildJsonLdScript(). Das umgebende Widget-Markup
-        // hat eigene <script>-Blöcke (Dialog-/Copy-Logik) und bleibt
-        // bewusst außen vor.
-        $hexEscapedLt = sprintf('\u%04X', ord('<'));
-        $this->assertStringNotContainsString('</script>', $preContent);
-        $this->assertStringContainsString($hexEscapedLt, $preContent);
+        $decoded = $this->extractDebugPayload($html);
+        $actualJson = $decoded['blocks'][0]['json'];
 
         $script = $this->jsonLdBuilder()->buildJsonLdScript(
             $this->schemaRepository(), $this->urlHelper(), $this->pluginDir,
@@ -339,8 +386,6 @@ final class FrontendRendererTest extends TestCase {
         );
         preg_match('#<script type="application/ld\+json">\n(.*)\n</script>\n$#s', $script, $scriptMatches);
         $expectedJson = $scriptMatches[1];
-
-        $actualJson = htmlspecialchars_decode($preContent, ENT_QUOTES);
 
         $this->assertSame($expectedJson, $actualJson);
     }
@@ -363,10 +408,10 @@ final class FrontendRendererTest extends TestCase {
             ],
         ];
 
-        $html = $this->buildDebugWidget([$this->debugBlock('page_x_y', 'Event', $data)]);
+        $json = $this->extractDebugPayload($this->buildDebugWidget([$this->debugBlock('page_x_y', 'Event', $data)]))['blocks'][0]['json'];
 
-        $this->assertStringContainsString('&quot;@type&quot;: &quot;Place&quot;', $html);
-        $this->assertStringContainsString('&quot;@type&quot;: &quot;PostalAddress&quot;', $html);
+        $this->assertStringContainsString('"@type": "Place"', $json);
+        $this->assertStringContainsString('"@type": "PostalAddress"', $json);
     }
 
     function testBuildDebugWidgetLoestIdReferenceOrLiteralAufStattRohemModeZuZeigen(): void {
@@ -382,10 +427,10 @@ final class FrontendRendererTest extends TestCase {
                 'organizer' => ['_mode' => 'reference', '_fragment' => 'organization'],
             ];
 
-            $html = $this->buildDebugWidget([$this->debugBlock('page_x_y', 'Event', $data)]);
+            $json = $this->extractDebugPayload($this->buildDebugWidget([$this->debugBlock('page_x_y', 'Event', $data)]))['blocks'][0]['json'];
 
-            $this->assertStringNotContainsString('_mode', $html);
-            $this->assertStringContainsString('&quot;@id&quot;: &quot;https://www.example.org/#organization&quot;', $html);
+            $this->assertStringNotContainsString('_mode', $json);
+            $this->assertStringContainsString('"@id": "https://www.example.org/#organization"', $json);
         } finally {
             $_SERVER = $serverBackup;
         }

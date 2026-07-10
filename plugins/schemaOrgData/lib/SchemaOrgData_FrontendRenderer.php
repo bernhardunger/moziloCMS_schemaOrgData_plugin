@@ -202,9 +202,18 @@ class SchemaOrgData_FrontendRenderer {
     * JSON-LD-Block (Scope-Herkunft, formatiertes JSON, Kopier-Button)
     * sowie einem Link auf validator.schema.org.
     *
-    * Wird von renderFrontend() angehängt, wenn debug_output aktiv ist
-    * und mindestens ein Block ausgegeben wurde. Alle Styles sind
-    * inline, alle IDs mit "schemaOrgData-debug-" präfixiert — keine
+    * Der Rückgabewert enthält ausschließlich einen einzigen
+    * <script>-Block, keinerlei <button>/<dialog>-Markup direkt an der
+    * Einfügestelle: Der Platzhalter {schemaOrgData} steht laut
+    * Vorgabe im <head>, wo <button>/<dialog> keine gültigen
+    * Metadaten-Elemente sind (siehe README.md, Abschnitt
+    * "JSON-LD-Ausgabe"). Das Skript trägt die Vorschau-Daten (Scope,
+    * Type, formatiertes JSON je Block) als JSON-Literal in sich und
+    * baut Trigger-Button, Dialog und alle Kindelemente erst zur
+    * Laufzeit per document.createElement()/textContent (kein
+    * innerHTML), sobald DOMContentLoaded gefeuert hat, und hängt sie
+    * an document.body an. Alle IDs bleiben mit
+    * "schemaOrgData-debug-" präfixiert, alle Styles inline — keine
     * globalen CSS-Klassen, da dies auf der echten Frontend-Seite
     * landet.
     *
@@ -219,7 +228,7 @@ class SchemaOrgData_FrontendRenderer {
     * @param array<int, array{scope: string, type: string, data: array<string, mixed>, id: string}> $blocks
     *              je Block Scope ('global'|'cat_x'|'page_x_y'), Type, Properties und @id-Anker
     * @param string[] $suppressedIdTargets siehe buildJsonLdScript()
-    * @return string HTML-Snippet inkl. <script>
+    * @return string ein einzelner <script>-Block, der das Widget zur Laufzeit aufbaut
     *
     ***************************************************************/
     public function buildDebugWidget(
@@ -233,36 +242,12 @@ class SchemaOrgData_FrontendRenderer {
         $count = count($blocks);
         $plural = $count !== 1 ? 'Blöcke' : 'Block';
 
-        $html  = '<button id="schemaOrgData-debug-trigger" type="button" '
-            .'style="position:fixed;bottom:1em;right:1em;z-index:9999;background:#1a73e8;color:#fff;'
-            .'border:none;border-radius:4px;padding:.5em 1em;font-size:14px;cursor:pointer;'
-            .'box-shadow:0 2px 8px rgba(0,0,0,.3);">'
-            .'🔧 Debug: '.$count.' JSON-LD-'.$plural.'</button>'."\n";
-
-        $html .= '<dialog id="schemaOrgData-debug-dialog" '
-            .'style="max-width:800px;width:90vw;max-height:85vh;overflow:auto;border-radius:6px;'
-            .'border:1px solid #ccc;box-shadow:0 4px 24px rgba(0,0,0,.2);padding:1.5em;">'."\n";
-
-        // Kopfzeile mit Validator-Link und Schließen-Button
-        $html .= '<div style="display:flex;justify-content:space-between;align-items:center;'
-            .'margin-bottom:1em;border-bottom:1px solid #eee;padding-bottom:.75em;">'."\n";
-        $html .= '<strong style="font-size:1.1em;">🔧 Schema.org JSON-LD Debug</strong>'."\n";
-        $html .= '<div style="display:flex;gap:.5em;align-items:center;">'."\n";
-        $html .= '<a href="https://validator.schema.org" target="_blank" rel="noopener" '
-            .'style="font-size:.85em;color:#1a73e8;text-decoration:none;border:1px solid #1a73e8;'
-            .'border-radius:3px;padding:.2em .6em;">validator.schema.org öffnen ↗</a>'."\n";
-        $html .= '<button id="schemaOrgData-debug-close" type="button" '
-            .'style="background:none;border:none;font-size:1.3em;cursor:pointer;color:#666;'
-            .'padding:.1em .4em;" aria-label="Schlie&szlig;en">&#x2715;</button>'."\n";
-        $html .= '</div></div>'."\n";
-
-        foreach($blocks as $i => $block) {
+        $blockData = [];
+        foreach($blocks as $block) {
             $type   = $block['type'];
             $scope  = $block['scope'];
             $data   = $block['data'];
             $nodeId = (string) ($block['id'] ?? '');
-            $preId  = 'schemaOrgData-debug-pre-'.$i;
-            $copyId = 'schemaOrgData-debug-copy-'.$i;
 
             // buildJsonLdScript() liefert denselben <script>-Block wie die
             // echte Ausgabe - die Vorschau extrahiert daraus nur den
@@ -273,57 +258,132 @@ class SchemaOrgData_FrontendRenderer {
                 $schemaRepository, $urlHelper, $pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets
             );
             preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $scriptMatches);
-            $prettyJson = $scriptMatches[1] ?? '';
 
-            $html .= '<div style="margin-bottom:1.5em;">'."\n";
-            $html .= '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4em;">'."\n";
-            $html .= '<h3 style="margin:0;font-size:.95em;color:#333;">'
-                .htmlspecialchars($scope, ENT_QUOTES, CHARSET).' &mdash; '
-                .htmlspecialchars($type, ENT_QUOTES, CHARSET).'</h3>'."\n";
-            $html .= '<button id="'.$copyId.'" type="button" data-pre="'.$preId.'" '
-                .'style="font-size:.8em;background:#f5f5f5;border:1px solid #ccc;border-radius:3px;'
-                .'padding:.2em .6em;cursor:pointer;">JSON kopieren</button>'."\n";
-            $html .= '</div>'."\n";
-            $html .= '<pre id="'.$preId.'" '
-                .'style="background:#f8f8f8;border:1px solid #ddd;border-radius:4px;padding:.75em;'
-                .'overflow:auto;font-size:.8em;white-space:pre-wrap;margin:0;">'
-                .htmlspecialchars($prettyJson, ENT_QUOTES, CHARSET)
-                .'</pre>'."\n";
-            $html .= '</div>'."\n";
+            $blockData[] = [
+                'scope' => $scope,
+                'type'  => $type,
+                'json'  => $scriptMatches[1] ?? '',
+            ];
         }
 
-        $html .= '</dialog>'."\n";
+        $payload = ['label' => $count.' JSON-LD-'.$plural, 'blocks' => $blockData];
 
-        $html .= '<script>(function(){'."\n";
-        $html .= 'var trigger=document.getElementById("schemaOrgData-debug-trigger");'."\n";
-        $html .= 'var dialog=document.getElementById("schemaOrgData-debug-dialog");'."\n";
-        $html .= 'var closeBtn=document.getElementById("schemaOrgData-debug-close");'."\n";
-        $html .= 'if(trigger&&dialog&&dialog.showModal){'."\n";
-        $html .= '  trigger.addEventListener("click",function(){dialog.showModal();});'."\n";
-        $html .= '}'."\n";
-        $html .= 'if(closeBtn&&dialog){'."\n";
-        $html .= '  closeBtn.addEventListener("click",function(){dialog.close();});'."\n";
-        $html .= '}'."\n";
-        $html .= 'function fallbackCopy(text){'."\n";
-        $html .= '  var ta=document.createElement("textarea");'."\n";
-        $html .= '  ta.value=text;ta.style.position="fixed";ta.style.opacity="0";'."\n";
-        $html .= '  document.body.appendChild(ta);ta.focus();ta.select();'."\n";
-        $html .= '  try{document.execCommand("copy");}catch(e){}'."\n";
-        $html .= '  document.body.removeChild(ta);'."\n";
-        $html .= '}'."\n";
-        $html .= 'var copyBtns=document.querySelectorAll("[id^=\'schemaOrgData-debug-copy-\']");'."\n";
-        $html .= 'copyBtns.forEach(function(btn){'."\n";
-        $html .= '  btn.addEventListener("click",function(){'."\n";
-        $html .= '    var pre=document.getElementById(btn.getAttribute("data-pre"));'."\n";
-        $html .= '    if(!pre)return;'."\n";
-        $html .= '    var text=pre.textContent||pre.innerText;'."\n";
-        $html .= '    var orig=btn.textContent;'."\n";
-        $html .= '    function ok(){btn.textContent="Kopiert!";setTimeout(function(){btn.textContent=orig;},1500);}'."\n";
-        $html .= '    if(navigator.clipboard&&window.isSecureContext){'."\n";
-        $html .= '      navigator.clipboard.writeText(text).then(ok).catch(function(){fallbackCopy(text);ok();});'."\n";
-        $html .= '    }else{fallbackCopy(text);ok();}'."\n";
+        // JSON_HEX_TAG kodiert Winkelklammern als Unicode-Escapes und
+        // verhindert ein Script-Breakout (analoges Härtungsmuster zu
+        // buildJsonLdScript(), siehe README.md, Abschnitt "Sicherheit").
+        // Der "json"-Wert je Block ist durch buildJsonLdScript() intern
+        // bereits so kodiert - diese zweite Kodierschicht escaped dabei
+        // lediglich den darin enthaltenen Backslash der Escape-Sequenz
+        // erneut (\uXXXX -> \\uXXXX im Skript-Text); JSON.parse() löst das
+        // beim Einlesen wieder zur ursprünglichen Zeichenkette auf, das
+        // Laufzeitergebnis bleibt byte-identisch.
+        $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_HEX_TAG);
+
+        $html  = '<script>(function(){'."\n";
+        $html .= 'var schemaOrgDataDebugData = '.$json.';'."\n";
+        $html .= 'function schemaOrgDataInitDebugWidget(){'."\n";
+        $html .= '  var trigger = document.createElement("button");'."\n";
+        $html .= '  trigger.id = "schemaOrgData-debug-trigger";'."\n";
+        $html .= '  trigger.type = "button";'."\n";
+        $html .= '  trigger.style.cssText = "position:fixed;bottom:1em;right:1em;z-index:9999;background:#1a73e8;'
+            .'color:#fff;border:none;border-radius:4px;padding:.5em 1em;font-size:14px;cursor:pointer;'
+            .'box-shadow:0 2px 8px rgba(0,0,0,.3);";'."\n";
+        $html .= '  trigger.textContent = "🔧 Debug: " + schemaOrgDataDebugData.label;'."\n";
+
+        $html .= '  var dialog = document.createElement("dialog");'."\n";
+        $html .= '  dialog.id = "schemaOrgData-debug-dialog";'."\n";
+        $html .= '  dialog.style.cssText = "max-width:800px;width:90vw;max-height:85vh;overflow:auto;'
+            .'border-radius:6px;border:1px solid #ccc;box-shadow:0 4px 24px rgba(0,0,0,.2);padding:1.5em;";'."\n";
+
+        $html .= '  var header = document.createElement("div");'."\n";
+        $html .= '  header.style.cssText = "display:flex;justify-content:space-between;align-items:center;'
+            .'margin-bottom:1em;border-bottom:1px solid #eee;padding-bottom:.75em;";'."\n";
+        $html .= '  var title = document.createElement("strong");'."\n";
+        $html .= '  title.style.fontSize = "1.1em";'."\n";
+        $html .= '  title.textContent = "🔧 Schema.org JSON-LD Debug";'."\n";
+        $html .= '  var actions = document.createElement("div");'."\n";
+        $html .= '  actions.style.cssText = "display:flex;gap:.5em;align-items:center;";'."\n";
+        $html .= '  var validatorLink = document.createElement("a");'."\n";
+        $html .= '  validatorLink.href = "https://validator.schema.org";'."\n";
+        $html .= '  validatorLink.target = "_blank";'."\n";
+        $html .= '  validatorLink.rel = "noopener";'."\n";
+        $html .= '  validatorLink.style.cssText = "font-size:.85em;color:#1a73e8;text-decoration:none;'
+            .'border:1px solid #1a73e8;border-radius:3px;padding:.2em .6em;";'."\n";
+        $html .= '  validatorLink.textContent = "validator.schema.org öffnen ↗";'."\n";
+        $html .= '  var closeBtn = document.createElement("button");'."\n";
+        $html .= '  closeBtn.id = "schemaOrgData-debug-close";'."\n";
+        $html .= '  closeBtn.type = "button";'."\n";
+        $html .= '  closeBtn.style.cssText = "background:none;border:none;font-size:1.3em;cursor:pointer;'
+            .'color:#666;padding:.1em .4em;";'."\n";
+        $html .= '  closeBtn.setAttribute("aria-label", "Schließen");'."\n";
+        $html .= '  closeBtn.textContent = "✕";'."\n";
+        $html .= '  actions.appendChild(validatorLink);'."\n";
+        $html .= '  actions.appendChild(closeBtn);'."\n";
+        $html .= '  header.appendChild(title);'."\n";
+        $html .= '  header.appendChild(actions);'."\n";
+        $html .= '  dialog.appendChild(header);'."\n";
+
+        $html .= '  function fallbackCopy(text){'."\n";
+        $html .= '    var ta = document.createElement("textarea");'."\n";
+        $html .= '    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";'."\n";
+        $html .= '    document.body.appendChild(ta); ta.focus(); ta.select();'."\n";
+        $html .= '    try{ document.execCommand("copy"); }catch(e){}'."\n";
+        $html .= '    document.body.removeChild(ta);'."\n";
+        $html .= '  }'."\n";
+
+        $html .= '  schemaOrgDataDebugData.blocks.forEach(function(block, i){'."\n";
+        $html .= '    var section = document.createElement("div");'."\n";
+        $html .= '    section.style.marginBottom = "1.5em";'."\n";
+        $html .= '    var blockHeader = document.createElement("div");'."\n";
+        $html .= '    blockHeader.style.cssText = "display:flex;justify-content:space-between;'
+            .'align-items:center;margin-bottom:.4em;";'."\n";
+        $html .= '    var h3 = document.createElement("h3");'."\n";
+        $html .= '    h3.style.cssText = "margin:0;font-size:.95em;color:#333;";'."\n";
+        $html .= '    h3.textContent = block.scope + " — " + block.type;'."\n";
+        $html .= '    var copyBtn = document.createElement("button");'."\n";
+        $html .= '    copyBtn.id = "schemaOrgData-debug-copy-" + i;'."\n";
+        $html .= '    copyBtn.type = "button";'."\n";
+        $html .= '    copyBtn.style.cssText = "font-size:.8em;background:#f5f5f5;border:1px solid #ccc;'
+            .'border-radius:3px;padding:.2em .6em;cursor:pointer;";'."\n";
+        $html .= '    copyBtn.textContent = "JSON kopieren";'."\n";
+        $html .= '    blockHeader.appendChild(h3);'."\n";
+        $html .= '    blockHeader.appendChild(copyBtn);'."\n";
+        $html .= '    var pre = document.createElement("pre");'."\n";
+        $html .= '    pre.id = "schemaOrgData-debug-pre-" + i;'."\n";
+        $html .= '    pre.style.cssText = "background:#f8f8f8;border:1px solid #ddd;border-radius:4px;'
+            .'padding:.75em;overflow:auto;font-size:.8em;white-space:pre-wrap;margin:0;";'."\n";
+        $html .= '    pre.textContent = block.json;'."\n";
+        $html .= '    section.appendChild(blockHeader);'."\n";
+        $html .= '    section.appendChild(pre);'."\n";
+        $html .= '    dialog.appendChild(section);'."\n";
+        $html .= '    copyBtn.addEventListener("click", function(){'."\n";
+        $html .= '      var text = pre.textContent || pre.innerText;'."\n";
+        $html .= '      var orig = copyBtn.textContent;'."\n";
+        $html .= '      function ok(){ copyBtn.textContent = "Kopiert!"; setTimeout(function(){ copyBtn.textContent = orig; }, 1500); }'."\n";
+        $html .= '      if(navigator.clipboard && window.isSecureContext){'."\n";
+        $html .= '        navigator.clipboard.writeText(text).then(ok).catch(function(){ fallbackCopy(text); ok(); });'."\n";
+        $html .= '      }else{ fallbackCopy(text); ok(); }'."\n";
+        $html .= '    });'."\n";
         $html .= '  });'."\n";
-        $html .= '});'."\n";
+
+        $html .= '  document.body.appendChild(trigger);'."\n";
+        $html .= '  document.body.appendChild(dialog);'."\n";
+        $html .= '  if(trigger && dialog && dialog.showModal){'."\n";
+        $html .= '    trigger.addEventListener("click", function(){ dialog.showModal(); });'."\n";
+        $html .= '  }'."\n";
+        $html .= '  closeBtn.addEventListener("click", function(){ dialog.close(); });'."\n";
+        $html .= '}'."\n";
+
+        // Der Platzhalter {schemaOrgData} steht im <head> - dort existiert
+        // document.body zum Ausführungszeitpunkt dieses Skripts noch nicht,
+        // daher der DOMContentLoaded-Umweg (mit Sofort-Ausführung als
+        // Fallback, falls das Skript ausnahmsweise erst nach DOMContentLoaded
+        // eingefügt wird).
+        $html .= 'if(document.readyState === "loading"){'."\n";
+        $html .= '  document.addEventListener("DOMContentLoaded", schemaOrgDataInitDebugWidget);'."\n";
+        $html .= '}else{'."\n";
+        $html .= '  schemaOrgDataInitDebugWidget();'."\n";
+        $html .= '}'."\n";
         $html .= '})();</script>'."\n";
 
         return $html;

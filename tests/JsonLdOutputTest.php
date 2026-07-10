@@ -644,6 +644,24 @@ final class JsonLdOutputTest extends TestCase {
         $this->assertStringContainsString('schemaOrgData-debug-trigger', $output);
     }
 
+    /***************************************************************
+    *
+    * Das Debug-Widget-Markup (Trigger-Button, <dialog>, Vorschau-
+    * Blöcke) wird nicht mehr als statisches HTML zurückgegeben, sondern
+    * als JSON-Nutzlast in den einzigen <script>-Block eingebettet und
+    * erst zur Laufzeit per JS aufgebaut (siehe README.md, Abschnitt
+    * "JSON-LD-Ausgabe") - Scope/Type/formatiertes JSON werden daher aus
+    * der eingebetteten schemaOrgDataDebugData-Nutzlast extrahiert statt
+    * als rohes HTML im Gesamtoutput gesucht.
+    *
+    ***************************************************************/
+    private function extractDebugPayloadFromOutput(string $output): array {
+        preg_match('#var schemaOrgDataDebugData = (\{.*\});\n#s', $output, $matches);
+        $this->assertNotEmpty($matches, 'Erwartete schemaOrgDataDebugData-Zuweisung nicht im Output gefunden.');
+
+        return json_decode($matches[1], true);
+    }
+
     function testDebugWidgetContainsGlobalScopeStringAndType(): void {
         $plugin = $this->createPlugin();
         $postData = $this->validLocalBusinessData();
@@ -662,8 +680,10 @@ final class JsonLdOutputTest extends TestCase {
         );
 
         $output = $plugin->getContent('');
+        $payload = $this->extractDebugPayloadFromOutput($output);
 
-        $this->assertStringContainsString('>global &mdash; LocalBusiness<', $output);
+        $this->assertSame('global', $payload['blocks'][0]['scope']);
+        $this->assertSame('LocalBusiness', $payload['blocks'][0]['type']);
     }
 
     function testDebugWidgetContainsFormattedJsonWithContextAndType(): void {
@@ -684,11 +704,12 @@ final class JsonLdOutputTest extends TestCase {
         );
 
         $output = $plugin->getContent('');
+        $json = $this->extractDebugPayloadFromOutput($output)['blocks'][0]['json'];
 
         // Das formatierte JSON muss @context und @type enthalten
-        $this->assertStringContainsString('"@context"', $output);
-        $this->assertStringContainsString('"@type": "LocalBusiness"', $output);
-        $this->assertStringContainsString('"name": "Beispiel GmbH"', $output);
+        $this->assertStringContainsString('"@context"', $json);
+        $this->assertStringContainsString('"@type": "LocalBusiness"', $json);
+        $this->assertStringContainsString('"name": "Beispiel GmbH"', $json);
     }
 
     function testDebugWidgetContainsValidatorLink(): void {
@@ -710,7 +731,40 @@ final class JsonLdOutputTest extends TestCase {
 
         $output = $plugin->getContent('');
 
-        $this->assertStringContainsString('href="https://validator.schema.org"', $output);
+        $this->assertStringContainsString('validatorLink.href = "https://validator.schema.org"', $output);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest gegen invalides HTML an der {schemaOrgData}-
+    * Platzhalterstelle im <head>: <button>/<dialog> sind dort keine
+    * gültigen Metadaten-Elemente. Der von getContent() zurückgegebene
+    * Gesamtoutput darf daher außerhalb von <script>-Blöcken kein
+    * <button- oder <dialog-Tag mehr enthalten.
+    *
+    ***************************************************************/
+    function testDebugWidgetOutputEnthaeltKeinButtonOderDialogAusserhalbDesScriptBlocks(): void {
+        $plugin = $this->createPlugin();
+        $postData = $this->validLocalBusinessData();
+        $postData['debug_output'] = '1';
+        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
+            'global',
+            $postData,
+            $this->settings,
+            callPluginMethod($plugin, 'loadAdminLanguage', []),
+            new \SchemaOrgData_ScopeResolver(),
+            new \SchemaOrgData_SchemaRepository(),
+            $plugin->PLUGIN_SELF_DIR,
+            new \SchemaOrgData_Validator(),
+            new \SchemaOrgData_OpeningHoursHelper(),
+            new \SchemaOrgData_AdminPageRenderer()
+        );
+
+        $output = $plugin->getContent('');
+        $withoutScripts = preg_replace('#<script\b[^>]*>.*?</script>#s', '', $output);
+
+        $this->assertStringNotContainsString('<button', $withoutScripts);
+        $this->assertStringNotContainsString('<dialog', $withoutScripts);
     }
 
     function testScriptBlocksIdenticalRegardlessOfDebugOutput(): void {
