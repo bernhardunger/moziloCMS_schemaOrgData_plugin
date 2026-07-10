@@ -757,6 +757,80 @@ final class ValidatorTest extends TestCase {
         $this->assertNotEmpty($errors, 'fehlender addressLocality-Pflichtwert muss über das place-Widget gemeldet werden');
     }
 
+    function testValidateFormDataPlaceWidgetKomplettLeerOhneWidgetPflichtIstOk(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'name' => 'Sommerfest',
+            'startDate' => '15.09.2026 19:00',
+            'location' => ['name' => '', 'address' => ['addressCountry' => 'DE']],
+        ];
+        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertSame([], $errors);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest RC-Bug (2026-07-09): Ort war beim place-Widget
+    * nicht durchsetzbar, sobald nur das Geschwister-Feld "name" befüllt
+    * war - validatePostalAddressData() kennt nur $addressValue und
+    * erkannte das befüllte "name" nicht als "Widget wurde angefasst".
+    *
+    ***************************************************************/
+    function testValidateFormDataPlaceWidgetNurNameGefuelltErzwingtOrtPflicht(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'name' => 'Sommerfest',
+            'startDate' => '15.09.2026 19:00',
+            'location' => ['name' => 'Stadtpark', 'address' => ['addressCountry' => 'DE']],
+        ];
+        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertContains(
+            $this->adminLang()->getLanguageValue('error_required_field', $this->adminLang()->getLanguageValue('label_address_locality')),
+            $errors
+        );
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest RC-Bug (2026-07-09), zweiter Teilbefund:
+    * JobPosting.jobLocation ist als gesamtes Widget "ui:required" -
+    * validateFormData() prüfte dieses Flag beim place-Widget bislang
+    * gar nicht, ein komplett leeres Pflicht-Widget wurde stillschweigend
+    * akzeptiert.
+    *
+    ***************************************************************/
+    function testValidateFormDataJobLocationAlsGanzesPflichtErzwingtOrtBeiKomplettLeeremWidget(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'title' => 'Entwickler',
+            'description' => 'Stellenbeschreibung',
+            'datePosted' => '15.03.2026',
+            'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+        ];
+        $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertContains(
+            $this->adminLang()->getLanguageValue('error_required_field', $this->adminLang()->getLanguageValue('label_address_locality')),
+            $errors
+        );
+    }
+
+    function testValidateFormDataJobLocationOkBeiVollstaendigerAdresse(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'title' => 'Entwickler',
+            'description' => 'Stellenbeschreibung',
+            'datePosted' => '15.03.2026',
+            'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+            'jobLocation' => ['address' => ['addressLocality' => 'Musterstadt', 'addressCountry' => 'DE']],
+        ];
+        $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertSame([], $errors);
+    }
+
     // -----------------------------------------------------------
     // validateFormData() / validatePostalAddressData() - generische
     // Enum-Prüfung (Nachzieh-Schritt zur employmentType-URI-Umstellung)
@@ -801,6 +875,7 @@ final class ValidatorTest extends TestCase {
             'datePosted' => '15.03.2026',
             'employmentType' => 'https://schema.org/FULL_TIME',
             'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+            'jobLocation' => ['address' => ['addressLocality' => 'Musterstadt', 'addressCountry' => 'DE']],
         ];
         $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
 

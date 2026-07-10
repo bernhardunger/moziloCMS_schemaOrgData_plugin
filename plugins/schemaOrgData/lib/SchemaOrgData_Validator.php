@@ -116,7 +116,17 @@ class SchemaOrgData_Validator {
                 $addressValue = is_array($placeValue['address'] ?? null) ? $placeValue['address'] : [];
                 $inheritedPlace = is_array($inheritableData[$name] ?? null) ? $inheritableData[$name] : [];
                 $inheritedAddress = is_array($inheritedPlace['address'] ?? null) ? $inheritedPlace['address'] : [];
-                $errors = array_merge($errors, $this->validatePostalAddressData($addressValue, $addressSchema, $inheritedAddress, $lang));
+
+                // Das Geschwister-Feld "name" liegt außerhalb von $addressValue und
+                // würde von validatePostalAddressData() sonst nicht als "Widget
+                // wurde angefasst" erkannt - ebenso das eigene "ui:required" des
+                // gesamten place-Widgets (z. B. JobPosting.jobLocation), das ohne
+                // $forceRequired komplett wirkungslos bliebe, weil
+                // validatePostalAddressData() nur $addressValue kennt.
+                $placeNameFilled = trim((string) ($placeValue['name'] ?? '')) !== '';
+                $errors = array_merge($errors, $this->validatePostalAddressData(
+                    $addressValue, $addressSchema, $inheritedAddress, $lang, $required or $placeNameFilled
+                ));
                 continue;
             }
 
@@ -697,16 +707,22 @@ class SchemaOrgData_Validator {
     *        übergeordneten Ebene geerbt würden (Rückgabe von
     *        resolveInheritableFields()['data']['address'])
     * @param Language $lang für die Fehlermeldungen
+    * @param bool $forceRequired erzwingt die Pflichtfeld-Prüfungen auch dann, wenn
+    *        innerhalb von $address selbst kein Feld ausgefüllt ist - für das
+    *        place-Widget (Event.location/JobPosting.jobLocation), dessen
+    *        "ist überhaupt etwas angegeben"-Zustand zusätzlich vom
+    *        Geschwister-Feld "name" abhängt bzw. vom eigenen "ui:required" des
+    *        gesamten Widgets (siehe validateFormData())
     * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
     *
     ***************************************************************/
-    public function validatePostalAddressData(array $address, array $fieldSchema, array $inheritableAddress, Language $lang): array {
+    public function validatePostalAddressData(array $address, array $fieldSchema, array $inheritableAddress, Language $lang, bool $forceRequired = false): array {
         $errors = [];
         $subProperties = $fieldSchema['properties'] ?? [];
 
         // Wurde kein Adressfeld ausgefüllt (nur Default-Werte wie addressCountry=DE),
         // entfallen alle Pflichtfeld-Prüfungen — die Adresse als Ganzes ist nicht required.
-        if(!$this->isAddressProvided($address, $subProperties)) {
+        if(!$forceRequired and !$this->isAddressProvided($address, $subProperties)) {
             return [];
         }
 

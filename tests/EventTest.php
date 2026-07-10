@@ -383,6 +383,62 @@ final class EventTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // saveConfig(): place-Widget (location) - bedingte Ort-Pflicht
+    // -----------------------------------------------------------
+
+    function testSaveConfigLocationKomplettLeerSpeichertOhneFehlerUndOhneLocationProperty(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+        $_POST['schemaOrgData_page'] = 'sommerfest';
+
+        $postData = $this->validEventData();
+        unset($postData['data']['location']);
+
+        $result = $this->callSaveConfig('page', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
+        $this->assertArrayNotHasKey('location', $config);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest RC-Bug (2026-07-09): nur den Namen des Orts
+    * ("Stadtpark") befüllen, Adresse komplett leer lassen - muss den
+    * Ort-Pflichtfehler auslösen statt (wie vor dem Fix) stillschweigend
+    * zu speichern.
+    *
+    ***************************************************************/
+    function testSaveConfigLehntLocationMitNurNameOhneOrtAb(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+        $_POST['schemaOrgData_page'] = 'sommerfest';
+
+        $postData = $this->validEventData();
+        $postData['data']['location'] = ['name' => 'Stadtpark', 'address' => ['addressCountry' => 'DE']];
+
+        $result = $this->callSaveConfig('page', $postData, $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+    }
+
+    function testSaveConfigLocationMitNurOrtBefuelltSpeichertErfolgreich(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+        $_POST['schemaOrgData_page'] = 'sommerfest';
+
+        $postData = $this->validEventData();
+        $postData['data']['location'] = ['name' => '', 'address' => ['addressLocality' => 'Musterstadt', 'addressCountry' => 'DE']];
+
+        $result = $this->callSaveConfig('page', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
+        $this->assertSame('Musterstadt', $config['location']['address']['addressLocality']);
+    }
+
+    // -----------------------------------------------------------
     // buildJsonLdScript(): location/organizer-Verschachtelung
     // -----------------------------------------------------------
 

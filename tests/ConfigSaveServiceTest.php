@@ -527,6 +527,38 @@ final class ConfigSaveServiceTest extends TestCase {
         $this->assertSame('https://schema.org/FULL_TIME', $settings->get('config_page_jobs_entwickler')['JobPosting']['employmentType']);
     }
 
+    /***************************************************************
+    *
+    * Regressionstest RC-Bug (2026-07-09): JobPosting.jobLocation ist
+    * als gesamtes place-Widget "ui:required" ("Arbeitsort *") - ein
+    * komplett leeres jobLocation (kein name, keine Adresse außer dem
+    * Land-Default) musste bislang trotzdem erfolgreich speichern.
+    *
+    ***************************************************************/
+    function testSaveConfigLehntKomplettLeeresJobLocationAb(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'jobs';
+        $_POST['schemaOrgData_page'] = 'entwickler';
+
+        $postData = [
+            'type' => 'JobPosting',
+            'data' => [
+                'title' => 'Entwickler',
+                'description' => 'Stellenbeschreibung',
+                'datePosted' => '15.03.2026',
+                'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+                'jobLocation' => ['address' => ['addressCountry' => 'DE']],
+            ],
+            'extension' => ['JobPosting' => ''],
+        ];
+
+        $result = $this->callSaveConfig('page', $postData, $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertFalse($settings->keyExists('config_page_jobs_entwickler'));
+    }
+
     function testSaveConfigLehntAltenRohenEnumWertBeiEmploymentTypeAb(): void {
         $settings = new \InMemorySettings();
         $_POST['schemaOrgData_cat'] = 'jobs';
