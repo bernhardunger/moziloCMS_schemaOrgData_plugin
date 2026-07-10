@@ -101,6 +101,17 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertStringContainsString('Beschreibungstext', $html);
     }
 
+    function testRenderTextareaWidgetUndExtensionFieldTeilenSichBreitenKlasse(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $textareaHtml = $renderer->renderTextareaWidget('fid', 'fname', [], 'Beschreibungstext');
+        $extensionHtml = $renderer->renderExtensionFieldWidget(
+            'global', 'LocalBusiness', '', null, $this->adminLang(), 'https://example.com/plugins/schemaOrgData/',
+        );
+
+        $this->assertStringContainsString('schemaOrgData-wide-textarea', $textareaHtml);
+        $this->assertStringContainsString('schemaOrgData-wide-textarea', $extensionHtml);
+    }
+
     function testRenderSelectWidgetNutztEnumLabelsFuerAktuelleSprache(): void {
         $renderer = new \SchemaOrgData_FormRenderer();
         $fieldSchema = [

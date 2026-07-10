@@ -29,7 +29,10 @@ class SchemaOrgData_AdminPageRenderer {
         return '
 .schemaOrgData-admin { max-width: 900px; }
 .schemaOrgData-admin .schemaOrgData-required-legend { color: #666; font-size: .85em; margin: 0 0 .75em; }
-.schemaOrgData-admin .schemaOrgData-field-row:has(textarea) { align-items: flex-start !important; }
+/* Freitext-Textarea-Zeilen (description u. a.) verzichten auf die 200px-Label-Spalte
+   und stapeln Label/Feld stattdessen, damit die Textarea dieselbe Breite wie das
+   Erweiterungsfeld-Textarea (schemaOrgData-wide-textarea, s. u.) erreichen kann. */
+.schemaOrgData-admin .schemaOrgData-field-row:has(textarea) { grid-template-columns: 1fr !important; align-items: flex-start !important; }
 .schemaOrgData-admin .schemaOrgData-info { background: #eef6ff; border: 1px solid #b6d4f5; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--info, .schemaOrgData-admin .schemaOrgData-notice--unsaved { background: #fff8e1; border: 1px solid #ffe082; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-notice--success { background: #e8f5e9; border: 1px solid #a5d6a7; padding: .5em 1em; margin-bottom: 1em; border-radius: 4px; }
@@ -74,7 +77,8 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-address-field--narrow { flex: 0 0 80px !important; }
 .schemaOrgData-admin .schemaOrgData-address-field--narrow input { max-width: 80px; }
 .schemaOrgData-admin textarea.mo-input-text { min-height: 7.5em; }
-.schemaOrgData-admin .schemaOrgData-extension-field { width: 100%; box-sizing: border-box; font-family: monospace; resize: vertical; }
+.schemaOrgData-admin .schemaOrgData-wide-textarea { width: 100%; box-sizing: border-box; }
+.schemaOrgData-admin .schemaOrgData-extension-field { font-family: monospace; resize: vertical; }
 .schemaOrgData-admin .schemaOrgData-import-textarea { width: 100%; box-sizing: border-box; }
 .schemaOrgData-admin select[id$="_addressCountry"] { max-width: 200px; }
 .schemaOrgData-admin input[id$="_addressRegion"] { max-width: 300px; }
