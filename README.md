@@ -310,7 +310,7 @@ Das Feedback ist dreistufig: ✅ grün (OK) · ⚠️ gelb (Warnung) · ❌ rot 
 | `openingHours` | Format + Von-Zeit < Bis-Zeit (24-Stunden-Format) | nein |
 | `addressCountry` | Enum-Prüfung gegen die Länderliste | nein |
 | `geo` (Erweiterungsfeld) | numerisch + Wertebereich (Breite/Länge) | nein |
-| Datumsfelder (`startDate`, `endDate`) | ISO-8601 (`YYYY-MM-DD`, optional mit Uhrzeit und Zeitzonen-Offset) **oder** deutsches Format `TT.MM.YYYY` (optional mit Uhrzeit `HH:MM`), kalendarische Gültigkeit; bei `Event` zusätzlich `endDate` nicht vor `startDate` (Vergleich über beide Formate hinweg) | nein |
+| Datumsfelder (`startDate`, `endDate`) | ausschließlich deutsches Format `TT.MM.YYYY` (optional mit Uhrzeit `HH:MM`), kalendarische Gültigkeit; bei `Event` zusätzlich `endDate` nicht vor `startDate` | nein |
 
 **PLZ** — nur wenn `addressCountry = DE`: `/^[0-9]{5}$/`
 

@@ -159,8 +159,8 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
     });
 
     describe('validateEventDateInput()', function () {
-        test('gültiges ISO-8601-Datum', function () {
-            expect(validator.validateEventDateInput('2026-07-07').status).toBe('ok');
+        test('ISO-8601-Datum wird nicht mehr akzeptiert', function () {
+            expect(validator.validateEventDateInput('2026-07-07').status).toBe('error');
         });
 
         test('gültiges deutsches Format TT.MM.YYYY', function () {

@@ -254,15 +254,14 @@ class SchemaOrgData_Validator {
     *
     * Prüft, dass das Ende eines Datumsbereichs nicht vor dessen Beginn
     * liegt (z. B. Event startDate/endDate, JobPosting
-    * datePosted/validThrough) - nur wenn beide Felder gültige Werte
-    * enthalten (ISO-8601 oder deutsches Format TT.MM.YYYY, siehe
-    * validateEventDateInput(); ein bereits gemeldeter Formatfehler wird
-    * nicht durch einen zusätzlichen Bereichsfehler verdoppelt). Vor dem
-    * Vergleich wird auf ISO normalisiert (normalizeEventDateInput()), da
-    * DateTimeImmutable ein deutsches Rohformat nicht korrekt parst.
-    * Vergleich über Unix-Timestamps statt lexikalisch, da unterschiedliche
-    * Zeitzonen-Offset-Notationen (z. B. "+02:00" vs. "Z") denselben
-    * Zeitpunkt sonst fälschlich als "davor"/"danach" einordnen würden.
+    * datePosted/validThrough) - nur wenn beide Felder gültige Werte im
+    * deutschen Format enthalten (siehe validateEventDateInput(); ein
+    * bereits gemeldeter Formatfehler wird nicht durch einen
+    * zusätzlichen Bereichsfehler verdoppelt). Vor dem Vergleich wird auf
+    * ISO normalisiert (normalizeEventDateInput()), da DateTimeImmutable
+    * ein deutsches Rohformat nicht korrekt parst. Vergleich über
+    * Unix-Timestamps statt lexikalisch, damit ein reines Datum (lokale
+    * Mitternacht) und ein Datum mit Uhrzeit korrekt geordnet werden.
     *
     * @param string $errorKey Sprachschlüssel für die Bereichsfehlermeldung
     * @param array<string, mixed> $formData Formularfeld-Werte
@@ -446,25 +445,24 @@ class SchemaOrgData_Validator {
     /***************************************************************
     *
     * Validiert eine Datumseingabe für Event.startDate/endDate:
-    * akzeptiert zusätzlich zu allem, was validateIso8601Date()
-    * bereits akzeptiert, auch das deutsche Format "TT.MM.YYYY",
+    * akzeptiert ausschließlich das deutsche Format "TT.MM.YYYY",
     * optional mit Uhrzeit ("TT.MM.YYYY HH:MM"). validateIso8601Date()
-    * selbst bleibt unverändert (siehe ValidatorTest,
-    * testValidateIso8601DateErrorBeiDeutschemFormat()) - die
-    * Formularvalidierung von Event.startDate/endDate ruft
-    * ausschließlich diese Methode auf.
+    * bleibt als eigenständige, unabhängig nutzbare Methode bestehen,
+    * wird von dieser Methode aber nicht mehr aufgerufen - die
+    * Formularvalidierung von Event.startDate/endDate akzeptiert damit
+    * keine ISO-8601-Eingabe mehr (Persistenz/Ausgabe bleiben
+    * unverändert ISO-8601, siehe normalizeEventDateInput()).
     *
     * @param Language $lang für die Fehlermeldung
     * @return array{status: string|null, message: string|null}
     *
     ***************************************************************/
     public function validateEventDateInput(string $value, Language $lang): array {
-        $isoResult = $this->validateIso8601Date($value, $lang);
-        if($isoResult['status'] !== 'error') {
-            return $isoResult;
+        $value = trim($value);
+        if($value === '') {
+            return ['status' => null, 'message' => null];
         }
 
-        $value = trim($value);
         if(preg_match('/^(\d{2})\.(\d{2})\.(\d{4})(?: (?:[01][0-9]|2[0-3]):[0-5][0-9])?$/', $value, $m)
             and checkdate((int) $m[2], (int) $m[1], (int) $m[3])) {
             return ['status' => 'ok', 'message' => null];

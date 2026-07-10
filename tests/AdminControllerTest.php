@@ -689,7 +689,7 @@ final class AdminControllerTest extends TestCase {
             'type' => 'Event',
             'data' => [
                 'name' => 'Sommerfest',
-                'startDate' => '2026-09-15T19:00:00+02:00',
+                'startDate' => '15.09.2026 19:00',
                 'organizer' => ['_mode' => 'reference', '_fragment' => 'organization'],
             ],
             'extension' => ['Event' => ''],

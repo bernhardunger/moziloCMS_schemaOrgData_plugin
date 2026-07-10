@@ -513,7 +513,7 @@ final class ConfigSaveServiceTest extends TestCase {
             'data' => [
                 'title' => 'Entwickler',
                 'description' => 'Stellenbeschreibung',
-                'datePosted' => '2026-03-15',
+                'datePosted' => '15.03.2026',
                 'employmentType' => 'https://schema.org/FULL_TIME',
                 'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
                 'jobLocation' => ['address' => ['addressLocality' => 'Musterstadt', 'addressCountry' => 'DE']],
@@ -679,7 +679,7 @@ final class ConfigSaveServiceTest extends TestCase {
 
         $result = $this->callSaveConfig('category', [
             'type' => 'Article',
-            'data' => ['headline' => 'Neuigkeiten', 'articleBody' => 'Text', 'datePublished' => '2026-07-07'],
+            'data' => ['headline' => 'Neuigkeiten', 'articleBody' => 'Text', 'datePublished' => '07.07.2026'],
             'extension' => ['Article' => ''],
         ], $settings);
 

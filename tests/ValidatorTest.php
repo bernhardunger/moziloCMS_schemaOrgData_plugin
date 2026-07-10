@@ -579,19 +579,19 @@ final class ValidatorTest extends TestCase {
         $this->assertNull($result['status']);
     }
 
-    function testValidateEventDateInputOkBeiReinemIsoDatum(): void {
+    function testValidateEventDateInputErrorBeiReinemIsoDatum(): void {
         $result = (new \SchemaOrgData_Validator())->validateEventDateInput('2026-09-15', $this->adminLang());
-        $this->assertSame('ok', $result['status']);
+        $this->assertSame('error', $result['status']);
     }
 
-    function testValidateEventDateInputOkBeiIsoDatumZeitUndOffset(): void {
+    function testValidateEventDateInputErrorBeiIsoDatumZeitUndOffset(): void {
         $result = (new \SchemaOrgData_Validator())->validateEventDateInput('2026-09-15T19:00:00+02:00', $this->adminLang());
-        $this->assertSame('ok', $result['status']);
+        $this->assertSame('error', $result['status']);
     }
 
-    function testValidateEventDateInputOkBeiIsoDatumZeitUndZ(): void {
+    function testValidateEventDateInputErrorBeiIsoDatumZeitUndZ(): void {
         $result = (new \SchemaOrgData_Validator())->validateEventDateInput('2026-09-15T19:00:00Z', $this->adminLang());
-        $this->assertSame('ok', $result['status']);
+        $this->assertSame('error', $result['status']);
     }
 
     function testValidateEventDateInputOkBeiDeutschemDatum(): void {
@@ -702,8 +702,8 @@ final class ValidatorTest extends TestCase {
         $validator = new \SchemaOrgData_Validator();
         $formData = [
             'name' => 'Sommerfest',
-            'startDate' => '2026-09-15T19:00:00+02:00',
-            'endDate' => '2026-09-15T18:00:00+02:00',
+            'startDate' => '15.09.2026 19:00',
+            'endDate' => '15.09.2026 18:00',
         ];
         $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
 
@@ -714,23 +714,8 @@ final class ValidatorTest extends TestCase {
         $validator = new \SchemaOrgData_Validator();
         $formData = [
             'name' => 'Sommerfest',
-            'startDate' => '2026-09-15T19:00:00+02:00',
-            'endDate' => '2026-09-15T22:00:00+02:00',
-        ];
-        $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
-
-        $this->assertSame([], $errors);
-    }
-
-    function testValidateFormDataOkBeiGleichemZeitpunktUnterschiedlicherOffsetNotation(): void {
-        $validator = new \SchemaOrgData_Validator();
-        $formData = [
-            'name' => 'Sommerfest',
-            // Gleicher Zeitpunkt (17:00 UTC), aber startDate mit "+02:00" und
-            // endDate mit "Z" notiert - ein rein lexikalischer Vergleich hätte
-            // "17:00:00Z" < "19:00:00+02:00" fälschlich als Bereichsfehler gemeldet.
-            'startDate' => '2026-09-15T19:00:00+02:00',
-            'endDate' => '2026-09-15T17:00:00Z',
+            'startDate' => '15.09.2026 19:00',
+            'endDate' => '15.09.2026 22:00',
         ];
         $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
 
@@ -757,52 +742,11 @@ final class ValidatorTest extends TestCase {
         $this->assertSame([], $errors);
     }
 
-    function testValidateFormDataMeldetEndDateVorStartDateBeiGemischtenFormaten(): void {
-        // Deutsche Rohwerte werden über die Server-Zeitzone normalisiert
-        // (normalizeEventDateInput) - Europe/Berlin fest gesetzt, damit der
-        // Vergleich unabhängig von der Umgebungs-Zeitzone deterministisch ist.
-        $previousTimezone = date_default_timezone_get();
-        date_default_timezone_set('Europe/Berlin');
-        try {
-            $validator = new \SchemaOrgData_Validator();
-            $formData = [
-                'name' => 'Sommerfest',
-                'startDate' => '2026-09-15T19:00:00+02:00',
-                // endDate im deutschen Format, zeitlich vor startDate.
-                'endDate' => '15.09.2026 18:00',
-            ];
-            $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
-
-            $this->assertContains($this->adminLang()->getLanguageValue('error_date_range_invalid'), $errors);
-        } finally {
-            date_default_timezone_set($previousTimezone);
-        }
-    }
-
-    function testValidateFormDataOkBeiGemischtenFormatenUndKorrekterReihenfolge(): void {
-        $previousTimezone = date_default_timezone_get();
-        date_default_timezone_set('Europe/Berlin');
-        try {
-            $validator = new \SchemaOrgData_Validator();
-            $formData = [
-                'name' => 'Sommerfest',
-                // startDate deutsches Format, endDate ISO - zeitlich korrekt.
-                'startDate' => '15.09.2026 19:00',
-                'endDate' => '2026-09-15T22:00:00+02:00',
-            ];
-            $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
-
-            $this->assertSame([], $errors);
-        } finally {
-            date_default_timezone_set($previousTimezone);
-        }
-    }
-
     function testValidateFormDataPlaceWidgetDelegiertAnValidatePostalAddressData(): void {
         $validator = new \SchemaOrgData_Validator();
         $formData = [
             'name' => 'Sommerfest',
-            'startDate' => '2026-09-15T19:00:00+02:00',
+            'startDate' => '15.09.2026 19:00',
             'location' => ['name' => 'Stadtpark', 'address' => ['addressCountry' => 'DE']],
         ];
         // Ort ausgefüllt ohne addressLocality -> Pflichtfeld-Fehler über die
@@ -826,7 +770,7 @@ final class ValidatorTest extends TestCase {
         $validator = new \SchemaOrgData_Validator();
         $formData = [
             'name' => 'Sommerfest',
-            'startDate' => '2026-09-15T19:00:00+02:00',
+            'startDate' => '15.09.2026 19:00',
             'eventAttendanceMode' => 'https://schema.org/OfflineEventAttendanceMode',
         ];
         $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
@@ -838,7 +782,7 @@ final class ValidatorTest extends TestCase {
         $validator = new \SchemaOrgData_Validator();
         $formData = [
             'name' => 'Sommerfest',
-            'startDate' => '2026-09-15T19:00:00+02:00',
+            'startDate' => '15.09.2026 19:00',
             'eventStatus' => 'FOO',
         ];
         $errors = $validator->validateFormData($formData, $this->eventSchema(), [], $this->adminLang(), $this->schemaRepository());
@@ -854,7 +798,7 @@ final class ValidatorTest extends TestCase {
         $formData = [
             'title' => 'Entwickler',
             'description' => 'Stellenbeschreibung',
-            'datePosted' => '2026-03-15T00:00:00+01:00',
+            'datePosted' => '15.03.2026',
             'employmentType' => 'https://schema.org/FULL_TIME',
             'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
         ];

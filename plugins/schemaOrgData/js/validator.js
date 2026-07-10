@@ -276,8 +276,7 @@
 
     /**
      * Validiert eine Datumseingabe für Event.startDate/endDate: akzeptiert
-     * ISO-8601 (Datum bzw. Datum+Zeit+Sekunden+Offset/"Z") sowie zusätzlich
-     * das deutsche Format "TT.MM.YYYY", optional mit Uhrzeit
+     * ausschließlich das deutsche Format "TT.MM.YYYY", optional mit Uhrzeit
      * ("TT.MM.YYYY HH:MM"). Spiegelt SchemaOrgData_Validator::validateEventDateInput()
      * (PHP) - beide Implementierungen müssen bei einer Formatänderung
      * gemeinsam angepasst werden.
@@ -292,11 +291,6 @@
             return { status: null, message: null };
         }
 
-        var isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:T([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(?:Z|[+-]\d{2}:\d{2}))?$/);
-        if (isoMatch && isValidCalendarDate(parseInt(isoMatch[1], 10), parseInt(isoMatch[2], 10), parseInt(isoMatch[3], 10))) {
-            return { status: 'ok', message: null };
-        }
-
         var deMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/);
         if (deMatch && isValidCalendarDate(parseInt(deMatch[3], 10), parseInt(deMatch[2], 10), parseInt(deMatch[1], 10))) {
             return { status: 'ok', message: null };
@@ -307,10 +301,11 @@
 
     /**
      * Wandelt eine bereits als gültig bestätigte Datumseingabe
-     * (validateEventDateInput()) in ein vergleichbares "Date"-Objekt um -
-     * reine Hilfsfunktion für checkDateRange(), kein eigenständiger
-     * Validierungsschritt. Ein reines Datum ohne Uhrzeit wird als lokale
-     * Mitternacht interpretiert (symmetrisch zu normalizeEventDateInput() in
+     * (validateEventDateInput(), also ausschließlich deutsches Format) in
+     * ein vergleichbares "Date"-Objekt um - reine Hilfsfunktion für
+     * checkDateRange(), kein eigenständiger Validierungsschritt. Ein reines
+     * Datum ohne Uhrzeit wird als lokale Mitternacht interpretiert
+     * (symmetrisch zu normalizeEventDateInput() in
      * SchemaOrgData_Validator.php); mit Uhrzeit übernimmt der "Date"-
      * Konstruktor die Sommer-/Winterzeit-Auflösung der Browser-Zeitzone
      * automatisch.
@@ -329,14 +324,6 @@
             var hour = deMatch[4] ? parseInt(deMatch[4], 10) : 0;
             var minute = deMatch[5] ? parseInt(deMatch[5], 10) : 0;
             return new Date(year, month, day, hour, minute, 0);
-        }
-
-        var isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:T([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(?:Z|[+-]\d{2}:\d{2}))?$/);
-        if (isoMatch) {
-            if (!isoMatch[4]) {
-                return new Date(parseInt(isoMatch[1], 10), parseInt(isoMatch[2], 10) - 1, parseInt(isoMatch[3], 10));
-            }
-            return new Date(trimmed);
         }
 
         return null;

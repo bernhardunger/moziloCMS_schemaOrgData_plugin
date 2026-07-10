@@ -23,15 +23,22 @@ use PHPUnit\Framework\TestCase;
 final class EventTest extends TestCase {
 
     private array $serverBackup = [];
+    private string $previousTimezone = 'UTC';
 
     protected function setUp(): void {
         $_POST = [];
         $this->serverBackup = $_SERVER;
+        // Fest auf Europe/Berlin (statt der PHP-Standardzeitzone UTC), damit
+        // normalizeEventDateInput() für die deutschen Testdaten (September,
+        // Sommerzeit) deterministisch den Offset "+02:00" auflöst.
+        $this->previousTimezone = date_default_timezone_get();
+        date_default_timezone_set('Europe/Berlin');
     }
 
     protected function tearDown(): void {
         $_POST = [];
         $_SERVER = $this->serverBackup;
+        date_default_timezone_set($this->previousTimezone);
     }
 
     private function pluginSelfDir(): string {
@@ -95,7 +102,11 @@ final class EventTest extends TestCase {
 
     /***************************************************************
     *
-    * Minimale, gültige Formulardaten für den Type "Event".
+    * Minimale, gültige Formulardaten für den Type "Event". startDate im
+    * deutschen Format (das Formular akzeptiert ausschließlich dieses
+    * Format als Eingabe, siehe validateEventDateInput()) - normalisiert
+    * über saveConfig() zu "2026-09-15T19:00:00+02:00" (setUp() setzt die
+    * Zeitzone fest auf Europe/Berlin).
     *
     ***************************************************************/
     private function validEventData(): array {
@@ -103,7 +114,7 @@ final class EventTest extends TestCase {
             'type' => 'Event',
             'data' => [
                 'name' => 'Sommerfest',
-                'startDate' => '2026-09-15T19:00:00+02:00',
+                'startDate' => '15.09.2026 19:00',
                 'location' => [
                     'name' => 'Stadtpark',
                     'address' => [
@@ -242,24 +253,18 @@ final class EventTest extends TestCase {
         // startDate wird im deutschen Format (TT.MM.YYYY HH:MM) eingegeben,
         // muss aber als ISO-8601 gespeichert werden (normalizeEventDateInput()
         // in sanitizePostData()).
-        $previousTimezone = date_default_timezone_get();
-        date_default_timezone_set('Europe/Berlin');
-        try {
-            $settings = new \InMemorySettings();
-            $_POST['schemaOrgData_cat'] = 'veranstaltungen';
-            $_POST['schemaOrgData_page'] = 'sommerfest';
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+        $_POST['schemaOrgData_page'] = 'sommerfest';
 
-            $postData = $this->validEventData();
-            $postData['data']['startDate'] = '15.09.2026 19:00';
+        $postData = $this->validEventData();
+        $postData['data']['startDate'] = '15.09.2026 19:00';
 
-            $result = $this->callSaveConfig('page', $postData, $settings);
-            $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $result = $this->callSaveConfig('page', $postData, $settings);
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
 
-            $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
-            $this->assertSame('2026-09-15T19:00:00+02:00', $config['startDate']);
-        } finally {
-            date_default_timezone_set($previousTimezone);
-        }
+        $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
+        $this->assertSame('2026-09-15T19:00:00+02:00', $config['startDate']);
     }
 
     // -----------------------------------------------------------
@@ -354,7 +359,7 @@ final class EventTest extends TestCase {
         $_POST['schemaOrgData_page'] = 'sommerfest';
 
         $postData = $this->validEventData();
-        $postData['data']['endDate'] = '2026-09-15T18:00:00+02:00';
+        $postData['data']['endDate'] = '15.09.2026 18:00';
 
         $result = $this->callSaveConfig('page', $postData, $settings);
 
@@ -368,7 +373,7 @@ final class EventTest extends TestCase {
         $_POST['schemaOrgData_page'] = 'sommerfest';
 
         $postData = $this->validEventData();
-        $postData['data']['endDate'] = '2026-09-15T22:00:00+02:00';
+        $postData['data']['endDate'] = '15.09.2026 22:00';
 
         $result = $this->callSaveConfig('page', $postData, $settings);
 
@@ -433,38 +438,37 @@ final class EventTest extends TestCase {
     * deutschen Format eingegeben, von saveConfig() als ISO-8601
     * gespeichert und muss beim erneuten
     * renderField() wieder als TT.MM.YYYY HH:MM angezeigt werden -
-    * nicht als das zwischenzeitlich gespeicherte ISO.
+    * nicht als das zwischenzeitlich gespeicherte ISO. Zusätzlich muss
+    * der redisplayte Wert die eigene Live-Validierung bestehen
+    * (Regressionstest für den RC-Befund: ein zurückgeschriebener Wert
+    * in falschem Format wurde von der eigenen Live-Validierung als
+    * ungültig markiert).
     *
     ***************************************************************/
     function testRenderFieldZeigtStartDateNachSaveConfigRoundTripWiederAlsDeutschesDatum(): void {
-        $previousTimezone = date_default_timezone_get();
-        date_default_timezone_set('Europe/Berlin');
-        try {
-            $settings = new \InMemorySettings();
-            $_POST['schemaOrgData_cat'] = 'veranstaltungen';
-            $_POST['schemaOrgData_page'] = 'sommerfest';
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'veranstaltungen';
+        $_POST['schemaOrgData_page'] = 'sommerfest';
 
-            $postData = $this->validEventData();
-            $postData['data']['startDate'] = '15.09.2026 19:00';
+        $postData = $this->validEventData();
+        $postData['data']['startDate'] = '15.09.2026 19:00';
 
-            $result = $this->callSaveConfig('page', $postData, $settings);
-            $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $result = $this->callSaveConfig('page', $postData, $settings);
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
 
-            $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
-            $this->assertSame('2026-09-15T19:00:00+02:00', $config['startDate']);
+        $config = $settings->get('config_page_veranstaltungen_sommerfest')['Event'];
+        $this->assertSame('2026-09-15T19:00:00+02:00', $config['startDate']);
 
-            $schema = $this->eventSchema();
-            $html = $this->formRenderer()->renderField(
-                'page', 'startDate', $schema['properties']['startDate'], $config['startDate'], $schema, $config,
-                'page_veranstaltungen_sommerfest_Event', null, null, $this->adminLang(), $this->schemaRepository(),
-                new \SchemaOrgData_UrlHelper(), 'deDE', $this->openingHoursHelper(), $this->validator(),
-                $this->adminLang(), []
-            );
+        $schema = $this->eventSchema();
+        $html = $this->formRenderer()->renderField(
+            'page', 'startDate', $schema['properties']['startDate'], $config['startDate'], $schema, $config,
+            'page_veranstaltungen_sommerfest_Event', null, null, $this->adminLang(), $this->schemaRepository(),
+            new \SchemaOrgData_UrlHelper(), 'deDE', $this->openingHoursHelper(), $this->validator(),
+            $this->adminLang(), []
+        );
 
-            $this->assertStringContainsString('value="15.09.2026 19:00"', $html);
-            $this->assertStringNotContainsString('value="2026-09-15T19:00:00', $html);
-        } finally {
-            date_default_timezone_set($previousTimezone);
-        }
+        $this->assertStringContainsString('value="15.09.2026 19:00"', $html);
+        $this->assertStringNotContainsString('value="2026-09-15T19:00:00', $html);
+        $this->assertStringContainsString('schemaOrgData-feedback--ok', $html);
     }
 }
