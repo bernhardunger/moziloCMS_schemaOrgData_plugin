@@ -378,6 +378,46 @@
     }
 
     /**
+     * Validiert ein Adress-Pflichtfeld (addressLocality), dessen Live-Pflicht
+     * davon abhängt, ob überhaupt ein anderes Feld derselben Adressgruppe
+     * (data-address-group, siehe renderAddressSubField() in
+     * SchemaOrgData_FormRenderer.php - beim place-Widget zählt zusätzlich
+     * das Geschwisterfeld "name" zur Gruppe) bereits befüllt ist. Spiegelt
+     * SchemaOrgData_Validator::isAddressProvided()/validatePostalAddressData():
+     * eine komplett leere, nicht als Ganzes ui:required markierte Adresse
+     * bleibt fehlerfrei, sobald aber ein Gruppenfeld befüllt ist, wird "Ort"
+     * live erzwungen. Ein als Ganzes ui:required markiertes place-Widget
+     * (z. B. JobPosting.jobLocation) nutzt stattdessen weiterhin den
+     * unconditional "required"-Typ (siehe $forceRequired in
+     * renderAddressSubField()), landet also nie hier.
+     *
+     * @param {HTMLElement} input
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function checkAddressRequiredField(input) {
+        if (input.value.trim() !== '' || input.placeholder.trim() !== '') {
+            return { status: null, message: null };
+        }
+
+        var groupId = input.getAttribute('data-address-group');
+        var groupFilled = false;
+
+        if (groupId) {
+            document.querySelectorAll('[data-address-group="' + groupId + '"]').forEach(function (el) {
+                if (el !== input && el.value.trim() !== '') {
+                    groupFilled = true;
+                }
+            });
+        }
+
+        if (!groupFilled) {
+            return { status: null, message: null };
+        }
+
+        return { status: 'error', message: input.getAttribute('data-required-message') || null };
+    }
+
+    /**
      * Prüft, ob ein Zeitwert dem Format "HH:MM" entspricht
      * (24-Stunden-Format, siehe README.md "Öffnungszeiten").
      *
@@ -730,7 +770,9 @@
      * über data-range-start-field verknüpfte Gegenstück (startDate/
      * endDate) mit einbezogen (siehe runEventDateValidation()). Felder mit
      * data-required-message melden einen leeren Wert als Fehler,
-     * unabhängig vom data-validate-Typ.
+     * unabhängig vom data-validate-Typ - Ausnahme: "address_required"
+     * (siehe checkAddressRequiredField()), dessen Pflicht zusätzlich davon
+     * abhängt, ob die Adressgruppe (data-address-group) bereits befüllt ist.
      *
      * @param {HTMLElement} input
      * @param {boolean} [onlyClearErrors] siehe showFieldFeedback() -
@@ -740,6 +782,12 @@
      */
     function runFieldValidation(input, onlyClearErrors) {
         var type = input.getAttribute('data-validate');
+
+        if (type === 'address_required') {
+            showFieldFeedback(input, input.id + '_feedback', checkAddressRequiredField(input), onlyClearErrors);
+            return;
+        }
+
         var requiredMessage = input.getAttribute('data-required-message');
 
         // Pflichtfeld leer: Fehler nur wenn kein geerbter Wert als Placeholder gesetzt
@@ -1380,6 +1428,7 @@
         validateUrl: validateUrl,
         validateEmail: validateEmail,
         validateRequiredField: validateRequiredField,
+        checkAddressRequiredField: checkAddressRequiredField,
         validateOpeningHoursTime: validateOpeningHoursTime,
         validateGeoLatitude: validateGeoLatitude,
         validateGeoLongitude: validateGeoLongitude,

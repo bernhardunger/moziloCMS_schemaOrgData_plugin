@@ -328,9 +328,11 @@ class SchemaOrgData_FormRenderer {
     *        wird der Feldname um diese Ebene verschachtelt - genutzt vom
     *        place-Widget (siehe renderPlaceWidget()), das die Adresse unter
     *        "location.address" statt "address" ablegt
+    * @param bool $forceRequired wird unverändert an renderAddressSubField()
+    *        durchgereicht (siehe dort)
     *
     ***************************************************************/
-    public function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang, ?string $groupPrefix = null): string {
+    public function renderPostalAddressWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang, ?string $groupPrefix = null, bool $forceRequired = false): string {
         $idPrefix = $idPrefix ?? $scope;
         $idSegment = $groupPrefix !== null ? $groupPrefix.'_'.$name : $name;
         $countryFieldId = 'schemaOrgData_'.$idPrefix.'_'.$idSegment.'_addressCountry';
@@ -342,7 +344,7 @@ class SchemaOrgData_FormRenderer {
         // kombiniertes streetAddress-Feld und erhält eine eigene,
         // volle Zeile.
         if(isset($properties['streetAddress'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'streetAddress', $properties['streetAddress'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix);
+            $field = $this->renderAddressSubField($scope, $name, 'streetAddress', $properties['streetAddress'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix, $forceRequired);
             $html .= $this->renderAddressFullRow($field);
         }
 
@@ -350,17 +352,17 @@ class SchemaOrgData_FormRenderer {
         $html .= $this->renderAddressFieldGroup($scope, $name, $properties, $value, $countryFieldId, $idPrefix, [
             'postalCode'      => true,
             'addressLocality' => false,
-        ], $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix);
+        ], $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix, $forceRequired);
 
         // Land: eigene Zeile, Select ~200px breit (siehe getAdminCss)
         if(isset($properties['addressCountry'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'addressCountry', $properties['addressCountry'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix);
+            $field = $this->renderAddressSubField($scope, $name, 'addressCountry', $properties['addressCountry'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix, $forceRequired);
             $html .= $this->renderAddressFullRow($field);
         }
 
         // Region/Bundesland: eigene Zeile, ~300px breit (siehe getAdminCss)
         if(isset($properties['addressRegion'])) {
-            $field = $this->renderAddressSubField($scope, $name, 'addressRegion', $properties['addressRegion'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix);
+            $field = $this->renderAddressSubField($scope, $name, 'addressRegion', $properties['addressRegion'], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix, $forceRequired);
             $html .= $this->renderAddressFullRow($field);
         }
 
@@ -403,10 +405,17 @@ class SchemaOrgData_FormRenderer {
     *        diese Ebene verschachtelt:
     *        schemaOrgData[scope][data][$groupPrefix][$name][$subName]
     *        statt schemaOrgData[scope][data][$name][$subName]
+    * @param bool $forceRequired erzwingt eine unconditional-Live-Pflichtmeldung
+    *        (data-validate="required") statt der sonst üblichen
+    *        gruppen-bedingten Prüfung (data-validate="address_required",
+    *        siehe unten) - nur für ein als Ganzes ui:required markiertes
+    *        place-Widget (z. B. JobPosting.jobLocation), das auch bei
+    *        komplett leerer Adresse "Ort" erzwingen muss (siehe
+    *        SchemaOrgData_Validator::validateFormData())
     * @return array{fieldId:string,label:string,badge:string,widget:string,feedback:string}
     *
     ***************************************************************/
-    public function renderAddressSubField(string $scope, string $name, string $subName, array $subSchema, array $value, string $countryFieldId, string $idPrefix, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang, ?string $groupPrefix = null): array {
+    public function renderAddressSubField(string $scope, string $name, string $subName, array $subSchema, array $value, string $countryFieldId, string $idPrefix, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang, ?string $groupPrefix = null, bool $forceRequired = false): array {
         $idSegment = $groupPrefix !== null ? $groupPrefix.'_'.$name : $name;
         $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$idSegment.'_'.$subName;
         $fieldNameBase = $groupPrefix !== null
@@ -430,17 +439,32 @@ class SchemaOrgData_FormRenderer {
             $badge .= $this->renderInheritedBadge($inheritedLabel, $lang);
         }
 
+        // Sub-Felder ohne "default" (streetAddress, postalCode, addressLocality,
+        // addressRegion - nicht addressCountry) zählen für die clientseitige
+        // Gruppen-Prüfung "wurde überhaupt etwas in dieser Adresse ausgefüllt",
+        // analog zu isAddressProvided() (siehe js/validator.js,
+        // runAddressRequiredValidation()).
+        $groupId = 'schemaOrgData_'.$idPrefix.'_'.$idSegment;
+
         if(($subSchema['ui:widget'] ?? 'text') === 'select') {
             $widgetHtml = $this->renderSelectWidget($fieldId, $fieldName, $subSchema, $subValue, $lang, $pluginLang);
         } else {
             $extraAttrs = [];
+            if(!array_key_exists('default', $subSchema)) {
+                $extraAttrs['data-address-group'] = $groupId;
+            }
             if($subName === 'postalCode') {
-                $extraAttrs = ['data-validate' => 'postal_code', 'data-country-field' => $countryFieldId];
+                $extraAttrs['data-validate'] = 'postal_code';
+                $extraAttrs['data-country-field'] = $countryFieldId;
             } elseif($required) {
-                $extraAttrs = [
-                    'data-validate' => 'required',
-                    'data-required-message' => $lang->getLanguageValue('error_required_field', $lang->getLanguageValue($subSchema['ui:label'] ?? $subName)),
-                ];
+                // Ohne $forceRequired hängt die Pflicht dieses Feldes davon ab,
+                // ob überhaupt ein Geschwisterfeld der Adressgruppe befüllt ist
+                // (data-validate="address_required", siehe js/validator.js) -
+                // eine komplett leere, nicht als Ganzes ui:required markierte
+                // Adresse (bzw. ein leeres place-Widget) bleibt sonst
+                // fälschlich als "Ort fehlt" markiert (Regressionsfall 8.12).
+                $extraAttrs['data-validate'] = $forceRequired ? 'required' : 'address_required';
+                $extraAttrs['data-required-message'] = $lang->getLanguageValue('error_required_field', $lang->getLanguageValue($subSchema['ui:label'] ?? $subName));
             }
             $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $subSchema, $subValue, $extraAttrs);
         }
@@ -473,9 +497,11 @@ class SchemaOrgData_FormRenderer {
     * @param string $pluginLang wird an renderAddressSubField() durchgereicht
     * @param string|null $groupPrefix wird an renderAddressSubField() durchgereicht
     *        (siehe dort)
+    * @param bool $forceRequired wird an renderAddressSubField() durchgereicht
+    *        (siehe dort)
     *
     ***************************************************************/
-    public function renderAddressFieldGroup(string $scope, string $name, array $properties, array $value, string $countryFieldId, string $idPrefix, array $subNames, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang, ?string $groupPrefix = null): string {
+    public function renderAddressFieldGroup(string $scope, string $name, array $properties, array $value, string $countryFieldId, string $idPrefix, array $subNames, ?array $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_Validator $validator, string $pluginLang, ?string $groupPrefix = null, bool $forceRequired = false): string {
         $html = '<div class="c-content schemaOrgData-field-row">'
             .'<div class="mo-in-li-l"></div>'
             .'<div class="mo-in-li-r"><div class="schemaOrgData-address-row">'."\n";
@@ -484,7 +510,7 @@ class SchemaOrgData_FormRenderer {
             if(!isset($properties[$subName])) {
                 continue;
             }
-            $field = $this->renderAddressSubField($scope, $name, $subName, $properties[$subName], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix);
+            $field = $this->renderAddressSubField($scope, $name, $subName, $properties[$subName], $value, $countryFieldId, $idPrefix, $inheritedValue, $inheritedLabel, $lang, $validator, $pluginLang, $groupPrefix, $forceRequired);
             $narrowClass = $narrow ? ' schemaOrgData-address-field--narrow' : '';
             $html .= '<div class="schemaOrgData-address-field'.$narrowClass.'">'
                 .'<label for="'.$field['fieldId'].'">'.$field['label'].$field['badge'].'</label>'
@@ -634,13 +660,27 @@ class SchemaOrgData_FormRenderer {
     * @param SchemaOrgData_SchemaRepository $schemaRepository für resolveSchemaRef()
     * @param SchemaOrgData_Validator $validator für renderPostalAddressWidget()
     * @param string $pluginLang für renderSelectWidget() (in renderPostalAddressWidget())
+    * @param bool $forceRequired unverändert das ui:required-Flag des gesamten
+    *        place-Widgets (z. B. JobPosting.jobLocation) - erzwingt bei true
+    *        eine unconditional-Live-Pflichtmeldung für "Ort" (siehe
+    *        renderAddressSubField()); bei false (Default, z. B. Event.location)
+    *        wird "Ort" nur dann live als Pflichtfeld gemeldet, wenn "name"
+    *        oder ein anderes Adressfeld bereits befüllt ist (siehe
+    *        js/validator.js, runAddressRequiredValidation() und
+    *        SchemaOrgData_Validator::validateFormData(), $placeNameFilled)
     * @return string HTML-Snippet
     *
     ***************************************************************/
-    public function renderPlaceWidget(string $scope, string $name, array $fieldSchema, array $value, array $rootSchema, ?string $idPrefix, Language $lang, SchemaOrgData_SchemaRepository $schemaRepository, SchemaOrgData_Validator $validator, string $pluginLang): string {
+    public function renderPlaceWidget(string $scope, string $name, array $fieldSchema, array $value, array $rootSchema, ?string $idPrefix, Language $lang, SchemaOrgData_SchemaRepository $schemaRepository, SchemaOrgData_Validator $validator, string $pluginLang, bool $forceRequired = false): string {
         $idPrefix = $idPrefix ?? $scope;
         $properties = $fieldSchema['properties'] ?? [];
         $html = '';
+
+        // Gruppen-Id der verschachtelten Adresse (siehe renderAddressSubField()) -
+        // das "name"-Feld liegt außerhalb von "address", zählt aber ebenfalls
+        // zur "wurde dieses place-Widget überhaupt angefasst"-Prüfung
+        // (data-address-group, siehe js/validator.js).
+        $addressGroupId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_address';
 
         if(isset($properties['name'])) {
             $nameSchema = $properties['name'];
@@ -648,7 +688,7 @@ class SchemaOrgData_FormRenderer {
             $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.'][name]';
             $nameValue = $value['name'] ?? null;
             $label = $lang->getLanguageHtml($nameSchema['ui:label'] ?? 'label_name');
-            $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $nameSchema, $nameValue, []);
+            $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $nameSchema, $nameValue, ['data-address-group' => $addressGroupId]);
             $html .= '<div class="c-content schemaOrgData-field-row">'
                 .'<div class="mo-in-li-l"><label for="'.$fieldId.'">'.$label.'</label></div>'
                 .'<div class="mo-in-li-r">'.$widgetHtml.'</div>'
@@ -658,7 +698,7 @@ class SchemaOrgData_FormRenderer {
         if(isset($properties['address'])) {
             $addressSchema = $schemaRepository->resolveSchemaRef($properties['address'], $rootSchema);
             $addressValue = is_array($value['address'] ?? null) ? $value['address'] : [];
-            $html .= $this->renderPostalAddressWidget($scope, 'address', $addressSchema, $addressValue, $idPrefix, null, null, $lang, $validator, $pluginLang, $name);
+            $html .= $this->renderPostalAddressWidget($scope, 'address', $addressSchema, $addressValue, $idPrefix, null, null, $lang, $validator, $pluginLang, $name, $forceRequired);
         }
 
         return $html;
@@ -1031,7 +1071,10 @@ class SchemaOrgData_FormRenderer {
         }
 
         if($widget === 'place') {
-            $inner = $this->renderPlaceWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $rootSchema, $idPrefix, $lang, $schemaRepository, $validator, $pluginLang);
+            // Das ui:required-Flag des gesamten Widgets (z. B. JobPosting.jobLocation)
+            // wird als $forceRequired durchgereicht - nur dann bleibt die
+            // Live-Pflichtmeldung für "Ort" unconditional (siehe renderPlaceWidget()).
+            $inner = $this->renderPlaceWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $rootSchema, $idPrefix, $lang, $schemaRepository, $validator, $pluginLang, $required);
             return '<fieldset class="schemaOrgData-fieldset">'."\n"
                 .'<legend>'.$label.$badge.'</legend>'."\n"
                 .$inner

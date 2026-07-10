@@ -150,9 +150,15 @@ final class FormRendererTest extends TestCase {
     /***************************************************************
     *
     * Regressionstest für die addressLocality-Pflichtfeld-Validierung:
-    * das Feld muss data-validate="required" und eine vollständig
-    * aufgelöste data-required-message tragen, damit
-    * validator.js beim Blur sofort "Pflichtfeld "Ort" fehlt." anzeigt.
+    * das Feld muss data-validate="address_required" (gruppen-bedingte
+    * Live-Pflicht, siehe js/validator.js checkAddressRequiredField())
+    * und eine vollständig aufgelöste data-required-message tragen,
+    * damit validator.js "Pflichtfeld "Ort" fehlt." anzeigt, sobald
+    * mindestens ein anderes Feld der Adressgruppe befüllt ist. Vor
+    * diesem Test trug das Feld unconditional data-validate="required" -
+    * das führte zu einer fälschlichen Live-Meldung bei einer komplett
+    * leeren, nicht als Ganzes ui:required markierten Adresse
+    * (Regressionsfall 8.12, siehe testAddressLocalityFieldTraegtAdressgruppenId()).
     *
     ***************************************************************/
     function testAddressLocalityFieldHasRequiredValidationAttributes(): void {
@@ -166,7 +172,94 @@ final class FormRendererTest extends TestCase {
         );
 
         $this->assertMatchesRegularExpression(
-            '/id="schemaOrgData_global_address_addressLocality"[^>]*data-validate="required"[^>]*data-required-message="Pflichtfeld &quot;Ort&quot; fehlt\./',
+            '/id="schemaOrgData_global_address_addressLocality"[^>]*data-address-group="schemaOrgData_global_address"[^>]*data-validate="address_required"[^>]*data-required-message="Pflichtfeld &quot;Ort&quot; fehlt\./',
+            $html
+        );
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest 8.12: streetAddress/postalCode/addressRegion tragen
+    * dieselbe data-address-group-Id wie addressLocality (nicht
+    * addressCountry, das per "default" immer einen Wert hat und daher
+    * für die "wurde überhaupt etwas ausgefüllt"-Prüfung ausgenommen
+    * bleibt - siehe SchemaOrgData_Validator::isAddressProvided()).
+    *
+    ***************************************************************/
+    function testAddressGroupIdVerbindetAlleSubfelderAusserAddressCountry(): void {
+        $plugin = new \schemaOrgData();
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'LocalBusiness');
+        $addressSchema = (new \SchemaOrgData_SchemaRepository())->resolveSchemaRef($schema['properties']['address'], $schema);
+
+        $html = (new \SchemaOrgData_FormRenderer())->renderPostalAddressWidget(
+            'global', 'address', $addressSchema, [], null, null, null,
+            $this->adminLang(), new \SchemaOrgData_Validator(), 'deDE'
+        );
+
+        foreach(['streetAddress', 'postalCode', 'addressLocality', 'addressRegion'] as $field) {
+            $this->assertMatchesRegularExpression(
+                '/id="schemaOrgData_global_address_'.$field.'"[^>]*data-address-group="schemaOrgData_global_address"/',
+                $html
+            );
+        }
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="schemaOrgData_global_address_addressCountry"[^>]*data-address-group/',
+            $html
+        );
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest 8.12: Event.location (place-Widget, ui:required
+    * false) darf "Ort" nicht unconditional als Pflichtfeld rendern -
+    * addressLocality erhält data-validate="address_required" statt
+    * "required", und das Geschwisterfeld "name" trägt dieselbe
+    * data-address-group-Id wie die verschachtelte Adresse, damit
+    * checkAddressRequiredField() ein befülltes "name"-Feld ebenfalls
+    * als "Adresse wurde angefasst" erkennt.
+    *
+    ***************************************************************/
+    function testPlaceWidgetOhneWidgetweitesRequiredNutztAddressRequired(): void {
+        $plugin = new \schemaOrgData();
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'Event');
+        $locationSchema = $schema['properties']['location'];
+
+        $html = (new \SchemaOrgData_FormRenderer())->renderPlaceWidget(
+            'page', 'location', $locationSchema, [], $schema, null,
+            $this->adminLang(), new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_Validator(), 'deDE'
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/id="schemaOrgData_page_location_address_addressLocality"[^>]*data-validate="address_required"/',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="schemaOrgData_page_location_name"[^>]*data-address-group="schemaOrgData_page_location_address"/',
+            $html
+        );
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest 8.13 (Gegenprobe zu 8.12): JobPosting.jobLocation
+    * ist als Ganzes ui:required - hier muss addressLocality weiterhin
+    * unconditional data-validate="required" tragen (renderField() reicht
+    * das ui:required-Flag des Widgets als $forceRequired durch), damit
+    * ein komplett leeres Pflicht-Widget live erzwungen bleibt.
+    *
+    ***************************************************************/
+    function testForceRequiredPlaceWidgetNutztWeiterhinUnconditionalRequired(): void {
+        $plugin = new \schemaOrgData();
+        $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'JobPosting');
+
+        $html = (new \SchemaOrgData_FormRenderer())->renderField(
+            'page', 'jobLocation', $schema['properties']['jobLocation'], [], $schema, [], null, null, null,
+            $this->adminLang(), new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), []
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/id="schemaOrgData_page_jobLocation_address_addressLocality"[^>]*data-validate="required"/',
             $html
         );
     }
