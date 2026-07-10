@@ -119,6 +119,31 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
+    * Der moziloCMS-Core setzt "details summary { display: flex }" mit
+    * einem generierten Pfeil-Pseudoelement voraus, dass der Text in
+    * einem eigenen Kind-Element mit "align-items: center" steckt
+    * (Core-Konvention: <summary><span class="flex">...</span></summary>).
+    * Dieses Plugin rendert stattdessen reinen Text direkt in <summary>
+    * (renderInfoBlock(), Import-Bereich) - ohne eigenes
+    * "align-items: center" fällt der Flex-Container auf den Default
+    * "stretch" zurück und der Pfeil erscheint sichtbar versetzt zum
+    * Text statt sauber davor. Ein reiner "Klasse vorhanden"-Check würde
+    * das nicht abbilden, deshalb wird hier gezielt die deklarierte
+    * CSS-Eigenschaft geprüft, die den Bugmechanismus behebt.
+    *
+    ***************************************************************/
+    function testGetAdminCssRichtetDetailsSummaryMarkerVertikalAus(): void {
+        $css = $this->renderer()->getAdminCss();
+
+        $this->assertMatchesRegularExpression(
+            '/\.schemaOrgData-admin\s+details\s+summary\s*\{[^}]*align-items:\s*center;/',
+            $css,
+            'CSS-Regel fuer die vertikale Marker-Ausrichtung von <summary> nicht gefunden'
+        );
+    }
+
+    /***************************************************************
+    *
     * Regressionstest 8.14 (Playwright-Testlauf 2): Freitext-Textareas
     * (z. B. description) stecken in keinem umschließenden Element mit
     * eigenem Padding, das Erweiterungsfeld-Textarea aber in einem

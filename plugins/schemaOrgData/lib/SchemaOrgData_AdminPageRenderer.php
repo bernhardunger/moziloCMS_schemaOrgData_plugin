@@ -99,6 +99,14 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-jsonld-preview-dialog__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1em; border-bottom: 1px solid #eee; padding-bottom: .75em; }
 .schemaOrgData-admin .schemaOrgData-jsonld-preview-dialog__close { background: none; border: none; font-size: 1.3em; cursor: pointer; color: #666; padding: .1em .4em; }
 .schemaOrgData-admin .schemaOrgData-jsonld-preview-full { font-family: monospace; font-size: .85em; background: #fafafa; border: 1px solid #ddd; border-radius: 4px; padding: .75em; overflow: auto; white-space: pre-wrap; margin: 0; }
+/* Der moziloCMS-Core setzt "details summary { display: flex }" mit einem generierten
+   Pfeil-Pseudoelement (summary:before) voraus, dass der sichtbare Text in einem eigenen
+   Kind-Element steckt (Core-Konvention: <summary><span class="flex">Text</span></summary>),
+   dessen .flex-Klasse "align-items: center" mitbringt. Die <summary>-Elemente dieses
+   Plugins enthalten stattdessen reinen Text ohne Wrapper-Element - ohne eigenes
+   "align-items: center" fällt der Flex-Container auf den Default "stretch" zurück, wodurch
+   der Pfeil sichtbar versetzt zum Text erscheint statt sauber davor. */
+.schemaOrgData-admin details summary { align-items: center; gap: .3em; }
 ';
     }
 

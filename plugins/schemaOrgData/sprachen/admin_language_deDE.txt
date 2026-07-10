@@ -14,7 +14,7 @@ info_text_general = Das erzeugte JSON-LD wird unsichtbar im &lt;head&gt;-Bereich
 
 info_text_template_global = Hinweis: Ein direkt im Layout-Template eingebundener JSON-LD-Block gilt für die gesamte Website. Ein solcher Block wird daher ausschließlich hier im Geltungsbereich „Global" erkannt und angezeigt – nicht auf Kategorie- oder Seitenebene.
 
-label_info_more_details = Mehr Details
+label_info_more_details = Details
 
 notice_type_collision = Für den Type "{PARAM1}" ist auch auf Ebene {PARAM2} eine Konfiguration vorhanden. Leere Felder werden von der übergeordneten Ebene übernommen - gefüllte Felder überschreiben die Ausgabe von {PARAM2} für diesen Type.
 notice_family_options_filtered = Weitere Geschäftsklassifikationen sind ausgeblendet, da die globale Konfiguration bereits "{PARAM1}" festlegt.

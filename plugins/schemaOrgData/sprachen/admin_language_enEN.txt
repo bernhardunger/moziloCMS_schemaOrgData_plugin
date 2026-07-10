@@ -14,7 +14,7 @@ info_text_general = The generated JSON-LD is output invisibly in the page's &lt;
 
 info_text_template_global = Note: A JSON-LD block embedded directly in the layout template applies to the entire website. Such a block is therefore detected and shown only here in the 'Global' scope – not at category or page level.
 
-label_info_more_details = More details
+label_info_more_details = Details
 
 notice_type_collision = A configuration for type "{PARAM1}" also exists at the {PARAM2} level. Empty fields here inherit their value from that level - filled fields override the output of {PARAM2} for this type.
 notice_family_options_filtered = Other business classifications are hidden because the global configuration already specifies "{PARAM1}".
