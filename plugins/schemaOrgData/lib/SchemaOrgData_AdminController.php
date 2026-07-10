@@ -160,11 +160,16 @@ class SchemaOrgData_AdminController {
         $catAttr       = htmlspecialchars($cat ?? '', ENT_QUOTES, CHARSET);
         $pageAttr      = htmlspecialchars($page ?? '', ENT_QUOTES, CHARSET);
         $labelAttr     = htmlspecialchars($adminPageRenderer->buildScopeLabel($scope, $cat, $page, $lang), ENT_QUOTES, CHARSET);
-        $saveLabelAttr = htmlspecialchars($adminPageRenderer->buildSaveButtonLabel(
+        // buildSaveButtonLabel() liefert über getLanguageHtml() bereits
+        // attributsicher escapten Text (ENT_COMPAT deckt " ab) - ein
+        // zusätzliches htmlspecialchars() würde "&auml;" etc. zu "&amp;auml;"
+        // doppelt kodieren und im Attributwert als rohe Entity-Syntax sichtbar
+        // bleiben.
+        $saveLabelAttr = $adminPageRenderer->buildSaveButtonLabel(
             $scope === 'global' ? null : $cat,
             $scope === 'page'   ? $page : null,
             $lang
-        ), ENT_QUOTES, CHARSET);
+        );
         $displayStyle = $active ? '' : ' style="display:none"';
         $html = '<div class="schemaOrgData-scope card mb" data-scope="'.$scope.'"'
               . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'"'

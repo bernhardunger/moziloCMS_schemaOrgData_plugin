@@ -395,6 +395,27 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertArrayHasKey('data-required-message', $attrs);
     }
 
+    function testBuildValidationAttrsDateTimeValidThroughVerweistAufDatePostedFeld(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $fieldSchema = ['format' => 'date-time'];
+
+        $attrs = $renderer->buildValidationAttrs('page', 'validThrough', $fieldSchema, [], 'page_kat_seite', $this->adminLang());
+
+        $this->assertSame('date-time', $attrs['data-validate']);
+        $this->assertSame('schemaOrgData_page_kat_seite_datePosted', $attrs['data-range-start-field']);
+    }
+
+    function testBuildValidationAttrsDateTimeDatePostedOhneRangeStartField(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $fieldSchema = ['format' => 'date-time', 'ui:required' => true, 'ui:label' => 'label_date_posted'];
+
+        $attrs = $renderer->buildValidationAttrs('page', 'datePosted', $fieldSchema, [], 'page_kat_seite', $this->adminLang());
+
+        $this->assertSame('date-time', $attrs['data-validate']);
+        $this->assertArrayNotHasKey('data-range-start-field', $attrs);
+        $this->assertArrayHasKey('data-required-message', $attrs);
+    }
+
     // -----------------------------------------------------------
     // renderFieldFeedback()
     // -----------------------------------------------------------

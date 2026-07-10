@@ -235,28 +235,55 @@ class SchemaOrgData_Validator {
             }
         }
 
-        // endDate darf nicht vor startDate liegen (nur wenn beide gültige
-        // Werte sind - ISO-8601 oder deutsches Format TT.MM.YYYY, siehe
-        // validateEventDateInput(); ein bereits gemeldeter Formatfehler wird
-        // nicht durch einen zusätzlichen Bereichsfehler verdoppelt). Vor dem
-        // Vergleich wird auf ISO normalisiert (normalizeEventDateInput()),
-        // da DateTimeImmutable ein deutsches Rohformat nicht korrekt parst.
-        // Vergleich über Unix-Timestamps statt lexikalisch, da unterschiedliche
-        // Zeitzonen-Offset-Notationen (z. B. "+02:00" vs. "Z") denselben
-        // Zeitpunkt sonst fälschlich als "davor"/"danach" einordnen würden.
-        $startDateValue = trim((string) ($formData['startDate'] ?? ''));
-        $endDateValue = trim((string) ($formData['endDate'] ?? ''));
-        if($startDateValue !== '' and $endDateValue !== ''
-            and $this->validateEventDateInput($startDateValue, $lang)['status'] !== 'error'
-            and $this->validateEventDateInput($endDateValue, $lang)['status'] !== 'error') {
-            $startTimestamp = (new DateTimeImmutable($this->normalizeEventDateInput($startDateValue)))->getTimestamp();
-            $endTimestamp = (new DateTimeImmutable($this->normalizeEventDateInput($endDateValue)))->getTimestamp();
-            if($endTimestamp < $startTimestamp) {
-                $errors[] = $lang->getLanguageValue('error_date_range_invalid');
+        // Bereichsprüfung für die bekannten Start-/End-Datumsfeldpaare
+        // (Event startDate/endDate, JobPosting datePosted/validThrough) -
+        // siehe validateDateRange(). Andere Schema-Types besitzen diese
+        // Felder nicht, das Feldpaar bleibt dann leer und die Prüfung ist
+        // ein No-op.
+        foreach([['startDate', 'endDate'], ['datePosted', 'validThrough']] as [$startField, $endField]) {
+            $rangeError = $this->validateDateRange($startField, $endField, 'error_date_range_invalid', $formData, $lang);
+            if($rangeError !== null) {
+                $errors[] = $rangeError;
             }
         }
 
         return $errors;
+    }
+
+    /***************************************************************
+    *
+    * Prüft, dass das Ende eines Datumsbereichs nicht vor dessen Beginn
+    * liegt (z. B. Event startDate/endDate, JobPosting
+    * datePosted/validThrough) - nur wenn beide Felder gültige Werte
+    * enthalten (ISO-8601 oder deutsches Format TT.MM.YYYY, siehe
+    * validateEventDateInput(); ein bereits gemeldeter Formatfehler wird
+    * nicht durch einen zusätzlichen Bereichsfehler verdoppelt). Vor dem
+    * Vergleich wird auf ISO normalisiert (normalizeEventDateInput()), da
+    * DateTimeImmutable ein deutsches Rohformat nicht korrekt parst.
+    * Vergleich über Unix-Timestamps statt lexikalisch, da unterschiedliche
+    * Zeitzonen-Offset-Notationen (z. B. "+02:00" vs. "Z") denselben
+    * Zeitpunkt sonst fälschlich als "davor"/"danach" einordnen würden.
+    *
+    * @param string $errorKey Sprachschlüssel für die Bereichsfehlermeldung
+    * @param array<string, mixed> $formData Formularfeld-Werte
+    * @param Language $lang für die Fehlermeldung
+    * @return string|null Fehlermeldung oder null (kein Fehler bzw. nicht prüfbar)
+    *
+    ***************************************************************/
+    private function validateDateRange(string $startField, string $endField, string $errorKey, array $formData, Language $lang): ?string {
+        $startValue = trim((string) ($formData[$startField] ?? ''));
+        $endValue = trim((string) ($formData[$endField] ?? ''));
+
+        if($startValue === '' or $endValue === ''
+            or $this->validateEventDateInput($startValue, $lang)['status'] === 'error'
+            or $this->validateEventDateInput($endValue, $lang)['status'] === 'error') {
+            return null;
+        }
+
+        $startTimestamp = (new DateTimeImmutable($this->normalizeEventDateInput($startValue)))->getTimestamp();
+        $endTimestamp = (new DateTimeImmutable($this->normalizeEventDateInput($endValue)))->getTimestamp();
+
+        return ($endTimestamp < $startTimestamp) ? $lang->getLanguageValue($errorKey) : null;
     }
 
     /***************************************************************
@@ -321,7 +348,10 @@ class SchemaOrgData_Validator {
             return ['status' => null, 'message' => null];
         }
 
-        if(filter_var($value, FILTER_VALIDATE_URL) === false) {
+        // FILTER_VALIDATE_URL prüft nur allgemeine URI-Syntax, kein
+        // konkretes Schema - "htto://..." oder "htxxxs://..." würden sonst
+        // fälschlich als gültig durchgehen.
+        if(filter_var($value, FILTER_VALIDATE_URL) === false or !preg_match('#^https?://#i', $value)) {
             return ['status' => 'error', 'message' => $lang->getLanguageValue('error_url_invalid')];
         }
 

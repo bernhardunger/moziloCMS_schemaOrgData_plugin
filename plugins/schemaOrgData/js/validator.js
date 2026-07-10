@@ -209,7 +209,7 @@
     /**
      * Validiert eine URL. "http://" ergibt eine Warnung (HTTPS
      * empfohlen), "https://" ist OK, eine ungültige URL ist ein
-     * Fehler (siehe index.php, validateUrl()).
+     * Fehler (siehe SchemaOrgData_Validator::validateUrl()).
      *
      * @param {string} value
      * @returns {{status: string|null, message: string|null}}
@@ -222,6 +222,13 @@
         try {
             new URL(value);
         } catch (e) {
+            return { status: 'error', message: getMessages().urlInvalid || null };
+        }
+
+        // new URL() prüft nur allgemeine URI-Syntax, kein konkretes Schema -
+        // "htto://..." oder "htxxxs://..." würden sonst fälschlich als
+        // gültig durchgehen.
+        if (!/^https?:\/\//i.test(value)) {
             return { status: 'error', message: getMessages().urlInvalid || null };
         }
 

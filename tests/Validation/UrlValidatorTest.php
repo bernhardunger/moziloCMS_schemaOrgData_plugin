@@ -40,6 +40,30 @@ final class UrlValidatorTest extends TestCase {
         $this->assertNotNull($result['message']);
     }
 
+    function testHttpUrlIsWarning(): void {
+        $result = $this->validate('http://example.com');
+
+        $this->assertSame('warning', $result['status']);
+        $this->assertNotNull($result['message']);
+    }
+
+    function testUnbekanntesSchemaMitGueltigerUriSyntaxIstError(): void {
+        // FILTER_VALIDATE_URL prüft nur allgemeine URI-Syntax und würde
+        // ein Tippfehler-Schema wie "htto://" fälschlich als gültig
+        // durchlassen - siehe SchemaOrgData_Validator::validateUrl().
+        $result = $this->validate('htto://www.dddd.de');
+
+        $this->assertSame('error', $result['status']);
+        $this->assertNotNull($result['message']);
+    }
+
+    function testAehnlichesAberFalschesSchemaIstError(): void {
+        $result = $this->validate('htxxxs://www.example.com/pfad');
+
+        $this->assertSame('error', $result['status']);
+        $this->assertNotNull($result['message']);
+    }
+
     function testEmptyValueIsOptionalAndNotValidated(): void {
         $result = $this->validate('');
 

@@ -98,6 +98,16 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
         test('leerer Wert wird nicht geprüft', function () {
             expect(validator.validateUrl('').status).toBeNull();
         });
+
+        test('unbekanntes Schema mit gültiger URI-Syntax ist ein Fehler ("htto://...")', function () {
+            // new URL() prüft nur allgemeine URI-Syntax und würde einen
+            // Tippfehler wie "htto://" sonst fälschlich als gültig durchlassen.
+            expect(validator.validateUrl('htto://www.dddd.de').status).toBe('error');
+        });
+
+        test('ähnliches, aber falsches Schema ist ein Fehler ("htxxxs://...")', function () {
+            expect(validator.validateUrl('htxxxs://www.example.com/pfad').status).toBe('error');
+        });
     });
 
     describe('validateEmail()', function () {

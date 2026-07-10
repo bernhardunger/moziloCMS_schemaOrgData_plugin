@@ -235,6 +235,25 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
+    * Regressionstest: data-save-label wurde bislang zusätzlich zum
+    * bereits HTML-escapten Ergebnis von buildSaveButtonLabel() ein
+    * zweites Mal mit htmlspecialchars() escaped - im Attributwert
+    * erschien dadurch "&amp;auml;" statt "&auml;", initScopeSelector()
+    * (validator.js) übernahm den Rohstring per textContent unverändert
+    * sichtbar in den Button ("...Steuererkl&auml;rung..." statt "ä").
+    *
+    ***************************************************************/
+    function testRenderScopeSectionDataSaveLabelIstEinfachKodiertBeiUmlautImSeitennamen(): void {
+        $html = $this->callRenderScopeSection(
+            'page', 'steuerberatung', rawurlencode('Steuererklärung'), true, 'page', false, new \InMemorySettings()
+        );
+
+        $this->assertStringContainsString('Steuererkl&auml;rung', $html);
+        $this->assertStringNotContainsString('&amp;auml;', $html);
+    }
+
+    /***************************************************************
+    *
     * [TEMP] Dev-Reset-Button (SchemaOrgData_AdminController::
     * DEV_RESET_BUTTON_ENABLED). Deckt alle drei Geltungsbereiche ab,
     * da der Button je Scope einen eigenen Namen

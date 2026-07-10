@@ -208,6 +208,22 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringContainsString('kontakt', $label);
     }
 
+    /***************************************************************
+    *
+    * buildSaveButtonLabel() liefert über getLanguageHtml() bereits
+    * einfach HTML-escapten Text (Umlaute als "&auml;"-Entity-Syntax) -
+    * das Ergebnis ist bereits attributsicher und darf vom Aufrufer
+    * kein zweites Mal mit htmlspecialchars() escaped werden, sonst
+    * entsteht "&amp;auml;" (doppelt kodiert).
+    *
+    ***************************************************************/
+    function testBuildSaveButtonLabelPageMitUmlautIstEinfachKodiert(): void {
+        $label = $this->renderer()->buildSaveButtonLabel('impressum', rawurlencode('Steuererklärung'), $this->adminLang());
+
+        $this->assertStringContainsString('Steuererkl&auml;rung', $label);
+        $this->assertStringNotContainsString('&amp;auml;', $label);
+    }
+
     // -----------------------------------------------------------
     // renderSaveResultNotice()
     // -----------------------------------------------------------

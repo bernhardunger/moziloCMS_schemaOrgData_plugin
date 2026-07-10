@@ -138,3 +138,70 @@ describe('Event.startDate/endDate - Live-Validierung (runEventDateValidation)', 
         expect(feedback.className).toContain('schemaOrgData-feedback--ok');
     });
 });
+
+/**
+ * Dieselbe Mechanik (findDateRangeCounterpart() liest ausschließlich das
+ * data-range-start-field-Attribut, keine hartcodierten Feldnamen), jetzt am
+ * Beispiel des zweiten Feldpaars JobPosting.datePosted/validThrough -
+ * Regressionstest für die Verallgemeinerung in
+ * SchemaOrgData_FormRenderer::buildValidationAttrs().
+ */
+var JOBPOSTING_ID_PREFIX = 'schemaOrgData_page_kat_stelle';
+var JOBPOSTING_ID = {
+    datePosted: JOBPOSTING_ID_PREFIX + '_datePosted',
+    validThrough: JOBPOSTING_ID_PREFIX + '_validThrough'
+};
+
+function buildJobPostingDateFixture(idPrefix) {
+    var startId = idPrefix + '_datePosted';
+    var endId = idPrefix + '_validThrough';
+
+    return ''
+        + '<input type="text" id="' + startId + '" name="' + startId + '" value="" data-validate="date-time">'
+        + '<input type="text" id="' + endId + '" name="' + endId + '" value="" data-validate="date-time" '
+        + 'data-range-start-field="' + startId + '">';
+}
+
+describe('JobPosting.datePosted/validThrough - Live-Validierung (runEventDateValidation)', function () {
+    var validator;
+
+    beforeEach(function () {
+        document.body.innerHTML = '<form>' + buildJobPostingDateFixture(JOBPOSTING_ID_PREFIX) + '</form>';
+        window.schemaOrgDataMessages = {
+            dateInvalid: 'DATE_INVALID',
+            dateRangeInvalid: 'DATE_RANGE_INVALID'
+        };
+        validator = loadPluginScripts.loadValidator();
+        validator.initAdminForm();
+    });
+
+    function setValue(id, value) {
+        document.getElementById(id).value = value;
+    }
+
+    function feedbackFor(id) {
+        return document.getElementById(id + '_feedback');
+    }
+
+    test('validThrough vor datePosted meldet dateRangeInvalid am validThrough-Feld', function () {
+        setValue(JOBPOSTING_ID.datePosted, '14.07.2026');
+        fire(document.getElementById(JOBPOSTING_ID.datePosted), 'blur');
+
+        setValue(JOBPOSTING_ID.validThrough, '01.01.2026');
+        fire(document.getElementById(JOBPOSTING_ID.validThrough), 'blur');
+
+        var feedback = feedbackFor(JOBPOSTING_ID.validThrough);
+        expect(feedback.className).toContain('schemaOrgData-feedback--error');
+        expect(feedback.textContent).toContain('DATE_RANGE_INVALID');
+    });
+
+    test('validThrough nach datePosted erzeugt kein Fehler-Feedback', function () {
+        setValue(JOBPOSTING_ID.datePosted, '14.07.2026');
+        fire(document.getElementById(JOBPOSTING_ID.datePosted), 'blur');
+
+        setValue(JOBPOSTING_ID.validThrough, '01.09.2026');
+        fire(document.getElementById(JOBPOSTING_ID.validThrough), 'blur');
+
+        expect(feedbackFor(JOBPOSTING_ID.validThrough).className).toContain('schemaOrgData-feedback--ok');
+    });
+});

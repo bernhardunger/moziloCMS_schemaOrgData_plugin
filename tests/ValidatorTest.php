@@ -916,6 +916,54 @@ final class ValidatorTest extends TestCase {
         );
     }
 
+    // -----------------------------------------------------------
+    // validateFormData() - JobPosting: validThrough vor datePosted
+    // (analog zum Event-Bereichscheck, siehe validateDateRange())
+    // -----------------------------------------------------------
+
+    function testValidateFormDataMeldetValidThroughVorDatePosted(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'title' => 'Entwickler',
+            'description' => 'Stellenbeschreibung',
+            'datePosted' => '14.07.2026',
+            'validThrough' => '01.01.2026',
+            'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+        ];
+        $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertContains($this->adminLang()->getLanguageValue('error_date_range_invalid'), $errors);
+    }
+
+    function testValidateFormDataOkBeiValidThroughNachDatePosted(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'title' => 'Entwickler',
+            'description' => 'Stellenbeschreibung',
+            'datePosted' => '14.07.2026',
+            'validThrough' => '01.09.2026',
+            'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+        ];
+        $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertNotContains($this->adminLang()->getLanguageValue('error_date_range_invalid'), $errors);
+    }
+
+    function testValidateFormDataOkOhneValidThrough(): void {
+        // validThrough ist optional - fehlt es, greift der Bereichscheck
+        // gar nicht (kein Fehler).
+        $validator = new \SchemaOrgData_Validator();
+        $formData = [
+            'title' => 'Entwickler',
+            'description' => 'Stellenbeschreibung',
+            'datePosted' => '14.07.2026',
+            'hiringOrganization' => ['_mode' => 'literal', 'name' => 'Muster GmbH'],
+        ];
+        $errors = $validator->validateFormData($formData, $this->jobPostingSchema(), [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertNotContains($this->adminLang()->getLanguageValue('error_date_range_invalid'), $errors);
+    }
+
     function testValidatePostalAddressDataOkBeiGueltigemAddressCountry(): void {
         $validator = new \SchemaOrgData_Validator();
         $errors = $validator->validatePostalAddressData(

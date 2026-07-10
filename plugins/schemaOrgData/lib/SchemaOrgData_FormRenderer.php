@@ -881,12 +881,15 @@ class SchemaOrgData_FormRenderer {
             $attrs = ['data-validate' => 'email'];
         } elseif($format === 'date-time') {
             $attrs = ['data-validate' => 'date-time'];
-            // Nur endDate erhält die Gegenstück-Referenz auf startDate - der
-            // Bereichsfehler wird nur einmal gemeldet (analog zur serverseitigen
-            // Logik in SchemaOrgData_Validator::validateFormData(), die den
-            // Fehler ebenfalls nur einmal in $errors[] einträgt).
-            if($name === 'endDate') {
-                $attrs['data-range-start-field'] = 'schemaOrgData_'.$idPrefix.'_startDate';
+            // Nur das jeweils spätere Feld eines bekannten Datumsbereichs
+            // (Event endDate, JobPosting validThrough) erhält die
+            // Gegenstück-Referenz auf das frühere Feld - der Bereichsfehler
+            // wird nur einmal gemeldet (analog zur serverseitigen Logik in
+            // SchemaOrgData_Validator::validateDateRange(), die den Fehler
+            // ebenfalls nur einmal in $errors[] einträgt).
+            $dateRangeStartFields = ['endDate' => 'startDate', 'validThrough' => 'datePosted'];
+            if(isset($dateRangeStartFields[$name])) {
+                $attrs['data-range-start-field'] = 'schemaOrgData_'.$idPrefix.'_'.$dateRangeStartFields[$name];
             }
         } elseif($name === 'telephone') {
             $attrs = ['data-validate' => 'telephone'];
