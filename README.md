@@ -357,6 +357,11 @@ Das Plugin gibt das JSON-LD als `<script>`-Tag im `<head>` aus — an der Stelle
 </script>
 ```
 
+> **Hinweis:** Der Platzhalter `{schemaOrgData}` sollte nicht in
+> `gallerytemplate.html` platziert werden. Galerie-Vollansichten haben
+> keine eigene Kategorie-/Seiten-Identität — das Plugin erkennt diesen
+> Fall und gibt dort ohnehin kein JSON-LD aus.
+
 > **Tipp:** Das erzeugte JSON-LD kann mit dem offiziellen Schema.org-Validator geprüft werden:  
 > 🔗 [https://validator.schema.org](https://validator.schema.org)
 
@@ -668,7 +673,7 @@ Das Plugin ist umfassend automatisiert getestet (PHPUnit + Jest), inkl. einiger 
 
 1. Ordner `schemaOrgData` in `plugins/` hochladen
 2. Im moziloCMS-Admin unter **Plugins** aktivieren
-3. **Wichtig:** Den Platzhalter `{schemaOrgData}` an passender Stelle im `<head>`-Bereich des aktiven Layout-Templates ergänzen — **ohne diesen Platzhalter gibt das Plugin im Frontend keinerlei JSON-LD aus**, unabhängig von der Konfiguration. Fehlt der Platzhalter, zeigt der Admin-Bereich einen entsprechenden Hinweis an.
+3. **Wichtig:** Den Platzhalter `{schemaOrgData}` an passender Stelle im `<head>`-Bereich des aktiven Layout-Templates (`template.html`) ergänzen — **ohne diesen Platzhalter gibt das Plugin im Frontend keinerlei JSON-LD aus**, unabhängig von der Konfiguration. Fehlt der Platzhalter, zeigt der Admin-Bereich einen entsprechenden Hinweis an. In `gallerytemplate.html` sollte der Platzhalter nicht gesetzt werden (siehe „JSON-LD-Ausgabe").
 4. Konfiguration unter **Plugins → schemaOrgData** vornehmen
 
 ---

@@ -34,6 +34,17 @@ class SchemaOrgData_FrontendRenderer {
     public function renderFrontend(mixed $value, SchemaOrgData_FrontendRequestContext $context): string {
         global $TEMPLATE_FILE;
 
+        // Galerie-Vollansichten (GET-Parameter "galtemplate", schaltet den
+        // Core auf gallerytemplate.html um) haben keine eigene Seiten-
+        // Identität: CAT_REQUEST/PAGE_REQUEST fallen dabei requestseitig auf
+        // die Default-Kategorie samt Startseite zurück, unabhängig davon,
+        // von welcher Seite aus die Galerie geöffnet wurde. Ohne diesen
+        // Guard würde hier fälschlich das JSON-LD der Default-Kategorie/
+        // Startseite ausgegeben (siehe README.md, Abschnitt "JSON-LD-Ausgabe").
+        if(getRequestValue('galtemplate', 'get')) {
+            return '';
+        }
+
         $output = '';
 
         // Lese-/Schreibpfad-Symmetrie: CAT_REQUEST/PAGE_REQUEST werden hier

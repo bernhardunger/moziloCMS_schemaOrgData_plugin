@@ -181,6 +181,31 @@ $GLOBALS['ADMIN_CONF'] = new MockConf(['language' => 'de']);
 
 /***************************************************************
 *
+* Vereinfachter Ersatz für die moziloCMS-Core-Funktion
+* getRequestValue() (cms/DefaultFunc.php) - liest einen skalaren
+* Schlüssel aus $_GET/$_POST. Deckt nur den in diesem Plugin
+* tatsächlich genutzten Aufrufstil ($key als String, kein
+* Array-Pfad, $clean bleibt unberücksichtigt) ab.
+*
+***************************************************************/
+function getRequestValue($key, $art = false, $clean = true) {
+    if(!$art and array_key_exists($key, $_GET)) {
+        return $_GET[$key];
+    }
+    if(!$art and array_key_exists($key, $_POST)) {
+        return $_POST[$key];
+    }
+    if($art === 'get' and array_key_exists($key, $_GET)) {
+        return $_GET[$key];
+    }
+    if($art === 'post' and array_key_exists($key, $_POST)) {
+        return $_POST[$key];
+    }
+    return false;
+}
+
+/***************************************************************
+*
 * Ruft eine private/protected Methode eines Objekts auf.
 *
 * Wird in den Tests verwendet, um die internen Methoden von

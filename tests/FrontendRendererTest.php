@@ -122,6 +122,38 @@ final class FrontendRendererTest extends TestCase {
         $this->assertSame('', $this->callRenderFrontend('', $settings));
     }
 
+    // -----------------------------------------------------------
+    // Galerie-Vollansicht (galtemplate-Request-Parameter)
+    // -----------------------------------------------------------
+
+    function testRenderFrontendGalerieVollansichtUnterdrueckOutput(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['LocalBusiness' => $this->validLocalBusinessConfig()]);
+
+        $prevGet = $_GET;
+        $_GET['galtemplate'] = 'true';
+
+        try {
+            $this->assertSame('', $this->callRenderFrontend('', $settings));
+        } finally {
+            $_GET = $prevGet;
+        }
+    }
+
+    function testRenderFrontendOhneGalerieVollansichtBleibtUnveraendert(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['LocalBusiness' => $this->validLocalBusinessConfig()]);
+
+        $prevGet = $_GET;
+        unset($_GET['galtemplate']);
+
+        try {
+            $this->assertStringContainsString('"@type": "LocalBusiness"', $this->callRenderFrontend('', $settings));
+        } finally {
+            $_GET = $prevGet;
+        }
+    }
+
     function testRenderFrontendExcludedCatsNichtTestbarOhneAktiveKategorie(): void {
         $this->markTestSkipped(
             'CAT_REQUEST ist in tests/bootstrap.php fest auf "false" gesetzt '
