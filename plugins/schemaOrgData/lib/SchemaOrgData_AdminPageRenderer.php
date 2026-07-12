@@ -413,7 +413,7 @@ class SchemaOrgData_AdminPageRenderer {
         // Zusätzliche sichtbare <p>-Beschriftung direkt über der Textarea
         // (kein <label for="...">, sonst Doppel-Label-Regression).
         $html .= '<p class="schemaOrgData-import-target-label">'.$lang->getLanguageHtml('label_import_target').'</p>'."\n";
-        $importAriaLabel = htmlspecialchars($lang->getLanguageValue('label_import_jsonld'), ENT_QUOTES, CHARSET);
+        $importAriaLabel = htmlspecialchars($lang->getLanguageValue('label_import_target'), ENT_QUOTES, CHARSET);
         $importValueAttr = htmlspecialchars($importTextareaValue, ENT_QUOTES, CHARSET);
         $html .= '<textarea id="schemaOrgData_import_'.$scope.'" name="schemaOrgData_import_'.$scope.'"'
             .' class="schemaOrgData-import-textarea" rows="8" aria-label="'.$importAriaLabel.'">'.$importValueAttr.'</textarea><br />'."\n";

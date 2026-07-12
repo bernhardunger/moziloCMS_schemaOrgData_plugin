@@ -892,9 +892,11 @@ final class AdminPageRendererTest extends TestCase {
     /***************************************************************
     *
     * Doppel-Label-Fix: das redundante innere
-    * <label for="schemaOrgData_import_{scope}"> entfällt, <summary>
-    * bleibt die einzige sichtbare Beschriftung; das Textarea trägt
-    * stattdessen ein aria-label mit demselben Wortlaut.
+    * <label for="schemaOrgData_import_{scope}"> entfällt, die sichtbare
+    * <p class="schemaOrgData-import-target-label"> direkt über dem
+    * Textarea bleibt die einzige sichtbare Beschriftung; das Textarea
+    * trägt stattdessen ein aria-label mit demselben Wortlaut
+    * (label_import_target).
     *
     ***************************************************************/
     function testRenderExistingJsonLdNoticeInnerLabelEntfernt(): void {
@@ -921,7 +923,7 @@ final class AdminPageRendererTest extends TestCase {
             'global', null, null, $lang, $this->scopeResolver(), $settings
         );
 
-        $ariaLabelAttr = htmlspecialchars($lang->getLanguageValue('label_import_jsonld'), ENT_QUOTES, CHARSET);
+        $ariaLabelAttr = htmlspecialchars($lang->getLanguageValue('label_import_target'), ENT_QUOTES, CHARSET);
         $this->assertMatchesRegularExpression(
             '/<textarea[^>]*aria-label="'.preg_quote($ariaLabelAttr, '/').'"[^>]*>/',
             $html
