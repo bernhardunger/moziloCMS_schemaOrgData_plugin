@@ -6,9 +6,12 @@ var loadPluginScripts = require('./helpers/load-plugin-scripts');
  * Baut das Markup des Import-Bereichs exakt nach dem Muster von
  * SchemaOrgData_AdminPageRenderer::renderExistingJsonLdNotice() nach:
  * Autofill-Button (.schemaOrgData-autofill-btn) mit data-target/
- * data-existing-content, Import-Textarea und der bestehende
- * Submit-Button (name="schemaOrgData_import_action"), alle innerhalb
- * desselben <details>-Blocks.
+ * data-existing-content im äußeren <details>-Block, Import-Textarea und
+ * der bestehende Submit-Button (name="schemaOrgData_import_action") im
+ * verschachtelten inneren <details>-Block des manuellen Import-Pfads.
+ * btn.closest('details') (initAutofillButton(), validator.js) trifft vom
+ * Autofill-Button aus den äußeren Block, dessen querySelector() den
+ * Submit-Button im verschachtelten inneren Block als Nachfahren findet.
  *
  * @param {string} scope z. B. "global"
  * @param {string} rawContent Rohwert für data-existing-content, roher
@@ -29,8 +32,11 @@ function buildImportNoticeFixture(scope, rawContent, withSubmitButton) {
         + '<details open="open">'
         + '<button type="button" class="mo-btn schemaOrgData-autofill-btn"'
         + ' data-target="' + textareaId + '" data-existing-content="' + escapedContent + '">Erkannten Block importieren</button>'
+        + '<details>'
+        + '<summary>JSON-LD manuell einfügen</summary>'
         + '<textarea id="' + textareaId + '" name="' + textareaId + '"></textarea>'
         + submitButton
+        + '</details>'
         + '</details>';
 }
 
@@ -86,5 +92,22 @@ describe('Import-Autofill-Button (initAutofillButton) - Ein-Klick-Import', funct
             fire(document.querySelector('.schemaOrgData-autofill-btn'), 'click');
         }).not.toThrow();
         expect(document.getElementById('schemaOrgData_import_global').value).toBe('{"a":1}');
+    });
+
+    test('Submit-Button im geschlossenen verschachtelten <details> des manuellen Import-Pfads bleibt per Klick auslösbar, der Bereich bleibt dabei geschlossen', function () {
+        document.body.innerHTML = '<form>' + buildImportNoticeFixture('global', '{"@type":"LocalBusiness"}') + '</form>';
+        validator.initAutofillButton();
+
+        var manualDetails = document.querySelectorAll('details')[1];
+        expect(manualDetails.hasAttribute('open')).toBe(false);
+
+        var submitBtn = document.querySelector('button[name="schemaOrgData_import_action"]');
+        var submitSpy = jest.fn(function (event) { event.preventDefault(); });
+        submitBtn.addEventListener('click', submitSpy);
+
+        fire(document.querySelector('.schemaOrgData-autofill-btn'), 'click');
+
+        expect(submitSpy).toHaveBeenCalledTimes(1);
+        expect(manualDetails.hasAttribute('open')).toBe(false);
     });
 });

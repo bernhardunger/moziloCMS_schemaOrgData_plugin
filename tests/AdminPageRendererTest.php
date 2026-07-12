@@ -504,6 +504,95 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
+    * Extrahiert das verschachtelte <details> des manuellen Import-Pfads
+    * (Summary label_import_manual) aus dem Gesamt-HTML, damit Tests das
+    * open-Attribut und den Inhalt strukturell an der richtigen Stelle
+    * prüfen können statt nur auf irgendein Vorkommen im Gesamt-HTML.
+    *
+    * @return array{attrs: string, inner: string}|null
+    *
+    ***************************************************************/
+    private function extractManualImportDetailsBlock(string $html, \Language $lang): ?array {
+        $manualSummary = $lang->getLanguageHtml('label_import_manual');
+        $pattern = '/<details([^>]*)>\s*<summary>'.preg_quote($manualSummary, '/').'<\/summary>(.*?)<\/details>/s';
+
+        if(preg_match($pattern, $html, $matches) !== 1) {
+            return null;
+        }
+
+        return ['attrs' => $matches[1], 'inner' => $matches[2]];
+    }
+
+    function testRenderExistingJsonLdNoticeManuellerImportBereichStandardmaessigGeschlossen(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
+            ],
+        ]);
+
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $lang, $this->scopeResolver(), $settings
+        );
+
+        $block = $this->extractManualImportDetailsBlock($html, $lang);
+
+        $this->assertNotNull($block);
+        $this->assertSame('', $block['attrs']);
+        $this->assertStringContainsString('schemaOrgData-import-target-label', $block['inner']);
+        $this->assertStringContainsString('schemaOrgData-import-textarea', $block['inner']);
+        $this->assertStringContainsString('name="schemaOrgData_import_action"', $block['inner']);
+        $this->assertStringContainsString('type="submit"', $block['inner']);
+        $this->assertStringContainsString($lang->getLanguageHtml('description_import_manual'), $block['inner']);
+    }
+
+    function testRenderExistingJsonLdNoticeManuellerImportBereichOffenBeiRedisplayNachFehlerImport(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+        ]);
+
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $lang, $this->scopeResolver(), $settings,
+            '{"@type":"LocalBusiness"'
+        );
+
+        $block = $this->extractManualImportDetailsBlock($html, $lang);
+
+        $this->assertNotNull($block);
+        $this->assertSame(' open="open"', $block['attrs']);
+        $this->assertStringContainsString('{&quot;@type&quot;:&quot;LocalBusiness&quot;', $block['inner']);
+    }
+
+    function testRenderExistingJsonLdNoticeManuellerImportBereichOffenBeiMehrblockKonstellation(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '{"@type":"LocalBusiness"}'."\n\n".'{"@context":"https://schema.org","@type":"AccountingService"}',
+            ],
+        ]);
+
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $lang, $this->scopeResolver(), $settings
+        );
+
+        $block = $this->extractManualImportDetailsBlock($html, $lang);
+
+        $this->assertNotNull($block);
+        $this->assertSame(' open="open"', $block['attrs']);
+        $this->assertStringContainsString('schemaOrgData-jsonld-notice__multiblock-hint', $html);
+        $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
+    }
+
+    /***************************************************************
+    *
     * Erzeugt ein Plugin mit isoliertem InMemorySettings-Stub als
     * $this->settings (siehe JsonLdOutputTest::createPlugin()).
     *

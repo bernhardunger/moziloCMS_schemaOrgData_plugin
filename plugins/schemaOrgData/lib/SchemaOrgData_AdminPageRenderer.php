@@ -262,7 +262,15 @@ class SchemaOrgData_AdminPageRenderer {
     * mehrere aneinandergereihte Root-Objekte hin (Mehrblock-Heuristik),
     * wird der Autofill-Button durch einen erklärenden Hinweistext
     * ersetzt statt den ungültigen konkatenierten Text ins Import-Feld
-    * zu übernehmen.
+    * zu übernehmen. Der manuelle Pfad (Textarea + "Importieren"-Button)
+    * steckt zusätzlich in einem verschachtelten, standardmäßig
+    * geschlossenen <details> - der Ein-Klick-Autofill deckt den Happy
+    * Path bereits ab, ohne dass die Textarea sichtbar sein muss. Dieses
+    * innere <details> öffnet sich automatisch, wenn entweder ein
+    * Redisplay nach fehlgeschlagenem manuellem Import vorliegt
+    * ($importTextareaValue ist befüllt) oder die Mehrblock-Heuristik den
+    * Autofill-Button unterdrückt hat - in beiden Fällen ist der manuelle
+    * Pfad der nächste notwendige Schritt für den Nutzer.
     *
     * @param string $scope 'global' | 'category' | 'page'
     * @param Language $lang Admin-Sprachobjekt
@@ -315,6 +323,12 @@ class SchemaOrgData_AdminPageRenderer {
         $html .= '<details'.$detailsOpenAttr.'>'."\n";
         $html .= '<summary>'.$lang->getLanguageHtml('label_import_jsonld').'</summary>'."\n";
         $html .= '<p>'."\n";
+
+        // Nur bei erkannter Mehrblock-Konstellation (s. u.) öffnet sich
+        // das verschachtelte <details> des manuellen Pfads automatisch,
+        // weil dort der Autofill-Button fehlt - der Anfangswert deckt den
+        // Fall ohne existing_jsonld_content ab.
+        $looksLikeMultipleBlocks = false;
 
         if(!empty($meta['existing_jsonld_content'])) {
             $rawContent = (string) $meta['existing_jsonld_content'];
@@ -380,6 +394,20 @@ class SchemaOrgData_AdminPageRenderer {
             }
         }
 
+        $html .= '</p>'."\n";
+
+        // Verschachteltes <details> für den manuellen Import-Pfad -
+        // standardmäßig geschlossen, da der Ein-Klick-Autofill oben den
+        // Happy Path bereits abdeckt. Öffnet sich automatisch, wenn der
+        // manuelle Pfad der nächste notwendige Schritt ist: entweder ein
+        // Redisplay nach fehlgeschlagenem manuellem Import
+        // ($importTextareaValue befüllt) oder die Mehrblock-Heuristik hat
+        // den Autofill-Button oben unterdrückt.
+        $manualDetailsOpenAttr = ($importTextareaValue !== '' || $looksLikeMultipleBlocks) ? ' open="open"' : '';
+        $html .= '<details'.$manualDetailsOpenAttr.'>'."\n";
+        $html .= '<summary>'.$lang->getLanguageHtml('label_import_manual').'</summary>'."\n";
+        $html .= '<p>'.$lang->getLanguageHtml('description_import_manual').'</p>'."\n";
+
         // Doppel-Label-Fix: <summary> ist bereits die sichtbare
         // Beschriftung, das Textarea erhält stattdessen ein aria-label.
         // Zusätzliche sichtbare <p>-Beschriftung direkt über der Textarea
@@ -391,7 +419,8 @@ class SchemaOrgData_AdminPageRenderer {
             .' class="schemaOrgData-import-textarea" rows="8" aria-label="'.$importAriaLabel.'">'.$importValueAttr.'</textarea><br />'."\n";
         $html .= '<button type="submit" name="schemaOrgData_import_action" value="'.$scope.'" class="mo-btn">'
             .$lang->getLanguageHtml('button_import').'</button>'."\n";
-        $html .= '</p>'."\n";
+        $html .= '</details>'."\n";
+
         $html .= '<p class="schemaOrgData-jsonld-notice__hint">'.$lang->getLanguageHtml('description_import_jsonld').'</p>'."\n";
         $html .= '</details>'."\n";
         $html .= '</div>'."\n";

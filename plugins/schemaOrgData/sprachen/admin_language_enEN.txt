@@ -153,7 +153,9 @@ notice_keep_consequence_hint = Note: As long as "Keep existing" is selected, the
 
 label_import_jsonld = Import existing JSON-LD
 label_import_target = JSON-LD block to import:
-description_import_jsonld = Insert an existing JSON-LD block. Known fields are filled in automatically, unknown properties are moved to the extension field. This overwrites the current configuration. Clicking "Import detected block" runs the import right away; for manually pasted text, click "Import" to run it. The form fields below are then filled in with the detected values - nothing is saved until you click the save button.
+label_import_manual = Paste JSON-LD manually
+description_import_jsonld = Insert an existing JSON-LD block. Known fields are filled in automatically, unknown properties are moved to the extension field. This overwrites the current configuration. Clicking "Import detected block" runs the import right away; for different text or multiple detected blocks, use the manual path under "Paste JSON-LD manually". The form fields below are then filled in with the detected values - nothing is saved until you click the save button.
+description_import_manual = For JSON-LD blocks from other sources, for choosing one block when multiple blocks were detected, or for correcting the input after a failed import. Paste the block and click "Import".
 button_import = Import
 
 button_use_detected_jsonld = Import detected block

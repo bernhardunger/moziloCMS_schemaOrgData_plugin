@@ -153,7 +153,9 @@ notice_keep_consequence_hint = Hinweis: Solange „Vorhandenes beibehalten" gew�
 
 label_import_jsonld = Vorhandenes JSON-LD importieren
 label_import_target = Zu importierender JSON-LD-Block:
-description_import_jsonld = Fügt einen bestehenden JSON-LD-Block ein. Bekannte Felder werden automatisch übernommen, unbekannte Properties wandern ins Erweiterungsfeld. Überschreibt die aktuelle Konfiguration. Ein Klick auf „Erkannten Block importieren" führt den Import direkt aus; bei manuell eingefügtem Text löst der „Importieren"-Button den Import aus. Die Formularfelder unten werden anschließend mit den erkannten Werten befüllt - gespeichert wird erst über den Speichern-Button.
+label_import_manual = JSON-LD manuell einfügen
+description_import_jsonld = Fügt einen bestehenden JSON-LD-Block ein. Bekannte Felder werden automatisch übernommen, unbekannte Properties wandern ins Erweiterungsfeld. Überschreibt die aktuelle Konfiguration. Ein Klick auf „Erkannten Block importieren" führt den Import direkt aus; für abweichenden Text oder mehrere erkannte Blöcke steht der manuelle Pfad im Aufklapper „JSON-LD manuell einfügen" zur Verfügung. Die Formularfelder unten werden anschließend mit den erkannten Werten befüllt - gespeichert wird erst über den Speichern-Button.
+description_import_manual = Für JSON-LD-Blöcke aus anderen Quellen, für die Auswahl eines Blocks bei mehreren erkannten Blöcken oder zur Korrektur nach einem fehlgeschlagenen Import. Block einfügen und auf „Importieren" klicken.
 button_import = Importieren
 
 button_use_detected_jsonld = Erkannten Block importieren
