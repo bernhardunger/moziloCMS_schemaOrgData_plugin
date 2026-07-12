@@ -1381,11 +1381,17 @@
     }
 
     /**
-     * Aktiviert den "Erkannten Block übernehmen"-Button
-     * (.schemaOrgData-autofill-btn, siehe index.php
-     * renderExistingJsonLdNotice()). Klick überträgt den Wert aus
-     * dataset.existingContent per direkter DOM-Property-Zuweisung
-     * in das Import-Textarea — kein AJAX, kein Auto-Save.
+     * Aktiviert den "Erkannten Block importieren"-Button
+     * (.schemaOrgData-autofill-btn, siehe
+     * SchemaOrgData_AdminPageRenderer::renderExistingJsonLdNotice()). Klick
+     * überträgt den Wert aus dataset.existingContent per direkter
+     * DOM-Property-Zuweisung in das Import-Textarea und löst danach den
+     * bestehenden Import-Submit-Button (schemaOrgData_import_action)
+     * innerhalb desselben <details>-Blocks aus — kein zweiter manueller
+     * Klick, kein AJAX, kein neuer serverseitiger Pfad. Textarea und
+     * Submit-Button bleiben dabei unverändert bedienbar, falls kein
+     * Submit-Button gefunden wird (z. B. isolierte Testfixtures ohne
+     * ihn), bricht die Befüllung nicht ab.
      */
     function initAutofillButton() {
         var buttons = document.querySelectorAll('.schemaOrgData-autofill-btn');
@@ -1395,8 +1401,17 @@
                 var btn = event.currentTarget;
                 var targetId = btn.getAttribute('data-target');
                 var textarea = targetId ? document.getElementById(targetId) : null;
-                if (textarea) {
-                    textarea.value = btn.dataset.existingContent || '';
+                if (!textarea) {
+                    return;
+                }
+                textarea.value = btn.dataset.existingContent || '';
+
+                var container = btn.closest('details');
+                var submitBtn = container
+                    ? container.querySelector('button[type="submit"][name="schemaOrgData_import_action"]')
+                    : null;
+                if (submitBtn) {
+                    submitBtn.click();
                 }
             });
         }
