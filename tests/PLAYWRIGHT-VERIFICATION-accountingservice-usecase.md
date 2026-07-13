@@ -28,7 +28,7 @@
 > Speichern. Phase 1 (`geo`), Phase 3 (`hiringOrganization`/`jobLocation`),
 > Phase 5 (Speicherbarkeit ohne `recipient`-POST-Wert) und Phase 6
 > (Debug-Widget-Event-Korrektur) wurden um die seither hinzugekommenen
-> Fixes aus der Playwright-RC-Checkliste (`doc/TODO.md`) ergänzt bzw.
+> Fixes aus der Playwright-RC-Checkliste (`doc-dev-local/TODO.md`) ergänzt bzw.
 > korrigiert — siehe die jeweiligen Phasen-Vermerke.
 >
 > **Bekannte Lücken dieses Use-Case (nicht Teil des Steuerkanzlei-
@@ -237,7 +237,7 @@ auf Kategorie-/Seitenebene (siehe README.md).
       eindeutig vergangenes Datum setzen (z. B. „01.01.2020"), Feld
       verlassen — MUSS jetzt den gelben Warnhinweis „Der eingetragene
       Termin liegt in der Vergangenheit." zeigen (vorher: blieb
-      fälschlich `✅ ok`, siehe `doc/TODO_erledigt.md`). Anschließend auf
+      fälschlich `✅ ok`, siehe `doc-dev-local/TODO_erledigt.md`). Anschließend auf
       ein gültiges zukünftiges Datum korrigieren, bevor mit der Phase
       fortgefahren wird
 - [ ] Veranstaltungsort (Name + Adresse) befüllen
@@ -323,7 +323,7 @@ nötig.
 > **Korrektur 2026-07-13:** Diese Aussage stimmte für `0.9.0-rc`, ist
 > aber seit der Wiedereinführung des Dev-Reset-Buttons bei `0.9.1-rc`
 > (`6c60153`, für die laufende RC-Testphase) nicht mehr aktuell. Der
-> Button existiert weiterhin und ist in `doc/TODO.md`, Abschnitt
+> Button existiert weiterhin und ist in `doc-dev-local/TODO.md`, Abschnitt
 > „Offen", als oberster Punkt vor v1.0 zur Entfernung vorgesehen.
 
 ---

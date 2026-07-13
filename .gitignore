@@ -6,13 +6,13 @@ CLAUDE.md
 conf/
 tests/SMOKE-TESTS.md
 .playwright-mcp/
-/doc/
+/doc-dev-local/
 /.claude/
 .git-doku/
 /scripts/doku-commit.sh
 tests/js/node_modules/
 
 # Rückmelde-Vorlage mischt stabile Struktur mit Lauf-Ergebnissen,
-# analog zu CLAUDE.md/doc/TODO.md bewusst nicht getrackt:
+# analog zu CLAUDE.md/doc-dev-local/TODO.md bewusst nicht getrackt:
 tests/RCLaufRueckmeldung_accountingserviceusecase.xlsx
 

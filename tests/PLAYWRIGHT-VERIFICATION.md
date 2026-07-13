@@ -4,7 +4,7 @@
 > durchgeführt gegen `stb-hader`, `0.9.15-rc`: ~30 Einzelprüfungen, 1
 > NOK (Phase 4e, reiner Doku-Drift seit `e81b8e1` — kein Produktivbug,
 > Erwartung hier korrigiert). Phase-4a-Sonderfall (bekannter Doku-Gap,
-> siehe `doc/TODO.md`) wie erwartet aufgetreten, nicht separat gewertet.
+> siehe `doc-dev-local/TODO.md`) wie erwartet aufgetreten, nicht separat gewertet.
 > Neue Erkenntnis zum Zusammenspiel Dangling-Reference-Guard/De-Dup-Guard
 > bei geteiltem `ui:idFragment` (Phase 9b) — in `CLAUDE.md` unter
 > „Dangling-Reference-Guard" ergänzt. Kein Code-Fix, kein Commit im
@@ -57,7 +57,7 @@
 > **Rerun durchgeführt (2026-07-04, gegen `0.4.50-beta`, `stb-hader`):**
 > Phasen 0–9 vollständig durchlaufen, alle vier Fixes bestätigt,
 > Kernpunkte durchgehend OK. Zwei neue, unabhängige Einzelbefunde dabei
-> aufgetreten (siehe `doc/TODO.md`, Abschnitt „Offen"): ein reproduzierbarer
+> aufgetreten (siehe `doc-dev-local/TODO.md`, Abschnitt „Offen"): ein reproduzierbarer
 > Redisplay-Bug im `id_reference_or_literal`-Widget bei `Event.organizer`
 > (Daten korrekt gespeichert/ausgegeben, nur die Radio-Auswahl beim
 > Neuladen des Formulars fehlt), sowie eine Korrektur der Phase-9b-Erwartung
@@ -314,7 +314,7 @@ Block wie in 4a in `layouts/ACTIVE_LAYOUT/template.html` wieder aktiv
    im Seiteninhalt eingefügt werden, was mit dem offenen,
    niedrigpriorisierten Punkt „Bug (Re-Test, eingeengt): JSON-LD-Erkennung
    — Kategorie-/Seiten-Scope und gerenderter Seiteninhalt ungetestet"
-   (`doc/TODO.md`) zusammenfällt. Kein eigener Prüfschritt hier, nur
+   (`doc-dev-local/TODO.md`) zusammenfällt. Kein eigener Prüfschritt hier, nur
    Vermerk der Abgrenzung.
 
 **4g) UX-Dreier, Teil 2 — Progressive Disclosure (Fahrplan-Schritt 3)**
