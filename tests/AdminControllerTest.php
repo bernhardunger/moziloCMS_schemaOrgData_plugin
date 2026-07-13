@@ -503,6 +503,34 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
+    * Ohne Cache-Busting-Query-Parameter hat ein <script src="...js/
+    * validator.js">-Request kein Signal, eine bereits gecachte,
+    * veraltete Fassung zu verwerfen - ein Browser kann dann nach
+    * einem Deployment beliebig lange die alte Version weiterverwenden,
+    * obwohl PHP/Jest-Tests bereits gegen die neue Fassung grün sind
+    * (Root Cause eines RC-Bugs: der Event-Vergangenheits-Hinweis kam im
+    * Browser nicht an). filemtime() der tatsächlich ausgelieferten
+    * Datei ändert sich bei jedem echten Deployment automatisch.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageVersioniertJsAssetsMitCacheBuster(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $html = $this->callRenderAdminPage(new \InMemorySettings());
+
+        $ajvMtime = filemtime($this->pluginSelfDir().'js/ajv.min.js');
+        $validatorMtime = filemtime($this->pluginSelfDir().'js/validator.js');
+
+        $this->assertStringContainsString('js/ajv.min.js?v='.$ajvMtime, $html);
+        $this->assertStringContainsString('js/validator.js?v='.$validatorMtime, $html);
+    }
+
+    /***************************************************************
+    *
     * js/validator.js liest getMessages().dateInvalid
     * bzw. getMessages().dateRangeInvalid für die date-time-Live-
     * Validierung von Event.startDate/endDate - ohne diese beiden Keys in
