@@ -49,6 +49,7 @@ schema_type_event = 📅 Veranstaltung / Termin (Event)
 
 label_recipient = Empfänger (Organisation)
 label_organizer = Veranstalter
+placeholder_organizer_name = z. B. Kulturverein Musterstadt e. V.
 
 label_name = Name
 label_description = Beschreibung
@@ -134,8 +135,9 @@ error_geo_longitude = Der Längengrad (longitude) muss zwischen -180 und 180 lie
 error_geo_incomplete = Bitte beide Geo-Koordinaten-Felder ausfüllen oder beide leer lassen.
 error_date_invalid = Bitte ein gültiges Datum im Format TT.MM.YYYY oder TT.MM.YYYY HH:MM eingeben.
 error_date_range_invalid = Das Ende muss nach dem Beginn liegen.
+warning_date_in_past = Hinweis: Der eingetragene Termin liegt in der Vergangenheit.
 error_invalid_schema_type = Der Schema-Type "{PARAM1}" ist für diesen Geltungsbereich nicht gültig.
-error_family_type_mismatch = Für diesen Geltungsbereich ist nur der bei Global konfigurierte Geschäftstyp (oder ein Inhalts-Type ohne Geschäftsklassifikation) zulässig, da beide Types zur selben Schema.org-Familie gehören.
+error_family_type_mismatch = Für diesen Geltungsbereich ist nur der bei Global konfigurierte Geschäfts-Type (oder ein Inhalts-Type ohne Geschäftsklassifikation) zulässig, da beide Types zur selben Schema.org-Familie gehören.
 
 notice_config_saved = Die Konfiguration wurde gespeichert.
 notice_import_success = Import übernommen - bitte die befüllten Felder unten prüfen und anschließend speichern.

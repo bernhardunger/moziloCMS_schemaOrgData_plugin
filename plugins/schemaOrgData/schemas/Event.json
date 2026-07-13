@@ -111,6 +111,7 @@
       "ui:label": "label_organizer",
       "ui:required": false,
       "ui:literalFields": ["name"],
+      "ui:literalFieldPlaceholders": { "name": "placeholder_organizer_name" },
       "ui:literalType": "Organization"
     }
   },

@@ -330,6 +330,43 @@
     }
 
     /**
+     * Prüft, ob eine bereits als gültig bestätigte Datumseingabe
+     * (validateEventDateInput()) in der Vergangenheit liegt (Vergleich
+     * gegen die aktuelle Client-Uhrzeit). Ein reines Datum ohne Uhrzeit
+     * wird dabei wie in parseEventDateValue() als lokale Mitternacht
+     * interpretiert.
+     *
+     * @param {string} value
+     * @returns {boolean}
+     */
+    function isEventDateInPast(value) {
+        var parsed = parseEventDateValue(value);
+        return parsed !== null && parsed.getTime() < new Date().getTime();
+    }
+
+    /**
+     * Validiert ein date-time-Feld (Format + optional Vergangenheits-
+     * Hinweis) für die Anzeige im eigenen Feedback-Element. Der
+     * Vergangenheits-Hinweis (data-check-past, siehe buildValidationAttrs()
+     * in SchemaOrgData_FormRenderer.php - ausschließlich Event.startDate)
+     * ist ein reiner, nicht-blockierender Warning-Zustand und wird nur
+     * gezeigt, wenn das Datum für sich genommen bereits gültig ist -
+     * ein Formatfehler hat weiterhin Vorrang.
+     *
+     * @param {HTMLElement} input
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function validateDateTimeField(input) {
+        var result = validateEventDateInput(input.value);
+
+        if (result.status === 'ok' && input.getAttribute('data-check-past') === '1' && isEventDateInPast(input.value)) {
+            return { status: 'warning', message: getMessages().dateInPast || null };
+        }
+
+        return result;
+    }
+
+    /**
      * Prüft, ob Event.endDate nicht vor Event.startDate liegt (nur wenn
      * beide Felder gefüllt und für sich genommen gültig sind - siehe
      * SchemaOrgData_Validator::validateFormData(), gleiche Bedingung
@@ -751,12 +788,12 @@
         var counterpart = findDateRangeCounterpart(input);
 
         if (!counterpart) {
-            showFieldFeedback(input, input.id + '_feedback', validateEventDateInput(input.value), onlyClearErrors);
+            showFieldFeedback(input, input.id + '_feedback', validateDateTimeField(input), onlyClearErrors);
             return;
         }
 
         if (input !== counterpart.endInput) {
-            showFieldFeedback(input, input.id + '_feedback', validateEventDateInput(input.value), onlyClearErrors);
+            showFieldFeedback(input, input.id + '_feedback', validateDateTimeField(input), onlyClearErrors);
         }
 
         updateEndDateFeedback(counterpart.startInput, counterpart.endInput, onlyClearErrors);
@@ -1448,6 +1485,7 @@
         validateGeoLatitude: validateGeoLatitude,
         validateGeoLongitude: validateGeoLongitude,
         validateEventDateInput: validateEventDateInput,
+        isEventDateInPast: isEventDateInPast,
         showExtensionFeedback: showExtensionFeedback,
         initExcludedCatsSelectAll: initExcludedCatsSelectAll,
         initAutofillButton: initAutofillButton,

@@ -520,6 +520,7 @@ final class AdminControllerTest extends TestCase {
 
         $this->assertStringContainsString('"dateInvalid"', $html);
         $this->assertStringContainsString('"dateRangeInvalid"', $html);
+        $this->assertStringContainsString('"dateInPast"', $html);
     }
 
     #[RunInSeparateProcess]

@@ -17,7 +17,7 @@ function buildEventDateFixture(idPrefix) {
     var endId = idPrefix + '_endDate';
 
     return ''
-        + '<input type="text" id="' + startId + '" name="' + startId + '" value="" data-validate="date-time">'
+        + '<input type="text" id="' + startId + '" name="' + startId + '" value="" data-validate="date-time" data-check-past="1">'
         + '<input type="text" id="' + endId + '" name="' + endId + '" value="" data-validate="date-time" '
         + 'data-range-start-field="' + startId + '">';
 }
@@ -39,7 +39,8 @@ describe('Event.startDate/endDate - Live-Validierung (runEventDateValidation)', 
         document.body.innerHTML = '<form>' + buildEventDateFixture(ID_PREFIX) + '</form>';
         window.schemaOrgDataMessages = {
             dateInvalid: 'DATE_INVALID',
-            dateRangeInvalid: 'DATE_RANGE_INVALID'
+            dateRangeInvalid: 'DATE_RANGE_INVALID',
+            dateInPast: 'DATE_IN_PAST'
         };
         validator = loadPluginScripts.loadValidator();
         validator.initAdminForm();
@@ -130,12 +131,57 @@ describe('Event.startDate/endDate - Live-Validierung (runEventDateValidation)', 
     });
 
     test('startDate ohne endDate zeigt nur das eigene Format-Feedback (ok), keinen Bereichsfehler', function () {
-        setValue(ID.startDate, '10.07.2026');
+        // Bewusst weit in der Zukunft (statt eines nahen Datums) - sonst würde der neue
+        // Vergangenheits-Hinweis (siehe unten) dieses Datum irgendwann selbst einholen.
+        setValue(ID.startDate, '10.07.2099');
         fire(document.getElementById(ID.startDate), 'blur');
 
         var feedback = feedbackFor(ID.startDate);
         expect(feedback).not.toBeNull();
         expect(feedback.className).toContain('schemaOrgData-feedback--ok');
+    });
+
+    test('startDate in der Vergangenheit erzeugt einen nicht-blockierenden warning-Zustand statt eines Fehlers', function () {
+        setValue(ID.startDate, '01.01.2020');
+        fire(document.getElementById(ID.startDate), 'blur');
+
+        var feedback = feedbackFor(ID.startDate);
+        expect(feedback.className).toContain('schemaOrgData-feedback--warning');
+        expect(feedback.textContent).toContain('DATE_IN_PAST');
+    });
+
+    test('startDate in der Zukunft bleibt weiterhin ok, kein Vergangenheits-Hinweis', function () {
+        setValue(ID.startDate, '01.01.2099');
+        fire(document.getElementById(ID.startDate), 'blur');
+
+        var feedback = feedbackFor(ID.startDate);
+        expect(feedback.className).toContain('schemaOrgData-feedback--ok');
+        expect(feedback.textContent).not.toContain('DATE_IN_PAST');
+    });
+
+    test('ein Formatfehler bei startDate hat Vorrang vor dem Vergangenheits-Hinweis', function () {
+        setValue(ID.startDate, '31.02.2020');
+        fire(document.getElementById(ID.startDate), 'blur');
+
+        var feedback = feedbackFor(ID.startDate);
+        expect(feedback.className).toContain('schemaOrgData-feedback--error');
+        expect(feedback.textContent).toContain('DATE_INVALID');
+        expect(feedback.textContent).not.toContain('DATE_IN_PAST');
+    });
+
+    test('endDate erhält keinen Vergangenheits-Hinweis (kein data-check-past, nur Event.startDate betroffen)', function () {
+        // Beide Felder bewusst in der Vergangenheit, aber als gültiger Bereich
+        // (endDate nach startDate) - ohne data-check-past auf endDate darf hier
+        // trotz des vergangenen Datums kein warning-Zustand entstehen.
+        setValue(ID.startDate, '01.01.2020');
+        fire(document.getElementById(ID.startDate), 'blur');
+
+        setValue(ID.endDate, '02.01.2020');
+        fire(document.getElementById(ID.endDate), 'blur');
+
+        var feedback = feedbackFor(ID.endDate);
+        expect(feedback.className).toContain('schemaOrgData-feedback--ok');
+        expect(feedback.textContent).not.toContain('DATE_IN_PAST');
     });
 });
 

@@ -193,6 +193,32 @@ final class EventTest extends TestCase {
         $this->assertSame(['name'], $organizer['ui:literalFields']);
         $this->assertSame('Organization', $organizer['ui:literalType']);
         $this->assertFalse((bool) ($organizer['ui:required'] ?? false));
+        $this->assertSame('placeholder_organizer_name', $organizer['ui:literalFieldPlaceholders']['name']);
+    }
+
+    /***************************************************************
+    *
+    * Das Literal-Modus-Feld "name" des organizer-Widgets soll ein
+    * Beispiel als Placeholder zeigen (UX-Fund: ohne Beispiel war
+    * unklar, ob hier ein Personen- oder Organisationsname erwartet
+    * wird).
+    *
+    ***************************************************************/
+    function testRenderFieldZeigtPlaceholderFuerOrganizerLiteralNameFeld(): void {
+        $schema = $this->eventSchema();
+        $lang = $this->adminLang();
+
+        $html = $this->formRenderer()->renderField(
+            'page', 'organizer', $schema['properties']['organizer'], [], $schema, [],
+            'page_veranstaltungen_sommerfest_Event', null, null, $lang, $this->schemaRepository(),
+            new \SchemaOrgData_UrlHelper(), 'deDE', $this->openingHoursHelper(), $this->validator(),
+            $lang, []
+        );
+
+        $this->assertStringContainsString(
+            'placeholder="'.htmlspecialchars($lang->getLanguageValue('placeholder_organizer_name'), ENT_QUOTES, CHARSET).'"',
+            $html
+        );
     }
 
     function testEventAttendanceModeUsesFullSchemaOrgUris(): void {

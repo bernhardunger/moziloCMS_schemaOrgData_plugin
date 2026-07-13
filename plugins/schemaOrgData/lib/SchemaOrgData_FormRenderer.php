@@ -184,7 +184,10 @@ class SchemaOrgData_FormRenderer {
     *
     * Rendert das Widget id_reference_or_literal:
     * Radio-Auswahl zwischen „Verknüpfen" (Dropdown globaler @id-Knoten)
-    * und „Manuell" (Literal-Felder gemäß ui:literalFields).
+    * und „Manuell" (Literal-Felder gemäß ui:literalFields). Literal-Felder
+    * erhalten optional einen Placeholder mit Beispieltext, sofern das
+    * Schema für das jeweilige Feld einen Sprachschlüssel in
+    * ui:literalFieldPlaceholders hinterlegt.
     *
     * @param string $scope  Geltungsbereich (global/category/page)
     * @param string $name   Property-Name im Schema
@@ -268,19 +271,23 @@ class SchemaOrgData_FormRenderer {
 
         // Literal-Felder
         $html .= '<div class="schemaOrgData-idrl-section schemaOrgData-idrl-literal"'.$litHidden.'>'."\n";
-        $literalFields      = $fieldSchema['ui:literalFields']      ?? [];
-        $literalFieldLabels = $fieldSchema['ui:literalFieldLabels'] ?? [];
+        $literalFields       = $fieldSchema['ui:literalFields']       ?? [];
+        $literalFieldLabels  = $fieldSchema['ui:literalFieldLabels']  ?? [];
+        $literalFieldPlaceholders = $fieldSchema['ui:literalFieldPlaceholders'] ?? [];
         foreach($literalFields as $lf) {
             $lfId    = 'schemaOrgData_'.$idPrefix.'_'.$name.'_lf_'.$lf;
             $lfName  = $fieldNameBase.'['.$lf.']';
             $lfValue = (string) ($value[(string) $lf] ?? '');
             $lfLabelKey = $literalFieldLabels[(string) $lf] ?? 'label_'.$lf;
             $lfLabel = $lang->getLanguageHtml($lfLabelKey);
+            $lfPlaceholderKey = $literalFieldPlaceholders[(string) $lf] ?? null;
+            $lfPlaceholder = $lfPlaceholderKey !== null ? $lang->getLanguageValue($lfPlaceholderKey) : '';
             $html .= '<div class="c-content schemaOrgData-field-row">'."\n"
                 .'<div class="mo-in-li-l"><label for="'.htmlspecialchars($lfId, ENT_QUOTES, CHARSET).'">'.$lfLabel.'</label></div>'."\n"
                 .'<div class="mo-in-li-r"><input type="text" id="'.htmlspecialchars($lfId, ENT_QUOTES, CHARSET).'"'
                 .' name="'.htmlspecialchars($lfName, ENT_QUOTES, CHARSET).'"'
                 .' value="'.htmlspecialchars($lfValue, ENT_QUOTES, CHARSET).'"'
+                .' placeholder="'.htmlspecialchars($lfPlaceholder, ENT_QUOTES, CHARSET).'"'
                 .' class="mo-input-text flex-100" /></div>'."\n"
                 .'</div>'."\n";
         }
@@ -930,6 +937,14 @@ class SchemaOrgData_FormRenderer {
             $dateRangeStartFields = ['endDate' => 'startDate', 'validThrough' => 'datePosted'];
             if(isset($dateRangeStartFields[$name])) {
                 $attrs['data-range-start-field'] = 'schemaOrgData_'.$idPrefix.'_'.$dateRangeStartFields[$name];
+            }
+            // Vergangenheits-Hinweis (nicht-blockierende Warnung, siehe validator.js
+            // isEventDateInPast()) ausschließlich für Event.startDate - anders als
+            // z. B. JobPosting.datePosted, das seiner Natur nach regelmäßig in der
+            // Vergangenheit liegt, deutet ein vergangener Event-Termin typischerweise
+            // auf ein versehentliches Datum hin.
+            if($name === 'startDate') {
+                $attrs['data-check-past'] = '1';
             }
         } elseif($name === 'telephone') {
             $attrs = ['data-validate' => 'telephone'];

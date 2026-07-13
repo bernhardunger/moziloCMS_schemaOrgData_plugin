@@ -49,6 +49,7 @@ schema_type_event = 📅 Event / Appointment (Event)
 
 label_recipient = Recipient (Organisation)
 label_organizer = Organizer
+placeholder_organizer_name = e.g. Musterstadt Cultural Association
 
 label_name = Name
 label_description = Description
@@ -134,6 +135,7 @@ error_geo_longitude = Longitude must be between -180 and 180.
 error_geo_incomplete = Please fill in both geo coordinate fields or leave both empty.
 error_date_invalid = Please enter a valid date in the format DD.MM.YYYY or DD.MM.YYYY HH:MM.
 error_date_range_invalid = The end must be after the start.
+warning_date_in_past = Note: The entered date is in the past.
 error_invalid_schema_type = The schema type "{PARAM1}" is not valid for this scope.
 error_family_type_mismatch = For this scope, only the business type configured at Global (or a content type without a business classification) is allowed, since both types belong to the same schema.org family.
 

@@ -404,6 +404,34 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertSame('date-time', $attrs['data-validate']);
         $this->assertArrayNotHasKey('data-range-start-field', $attrs);
         $this->assertArrayHasKey('data-required-message', $attrs);
+        $this->assertSame('1', $attrs['data-check-past']);
+    }
+
+    /***************************************************************
+    *
+    * Der Vergangenheits-Hinweis (validator.js, isEventDateInPast())
+    * ist ausschließlich für Event.startDate vorgesehen - andere
+    * date-time-Felder wie JobPosting.datePosted liegen ihrer Natur
+    * nach regelmäßig in der Vergangenheit und dürfen data-check-past
+    * nicht erhalten.
+    *
+    ***************************************************************/
+    function testBuildValidationAttrsDateTimeDatePostedOhneCheckPast(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $fieldSchema = ['format' => 'date-time', 'ui:required' => true, 'ui:label' => 'label_date_posted'];
+
+        $attrs = $renderer->buildValidationAttrs('page', 'datePosted', $fieldSchema, [], 'page_kat_seite', $this->adminLang());
+
+        $this->assertArrayNotHasKey('data-check-past', $attrs);
+    }
+
+    function testBuildValidationAttrsDateTimeEndDateOhneCheckPast(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $fieldSchema = ['format' => 'date-time'];
+
+        $attrs = $renderer->buildValidationAttrs('page', 'endDate', $fieldSchema, [], 'page_kat_seite', $this->adminLang());
+
+        $this->assertArrayNotHasKey('data-check-past', $attrs);
     }
 
     function testBuildValidationAttrsDateTimeValidThroughVerweistAufDatePostedFeld(): void {

@@ -27,8 +27,8 @@ class SchemaOrgData_IdReferenceService {
     * Liefert alle global konfigurierten Knoten mit ui:idFragment als
     * Fragment → Label-Map für das id_reference_or_literal-Widget.
     *
-    * Label = Schema-Typbezeichnung + gespeicherter name-Wert (falls vorhanden).
-    * Typen ohne ui:idFragment werden übersprungen.
+    * Label = Schema-Type-Bezeichnung + gespeicherter name-Wert (falls vorhanden).
+    * Types ohne ui:idFragment werden übersprungen.
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
