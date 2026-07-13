@@ -418,7 +418,7 @@ Global- oder Kategorie-Ebene konfigurierbar, inkl. `PostalAddress`- und
 Öffnungszeiten-Widget (siehe [Adressschema](#adressschema-postaladdress) und
 [Öffnungszeiten](#oeffnungszeiten)).
 
-> 📄 Ausführliches Beispiel: [docs/use-cases/local-business.md](plugins/schemaOrgData/docs/use-cases/local-business.md)
+> 📄 Ausführliches Beispiel: [docs/use-cases/local-business.md](docs/use-cases/local-business.md)
 
 <a id="organisations-identitaet"></a>
 ### Organisations-Identität und @id-Anker
@@ -479,7 +479,7 @@ Fragmente `#person` und `#organization` sind getrennte Anker.
 > Basis-URL-/Domain-Setting (für Reverse-Proxy-/CDN-Szenarien) sowie die
 > Darstellung einer Entität mit mehreren Typen über ein `@type`-Array.
 
-> 📄 Ausführliches Beispiel: [docs/use-cases/organization-identity.md](plugins/schemaOrgData/docs/use-cases/organization-identity.md)
+> 📄 Ausführliches Beispiel: [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
 
 <a id="verknuepfte-inhalte"></a>
 ### Verknüpfte Inhalte (`id_reference`, `id_reference_or_literal`)
@@ -602,7 +602,7 @@ Referenz auf eine global konfigurierte `Person`/`NGO` oder Direkteingabe.
 Datumsfelder (`startDate`, `endDate`) werden im deutschen Format
 eingegeben und validiert (siehe [Formularvalidierung](#formularvalidierung)).
 
-> 📄 Ausführliches Beispiel: [docs/use-cases/event.md](plugins/schemaOrgData/docs/use-cases/event.md)
+> 📄 Ausführliches Beispiel: [docs/use-cases/event.md](docs/use-cases/event.md)
 
 <a id="use-case-faq"></a>
 ### FAQPage
@@ -612,7 +612,7 @@ ab. Die im Markup hinterlegten Fragen/Antworten müssen wortgleich auf der
 Seite sichtbar sein (siehe [Best Practices](#best-practices) — „Typische
 Fehler").
 
-> 📄 Ausführliches Beispiel: [docs/use-cases/faq.md](plugins/schemaOrgData/docs/use-cases/faq.md)
+> 📄 Ausführliches Beispiel: [docs/use-cases/faq.md](docs/use-cases/faq.md)
 
 <a id="use-case-jobposting"></a>
 ### JobPosting
@@ -621,7 +621,7 @@ Fehler").
 `hiringOrganization` (Widget `id_reference_or_literal`) und `jobLocation`
 (Place-Widget, analog zu `Event.location`).
 
-> 📄 Ausführliches Beispiel: [docs/use-cases/job-posting.md](plugins/schemaOrgData/docs/use-cases/job-posting.md)
+> 📄 Ausführliches Beispiel: [docs/use-cases/job-posting.md](docs/use-cases/job-posting.md)
 
 <a id="use-case-donateaction"></a>
 ### DonateAction
@@ -632,7 +632,7 @@ Organisationsknoten — siehe
 [Verknüpfte Inhalte](#verknuepfte-inhalte) für Mechanismus und
 Ausgabe-Beispiel.
 
-> 📄 Ausführliches Beispiel: [docs/use-cases/donate-action.md](plugins/schemaOrgData/docs/use-cases/donate-action.md)
+> 📄 Ausführliches Beispiel: [docs/use-cases/donate-action.md](docs/use-cases/donate-action.md)
 
 <a id="json-ld-ausgabe-im-detail"></a>
 ### JSON-LD-Ausgabe im Detail
@@ -678,7 +678,7 @@ Globalebene sinnvoll sind (`WebSite`, `Organization`) werden nur einmal
 ausgegeben. Leere Felder werden vor der Ausgabe entfernt; vollständig leere
 Knoten werden gar nicht ausgegeben.
 
-> 📄 Weitere Ausgabe-Beispiele: [docs/examples/](plugins/schemaOrgData/docs/examples/)
+> 📄 Weitere Ausgabe-Beispiele: [docs/examples/](docs/examples/)
 
 ---
 
@@ -723,7 +723,7 @@ ISO-8601 normalisiert (`YYYY-MM-DD` bzw. `YYYY-MM-DDTHH:MM:SS±HH:MM`,
 Offset aus der Server-Zeitzone aufgelöst); gespeichert und im JSON-LD
 ausgegeben wird ausschließlich der ISO-Wert.
 
-> 📄 Vertiefung: [docs/validation.md](plugins/schemaOrgData/docs/validation.md)
+> 📄 Vertiefung: [docs/validation.md](docs/validation.md)
 
 <a id="best-practices"></a>
 ### Best Practices: Schema.org-Daten sinnvoll pflegen
@@ -785,7 +785,7 @@ Betreibers. Dafür gilt eine einfache Grundregel:
   oder erfundene Werte (Geo-Koordinaten, Gründungsdatum, Öffnungszeiten)
   schaden mehr als fehlende.
 
-> 📄 Vertiefung: [docs/best-practices.md](plugins/schemaOrgData/docs/best-practices.md) · [docs/common-mistakes.md](plugins/schemaOrgData/docs/common-mistakes.md)
+> 📄 Vertiefung: [docs/best-practices.md](docs/best-practices.md) · [docs/common-mistakes.md](docs/common-mistakes.md)
 
 ---
 
@@ -810,7 +810,7 @@ Betreibers. Dafür gilt eine einfache Grundregel:
 - **Kein CDN**: AJV.js wird lokal ausgeliefert — keine externen
   Skript-Quellen.
 
-> 📄 Vertiefung: [docs/security.md](plugins/schemaOrgData/docs/security.md)
+> 📄 Vertiefung: [docs/security.md](docs/security.md)
 
 ---
 
@@ -824,7 +824,7 @@ Betreibers. Dafür gilt eine einfache Grundregel:
 - Kompatibel mit `seo_urls`-Plugin (optional): kanonische URLs aus
   `seo_urls` können manuell als `url`-Property eingetragen werden
 
-> 📄 Vertiefung: [docs/compatibility.md](plugins/schemaOrgData/docs/compatibility.md) · [docs/dependencies.md](plugins/schemaOrgData/docs/dependencies.md)
+> 📄 Vertiefung: [docs/compatibility.md](docs/compatibility.md) · [docs/dependencies.md](docs/dependencies.md)
 
 ---
 
@@ -864,9 +864,12 @@ plugins/schemaOrgData/
 ├── js/               # ajv.min.js, validator.js
 ├── lib/              # Plugin-Komponenten (Scope-Auflösung, JSON-LD-Aufbau,
 │                        Formular-Rendering, Validierung, Admin-Orchestrierung …)
-├── docs/             # vertiefende Dokumentation (dieser Ordner)
 └── sprachen/         # admin_language_*.txt, cms_language_*.txt
 ```
+
+Die vertiefende Dokumentation (`docs/`, dieser Ordner) liegt als Geschwister
+von `plugins/` am Repo-Root, analog zu `tests/` — sie ist nicht Teil des
+Deployment-Pakets.
 
 Die Konfigurationsdaten werden **nicht** als Dateien im Plugin-Ordner
 abgelegt, sondern über die moziloCMS-eigene Settings-API (`$this->settings`)
@@ -876,14 +879,14 @@ FTP-Hinweis).
 
 Weiterführende Entwicklerdokumentation:
 
-- [docs/architecture.md](plugins/schemaOrgData/docs/architecture.md) — Komponentenaufbau und Zusammenspiel der `lib/`-Klassen
-- [docs/file-structure.md](plugins/schemaOrgData/docs/file-structure.md) — vollständiger Datei- und Ordnerbaum
-- [docs/schema-extending.md](plugins/schemaOrgData/docs/schema-extending.md) — neuen Schema-Type per JSON-Datei hinzufügen
-- [docs/schema/](plugins/schemaOrgData/docs/schema/) — Referenz der schema-getriebenen `ui:`-Properties
-- [docs/rendering.md](plugins/schemaOrgData/docs/rendering.md) — Formular-Rendering und JSON-LD-Erzeugung im Detail
-- [docs/import.md](plugins/schemaOrgData/docs/import.md) — Import-Feature im Detail
-- [docs/configuration.md](plugins/schemaOrgData/docs/configuration.md) — Settings-API, Geltungsbereiche und Speicherformat
-- [docs/development.md](plugins/schemaOrgData/docs/development.md) — lokales Setup, Entwicklungskonventionen
+- [docs/architecture.md](docs/architecture.md) — Komponentenaufbau und Zusammenspiel der `lib/`-Klassen
+- [docs/file-structure.md](docs/file-structure.md) — vollständiger Datei- und Ordnerbaum
+- [docs/schema-extending.md](docs/schema-extending.md) — neuen Schema-Type per JSON-Datei hinzufügen
+- [docs/schema/](docs/schema/) — Referenz der schema-getriebenen `ui:`-Properties
+- [docs/rendering.md](docs/rendering.md) — Formular-Rendering und JSON-LD-Erzeugung im Detail
+- [docs/import.md](docs/import.md) — Import-Feature im Detail
+- [docs/configuration.md](docs/configuration.md) — Settings-API, Geltungsbereiche und Speicherformat
+- [docs/development.md](docs/development.md) — lokales Setup, Entwicklungskonventionen
 
 ---
 
@@ -908,7 +911,7 @@ erreichbare Fälle. Ergänzend wird das Plugin per Browser-Regressionstests
 > eingecheckt. Die Tests liegen im Entwicklungs-Repository eine Ebene über
 > dem Plugin-Ordner und sind nicht Teil des Deployment-Pakets.
 
-> 📄 Vertiefung: [docs/tests.md](plugins/schemaOrgData/docs/tests.md)
+> 📄 Vertiefung: [docs/tests.md](docs/tests.md)
 
 ---
 
