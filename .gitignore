@@ -11,7 +11,6 @@ tests/SMOKE-TESTS.md
 .git-doku/
 /scripts/doku-commit.sh
 tests/js/node_modules/
-tests/js/package-lock.json
 
 # Rückmelde-Vorlage mischt stabile Struktur mit Lauf-Ergebnissen,
 # analog zu CLAUDE.md/doc/TODO.md bewusst nicht getrackt:
