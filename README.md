@@ -609,6 +609,5 @@ erreichbare Fälle. Ergänzend wird das Plugin per Browser-Regressionstests
 <a id="changelog"></a>
 ## Changelog
 
-Ein kuratiertes Changelog ist für eine der nächsten Versionen geplant.
-Bis dahin gibt die Commit-Historie dieses Repositories den zuverlässigsten
-Überblick über den Entwicklungsstand.
+Eine kuratierte Übersicht der nennenswerten Änderungen steht in
+[CHANGELOG.md](CHANGELOG.md).
