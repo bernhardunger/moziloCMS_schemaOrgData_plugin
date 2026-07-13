@@ -1,5 +1,15 @@
 # Playwright-Verifikation — schemaOrgData
 
+> Stand: 2026-07-13 — Finale Komplett-Regression (Phasen 0–9)
+> durchgeführt gegen `stb-hader`, `0.9.15-rc`: ~30 Einzelprüfungen, 1
+> NOK (Phase 4e, reiner Doku-Drift seit `e81b8e1` — kein Produktivbug,
+> Erwartung hier korrigiert). Phase-4a-Sonderfall (bekannter Doku-Gap,
+> siehe `doc/TODO.md`) wie erwartet aufgetreten, nicht separat gewertet.
+> Neue Erkenntnis zum Zusammenspiel Dangling-Reference-Guard/De-Dup-Guard
+> bei geteiltem `ui:idFragment` (Phase 9b) — in `CLAUDE.md` unter
+> „Dangling-Reference-Guard" ergänzt. Kein Code-Fix, kein Commit im
+> Plugin-Repo, reine Verifikation.
+>
 > Stand: 2026-07-13 — Phase 4g an Import-UI-Stand 0.9.15-rc angepasst
 > (Import-Ein-Klick `83fbb80`/0.9.13-rc, verschachtelter manueller
 > Import-Pfad `30c6787`/0.9.14-rc): Punkt 2 um inneres `<details>`
@@ -275,10 +285,14 @@ Firefox/Chrome-Unterschiede als Bug gewertet werden).
   - Global-Scope erneut öffnen → Hinweisblock MUSS fehlen (inaktive
     Layouts werden bewusst nicht geprüft).
 
-**4e) Gallery-Template:**
-  - Block in layouts/ACTIVE_LAYOUT/gallerytemplate.html einfügen
-    (template.html ohne Block) → im Global-Scope MUSS der Hinweisblock
-    erscheinen.
+**4e) Gallery-Template (korrigiert seit `e81b8e1`, Admin-Template-
+Scanning-Fix — Negativtest, analog zu 4d):**
+  - Block in `layouts/ACTIVE_LAYOUT/gallerytemplate.html` einfügen
+    (`template.html` ohne Block) → im Global-Scope MUSS **kein**
+    Hinweisblock erscheinen. `gallerytemplate.html` rendert
+    strukturell nie echten Seiteninhalt und wird von der
+    Admin-Kontext-Erkennung bewusst nicht gescannt (siehe `CLAUDE.md`/
+    README.md, Abschnitt „JSON-LD-Ausgabe").
 
 **4f) UX-Dreier, Teil 1 — Keep-Konsequenz-Hinweis und scope-abhängiger Titel (Fahrplan-Schritt 3)**
 
