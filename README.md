@@ -16,18 +16,28 @@ Code-Kenntnisse erforderlich, client- und server-seitige Validierung inklusive.
 ![moziloCMS](https://img.shields.io/badge/moziloCMS-3.0.4%2B-orange)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green)](https://www.gnu.org/licenses/gpl-3.0)
 
+Das Plugin arbeitet **konfigurationsgetrieben**: Die strukturierten Daten
+werden im Admin-Bereich über Formulare gepflegt und nicht automatisch aus dem
+Seiteninhalt abgeleitet. Für die typische moziloCMS-Website (überschaubare
+Seitenzahl, ein Betreiber) ist das der passende Zuschnitt — volle Kontrolle
+über die Ausgabe, kein Mapping-Setup nötig. Es ergänzt dabei die im
+moziloCMS-Core bereits vorhandenen Microdata-Implementierungen um
+maschinenlesbare JSON-LD-Blöcke (siehe
+[Abgrenzung zu bestehenden Core-Implementierungen](#abgrenzung-core)).
+
 ---
 
 ## Inhaltsverzeichnis
 
-- [Kurzbeschreibung](#kurzbeschreibung)
 - [Features](#features)
   - [Unterstützte Schema-Types](#unterstuetzte-schema-types)
-- [Voraussetzungen](#voraussetzungen)
+- [Voraussetzungen und Kompatibilität](#voraussetzungen-und-kompatibilitaet)
+  - [Abgrenzung zu bestehenden Core-Implementierungen](#abgrenzung-core)
 - [Installation](#installation)
 - [Erste Konfiguration](#erste-konfiguration)
 - [Nutzung im Alltag](#nutzung-im-alltag)
   - [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung)
+  - [JSON-LD-Ausgabe im Detail](#json-ld-ausgabe-im-detail)
   - [Adressschema (PostalAddress)](#adressschema-postaladdress)
   - [Öffnungszeiten](#oeffnungszeiten)
   - [Erweiterungsfeld (erweiterte Properties)](#erweiterungsfeld)
@@ -42,37 +52,15 @@ Code-Kenntnisse erforderlich, client- und server-seitige Validierung inklusive.
   - [FAQPage](#use-case-faq)
   - [JobPosting](#use-case-jobposting)
   - [DonateAction](#use-case-donateaction)
-  - [JSON-LD-Ausgabe im Detail](#json-ld-ausgabe-im-detail)
 - [Validierung und Best Practices](#validierung-und-best-practices)
   - [Formularvalidierung](#formularvalidierung)
   - [Best Practices: Schema.org-Daten sinnvoll pflegen](#best-practices)
   - [Typische Fehler — so bitte nicht](#typische-fehler)
 - [Sicherheit](#sicherheit)
-- [Kompatibilität und Abhängigkeiten](#kompatibilitaet)
-- [Abgrenzung zu bestehenden Core-Implementierungen](#abgrenzung-core)
 - [Entwicklerdokumentation](#entwicklerdokumentation)
+  - [Widget-Deklaration im Schema (Beispiele)](#widget-deklaration-schema-beispiele)
 - [Tests](#tests)
 - [Changelog](#changelog)
-
----
-
-<a id="kurzbeschreibung"></a>
-## Kurzbeschreibung
-
-`schemaOrgData` ist ein Plugin für moziloCMS 3.0.4 oder höher, das
-**Schema.org-konformes JSON-LD** in den `<head>`-Bereich jeder Seite schreibt.
-Es ergänzt die im moziloCMS-Core bereits vorhandenen Microdata-Implementierungen
-(Article-Wrapper, ImageObject, BreadcrumbList, Contact) um maschinenlesbare
-JSON-LD-Blöcke, die von Suchmaschinen bevorzugt ausgewertet werden.
-
-Das Plugin ist **vollständig eigenständig** und setzt kein anderes Plugin
-(z. B. `seo_urls`) voraus.
-
-Das Plugin arbeitet **konfigurationsgetrieben**: Die strukturierten Daten
-werden im Admin-Bereich über Formulare gepflegt und nicht automatisch aus dem
-Seiteninhalt abgeleitet. Für die typische moziloCMS-Website (überschaubare
-Seitenzahl, ein Betreiber) ist das der passende Zuschnitt — volle Kontrolle
-über die Ausgabe, kein Mapping-Setup nötig.
 
 ---
 
@@ -89,10 +77,8 @@ Seitenzahl, ein Betreiber) ist das der passende Zuschnitt — volle Kontrolle
 - **Erweiterungsfeld** (JSON-Textarea) für zusätzliche Properties mit Live-Validierung
 - **Erkennung vorhandener JSON-LD-Blöcke** in Template und Seiteninhalt, wahlweise Beibehalten oder Überschreiben — plus **Import-Feld** zur Übernahme bestehender Daten ins Formular
 - **Debug-Modus**: erzeugte JSON-LD-Blöcke im Frontend als Pop-up anzeigen (zum Abgleich mit validator.schema.org)
-- Validierung via **AJV.js** gegen eigene JSON-Schema-Dateien (client-side) — [AJV.js](https://ajv.js.org) (Another JSON Validator) ist eine weit verbreitete JavaScript-Bibliothek zur Validierung von JSON-Daten gegen JSON-Schema-Definitionen; wird lokal ausgeliefert, kein CDN
-- Eigenständige server-seitige Validierung und Absicherung beim Speichern (unabhängig von JavaScript)
+- Validierung via **AJV.js** (lokal ausgeliefert, kein CDN) client-seitig, plus eigenständige server-seitige Validierung beim Speichern (unabhängig von JavaScript)
 - Mehrsprachige Labels via `$language->getLanguageValue()` und `$admin_lang->getLanguageValue()`
-- Neuen Schema-Type hinzufügen = neue `.json`-Datei in `schemas/`, kein PHP nötig
 
 <a id="unterstuetzte-schema-types"></a>
 ### Unterstützte Schema-Types
@@ -120,12 +106,36 @@ Details und Konfigurationsbeispiele zu einzelnen Types stehen unter
 ---
 
 <a id="voraussetzungen"></a>
-## Voraussetzungen
+<a id="kompatibilitaet"></a>
+<a id="voraussetzungen-und-kompatibilitaet"></a>
+## Voraussetzungen und Kompatibilität
 
 - moziloCMS 3.0.4 oder höher
 - PHP 8.1+
 - Schreibzugriff auf den Plugin-Ordner (für `plugin.conf.php`, siehe [Installation](#installation))
-- Kein weiteres Plugin erforderlich — siehe [Kompatibilität und Abhängigkeiten](#kompatibilitaet) für Details
+- Kein weiteres Plugin erforderlich
+- AJV.js wird lokal ausgeliefert (kein externes CDN)
+- Kompatibel mit `seo_urls`-Plugin (optional): kanonische URLs aus
+  `seo_urls` können manuell als `url`-Property eingetragen werden
+
+> 📄 Vertiefung: [docs/compatibility.md](docs/compatibility.md) · [docs/dependencies.md](docs/dependencies.md)
+
+<a id="abgrenzung-core"></a>
+### Abgrenzung zu bestehenden Core-Implementierungen
+
+moziloCMS 3.0 enthält bereits folgende Schema.org-Implementierungen als
+Microdata:
+
+| Bereich | Core-Implementierung | Dieses Plugin |
+|---|---|---|
+| Seiteninhalt | `Article` (Wrapper, minimal) | `Article` als JSON-LD im `<head>` |
+| Bilder | `ImageObject` via `itemprop` | — |
+| Breadcrumb | `BreadcrumbList` via Microdata | — |
+| Kontakt | `LocalBusiness` via Microdata im Body | `LocalBusiness` als JSON-LD im `<head>` |
+
+Dieses Plugin **ersetzt** die Core-Microdata nicht, sondern **ergänzt** sie
+um JSON-LD im `<head>`, das von Google und anderen Suchmaschinen für Rich
+Results bevorzugt ausgewertet wird.
 
 ---
 
@@ -238,26 +248,54 @@ Kategorie `kontakt` wird `name = "Beispiel GmbH - Filiale Nord"` und
 
 Verschiedene Types bleiben unabhängig voneinander.
 
-**Info-Block im Admin.** Der Admin-Bereich zeigt oberhalb der
-Konfigurationsfelder einen allgemein verständlichen Info-Block, der das
-Ausgabeverhalten für den aktuellen Geltungsbereich erklärt — ohne dass der
-Nutzer die Dokumentation lesen muss:
-
-> **ℹ️ Wie funktioniert die Ausgabe?**
->
-> Strukturierte Daten werden als unsichtbarer JSON-LD-Block im Seitenkopf
-> (`<head>`) ausgegeben — für Besucher nicht sichtbar, aber von
-> Suchmaschinen wie Google ausgewertet.
->
-> Es gelten folgende Prioritäten:
-> - **Global** — wird auf allen Seiten ausgegeben, sofern nicht ausgeschlossen
-> - **Kategorie** — gilt für alle Seiten dieser Kategorie; bei gleichem Type überschreibt sie die globale Ausgabe
-> - **Seite** — gilt nur für diese Seite; bei gleichem Type überschreibt sie Kategorie und Global
->
-> Tipp: Das erzeugte JSON-LD kann unter [https://validator.schema.org](https://validator.schema.org) geprüft werden.
+**Info-Block im Admin.** Der Admin-Bereich erklärt dieses Verhalten
+zusätzlich direkt im Formular über einen Info-Block je Geltungsbereich —
+ohne dass der Nutzer die Dokumentation lesen muss.
 
 Technische Details zur Speicherung (Settings-API, `plugin.conf.php`) stehen
 in der [Entwicklerdokumentation](#entwicklerdokumentation).
+
+<a id="json-ld-ausgabe-im-detail"></a>
+### JSON-LD-Ausgabe im Detail
+
+Das Plugin gibt das JSON-LD als `<script>`-Tag im `<head>` aus — an der
+Stelle, an der im Layout-Template der Platzhalter `{schemaOrgData}` steht
+(siehe [Installation](#installation)):
+
+```html
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "Muster GmbH",
+  "url": "https://www.example.com",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Musterstraße 12",
+    "postalCode": "12345",
+    "addressLocality": "Musterstadt",
+    "addressCountry": "DE"
+  },
+  "openingHours": ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
+}
+</script>
+```
+
+> **Hinweis:** Der Platzhalter `{schemaOrgData}` muss in `template.html`
+> stehen, nicht in `gallerytemplate.html`. Galerie-Vollansichten haben
+> keine eigene Kategorie-/Seiten-Identität — das Plugin erkennt diesen
+> Fall und gibt dort ohnehin kein JSON-LD aus. Der Admin-Bereich prüft
+> beim Platzhalter-Hinweis ausschließlich `template.html`; ein
+> Platzhalter, der nur in `gallerytemplate.html` steht, gilt daher
+> korrekt als fehlend.
+
+Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global +
+Kategorie + Seite = bis zu drei Blöcke). Types die ausschließlich auf
+Globalebene sinnvoll sind (`WebSite`, `Organization`) werden nur einmal
+ausgegeben. Leere Felder werden vor der Ausgabe entfernt; vollständig leere
+Knoten werden gar nicht ausgegeben.
+
+> 📄 Weitere Ausgabe-Beispiele: [docs/examples/](docs/examples/)
 
 <a id="adressschema-postaladdress"></a>
 ### Adressschema (PostalAddress)
@@ -329,18 +367,12 @@ Die Validierung erfolgt zweistufig:
 <a id="mehrsprachigkeit"></a>
 ### Mehrsprachigkeit
 
-Das Plugin nutzt das moziloCMS-eigene Sprachsystem für alle sichtbaren
-Texte:
-
-- **Admin-UI** (Formular-Labels, Fehlermeldungen, Buttons):
-  `$admin_lang->getLanguageValue()`
-- **Frontend / CMS-Kontext** (z. B. Wochentag-Labels in `openingHours`):
-  `$language->getLanguageValue()`
-- JSON-Schema-Dateien enthalten Sprachschlüssel (z. B.
-  `"ui:label": "label_name"`), keine hartcodierten Strings
-
-Initiale Sprachen: **Deutsch** (`deDE`), **Englisch** (`enEN`). Details zu
-den Sprachdateien stehen in der [Entwicklerdokumentation](#entwicklerdokumentation).
+Das Plugin folgt der Spracheinstellung des moziloCMS-Kerns: alle sichtbaren
+Texte sind lokalisiert — Formular-Labels und Fehlermeldungen im
+Admin-Bereich ebenso wie Frontend-Ausgaben wie die Wochentag-Labels in den
+Öffnungszeiten. Initiale Sprachen: **Deutsch** (`deDE`), **Englisch**
+(`enEN`). Details zu den Sprachdateien stehen in der
+[Entwicklerdokumentation](#entwicklerdokumentation).
 
 <a id="vorhandenes-json-ld-und-import"></a>
 ### Vorhandenes JSON-LD und Import
@@ -398,8 +430,8 @@ ausgelöst werden.
 In der globalen Konfiguration kann ein **Debug-Modus** aktiviert werden. Er
 blendet im Frontend einen kleinen Button ein, der alle auf der aktuellen
 Seite erzeugten JSON-LD-Blöcke als Pop-up anzeigt — zum Kopieren und
-manuellen Abgleich mit [validator.schema.org](https://validator.schema.org).
-Nicht für den Produktivbetrieb gedacht.
+manuellen Abgleich mit dem Schema.org-Validator. Nicht für den
+Produktivbetrieb gedacht.
 
 ---
 
@@ -475,10 +507,6 @@ verweisen. `Person` ist ausschließlich auf dem **Global-Scope** verfügbar
 Dangling-Reference-Guard greifen unabhängig von `"organization"`: die
 Fragmente `#person` und `#organization` sind getrennte Anker.
 
-> **Künftige Optionen (noch nicht umgesetzt):** ein optionales manuelles
-> Basis-URL-/Domain-Setting (für Reverse-Proxy-/CDN-Szenarien) sowie die
-> Darstellung einer Entität mit mehreren Typen über ein `@type`-Array.
-
 > 📄 Ausführliches Beispiel: [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
 
 <a id="verknuepfte-inhalte"></a>
@@ -487,15 +515,8 @@ Fragmente `#person` und `#organization` sind getrennte Anker.
 **Widget `id_reference`.** Ermöglicht es Seiten-Typen (z. B.
 `DonateAction`), per `@id` auf den global definierten Organisationsknoten zu
 verweisen, ohne ihn auf jeder Seite zu wiederholen. Die Deklaration erfolgt
-ausschließlich im Schema:
-
-```json
-"recipient": {
-  "ui:widget": "id_reference",
-  "ui:idTarget": "organization",
-  "ui:required": true
-}
-```
+ausschließlich im Schema (Beispiel siehe
+[Entwicklerdokumentation](#entwicklerdokumentation)).
 
 Zur Ausgabezeit fügt das Plugin dafür automatisch
 `{"@id": "<Basis-URL>#organization"}` ein — kein Eingabefeld, kein
@@ -577,19 +598,9 @@ Dangling-Guard-Bezug.
 }
 ```
 
-**Schema-Deklaration:**
-
-```json
-"organizer": {
-  "type": "object",
-  "ui:widget": "id_reference_or_literal",
-  "ui:label": "label_organizer",
-  "ui:literalFields": ["name", "jobTitle"],
-  "ui:literalFieldLabels": { "name": "label_name", "jobTitle": "label_job_title" },
-  "ui:literalType": "Person",
-  "ui:required": true
-}
-```
+Die vollständige Schema-Deklaration beider Widgets (`ui:idTarget`,
+`ui:literalFields`, `ui:literalType` u. a.) steht in der
+[Entwicklerdokumentation](#entwicklerdokumentation).
 
 <a id="use-case-event"></a>
 ### Event
@@ -633,52 +644,6 @@ Organisationsknoten — siehe
 Ausgabe-Beispiel.
 
 > 📄 Ausführliches Beispiel: [docs/use-cases/donate-action.md](docs/use-cases/donate-action.md)
-
-<a id="json-ld-ausgabe-im-detail"></a>
-### JSON-LD-Ausgabe im Detail
-
-Das Plugin gibt das JSON-LD als `<script>`-Tag im `<head>` aus — an der
-Stelle, an der im Layout-Template der Platzhalter `{schemaOrgData}` steht
-(siehe [Installation](#installation)):
-
-```html
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "LocalBusiness",
-  "name": "Muster GmbH",
-  "url": "https://www.example.com",
-  "address": {
-    "@type": "PostalAddress",
-    "streetAddress": "Musterstraße 12",
-    "postalCode": "12345",
-    "addressLocality": "Musterstadt",
-    "addressCountry": "DE"
-  },
-  "openingHours": ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
-}
-</script>
-```
-
-> **Hinweis:** Der Platzhalter `{schemaOrgData}` muss in `template.html`
-> stehen, nicht in `gallerytemplate.html`. Galerie-Vollansichten haben
-> keine eigene Kategorie-/Seiten-Identität — das Plugin erkennt diesen
-> Fall und gibt dort ohnehin kein JSON-LD aus. Der Admin-Bereich prüft
-> beim Platzhalter-Hinweis ausschließlich `template.html`; ein
-> Platzhalter, der nur in `gallerytemplate.html` steht, gilt daher
-> korrekt als fehlend.
-
-> **Tipp:** Das erzeugte JSON-LD kann mit dem offiziellen
-> Schema.org-Validator geprüft werden:
-> 🔗 [https://validator.schema.org](https://validator.schema.org)
-
-Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global +
-Kategorie + Seite = bis zu drei Blöcke). Types die ausschließlich auf
-Globalebene sinnvoll sind (`WebSite`, `Organization`) werden nur einmal
-ausgegeben. Leere Felder werden vor der Ausgabe entfernt; vollständig leere
-Knoten werden gar nicht ausgegeben.
-
-> 📄 Weitere Ausgabe-Beispiele: [docs/examples/](docs/examples/)
 
 ---
 
@@ -814,39 +779,6 @@ Betreibers. Dafür gilt eine einfache Grundregel:
 
 ---
 
-<a id="kompatibilitaet"></a>
-## Kompatibilität und Abhängigkeiten
-
-- moziloCMS 3.0.4 oder höher
-- PHP 8.1+
-- Kein weiteres Plugin erforderlich
-- AJV.js wird lokal ausgeliefert (kein externes CDN)
-- Kompatibel mit `seo_urls`-Plugin (optional): kanonische URLs aus
-  `seo_urls` können manuell als `url`-Property eingetragen werden
-
-> 📄 Vertiefung: [docs/compatibility.md](docs/compatibility.md) · [docs/dependencies.md](docs/dependencies.md)
-
----
-
-<a id="abgrenzung-core"></a>
-## Abgrenzung zu bestehenden Core-Implementierungen
-
-moziloCMS 3.0 enthält bereits folgende Schema.org-Implementierungen als
-Microdata:
-
-| Bereich | Core-Implementierung | Dieses Plugin |
-|---|---|---|
-| Seiteninhalt | `Article` (Wrapper, minimal) | `Article` als JSON-LD im `<head>` |
-| Bilder | `ImageObject` via `itemprop` | — |
-| Breadcrumb | `BreadcrumbList` via Microdata | — |
-| Kontakt | `LocalBusiness` via Microdata im Body | `LocalBusiness` als JSON-LD im `<head>` |
-
-Dieses Plugin **ersetzt** die Core-Microdata nicht, sondern **ergänzt** sie
-um JSON-LD im `<head>`, das von Google und anderen Suchmaschinen für Rich
-Results bevorzugt ausgewertet wird.
-
----
-
 <a id="entwicklerdokumentation"></a>
 ## Entwicklerdokumentation
 
@@ -876,6 +808,41 @@ abgelegt, sondern über die moziloCMS-eigene Settings-API (`$this->settings`)
 unter ebenenspezifischen Schlüsseln gespeichert und landen physisch in
 `plugin.conf.php` (siehe [Installation](#installation) für den
 FTP-Hinweis).
+
+Sprachdateien sind in zwei Familien getrennt — `admin_language_*.txt` für
+den Admin-Bereich (`$admin_lang->getLanguageValue()`) und
+`cms_language_*.txt` für Frontend-/CMS-Kontext
+(`$language->getLanguageValue()`); JSON-Schema-Dateien referenzieren die
+Werte über Sprachschlüssel wie `"ui:label": "label_name"` statt
+hartcodierter Strings.
+
+<a id="widget-deklaration-schema-beispiele"></a>
+### Widget-Deklaration im Schema (Beispiele)
+
+Die Widgets `id_reference` und `id_reference_or_literal` (siehe
+[Verknüpfte Inhalte](#verknuepfte-inhalte) für Verhalten und
+JSON-LD-Ausgabe) werden ausschließlich über Properties in der jeweiligen
+Schema-Datei deklariert:
+
+```json
+"recipient": {
+  "ui:widget": "id_reference",
+  "ui:idTarget": "organization",
+  "ui:required": true
+}
+```
+
+```json
+"organizer": {
+  "type": "object",
+  "ui:widget": "id_reference_or_literal",
+  "ui:label": "label_organizer",
+  "ui:literalFields": ["name", "jobTitle"],
+  "ui:literalFieldLabels": { "name": "label_name", "jobTitle": "label_job_title" },
+  "ui:literalType": "Person",
+  "ui:required": true
+}
+```
 
 Weiterführende Entwicklerdokumentation:
 
