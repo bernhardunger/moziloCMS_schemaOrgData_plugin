@@ -86,10 +86,10 @@ server-seitig auf ISO-8601 normalisiert:
 Gespeichert und im JSON-LD ausgegeben wird **ausschließlich** der
 ISO-Wert — das deutsche Format ist reines Eingabeformat im Admin-Formular.
 
-Bei `Event` gilt zusätzlich: `endDate` darf nicht vor `startDate` liegen,
-sonst schlägt die Validierung fehl. Bei `JobPosting` erfolgt keine
-automatische Prüfung von `validThrough` gegen `datePosted` — das Feld ist
-optional und liegt in der Verantwortung des Betreibers.
+Für beide bekannten Start-/End-Datumsfeldpaare gilt dieselbe
+Bereichsprüfung: Bei `Event` darf `endDate` nicht vor `startDate` liegen,
+bei `JobPosting` darf `validThrough` nicht vor `datePosted` liegen —
+in beiden Fällen schlägt die Validierung sonst fehl.
 
 ## Erweiterungsfeld (JSON-Textarea)
 

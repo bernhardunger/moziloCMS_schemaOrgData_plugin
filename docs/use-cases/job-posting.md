@@ -12,7 +12,7 @@
 | Ablaufdatum | `validThrough` | wie `datePosted` |
 | Beschäftigungsart | `employmentType` | Auswahl (z. B. `FULL_TIME`, `PART_TIME`) |
 | Arbeitgeber | `hiringOrganization` | Widget `id_reference_or_literal`, siehe [widgets.md](../widgets.md) |
-| Einsatzort | `jobLocation` | Place-Widget, analog zu `Event.location` |
+| Einsatzort | `jobLocation` | Place-Widget wie `Event.location`, hier aber als Ganzes **pflichtig** |
 
 ## Arbeitgeber (`hiringOrganization`)
 
@@ -26,7 +26,9 @@ gepflegten Identität übereinstimmt (z. B. bei einer Tochtergesellschaft).
 
 `jobLocation` ist wie `Event.location` ein Place-Widget mit
 `PostalAddress` (siehe
-[Adressschema](../../README.md#adressschema-postaladdress)).
+[Adressschema](../../README.md#adressschema-postaladdress)) — anders als
+bei `Event` ist das Feld hier als Ganzes verpflichtend: eine Stellenanzeige
+ohne Einsatzort wird beim Speichern abgelehnt.
 
 ## Vollständiges Beispiel
 
