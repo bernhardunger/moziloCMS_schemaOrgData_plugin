@@ -182,6 +182,7 @@ Reihenfolge:
 
 Ausgabe: `<script type="application/ld+json">\n{...}\n</script>\n`.
 
+<a id="id-mechanismus"></a>
 ### `@id`-Mechanismus im Detail
 
 `ui:idFragment` in der Schema-Datei deklariert einen Type als
