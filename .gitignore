@@ -13,3 +13,7 @@ tests/SMOKE-TESTS.md
 tests/js/node_modules/
 tests/js/package-lock.json
 
+# Rückmelde-Vorlage mischt stabile Struktur mit Lauf-Ergebnissen,
+# analog zu CLAUDE.md/doc/TODO.md bewusst nicht getrackt:
+tests/RCLaufRueckmeldung_accountingserviceusecase.xlsx
+
