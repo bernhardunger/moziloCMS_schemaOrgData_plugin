@@ -71,6 +71,7 @@ label_date_posted = Ausgeschrieben am
 label_valid_through = Bewerbungsfrist
 label_employment_type = Beschäftigungsart
 label_hiring_organization = Arbeitgeber (Organisation)
+placeholder_hiring_organization_name = z. B. Musterstadt Logistik GmbH
 label_job_location = Arbeitsort
 
 label_location = Veranstaltungsort

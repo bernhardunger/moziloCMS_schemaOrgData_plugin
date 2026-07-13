@@ -71,6 +71,7 @@ label_date_posted = Date Posted
 label_valid_through = Application Deadline
 label_employment_type = Employment Type
 label_hiring_organization = Hiring Organization
+placeholder_hiring_organization_name = e.g. Musterstadt Logistics Ltd.
 label_job_location = Job Location
 
 label_location = Event Location

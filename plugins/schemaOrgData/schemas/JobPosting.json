@@ -86,6 +86,7 @@
       "ui:label": "label_hiring_organization",
       "ui:required": true,
       "ui:literalFields": ["name"],
+      "ui:literalFieldPlaceholders": { "name": "placeholder_hiring_organization_name" },
       "ui:literalType": "Organization"
     },
     "jobLocation": {

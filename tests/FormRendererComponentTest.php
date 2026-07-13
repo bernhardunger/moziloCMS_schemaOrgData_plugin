@@ -856,4 +856,31 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertMatchesRegularExpression('#<option value="https://schema\.org/FULL_TIME" selected="selected">Vollzeit</option>#', $html);
         $this->assertStringNotContainsString('>https://schema.org/FULL_TIME<', $html);
     }
+
+    // -----------------------------------------------------------
+    // renderField() / Schema - JobPosting.hiringOrganization Placeholder
+    // -----------------------------------------------------------
+
+    function testJobPostingHiringOrganizationHatLiteralFieldPlaceholder(): void {
+        $hiringOrganization = $this->jobPostingSchema()['properties']['hiringOrganization'];
+
+        $this->assertSame('placeholder_hiring_organization_name', $hiringOrganization['ui:literalFieldPlaceholders']['name']);
+    }
+
+    function testRenderFieldZeigtPlaceholderFuerHiringOrganizationLiteralNameFeld(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->jobPostingSchema();
+        $lang = $this->adminLang();
+
+        $html = $renderer->renderField(
+            'page', 'hiringOrganization', $schema['properties']['hiringOrganization'], [], $schema, [], null, null, null,
+            $lang, $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString(
+            'placeholder="'.htmlspecialchars($lang->getLanguageValue('placeholder_hiring_organization_name'), ENT_QUOTES, CHARSET).'"',
+            $html
+        );
+    }
 }
