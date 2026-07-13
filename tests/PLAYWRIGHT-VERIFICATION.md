@@ -122,6 +122,12 @@ auch wenn der Fix vermeintlich naheliegt.
 ## Phase 0 — Login & Navigation
 
 1. ADMIN_URL öffnen, mit ADMIN_USER/ADMIN_PASSWORD einloggen.
+
+   **UI-Besonderheit:** Der „Anmelden"-Button ist disabled, bis sowohl
+   User- als auch Passwort-Feld einen Wert enthalten — erst dann wird er
+   enabled. Beide Felder befüllen und den enabled-Zustand abwarten, bevor
+   geklickt wird.
+
 2. Zu Plugins → schemaOrgData navigieren: Button/Link
    "js-config-adminlogin" ist der Einsprungspunkt. Das iframe lädt
    anschließend unter einer eigenen, direkten URL — diese nach dem
