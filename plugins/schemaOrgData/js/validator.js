@@ -103,9 +103,9 @@
         // per Definition nur Zusatz-Properties, keine Pflichtfelder des
         // Haupt-Schemas - sonst meldet AJV z. B. "must have required
         // property 'name'/'url'" unter einem Feld, das gar kein name/url
-        // enthalten soll (siehe doc/TODO.md, "Bug (lokalisiert)"). Required-
-        // Constraints INNERHALB verschachtelter Properties (z. B. address)
-        // bleiben unangetastet und validieren weiterhin echten Inhalt.
+        // enthalten soll. Required-Constraints INNERHALB verschachtelter
+        // Properties (z. B. address) bleiben unangetastet und validieren
+        // weiterhin echten Inhalt.
         var schemaForExtensionField = Object.assign({}, schema);
         delete schemaForExtensionField.required;
 
