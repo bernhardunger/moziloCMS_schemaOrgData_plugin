@@ -21,7 +21,8 @@ Alle `lib/`-Klassen sind selbst **zustandslos**: Kollaboratoren (andere
 Komponenten, `Language`-Instanzen, `$this->settings`, `PLUGIN_SELF_DIR`)
 werden bei jedem Aufruf als Parameter durchgereicht statt im Konstruktor
 eingefroren. Das hält die Klassen unabhängig voneinander testbar (siehe
-[development.md](development.md)) und macht Abhängigkeiten an der
+[tests.md](tests.md), Abschnitt „Warum ein eigenes Test-Bootstrap nötig
+ist") und macht Abhängigkeiten an der
 Methodensignatur sichtbar. Zwei Ausnahmen bestätigen das Prinzip:
 
 - `SchemaOrgData_SchemaRepository` cacht `loadSchema()`- und

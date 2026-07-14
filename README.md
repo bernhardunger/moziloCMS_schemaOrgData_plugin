@@ -323,7 +323,7 @@ Admin-Bereich ebenso wie Frontend-Ausgaben wie die Wochentag-Labels in den
 Öffnungszeiten. Initiale Sprachen: **Deutsch** (`deDE`), **Englisch**
 (`enEN`).
 
-> 📄 Vertiefung (Sprachdatei-Konventionen): [docs/development.md](docs/development.md)
+> 📄 Vertiefung (Sprachschlüssel-Konvention): [docs/schema-extending.md](docs/schema-extending.md)
 
 <a id="vorhandenes-json-ld-und-import"></a>
 ### Vorhandenes JSON-LD und Import
@@ -528,13 +528,13 @@ Weiterführende Entwicklerdokumentation:
 
 - [docs/architecture.md](docs/architecture.md) — Komponentenaufbau und Zusammenspiel der `lib/`-Klassen
 - [docs/file-structure.md](docs/file-structure.md) — vollständiger Datei- und Ordnerbaum
-- [docs/schema-extending.md](docs/schema-extending.md) — neuen Schema-Type per JSON-Datei hinzufügen
+- [docs/schema-extending.md](docs/schema-extending.md) — neuen Schema-Type per JSON-Datei hinzufügen, Sprachschlüssel-Konvention
 - [docs/schema/](docs/schema/) — Referenz der schema-getriebenen `ui:`-Properties
 - [docs/rendering.md](docs/rendering.md) — Formular-Rendering und JSON-LD-Erzeugung im Detail
 - [docs/widgets.md](docs/widgets.md) — `id_reference` / `id_reference_or_literal`: Mechanik und Schema-Deklaration
 - [docs/import.md](docs/import.md) — Import-Feature im Detail
 - [docs/configuration.md](docs/configuration.md) — Settings-API, Geltungsbereiche und Speicherformat
-- [docs/development.md](docs/development.md) — lokales Setup, Entwicklungskonventionen, Sprachdatei-Konventionen
+- [docs/development.md](docs/development.md) — lokales Setup, Commit-Konventionen
 
 ---
 

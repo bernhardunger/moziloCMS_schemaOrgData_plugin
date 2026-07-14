@@ -26,7 +26,7 @@ Ebenen: **Type-Ebene** (Top-Level im Schema-Objekt, einmal je Datei) oder
 |---|---|---|
 | `ui:widget` | Widget-Typ (siehe Tabelle unten); fehlt er, rendert `renderField()` ein einfaches Textfeld | alle |
 | `ui:label` | Sprachschlüssel für das Feld-Label | alle |
-| `ui:required` | Pflichtfeld-Badge, Live-Validierung, serverseitige Prüfung; muss zum Vorkommen der Property in der Top-Level-`required`-Liste passen (siehe `SchemaConsistencyTest`, [../development.md](../development.md)) | alle |
+| `ui:required` | Pflichtfeld-Badge, Live-Validierung, serverseitige Prüfung; muss zum Vorkommen der Property in der Top-Level-`required`-Liste passen (siehe `SchemaConsistencyTest`, [../tests.md](../tests.md)) | alle |
 | `ui:placeholder` | Platzhaltertext im Eingabefeld | `text`, `textarea` |
 | `ui:enumLabels` | `{ "deDE": { wert: label, … }, "enEN": { … } }` — sprachabhängige Anzeigenamen für `enum`-Werte | `select` |
 | `ui:days` | Array der sieben Wochentags-Kürzel in Anzeigereihenfolge (`["Mo", "Tu", …, "Su"]`) | `opening_hours` |
@@ -63,7 +63,7 @@ einziges Literal-Feld (`name`) den Default-Label-Schlüssel `label_name`.
 `"$ref": "#/definitions/PostalAddress"` aus einem lokalen
 `definitions.PostalAddress`-Block referenziert — dieser Block muss über
 alle Types, die ihn führen, strukturell identisch bleiben
-(`SchemaConsistencyTest`, siehe [../development.md](../development.md)).
+(`SchemaConsistencyTest`, siehe [../tests.md](../tests.md)).
 
 ## Siehe auch
 

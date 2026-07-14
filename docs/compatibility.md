@@ -139,7 +139,7 @@ eine reguläre Plugin-Installation.
 Testet ausschließlich `js/validator.js` in einer simulierten
 DOM-Umgebung (`testEnvironment: "jsdom"`). `tests/js/node_modules/` wird
 nicht eingecheckt; `npm install` ist vor dem ersten Jest-Lauf notwendig
-(siehe [development.md](development.md)). Auch dieses Paket ist reine
+(siehe [tests.md](tests.md)). Auch dieses Paket ist reine
 Testinfrastruktur, keine Laufzeit-Abhängigkeit des Plugins.
 
 ### Zusammenfassung
@@ -155,4 +155,5 @@ und Jest existieren ausschließlich im Entwicklungs-Repository
 - [../README.md](../README.md#voraussetzungen-und-kompatibilitaet) — Kurzübersicht
 - [configuration.md](configuration.md) — Settings-API, `plugin.conf.php`-Speicherformat
 - [security.md](security.md) — warum kein CDN und keine externen Laufzeit-Abhängigkeiten
-- [development.md](development.md) — `composer install`/`npm install` im Entwicklungsalltag
+- [development.md](development.md) — `composer install` im Entwicklungsalltag
+- [tests.md](tests.md) — `npm install`/Jest-Testausführung im Detail

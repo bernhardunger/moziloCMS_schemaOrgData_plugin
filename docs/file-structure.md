@@ -73,7 +73,7 @@ moziloCMS-Installation (dort landet nur der Inhalt von
 ```
 (Repo-Root)
 ├── docs/               # diese Dokumentation (Geschwister von plugins/, analog zu tests/)
-├── tests/              # PHPUnit-Tests + tests/js/ (Jest), siehe development.md
+├── tests/              # PHPUnit-Tests + tests/js/ (Jest), siehe tests.md
 ├── vendor/             # Composer-Dependencies (gitignored)
 ├── composer.json / composer.lock
 ├── phpunit.xml
@@ -85,4 +85,5 @@ moziloCMS-Installation (dort landet nur der Inhalt von
 - [../README.md](../README.md) — Feature-Überblick und Nutzerdokumentation
 - [architecture.md](architecture.md) — Komponentenaufbau und Zusammenspiel der `lib/`-Klassen
 - [schema-extending.md](schema-extending.md) — neuen Schema-Type per JSON-Datei hinzufügen
-- [development.md](development.md) — lokales Setup, Entwicklungskonventionen
+- [development.md](development.md) — lokales Setup, Commit-Konventionen
+- [tests.md](tests.md) — Testarten, Testausführung im Detail
