@@ -76,8 +76,8 @@ Gegenprüfung derselben Felder liegt in `tests/Validation/` bzw. den
 
 ## Grundprinzip beim Erweitern
 
-Ein neuer Schema-Type erfordert keine PHP-Änderung (siehe
-[schema-extending.md](schema-extending.md)) — entsprechend sollte ein Test
+Ein neuer Schema-Type erfordert im Regelfall keine PHP-Änderung (siehe
+[schema-extending.md](schema-extending.md) für Ausnahmen) — entsprechend sollte ein Test
 für einen neuen Type in erster Linie das **Schema selbst** sowie den
 `saveConfig()`/`buildJsonLdScript()`-Roundtrip für seine Besonderheiten
 prüfen, nicht die generischen `lib/`-Mechanismen erneut, die bereits über

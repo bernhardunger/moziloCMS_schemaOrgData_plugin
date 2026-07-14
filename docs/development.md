@@ -121,8 +121,8 @@ darunter — analog zu `docs/`. Grober Zuschnitt:
 
 ## Grundprinzip beim Erweitern
 
-Ein neuer Schema-Type erfordert keine PHP-Änderung (siehe
-[schema-extending.md](schema-extending.md)) — entsprechend sollte auch
+Ein neuer Schema-Type erfordert im Regelfall keine PHP-Änderung (siehe
+[schema-extending.md](schema-extending.md) für Ausnahmen) — entsprechend sollte auch
 ein Test für einen neuen Type in erster Linie das **Schema selbst** sowie
 den `saveConfig()`/`buildJsonLdScript()`-Roundtrip für seine
 Besonderheiten prüfen (neue Widget-Kombination, neues `ui:idFragment`,

@@ -1,11 +1,18 @@
 # Neuen Schema-Type hinzufügen
 
-Ein neuer Schema.org-Type kommt ausschließlich als `.json`-Datei in
-`schemas/` hinzu — es ist keine PHP-Änderung nötig. Die Datei definiert
-gleichzeitig die serverseitige Validierung (`SchemaOrgData_Validator`,
+Ein neuer Schema.org-Type kommt im Regelfall ausschließlich als
+`.json`-Datei in `schemas/` hinzu — keine PHP-Änderung nötig, solange
+sich seine Felder mit den bestehenden generischen Widgets/Validatoren
+abbilden lassen. Die Datei definiert dann gleichzeitig die serverseitige
+Validierung (`SchemaOrgData_Validator`,
 `SchemaOrgData_ConfigSaveService::saveConfig()`), die clientseitige
 AJV-Validierung (`js/validator.js`) und die Formularfelder
-(`SchemaOrgData_FormRenderer`). `SchemaOrgData_SchemaRepository::
+(`SchemaOrgData_FormRenderer`). Punktuelle Ausnahmen mit typnamen- oder
+feldnamengebundener PHP-Logik bestehen aktuell für `telephone`
+(namensbasierte Validierung, siehe unten) sowie für `Event`
+(`endDate`-vor-`startDate`-Prüfung, Vergangenheits-Warnung bei
+`startDate`) — ein neuer Type mit vergleichbarem Bedarf müsste diese
+Fälle im Code ergänzen. `SchemaOrgData_SchemaRepository::
 getAvailableSchemaTypes()` listet jede `.json`-Datei im Verzeichnis
 automatisch als verfügbaren Type auf; welche Geltungsbereiche sie anbietet,
 steuert ausschließlich `ui:scopes` innerhalb der Datei.
