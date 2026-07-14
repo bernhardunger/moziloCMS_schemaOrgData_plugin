@@ -67,7 +67,7 @@ nicht mehr existierende Vakanz.
 
 ## Siehe auch
 
-- [../../README.md](../../README.md#use-case-jobposting) — Kurzübersicht
+- [../../README.md](../../README.md#use-cases-und-beispiele) — Use Cases im Überblick
 - [../widgets.md](../widgets.md) — Mechanik von `id_reference_or_literal`
 - [organization-identity.md](organization-identity.md) — Organisationsknoten für `hiringOrganization`
 - [../validation.md](../validation.md) — Datumsvalidierung

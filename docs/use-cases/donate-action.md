@@ -59,7 +59,7 @@ bei `FAQPage` (siehe [Best Practices](../best-practices.md)).
 
 ## Siehe auch
 
-- [../../README.md](../../README.md#use-case-donateaction) — Kurzübersicht
+- [../../README.md](../../README.md#use-cases-und-beispiele) — Use Cases im Überblick
 - [../widgets.md](../widgets.md) — Mechanik von `id_reference`, Dangling-Reference-Guard
 - [organization-identity.md](organization-identity.md) — Organisationsknoten und `@id`-Fragmente
 - [../best-practices.md](../best-practices.md#seiten-types-nur-wo-passend) — Spendenaufruf ohne echte Spendenmöglichkeit

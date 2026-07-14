@@ -81,7 +81,7 @@ aktualisiert wird — Suchmaschinen werten das als veraltetes Signal. Siehe
 
 ## Siehe auch
 
-- [../../README.md](../../README.md#use-case-event) — Kurzübersicht
+- [../../README.md](../../README.md#use-cases-und-beispiele) — Use Cases im Überblick
 - [../widgets.md](../widgets.md) — Mechanik von `id_reference_or_literal`
 - [organization-identity.md](organization-identity.md) — Person-/Org-Fragmente für `organizer`
 - [../validation.md](../validation.md) — Datumsvalidierung
