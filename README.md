@@ -336,22 +336,6 @@ Plugin diesen Block **beibehält** (kein eigenes JSON-LD) oder ihn per
 eigener Konfiguration **überschreibt** — ein automatischer Merge findet
 nicht statt.
 
-<details>
-<summary>Diagramm: Entscheidungsablauf bei erkanntem JSON-LD (Beibehalten vs. Überschreiben)</summary>
-
-```mermaid
-flowchart TD
-    A["Vorhandenes JSON-LD erkannt"] --> B{"Fundort?"}
-    B -->|Layout-Template| C["Hinweis im Global-Scope"]
-    B -->|Seiteninhalt| D["Hinweis im Seiten-Scope"]
-    C --> E{"Nutzerentscheidung"}
-    D --> E
-    E -->|Beibehalten| F["Kein eigenes JSON-LD für diesen Scope"]
-    E -->|Überschreiben| G["Plugin-JSON-LD zusätzlich zum vorhandenen Block<br/>(kein automatischer Merge, alter Block bleibt stehen)"]
-```
-
-</details>
-
 Über ein **Import-Feld** lässt sich vorhandenes JSON-LD einfügen; das
 Plugin parst den Block und befüllt automatisch die bekannten Formularfelder
 (unbekannte Properties wandern ins Erweiterungsfeld).
@@ -393,51 +377,15 @@ Ausgewählte Schema-Types (**Organization**, **NGO**, die **LocalBusiness**-Fami
 im Datengraphen eindeutig identifiziert. Seiten-Types wie **DonateAction**
 oder **Event** können darüber per `@id` auf den global definierten
 Organisations- bzw. Personen-Knoten verweisen, ohne ihn auf jeder Seite zu
-wiederholen:
-
-```html
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "NGO",
-  "@id": "https://www.example.org/#organization",
-  "name": "Beispiel-Hilfe e. V.",
-  "url": "https://www.example.org",
-  "nonprofitStatus": "DERegisteredAssociationCharity"
-}
-</script>
-```
-
-Welcher Type welches `@id`-Fragment bekommt, wird ausschließlich im
-jeweiligen JSON-Schema deklariert (`ui:idFragment`) — es gibt keine
-Type-Namen im PHP-Code. Pro Fragment (`#organization`, `#person`) trägt
-maximal ein Knoten pro Seite die `@id`; die absolute Basis-URL wird zur
+wiederholen. Welcher Type welches `@id`-Fragment bekommt, wird ausschließlich
+im jeweiligen JSON-Schema deklariert (`ui:idFragment`) — es gibt keine
+Type-Namen im PHP-Code. Ein De-Dup-Guard sorgt dafür, dass pro Fragment
+(`#organization`, `#person`) maximal ein Knoten pro Seite die `@id` trägt
+(sind z. B. **NGO** und **Organization** gleichzeitig global konfiguriert,
+bleibt der zweite Knoten ohne Anker); die absolute Basis-URL wird zur
 Ausgabezeit aus dem aktuellen Request abgeleitet.
 
-<details>
-<summary>Diagramm: @id-Referenzen auf den globalen Organisations-/Personen-Knoten</summary>
-
-```mermaid
-graph LR
-    ORG["Global-Knoten<br/>NGO / Organization / LocalBusiness-Familie<br/>@id: #organization"]
-    PERS["Global-Knoten<br/>Person<br/>@id: #person"]
-    DONATE["Seite: DonateAction<br/>recipient"]
-    EVENT["Seite: Event<br/>organizer"]
-
-    DONATE -->|id_reference| ORG
-    EVENT -->|id_reference_or_literal| ORG
-    EVENT -->|id_reference_or_literal| PERS
-```
-
-</details>
-
-> ℹ️ De-Dup-Guard (Schutz vor doppelten Anker-IDs): Pro Fragment
-> (`#organization`, `#person`) erhält nur der
-> erste Knoten in Ausgabereihenfolge die `@id` — sind z. B. **NGO** und
-> **Organization** gleichzeitig global konfiguriert, bleibt der zweite Knoten
-> ohne Anker.
-
-> 📄 Ausführliches Beispiel (De-Dup-Guard, Person-Fragment, Basis-URL-Empfehlung): [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
+> 📄 Ausführliches Beispiel (JSON-LD-Beispiel, De-Dup-Guard, Person-Fragment, Basis-URL-Empfehlung): [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
 
 <a id="verknuepfte-inhalte"></a>
 ### Verknüpfte Inhalte (Widgets)
