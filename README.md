@@ -493,23 +493,12 @@ gegenprüfen.
 <a id="sicherheit"></a>
 ## Sicherheit
 
-- **Kein Direktzugriff**: Jede PHP-Datei des Plugins (inkl. aller
-  `lib/`-Komponenten) prüft die moziloCMS-Konstante `IS_CMS` und bricht bei
-  Direktaufruf ab.
-- **Settings-Key-Härtung**: Kategorie- und Seitenbezeichner werden vor der
-  Verwendung in Settings-Keys bereinigt (`sanitizeScopeIdentifier()`) —
-  Schutz vor Path-Traversal und unerwünschten Zeichen in Schlüsselnamen.
-- **Eingabe-Sanitizing**: Alle Formularwerte werden beim Speichern getrimmt
-  und von HTML-Tags befreit; Telefonnummern werden normalisiert.
-- **Script-Breakout-Schutz**: Die JSON-LD-Ausgabe erfolgt mit
-  `JSON_HEX_TAG` — in Feldwerten enthaltene `<`/`>`-Zeichen können den
-  umgebenden `<script>`-Block nicht aufbrechen. Dasselbe gilt für die an
-  das Admin-JavaScript übergebenen Meldungstexte.
-- **Server-seitige Validierung ist maßgeblich**: Die client-seitige
-  AJV-Validierung ist Komfort; gespeichert wird nur, was die
-  PHP-Validierung besteht.
-- **Kein CDN**: AJV.js wird lokal ausgeliefert — keine externen
-  Skript-Quellen.
+Mehrere Härtungsmechanismen greifen ineinander: ein `IS_CMS`-Guard gegen
+Direktaufruf jeder PHP-Datei, Settings-Key-Härtung gegen Path-Traversal,
+serverseitiges Eingabe-Sanitizing, `JSON_HEX_TAG`-Schutz gegen
+Script-Breakout in der JSON-LD-Ausgabe, eine maßgebliche server-seitige
+Validierung (unabhängig von JavaScript) sowie lokal ausgeliefertes AJV.js
+ohne CDN-Abhängigkeit.
 
 > 📄 Vertiefung: [docs/security.md](docs/security.md)
 
@@ -522,23 +511,8 @@ Das Plugin ist in eine schlanke Fassaden-Klasse (`index.php`) und
 eigenständige Komponenten unter `lib/` aufgeteilt — jede Komponente mit
 eigenem `IS_CMS`-Guard, per `require_once` geladen. Neue Schema-Types
 kommen ausschließlich als `.json`-Datei in `schemas/` hinzu (Validierung
-und Formularfelder in einer Datei), ohne PHP-Änderung.
-
-<details>
-<summary>Ordnerstruktur anzeigen</summary>
-
-```
-plugins/schemaOrgData/
-├── index.php        # Plugin-Hauptklasse (Fassade)
-├── plugin.conf.php  # moziloCMS-Plugin-Metadaten + Live-Konfiguration
-├── schemas/         # JSON-Schema-Dateien (Validierung + Formular), eine je Type
-├── js/               # ajv.min.js, validator.js
-├── lib/              # Plugin-Komponenten (Scope-Auflösung, JSON-LD-Aufbau,
-│                        Formular-Rendering, Validierung, Admin-Orchestrierung …)
-└── sprachen/         # admin_language_*.txt, cms_language_*.txt
-```
-
-</details>
+und Formularfelder in einer Datei), ohne PHP-Änderung. Der vollständige
+Datei- und Ordnerbaum steht in [docs/file-structure.md](docs/file-structure.md).
 
 Die vertiefende Dokumentation (`docs/`, dieser Ordner) liegt als Geschwister
 von `plugins/` am Repo-Root, analog zu `tests/` — sie ist nicht Teil des
