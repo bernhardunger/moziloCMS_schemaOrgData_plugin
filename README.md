@@ -532,7 +532,7 @@ Weiterführende Entwicklerdokumentation:
 - [docs/widgets.md](docs/widgets.md) — `id_reference` / `id_reference_or_literal`: Mechanik und Schema-Deklaration
 - [docs/import.md](docs/import.md) — Import-Feature im Detail
 - [docs/configuration.md](docs/configuration.md) — Settings-API, Geltungsbereiche und Speicherformat
-- [docs/development.md](docs/development.md) — lokales Setup, Commit-Konventionen
+- [docs/tests.md](docs/tests.md) — lokales Setup, Commit-Konventionen, Testausführung
 
 ---
 

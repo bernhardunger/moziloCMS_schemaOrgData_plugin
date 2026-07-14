@@ -123,7 +123,7 @@ keinen Composer-Autoloader; alle produktiven Klassen werden über
 transitiver Abhängigkeiten wie `sebastian/*`, `phar-io/*`,
 `nikic/php-parser`) ist in `.gitignore` eingetragen und wird nicht ins
 Repository eingecheckt — `composer install` ist vor dem ersten Testlauf
-notwendig (siehe [development.md](development.md)), aber irrelevant für
+notwendig (siehe [tests.md](tests.md)), aber irrelevant für
 eine reguläre Plugin-Installation.
 
 ### Entwicklungszeit: npm/Jest (JavaScript)
@@ -156,5 +156,5 @@ und Jest existieren ausschließlich im Entwicklungs-Repository
 - [../README.md](../README.md#voraussetzungen-und-kompatibilitaet) — Kurzübersicht
 - [configuration.md](configuration.md) — Settings-API, `plugin.conf.php`-Speicherformat
 - [security.md](security.md) — warum kein CDN und keine externen Laufzeit-Abhängigkeiten
-- [development.md](development.md) — `composer install` im Entwicklungsalltag
+- [tests.md](tests.md) — `composer install` im Entwicklungsalltag
 - [tests.md](tests.md) — `npm install`/Jest-Testausführung im Detail

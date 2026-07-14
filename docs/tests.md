@@ -1,9 +1,29 @@
 # Tests
 
-Diese Seite beschreibt **welche Testarten es gibt**, **wie sie lokal
-ausgeführt werden** und **warum ein eigenes Test-Bootstrap nötig ist**.
-Für den allgemeinen lokalen Einstiegspunkt (`composer install`) und
-Commit-Konventionen siehe [development.md](development.md).
+Diese Seite beschreibt das lokale Setup, **welche Testarten es gibt**,
+**wie sie ausgeführt werden** und **warum ein eigenes Test-Bootstrap nötig
+ist**.
+
+## Lokales Setup
+
+```bash
+composer install
+./vendor/bin/phpunit
+```
+
+`composer.json` (Repo-Root) deklariert nur eine Dev-Abhängigkeit,
+`phpunit/phpunit: ^11.0`, sowie ein PSR-4-Autoload für die Testklassen
+(`SchemaOrgData\Tests\` → `tests/`). `vendor/` ist gitignored — PHPUnit
+wird nicht ins Repository eingecheckt, `composer install` ist also vor
+dem ersten Testlauf notwendig.
+
+## Commit-Konventionen
+
+Commit-Messages sind auf Deutsch verfasst, im Imperativ oder als knappe
+Beschreibung der Änderung („Dokumentation: README.md nach
+Strukturvorgabe umgebaut", „docs/ an den Repo-Root verschoben"). Inline-
+Dokumentation im Code (PHPDoc, Kommentare) ist ebenfalls durchgehend auf
+Deutsch gehalten.
 
 ## Testarten im Überblick
 
@@ -23,23 +43,10 @@ CI-Pipeline.
 
 ### PHPUnit
 
-Voraussetzung: `composer install` (siehe [development.md](development.md)).
-`phpunit.xml` definiert zwei Testsuites, die `./vendor/bin/phpunit` ohne
-weitere Optionen zusammen ausführt:
-
-```xml
-<testsuite name="schemaOrgData">
-  <directory>tests</directory>
-  <exclude>tests/Validation/</exclude>
-</testsuite>
-<testsuite name="schemaOrgData-Validation">
-  <directory>tests/Validation</directory>
-</testsuite>
-```
-
-`tests/Validation/` (je ein Test pro Feldvalidator) ist von der
-Hauptsuite ausgeschlossen und läuft als eigene Suite — organisatorische
-Trennung, kein Unterschied im Aufruf.
+`phpunit.xml` definiert zwei Testsuites — die Hauptsuite und
+`tests/Validation/` (organisatorische Trennung, kein Unterschied im
+Aufruf) —, die `./vendor/bin/phpunit` ohne weitere Optionen zusammen
+ausführt.
 
 ### Jest (clientseitige Validierung)
 
@@ -51,31 +58,24 @@ npm install
 npm test
 ```
 
-`tests/js/package.json` konfiguriert `testEnvironment: "jsdom"` (DOM-APIs
-für Formular-/Event-Tests ohne echten Browser) und referenziert
-`jest`/`jest-environment-jsdom` (`^29`) als Dev-Dependency.
-
 ## PHPUnit: Testorganisation
 
 `tests/` liegt eine Ebene über `plugins/schemaOrgData/` (Repo-Root), nicht
 darunter — analog zu `docs/`. Grober Zuschnitt:
 
-- **Eine Testdatei je `lib/`-Klasse** (`ScopeResolverTest.php`,
-  `JsonLdBuilderTest.php`, `FormRendererComponentTest.php`, …) — Direkt-Tests
-  gegen die öffentlichen Methoden dieser Komponente, mit echten statt
-  gemockten Kollaboratoren (siehe „Warum ein eigenes Test-Bootstrap nötig
-  ist" unten).
-- **Feature-/Type-übergreifende Tests**: `JsonLdOutputTest.php` prüft die
+- **Eine Testdatei je `lib/`-Klasse** — Direkt-Tests gegen die
+  öffentlichen Methoden dieser Komponente, mit echten statt gemockten
+  Kollaboratoren (siehe „Warum ein eigenes Test-Bootstrap nötig ist"
+  unten).
+- **Feature-/Type-übergreifende Tests**: eine Testdatei prüft die
   **Gesamtausgabe** (Scope-Merge, Type-Kollision, Ausschlussliste) über
-  mehrere Komponenten hinweg; `SchemaConsistencyTest.php` prüft
-  **Konsistenz über alle `schemas/*.json` hinweg** — u. a., dass der
-  `PostalAddress`-Definitionsblock strukturell identisch bleibt und
-  `required[]` mit `ui:required: true` bidirektional übereinstimmt (relevant
-  beim Anlegen eines neuen Schema-Types, siehe
-  [schema-extending.md](schema-extending.md)).
-- **Ein Type mit Sonderverhalten je eigener Testdatei**
-  (`DonateActionTest.php`, `EventTest.php`, `PersonIdRefOrLiteralTest.php`)
-  — deckt Schema-Struktur, Widget-Verhalten und den
+  mehrere Komponenten hinweg; eine weitere prüft **Konsistenz über alle
+  `schemas/*.json` hinweg** — u. a., dass der `PostalAddress`-
+  Definitionsblock strukturell identisch bleibt und `required[]` mit
+  `ui:required: true` bidirektional übereinstimmt (relevant beim Anlegen
+  eines neuen Schema-Types, siehe [schema-extending.md](schema-extending.md)).
+- **Ein Type mit Sonderverhalten je eigener Testdatei** — deckt
+  Schema-Struktur, Widget-Verhalten und den
   `saveConfig()`/`buildJsonLdScript()`-Roundtrip für die Besonderheiten
   dieses Types ab, statt generische Mechanismen erneut zu prüfen.
 - **`tests/Validation/`** — ein Test je serverseitigem Feldvalidator.
@@ -87,31 +87,25 @@ darunter — analog zu `docs/`. Grober Zuschnitt:
 
 Ein kleiner Teil der PHPUnit-Tests ist mit `markTestSkipped()` als
 strukturell nicht erreichbar markiert (in `JsonLdOutputTest.php` und
-`FrontendRendererTest.php`). Ursache ist dieselbe in beiden Fällen:
-`tests/bootstrap.php` setzt `CAT_REQUEST`/`PAGE_REQUEST` fest auf `false`
-(entspricht dem Zustand ohne aktive Kategorie/Seite), einzelne Testfälle
-würden aber einen aktiven `CAT_REQUEST`/`PAGE_REQUEST` voraussetzen, um
-den betreffenden Codepfad zu erreichen. Die genaue Anzahl wird hier bewusst
-nicht genannt — sie veraltet bei jeder Testerweiterung (siehe README-eigene
-Konvention dazu, [../README.md](../README.md#tests)). Diese Fälle sind
-kein Hinweis auf eine Lücke in der Testabdeckung, sondern eine Grenze des
-Mock-Bootstraps; die betroffenen Codepfade werden stattdessen durch
-ergänzende Browser-Regressionstests gegen eine echte Installation mit
-aktivem `CAT_REQUEST`/`PAGE_REQUEST` abgedeckt.
+`FrontendRendererTest.php`, mit Begründung direkt im jeweiligen
+Docblock). Ursache ist in beiden Fällen dieselbe Grenze des
+Mock-Bootstraps: `tests/bootstrap.php` setzt `CAT_REQUEST`/`PAGE_REQUEST`
+fest auf `false`, einzelne Testfälle würden aber eine aktive
+Kategorie/Seite voraussetzen. Die betroffenen Codepfade sind stattdessen
+durch ergänzende Browser-Regressionstests gegen eine echte Installation
+abgedeckt.
 
 ## Jest: clientseitige Validierung
 
 `tests/js/` testet ausschließlich `js/validator.js` — die Logik, die im
 Formular Live-Feedback erzeugt, bevor ein Request überhaupt abgeschickt
 wird (siehe [validation.md](validation.md)). Die Testdateien sind nach
-Widget bzw. Funktionsgruppe benannt: `validator-functions.test.js` für die
-einzelnen Validierungsfunktionen, sowie je eine Datei für zusammengesetzte
-Widget-Interaktionen (`address-required-widget`, `event-date-range-widget`,
-`extension-field-wiring`, `geo-widget`, `import-autofill-button`,
-`opening-hours-widget`). Diese Tests laufen unabhängig von PHPUnit und
+Widget bzw. Funktionsgruppe benannt: eine Datei für die einzelnen
+Validierungsfunktionen, sowie je eine Datei für zusammengesetzte
+Widget-Interaktionen. Diese Tests laufen unabhängig von PHPUnit und
 prüfen ausschließlich Browser-seitiges Verhalten — die serverseitige
 Gegenprüfung derselben Felder liegt in `tests/Validation/` bzw. den
-`ValidatorTest`-Methoden.
+entsprechenden PHPUnit-Direkt-Tests.
 
 ## Warum ein eigenes Test-Bootstrap nötig ist
 
@@ -173,6 +167,6 @@ die vorhandenen Direkt-Tests abgedeckt sind.
 ## Siehe auch
 
 - [../README.md](../README.md#tests) — Kurzübersicht
-- [development.md](development.md) — lokales Setup (`composer install`), Commit-Konventionen
 - [validation.md](validation.md) — welche Feldregeln client- und serverseitig geprüft werden
 - [schema-extending.md](schema-extending.md) — `SchemaConsistencyTest`-Anforderungen an neue Schema-Dateien
+- [architecture.md](architecture.md) — warum die `lib/`-Klassen zustandslos sind (Testbarkeit)

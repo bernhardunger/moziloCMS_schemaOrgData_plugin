@@ -9,7 +9,7 @@ maßgeblich für das, was tatsächlich gespeichert wird.
 Das Feedback im Formular ist dreistufig: ✅ grün (OK) · ⚠️ gelb (Warnung,
 blockiert nicht) · ❌ rot (Fehler, blockiert das Speichern). Alle
 Fehlermeldungen kommen aus den Sprachdateien
-(`$admin_lang->getLanguageValue()`, siehe [development.md](development.md)).
+(`$admin_lang->getLanguageValue()`, siehe [tests.md](tests.md)).
 
 ## Übersicht
 

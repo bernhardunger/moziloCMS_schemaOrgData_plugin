@@ -136,4 +136,4 @@ in [import.md](import.md).
 - [configuration.md](configuration.md) — Settings-API, Geltungsbereiche und Speicherformat
 - [import.md](import.md) — Import-Feature im Detail
 - [schema-extending.md](schema-extending.md) — neuen Schema-Type per JSON-Datei hinzufügen
-- [development.md](development.md) — lokales Setup, Entwicklungskonventionen
+- [tests.md](tests.md) — lokales Setup, Commit-Konventionen, Testausführung
