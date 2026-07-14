@@ -138,24 +138,18 @@ zeigt die [Google Search Gallery](https://developers.google.com/search/docs/appe
 - Kompatibel mit `seo_urls`-Plugin (optional): kanonische URLs aus
   `seo_urls` können manuell als `url`-Property eingetragen werden
 
-> 📄 Vertiefung: [docs/compatibility.md](docs/compatibility.md) · [docs/dependencies.md](docs/dependencies.md)
+> 📄 Vertiefung (inkl. Abhängigkeiten): [docs/compatibility.md](docs/compatibility.md)
 
 <a id="abgrenzung-core"></a>
 ### Abgrenzung zu bestehenden Core-Implementierungen
 
-moziloCMS 3.0 enthält bereits folgende Schema.org-Implementierungen als
-Microdata:
+moziloCMS 3.0 enthält bereits Schema.org-Implementierungen als Microdata
+(u. a. `Article`-Wrapper, `ImageObject`, `BreadcrumbList`, `LocalBusiness`
+im Body). Dieses Plugin **ersetzt** diese Core-Microdata nicht, sondern
+**ergänzt** sie um JSON-LD im `<head>`, das von Google und anderen
+Suchmaschinen für Rich Results bevorzugt ausgewertet wird.
 
-| Bereich | Core-Implementierung | Dieses Plugin |
-|---|---|---|
-| Seiteninhalt | `Article` (Wrapper, minimal) | `Article` als JSON-LD im `<head>` |
-| Bilder | `ImageObject` via `itemprop` | — |
-| Breadcrumb | `BreadcrumbList` via Microdata | — |
-| Kontakt | `LocalBusiness` via Microdata im Body | `LocalBusiness` als JSON-LD im `<head>` |
-
-Dieses Plugin **ersetzt** die Core-Microdata nicht, sondern **ergänzt** sie
-um JSON-LD im `<head>`, das von Google und anderen Suchmaschinen für Rich
-Results bevorzugt ausgewertet wird.
+> 📄 Vertiefung (Tabelle im Detail): [docs/compatibility.md](docs/compatibility.md#abgrenzung-core)
 
 ---
 
@@ -240,22 +234,6 @@ Verschachtelte Felder (z. B. `address`, `openingHours`) werden dabei nicht
 innerhalb des Objekts gemergt — hier gewinnt die Ebene mit dem gefüllten
 Objekt vollständig.
 
-<details>
-<summary>Diagramm: Vererbungslogik der Geltungsbereiche</summary>
-
-```mermaid
-flowchart LR
-    G["Global<br/>z. B. name, telephone"] -->|leeres Feld erbt| K["Kategorie<br/>überschreibt gefüllte Felder"]
-    K -->|leeres Feld erbt| S["Seite<br/>überschreibt gefüllte Felder"]
-
-    subgraph Sonderfall["Verschachtelte Objekte (address, openingHours)"]
-        direction LR
-        N1["kein Feld-Merge<br/>innerhalb des Objekts"] --> N2["spezifischste Ebene<br/>mit gefülltem Objekt gewinnt vollständig"]
-    end
-```
-
-</details>
-
 **Ausschlussliste.** Im Admin-Bereich kann der Nutzer Kategorien definieren,
 auf denen die globale Ausgabe **nicht** erfolgt — z. B. Impressum,
 Datenschutz, Sitemap. Eine eigenständige Konfiguration der Kategorie oder
@@ -295,43 +273,30 @@ Ausgabe entfernt; vollständig leere Knoten werden gar nicht ausgegeben.
 
 > 📄 Vertiefung (gallerytemplate-Sonderfall, Types nur auf Globalebene,
 > De-Dup-Verhalten (Duplikat-Vermeidung), weitere Ausgabe-Beispiele):
-> [docs/rendering.md](docs/rendering.md) · [docs/examples/](docs/examples/)
+> [docs/rendering.md](docs/rendering.md)
 
 <a id="adressschema-postaladdress"></a>
 ### Adressschema (PostalAddress)
 
 Das Adressfeld folgt exakt `schema.org/PostalAddress` und ist international
-ausgelegt:
+ausgelegt: Straße, Postleitzahl, Ort, Region und Land — nur **Ort** und
+**Land** sind Pflicht. Das Feld **Land** wird als Select-Box mit Klarnamen
+dargestellt (z. B. „Deutschland"), intern wird der
+**ISO-3166-1-alpha-2-Code** gespeichert (z. B. `DE`, Standard-Vorauswahl:
+Deutschland). Die Länderliste ist in der zugehörigen JSON-Schema-Datei als
+`enum` definiert und dort pflegbar.
 
-| Formularfeld | schema.org Property | Pflicht |
-|---|---|---|
-| Straße | `streetAddress` | nein |
-| Postleitzahl | `postalCode` | nein |
-| Ort | `addressLocality` | ja |
-| Region / Bundesland | `addressRegion` | nein |
-| Land | `addressCountry` | **ja** |
-
-Das Feld **Land** wird als Select-Box mit Klarnamen dargestellt (z. B.
-„Deutschland"), intern wird der **ISO-3166-1-alpha-2-Code** gespeichert
-(z. B. `DE`). Standard-Vorauswahl: Deutschland (`DE`).
-
-Die Länderliste ist in der zugehörigen JSON-Schema-Datei als `enum`
-definiert und dort pflegbar.
+> 📄 Vertiefung (Formularfelder im Detail): [docs/rendering.md](docs/rendering.md)
 
 <a id="oeffnungszeiten"></a>
 ### Öffnungszeiten
 
 Das Öffnungszeiten-Widget bildet die sieben Wochentage als Zeitraum-Felder
-ab (Von / Bis). Leere Felder werden als „geschlossen" interpretiert. Intern
+ab (Von / Bis, plus optionalem zweiten Zeitraum je Tag, z. B. für eine
+Mittagspause). Leere Felder werden als „geschlossen" interpretiert. Intern
 werden die Werte als `openingHours`-Array nach schema.org-Notation
-gespeichert:
-
-```json
-"openingHours": ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
-```
-
-Je Wochentag steht zusätzlich ein **optionaler zweiter Zeitraum** (z. B.
-Mittagspause) zur Verfügung. Es wird ausschließlich das
+gespeichert (Beispiel siehe [JSON-LD-Ausgabe im
+Detail](#json-ld-ausgabe-im-detail) oben). Es wird ausschließlich das
 **24-Stunden-Format** (`HH:MM`) unterstützt.
 
 > 📄 Vertiefung (Regeln für den zweiten Zeitraum): [docs/rendering.md](docs/rendering.md)
@@ -358,7 +323,7 @@ Admin-Bereich ebenso wie Frontend-Ausgaben wie die Wochentag-Labels in den
 Öffnungszeiten. Initiale Sprachen: **Deutsch** (`deDE`), **Englisch**
 (`enEN`).
 
-> 📄 Vertiefung (Sprachdatei-Konventionen): [docs/development.md](docs/development.md)
+> 📄 Vertiefung (Sprachschlüssel-Konvention): [docs/schema-extending.md](docs/schema-extending.md)
 
 <a id="vorhandenes-json-ld-und-import"></a>
 ### Vorhandenes JSON-LD und Import
@@ -370,22 +335,6 @@ Global-Scope, Seiteninhalt → Seiten-Scope). Der Nutzer wählt dann, ob das
 Plugin diesen Block **beibehält** (kein eigenes JSON-LD) oder ihn per
 eigener Konfiguration **überschreibt** — ein automatischer Merge findet
 nicht statt.
-
-<details>
-<summary>Diagramm: Entscheidungsablauf bei erkanntem JSON-LD (Beibehalten vs. Überschreiben)</summary>
-
-```mermaid
-flowchart TD
-    A["Vorhandenes JSON-LD erkannt"] --> B{"Fundort?"}
-    B -->|Layout-Template| C["Hinweis im Global-Scope"]
-    B -->|Seiteninhalt| D["Hinweis im Seiten-Scope"]
-    C --> E{"Nutzerentscheidung"}
-    D --> E
-    E -->|Beibehalten| F["Kein eigenes JSON-LD für diesen Scope"]
-    E -->|Überschreiben| G["Plugin-JSON-LD zusätzlich zum vorhandenen Block<br/>(kein automatischer Merge, alter Block bleibt stehen)"]
-```
-
-</details>
 
 Über ein **Import-Feld** lässt sich vorhandenes JSON-LD einfügen; das
 Plugin parst den Block und befüllt automatisch die bekannten Formularfelder
@@ -428,51 +377,15 @@ Ausgewählte Schema-Types (**Organization**, **NGO**, die **LocalBusiness**-Fami
 im Datengraphen eindeutig identifiziert. Seiten-Types wie **DonateAction**
 oder **Event** können darüber per `@id` auf den global definierten
 Organisations- bzw. Personen-Knoten verweisen, ohne ihn auf jeder Seite zu
-wiederholen:
-
-```html
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "NGO",
-  "@id": "https://www.example.org/#organization",
-  "name": "Beispiel-Hilfe e. V.",
-  "url": "https://www.example.org",
-  "nonprofitStatus": "DERegisteredAssociationCharity"
-}
-</script>
-```
-
-Welcher Type welches `@id`-Fragment bekommt, wird ausschließlich im
-jeweiligen JSON-Schema deklariert (`ui:idFragment`) — es gibt keine
-Type-Namen im PHP-Code. Pro Fragment (`#organization`, `#person`) trägt
-maximal ein Knoten pro Seite die `@id`; die absolute Basis-URL wird zur
+wiederholen. Welcher Type welches `@id`-Fragment bekommt, wird ausschließlich
+im jeweiligen JSON-Schema deklariert (`ui:idFragment`) — es gibt keine
+Type-Namen im PHP-Code. Ein De-Dup-Guard sorgt dafür, dass pro Fragment
+(`#organization`, `#person`) maximal ein Knoten pro Seite die `@id` trägt
+(sind z. B. **NGO** und **Organization** gleichzeitig global konfiguriert,
+bleibt der zweite Knoten ohne Anker); die absolute Basis-URL wird zur
 Ausgabezeit aus dem aktuellen Request abgeleitet.
 
-<details>
-<summary>Diagramm: @id-Referenzen auf den globalen Organisations-/Personen-Knoten</summary>
-
-```mermaid
-graph LR
-    ORG["Global-Knoten<br/>NGO / Organization / LocalBusiness-Familie<br/>@id: #organization"]
-    PERS["Global-Knoten<br/>Person<br/>@id: #person"]
-    DONATE["Seite: DonateAction<br/>recipient"]
-    EVENT["Seite: Event<br/>organizer"]
-
-    DONATE -->|id_reference| ORG
-    EVENT -->|id_reference_or_literal| ORG
-    EVENT -->|id_reference_or_literal| PERS
-```
-
-</details>
-
-> ℹ️ De-Dup-Guard (Schutz vor doppelten Anker-IDs): Pro Fragment
-> (`#organization`, `#person`) erhält nur der
-> erste Knoten in Ausgabereihenfolge die `@id` — sind z. B. **NGO** und
-> **Organization** gleichzeitig global konfiguriert, bleibt der zweite Knoten
-> ohne Anker.
-
-> 📄 Ausführliches Beispiel (De-Dup-Guard, Person-Fragment, Basis-URL-Empfehlung): [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
+> 📄 Ausführliches Beispiel (JSON-LD-Beispiel, De-Dup-Guard, Person-Fragment, Basis-URL-Empfehlung): [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
 
 <a id="verknuepfte-inhalte"></a>
 ### Verknüpfte Inhalte (Widgets)
@@ -545,23 +458,7 @@ Alle Formularfelder werden zweistufig validiert: **live im Browser**
 greift eigenständig auch ohne JavaScript. Das Feedback ist dreistufig: ✅
 grün (OK) · ⚠️ gelb (Warnung) · ❌ rot (Fehler).
 
-<details>
-<summary>Tabelle: Validierungsregeln je Feld anzeigen</summary>
-
-| Feld | Prüfung | Nur DE |
-|---|---|---|
-| `postalCode` | Regex `[0-9]{5}` | ja |
-| `telephone` | Normalisierung + E.164-Prüfung | nein |
-| `url`, `logo`, `hasMap`, `image` | URL-Format; `http://` ergibt HTTPS-Warnung (⚠️) | nein |
-| `email` | E-Mail-Format | nein |
-| `openingHours` | Format + Von-Zeit < Bis-Zeit (24-Stunden-Format) | nein |
-| `addressCountry` | Enum-Prüfung gegen die Länderliste | nein |
-| `geo` (Erweiterungsfeld) | numerisch + Wertebereich (Breite/Länge) | nein |
-| Datumsfelder (`startDate`, `endDate`) | ausschließlich deutsches Format `TT.MM.YYYY` (optional mit Uhrzeit), kalendarische Gültigkeit; bei `Event` zusätzlich `endDate` nicht vor `startDate` | nein |
-
-</details>
-
-> 📄 Vertiefung (Regex-Details, E.164-Normalisierung, ISO-8601-Umwandlung der Datumsfelder): [docs/validation.md](docs/validation.md)
+> 📄 Vertiefung (Validierungsregeln je Feld, Regex-Details, E.164-Normalisierung, ISO-8601-Umwandlung der Datumsfelder): [docs/validation.md](docs/validation.md)
 
 <a id="best-practices"></a>
 ### Best Practices: Schema.org-Daten sinnvoll pflegen
@@ -575,52 +472,33 @@ Betreibers:
 > nicht sichtbar sind, als irreführend — im schlimmsten Fall führt das zum
 > Ausschluss der gesamten Website von Rich Results.
 
-Googles eigene Richtlinien gehen an einigen Stellen über die schema.org-Spec
-hinaus, siehe [Intro to Structured Data](https://developers.google.com/search/docs/appearance/structured-data/intro-structured-data).
-
 Kurz gefasst: so wenig Types wie nötig, global nur genau eine
 Organisations-Identität, Seiten-Types nur dort, wo der Inhalt es hergibt,
 und nach jeder Änderung mit [validator.schema.org](https://validator.schema.org)
-bzw. dem [Rich-Results-Test](https://search.google.com/test/rich-results)
-gegenprüfen. Einen Überblick über Aufbau und Umfang des Vokabulars bietet die
-[offizielle schema.org-Dokumentation](https://schema.org/docs/documents.html).
+gegenprüfen.
 
-> 📄 Vertiefung (vollständige Empfehlungsliste): [docs/best-practices.md](docs/best-practices.md)
+> 📄 Vertiefung (vollständige Empfehlungsliste, Google-Richtlinien, schema.org-Vokabular): [docs/best-practices.md](docs/best-practices.md)
 
 <a id="typische-fehler"></a>
 ### Typische Fehler — so bitte nicht
 
 - ❌ `FAQPage` ohne wortgleich sichtbare Fragen/Antworten auf der Seite
-- ❌ Abgelaufene `Event`-Einträge stehen lassen
-- ❌ `DonateAction` ohne tatsächliche, nachvollziehbare Spendenmöglichkeit
-- ❌ Keyword-Stuffing im `name`-Feld statt des tatsächlichen Namens
 - ❌ Mehrere Organisations-Identitäten (**Organization**, **NGO**, **LocalBusiness**) gleichzeitig global konfigurieren
 - ❌ Felder befüllen, „weil sie da sind" — geschätzte/erfundene Werte schaden mehr als leere Felder
 
-> 📄 Vertiefung (Begründungen im Detail): [docs/common-mistakes.md](docs/common-mistakes.md)
+> 📄 Vertiefung (alle Beispiele inkl. Begründung): [docs/best-practices.md](docs/best-practices.md)
 
 ---
 
 <a id="sicherheit"></a>
 ## Sicherheit
 
-- **Kein Direktzugriff**: Jede PHP-Datei des Plugins (inkl. aller
-  `lib/`-Komponenten) prüft die moziloCMS-Konstante `IS_CMS` und bricht bei
-  Direktaufruf ab.
-- **Settings-Key-Härtung**: Kategorie- und Seitenbezeichner werden vor der
-  Verwendung in Settings-Keys bereinigt (`sanitizeScopeIdentifier()`) —
-  Schutz vor Path-Traversal und unerwünschten Zeichen in Schlüsselnamen.
-- **Eingabe-Sanitizing**: Alle Formularwerte werden beim Speichern getrimmt
-  und von HTML-Tags befreit; Telefonnummern werden normalisiert.
-- **Script-Breakout-Schutz**: Die JSON-LD-Ausgabe erfolgt mit
-  `JSON_HEX_TAG` — in Feldwerten enthaltene `<`/`>`-Zeichen können den
-  umgebenden `<script>`-Block nicht aufbrechen. Dasselbe gilt für die an
-  das Admin-JavaScript übergebenen Meldungstexte.
-- **Server-seitige Validierung ist maßgeblich**: Die client-seitige
-  AJV-Validierung ist Komfort; gespeichert wird nur, was die
-  PHP-Validierung besteht.
-- **Kein CDN**: AJV.js wird lokal ausgeliefert — keine externen
-  Skript-Quellen.
+Mehrere Härtungsmechanismen greifen ineinander: ein `IS_CMS`-Guard gegen
+Direktaufruf jeder PHP-Datei, Settings-Key-Härtung gegen Path-Traversal,
+serverseitiges Eingabe-Sanitizing, `JSON_HEX_TAG`-Schutz gegen
+Script-Breakout in der JSON-LD-Ausgabe, eine maßgebliche server-seitige
+Validierung (unabhängig von JavaScript) sowie lokal ausgeliefertes AJV.js
+ohne CDN-Abhängigkeit.
 
 > 📄 Vertiefung: [docs/security.md](docs/security.md)
 
@@ -633,23 +511,8 @@ Das Plugin ist in eine schlanke Fassaden-Klasse (`index.php`) und
 eigenständige Komponenten unter `lib/` aufgeteilt — jede Komponente mit
 eigenem `IS_CMS`-Guard, per `require_once` geladen. Neue Schema-Types
 kommen ausschließlich als `.json`-Datei in `schemas/` hinzu (Validierung
-und Formularfelder in einer Datei), ohne PHP-Änderung.
-
-<details>
-<summary>Ordnerstruktur anzeigen</summary>
-
-```
-plugins/schemaOrgData/
-├── index.php        # Plugin-Hauptklasse (Fassade)
-├── plugin.conf.php  # moziloCMS-Plugin-Metadaten + Live-Konfiguration
-├── schemas/         # JSON-Schema-Dateien (Validierung + Formular), eine je Type
-├── js/               # ajv.min.js, validator.js
-├── lib/              # Plugin-Komponenten (Scope-Auflösung, JSON-LD-Aufbau,
-│                        Formular-Rendering, Validierung, Admin-Orchestrierung …)
-└── sprachen/         # admin_language_*.txt, cms_language_*.txt
-```
-
-</details>
+und Formularfelder in einer Datei), ohne PHP-Änderung. Der vollständige
+Datei- und Ordnerbaum steht in [docs/file-structure.md](docs/file-structure.md).
 
 Die vertiefende Dokumentation (`docs/`, dieser Ordner) liegt als Geschwister
 von `plugins/` am Repo-Root, analog zu `tests/` — sie ist nicht Teil des
@@ -665,13 +528,13 @@ Weiterführende Entwicklerdokumentation:
 
 - [docs/architecture.md](docs/architecture.md) — Komponentenaufbau und Zusammenspiel der `lib/`-Klassen
 - [docs/file-structure.md](docs/file-structure.md) — vollständiger Datei- und Ordnerbaum
-- [docs/schema-extending.md](docs/schema-extending.md) — neuen Schema-Type per JSON-Datei hinzufügen
+- [docs/schema-extending.md](docs/schema-extending.md) — neuen Schema-Type per JSON-Datei hinzufügen, Sprachschlüssel-Konvention
 - [docs/schema/](docs/schema/) — Referenz der schema-getriebenen `ui:`-Properties
 - [docs/rendering.md](docs/rendering.md) — Formular-Rendering und JSON-LD-Erzeugung im Detail
 - [docs/widgets.md](docs/widgets.md) — `id_reference` / `id_reference_or_literal`: Mechanik und Schema-Deklaration
 - [docs/import.md](docs/import.md) — Import-Feature im Detail
 - [docs/configuration.md](docs/configuration.md) — Settings-API, Geltungsbereiche und Speicherformat
-- [docs/development.md](docs/development.md) — lokales Setup, Entwicklungskonventionen, Sprachdatei-Konventionen
+- [docs/development.md](docs/development.md) — lokales Setup, Commit-Konventionen
 
 ---
 

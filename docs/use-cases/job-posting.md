@@ -60,7 +60,7 @@ ohne Einsatzort wird beim Speichern abgelehnt.
 ## Typischer Fehler: besetzte Stellen stehen lassen
 
 Analog zu abgelaufenen `Event`-Einträgen (siehe
-[Typische Fehler](../common-mistakes.md)) sollte eine besetzte Stelle
+[Best Practices](../best-practices.md#veraltete-events)) sollte eine besetzte Stelle
 zeitnah aus der Konfiguration entfernt oder das Feld `validThrough`
 konsequent gepflegt werden — sonst signalisiert das Markup dauerhaft eine
 nicht mehr existierende Vakanz.

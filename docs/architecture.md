@@ -21,7 +21,8 @@ Alle `lib/`-Klassen sind selbst **zustandslos**: Kollaboratoren (andere
 Komponenten, `Language`-Instanzen, `$this->settings`, `PLUGIN_SELF_DIR`)
 werden bei jedem Aufruf als Parameter durchgereicht statt im Konstruktor
 eingefroren. Das hält die Klassen unabhängig voneinander testbar (siehe
-[development.md](development.md)) und macht Abhängigkeiten an der
+[tests.md](tests.md), Abschnitt „Warum ein eigenes Test-Bootstrap nötig
+ist") und macht Abhängigkeiten an der
 Methodensignatur sichtbar. Zwei Ausnahmen bestätigen das Prinzip:
 
 - `SchemaOrgData_SchemaRepository` cacht `loadSchema()`- und
@@ -49,14 +50,11 @@ Beide Zweige bauen zuerst ein **Context-Objekt** (`final class` mit
 ausschließlich `readonly`-Properties), das alle für den jeweiligen Zweig
 nötigen Kollaboratoren bündelt:
 
-- `SchemaOrgData_FrontendRequestContext` — 8 Properties: `settings`,
-  `pluginSelfDir`, `scopeResolver`, `schemaRepository`, `jsonLdBuilder`,
-  `idReferenceService`, `collisionDetector`, `urlHelper`.
-- `SchemaOrgData_AdminRequestContext` — 19 Properties: zusätzlich zu den
-  Frontend-Kollaboratoren u. a. `lang`, `formRenderer`, `dataSplitHelper`,
-  `pluginLang`, `pluginSelfUrl`, `weekdayLang`, `validator`,
-  `openingHoursHelper`, `adminPageRenderer`, `adminRequestHandler`,
-  `configSaveService`, `importService`.
+- `SchemaOrgData_FrontendRequestContext` — bündelt 8 Kollaboratoren, u. a.
+  `settings`, `scopeResolver`, `schemaRepository`, `urlHelper`.
+- `SchemaOrgData_AdminRequestContext` — bündelt 19 Kollaboratoren
+  (zusätzlich zu den Frontend-Kollaboratoren), u. a. `lang`,
+  `formRenderer`, `validator`, `configSaveService`.
 
 Der Seiteninhalt (`$value`) ist bewusst **kein** Teil von
 `SchemaOrgData_FrontendRequestContext` — er ist Methoden-Input für die
@@ -89,37 +87,10 @@ von `renderFrontend()`.
 
 ## Kontrollfluss: Admin-Request
 
-<details>
-<summary>Diagramm: Kontrollfluss Admin-Request (POST-Dispatch, Speichern, Formular-Rendering)</summary>
-
-```mermaid
-sequenceDiagram
-    participant Core as moziloCMS-Core
-    participant Facade as schemaOrgData::getContent()
-    participant Controller as AdminController
-    participant Handler as AdminRequestHandler
-    participant Save as ConfigSaveService / ScopeResolver
-    participant Render as FormRenderer
-
-    Core->>Facade: getContent() (PLUGINADMIN)
-    Facade->>Controller: renderAdminPage(AdminRequestContext)
-    alt $_POST nicht leer
-        Controller->>Handler: handlePostRequest()
-        Handler->>Save: saveConfig() / deleteConfig() / handleImportAction()
-    end
-    Controller->>Controller: Kollisionserkennung + saveScopeMeta('global', …)
-    loop je Geltungsebene (Global + Kategorien + Seiten)
-        Controller->>Render: renderScopeSection() → renderTypeFields()/renderField()
-    end
-    Controller-->>Facade: fertiges Admin-HTML
-```
-
-</details>
-
-Grobe Flughöhe des obigen Diagramms: Fassade → Scope-Auflösung /
-POST-Dispatch → Speichern (Validierung inklusive) → Formular-Rendering.
-Der folgende ASCII-Aufrufbaum bleibt die maßgebliche Detailquelle
-(exakte Methodennamen und Verzweigungslogik):
+Grobe Flughöhe: Fassade → Scope-Auflösung / POST-Dispatch → Speichern
+(Validierung inklusive) → Formular-Rendering. Der folgende
+ASCII-Aufrufbaum ist die maßgebliche Detailquelle (exakte Methodennamen
+und Verzweigungslogik):
 
 ```
 schemaOrgData::getContent()
@@ -160,32 +131,9 @@ die aktive Sektion übertragen wird.
 
 ## Kontrollfluss: Frontend-Request
 
-<details>
-<summary>Diagramm: Kontrollfluss Frontend-Request (Scope-Auflösung, JSON-LD-Aufbau, Ausgabe)</summary>
-
-```mermaid
-flowchart TD
-    A["schemaOrgData::getContent($value)"] --> B["FrontendRenderer::renderFrontend()"]
-    B --> C{"Galerie-Vollansicht?<br/>(GET-Parameter galtemplate)"}
-    C -->|ja| Z["'' — kein JSON-LD"]
-    C -->|nein| D["ScopeResolver::loadScopeConfig()<br/>je Ebene (global/category/page)"]
-    D --> E["excluded_cats-Filter"]
-    E --> F["jsonld_mode = keep-Filter"]
-    F --> G["ScopeResolver::resolveTypeInheritance()<br/>(feldweise Vererbung)"]
-    G --> H["IdReferenceService::applyDanglingReferenceGuard()"]
-    H --> I["je verbleibendem Type:<br/>JsonLdBuilder::resolveNodeId() + buildJsonLdScript()"]
-    I --> J{"debug_output aktiv?"}
-    J -->|ja| K["buildDebugWidget() anhängen"]
-    J -->|nein| L["Kollisionserkennung + saveScopeMeta()"]
-    K --> L
-    L --> M["fertiger &lt;script&gt;-Output"]
-```
-
-</details>
-
 Grobe Flughöhe: Fassade → Scope-Auflösung/Filter → JSON-LD-Aufbau →
-Ausgabe. Der folgende ASCII-Aufrufbaum bleibt die maßgebliche
-Detailquelle (exakte Methodennamen und Verzweigungslogik):
+Ausgabe. Der folgende ASCII-Aufrufbaum ist die maßgebliche Detailquelle
+(exakte Methodennamen und Verzweigungslogik):
 
 ```
 schemaOrgData::getContent($value)

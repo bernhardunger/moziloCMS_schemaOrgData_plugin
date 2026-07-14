@@ -80,7 +80,7 @@ Ermittelt aus `SchemaOrgData_FormRenderer::renderField()` (das `match` über
 `"$ref": "#/definitions/PostalAddress"` aus einem lokalen
 `definitions.PostalAddress`-Block referenziert (siehe unten,
 `SchemaOrgData_SchemaRepository::resolveSchemaRef()` löst `$ref` zur
-Laufzeit auf). `SchemaConsistencyTest` (siehe [development.md](development.md))
+Laufzeit auf). `SchemaConsistencyTest` (siehe [tests.md](tests.md))
 prüft, dass dieser Block über alle Types, die ihn führen, strukturell
 identisch bleibt — beim Kopieren aus einem bestehenden Schema also den
 Block unverändert übernehmen.
@@ -140,8 +140,7 @@ ausgegebene Knoten tatsächlich eine `@id` (De-Dup-Guard, siehe
 Jeder über `ui:label`, `ui:typeLabel`, `ui:literalFieldLabels` etc.
 referenzierte Sprachschlüssel muss in **beiden** Admin-Sprachdateien
 (`sprachen/admin_language_deDE.txt`, `sprachen/admin_language_enEN.txt`)
-vorhanden sein — Format `schluessel = Wert`, siehe
-[development.md](development.md). Für einen neuen Type sind das
+vorhanden sein — Format `schluessel = Wert`. Für einen neuen Type sind das
 mindestens:
 
 - `schema_type_<lowercase-typename>` (Wert von `ui:typeLabel`) — erscheint im Type-Dropdown
@@ -220,4 +219,4 @@ aus.
 - [../README.md](../README.md) — Feature-Überblick, insbesondere „Widget-Deklaration im Schema (Beispiele)"
 - [rendering.md](rendering.md) — wie `ui:widget` zu Formularfeld und JSON-LD-Ausgabe wird, `@id`-Mechanismus im Detail
 - [architecture.md](architecture.md) — Rolle von `SchemaOrgData_SchemaRepository`/`SchemaOrgData_FormRenderer` im Gesamtsystem
-- [development.md](development.md) — Sprachdatei-Format, `SchemaConsistencyTest`
+- [tests.md](tests.md) — `SchemaConsistencyTest`-Anforderungen, Sprachdatei-Format im Test-Bootstrap
