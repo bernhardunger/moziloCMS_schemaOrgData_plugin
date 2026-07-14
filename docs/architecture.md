@@ -89,6 +89,9 @@ von `renderFrontend()`.
 
 ## Kontrollfluss: Admin-Request
 
+<details>
+<summary>Diagramm: Kontrollfluss Admin-Request (POST-Dispatch, Speichern, Formular-Rendering)</summary>
+
 ```mermaid
 sequenceDiagram
     participant Core as moziloCMS-Core
@@ -110,6 +113,8 @@ sequenceDiagram
     end
     Controller-->>Facade: fertiges Admin-HTML
 ```
+
+</details>
 
 Grobe Flughöhe des obigen Diagramms: Fassade → Scope-Auflösung /
 POST-Dispatch → Speichern (Validierung inklusive) → Formular-Rendering.
@@ -155,6 +160,9 @@ die aktive Sektion übertragen wird.
 
 ## Kontrollfluss: Frontend-Request
 
+<details>
+<summary>Diagramm: Kontrollfluss Frontend-Request (Scope-Auflösung, JSON-LD-Aufbau, Ausgabe)</summary>
+
 ```mermaid
 flowchart TD
     A["schemaOrgData::getContent($value)"] --> B["FrontendRenderer::renderFrontend()"]
@@ -172,6 +180,8 @@ flowchart TD
     K --> L
     L --> M["fertiger &lt;script&gt;-Output"]
 ```
+
+</details>
 
 Grobe Flughöhe: Fassade → Scope-Auflösung/Filter → JSON-LD-Aufbau →
 Ausgabe. Der folgende ASCII-Aufrufbaum bleibt die maßgebliche

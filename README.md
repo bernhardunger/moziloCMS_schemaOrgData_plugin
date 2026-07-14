@@ -228,6 +228,9 @@ Verschachtelte Felder (z. B. `address`, `openingHours`) werden dabei nicht
 innerhalb des Objekts gemergt — hier gewinnt die Ebene mit dem gefüllten
 Objekt vollständig.
 
+<details>
+<summary>Diagramm: Vererbungslogik der Geltungsbereiche</summary>
+
 ```mermaid
 flowchart LR
     G["Global<br/>z. B. name, telephone"] -->|leeres Feld erbt| K["Kategorie<br/>überschreibt gefüllte Felder"]
@@ -238,6 +241,8 @@ flowchart LR
         N1["kein Feld-Merge<br/>innerhalb des Objekts"] --> N2["spezifischste Ebene<br/>mit gefülltem Objekt gewinnt vollständig"]
     end
 ```
+
+</details>
 
 **Ausschlussliste.** Im Admin-Bereich kann der Nutzer Kategorien definieren,
 auf denen die globale Ausgabe **nicht** erfolgt — z. B. Impressum,
@@ -352,6 +357,9 @@ Plugin diesen Block **beibehält** (kein eigenes JSON-LD) oder ihn per
 eigener Konfiguration **überschreibt** — ein automatischer Merge findet
 nicht statt.
 
+<details>
+<summary>Diagramm: Entscheidungsablauf bei erkanntem JSON-LD (Beibehalten vs. Überschreiben)</summary>
+
 ```mermaid
 flowchart TD
     A["Vorhandenes JSON-LD erkannt"] --> B{"Fundort?"}
@@ -362,6 +370,8 @@ flowchart TD
     E -->|Beibehalten| F["Kein eigenes JSON-LD für diesen Scope"]
     E -->|Überschreiben| G["Plugin-JSON-LD zusätzlich zum vorhandenen Block<br/>(kein automatischer Merge, alter Block bleibt stehen)"]
 ```
+
+</details>
 
 Über ein **Import-Feld** lässt sich vorhandenes JSON-LD einfügen; das
 Plugin parst den Block und befüllt automatisch die bekannten Formularfelder
@@ -425,6 +435,9 @@ Type-Namen im PHP-Code. Pro Fragment (`#organization`, `#person`) trägt
 maximal ein Knoten pro Seite die `@id`; die absolute Basis-URL wird zur
 Ausgabezeit aus dem aktuellen Request abgeleitet.
 
+<details>
+<summary>Diagramm: @id-Referenzen auf den globalen Organisations-/Personen-Knoten</summary>
+
 ```mermaid
 graph LR
     ORG["Global-Knoten<br/>NGO / Organization / LocalBusiness-Familie<br/>@id: #organization"]
@@ -436,6 +449,8 @@ graph LR
     EVENT -->|id_reference_or_literal| ORG
     EVENT -->|id_reference_or_literal| PERS
 ```
+
+</details>
 
 > ℹ️ De-Dup-Guard: Pro Fragment (`#organization`, `#person`) erhält nur der
 > erste Knoten in Ausgabereihenfolge die `@id` — sind z. B. `NGO` und

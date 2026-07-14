@@ -11,6 +11,9 @@ handleImportAction()`.
 
 ## Kollisionserkennung (`SchemaOrgData_CollisionDetector`)
 
+<details>
+<summary>Diagramm: Kollisionserkennung — Extraktion, Platzhalter-Check, Scope-Zuordnung</summary>
+
 ```mermaid
 flowchart TD
     A["extractExistingJsonLdBlocks()<br/>Regex über &lt;script type=application/ld+json&gt;-Blöcke"] --> B["Extraktion je Kontext"]
@@ -28,6 +31,8 @@ flowchart TD
     D --> D2["Fund im Seiteninhalt ($value)<br/>→ Seiten-Scope"]
     D --> D3["Kategorie-Scope<br/>erhält keinen eigenen Treffer"]
 ```
+
+</details>
 
 ### Extraktion
 

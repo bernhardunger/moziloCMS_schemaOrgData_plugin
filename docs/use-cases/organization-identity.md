@@ -36,6 +36,9 @@ dasselbe Fragment (`organization`) — es geht um dieselbe Rolle
 
 ## De-Dup-Guard
 
+<details>
+<summary>Diagramm: Prüfablauf des De-Dup-Guards je @id-Fragment</summary>
+
 ```mermaid
 flowchart TD
     A["Knoten mit ui:idFragment wird gerendert<br/>(z. B. #organization)"] --> B{"Wurde dieses Fragment<br/>auf dieser Seite bereits<br/>an einen Knoten vergeben?"}
@@ -43,6 +46,8 @@ flowchart TD
     B -->|ja| D["Kein @id für diesen Knoten<br/>(Rest des Knotens bleibt unverändert)"]
     C --> E["Fragment gilt ab jetzt<br/>als vergeben"]
 ```
+
+</details>
 
 Pro Seite trägt **genau ein** Knoten ein gegebenes Fragment. Sind auf
 derselben Seite z. B. sowohl `NGO` als auch `Organization` global

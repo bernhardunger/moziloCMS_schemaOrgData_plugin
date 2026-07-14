@@ -102,6 +102,9 @@ Plugin-Verwaltungsseite automatisch eine neue mit leerem Array.
 
 ## Feldweise Vererbung
 
+<details>
+<summary>Diagramm: Ablauf von resolveTypeInheritance() über mergeConfigs()</summary>
+
 ```mermaid
 flowchart TD
     subgraph Input["Geladene Scope-Konfigurationen"]
@@ -122,6 +125,8 @@ flowchart TD
         TS --> MC --> RD
     end
 ```
+
+</details>
 
 ### `mergeConfigs()`
 
