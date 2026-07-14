@@ -110,7 +110,7 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 | `NGO` | Gemeinnützige Organisation (Verein, Stiftung u. a.), mit `@id`-Anker `#organization` | Global |
 | `Person` | Einzelperson, mit `@id`-Anker `#person` | Global |
 | `WebSite` | Website-Metadaten | Global |
-| `FAQPage` | Häufig gestellte Fragen | Kategorie / Seite |
+| `FAQPage` | Häufig gestellte Fragen ([Google-Richtlinien beachten](https://developers.google.com/search/docs/appearance/structured-data/faqpage) — Rich Results seit 2023 auf wenige autoritative Quellen beschränkt) | Kategorie / Seite |
 | `Article` | Artikel / Blogbeitrag | Kategorie / Seite |
 | `JobPosting` | Stellenanzeige | Seite |
 | `DonateAction` | Spendenaufruf (verknüpft per `@id` mit dem globalen Org-Knoten) | Seite |
@@ -119,7 +119,9 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 </details>
 
 Details und Konfigurationsbeispiele zu einzelnen Types stehen unter
-[Use Cases und Beispiele](#use-cases-und-beispiele).
+[Use Cases und Beispiele](#use-cases-und-beispiele). Welche Zusatzfelder
+Google für Rich Results je Type zusätzlich zur schema.org-Spec verlangt,
+zeigt die [Google Search Gallery](https://developers.google.com/search/docs/appearance/structured-data/search-gallery).
 
 ---
 
@@ -264,9 +266,9 @@ ihrer Seiten ist davon nicht betroffen.
 <a id="json-ld-ausgabe-im-detail"></a>
 ### JSON-LD-Ausgabe im Detail
 
-Das Plugin gibt das JSON-LD als `<script>`-Tag im `<head>` aus — an der
-Stelle, an der im Layout-Template der Platzhalter `{schemaOrgData}` steht
-(siehe [Installation](#installation)):
+Das Plugin gibt das JSON-LD ([json-ld.org](https://json-ld.org/)) als
+`<script>`-Tag im `<head>` aus — an der Stelle, an der im Layout-Template
+der Platzhalter `{schemaOrgData}` steht (siehe [Installation](#installation)):
 
 ```html
 <script type="application/ld+json">
@@ -572,6 +574,9 @@ Betreibers:
 > Suchmaschinen werten Markup, das Inhalte behauptet, die auf der Seite
 > nicht sichtbar sind, als irreführend — im schlimmsten Fall führt das zum
 > Ausschluss der gesamten Website von Rich Results.
+
+Googles eigene Richtlinien gehen an einigen Stellen über die schema.org-Spec
+hinaus, siehe [Intro to Structured Data](https://developers.google.com/search/docs/appearance/structured-data/intro-structured-data).
 
 Kurz gefasst: so wenig Types wie nötig, global nur genau eine
 Organisations-Identität, Seiten-Types nur dort, wo der Inhalt es hergibt,
