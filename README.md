@@ -27,7 +27,8 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 
 ---
 
-## Inhaltsverzeichnis
+<details>
+<summary>Inhaltsverzeichnis</summary>
 
 - [Features](#features)
   - [Unterstützte Schema-Types](#unterstuetzte-schema-types)
@@ -61,6 +62,8 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 - [Tests](#tests)
 - [Changelog](#changelog)
 
+</details>
+
 ---
 
 <a id="features"></a>
@@ -82,6 +85,9 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 <a id="unterstuetzte-schema-types"></a>
 ### Unterstützte Schema-Types
 
+<details>
+<summary>Tabelle: alle unterstützten Schema-Types anzeigen</summary>
+
 | Type | Beschreibung | Geltungsbereich |
 |---|---|---|
 | `LocalBusiness` | Lokales Unternehmen | Global / Kategorie |
@@ -98,6 +104,8 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 | `JobPosting` | Stellenanzeige | Seite |
 | `DonateAction` | Spendenaufruf (verknüpft per `@id` mit dem globalen Org-Knoten) | Seite |
 | `Event` | Veranstaltung / Termin (`location` als `Place` mit Adresse, `organizer` wahlweise als Referenz oder Direkteingabe) | Seite |
+
+</details>
 
 Details und Konfigurationsbeispiele zu einzelnen Types stehen unter
 [Use Cases und Beispiele](#use-cases-und-beispiele).
@@ -465,6 +473,9 @@ Alle Formularfelder werden zweistufig validiert: **live im Browser**
 greift eigenständig auch ohne JavaScript. Das Feedback ist dreistufig: ✅
 grün (OK) · ⚠️ gelb (Warnung) · ❌ rot (Fehler).
 
+<details>
+<summary>Tabelle: Validierungsregeln je Feld anzeigen</summary>
+
 | Feld | Prüfung | Nur DE |
 |---|---|---|
 | `postalCode` | Regex `[0-9]{5}` | ja |
@@ -475,6 +486,8 @@ grün (OK) · ⚠️ gelb (Warnung) · ❌ rot (Fehler).
 | `addressCountry` | Enum-Prüfung gegen die Länderliste | nein |
 | `geo` (Erweiterungsfeld) | numerisch + Wertebereich (Breite/Länge) | nein |
 | Datumsfelder (`startDate`, `endDate`) | ausschließlich deutsches Format `TT.MM.YYYY` (optional mit Uhrzeit), kalendarische Gültigkeit; bei `Event` zusätzlich `endDate` nicht vor `startDate` | nein |
+
+</details>
 
 > 📄 Vertiefung (Regex-Details, E.164-Normalisierung, ISO-8601-Umwandlung der Datumsfelder): [docs/validation.md](docs/validation.md)
 
@@ -546,6 +559,9 @@ eigenem `IS_CMS`-Guard, per `require_once` geladen. Neue Schema-Types
 kommen ausschließlich als `.json`-Datei in `schemas/` hinzu (Validierung
 und Formularfelder in einer Datei), ohne PHP-Änderung.
 
+<details>
+<summary>Ordnerstruktur anzeigen</summary>
+
 ```
 plugins/schemaOrgData/
 ├── index.php        # Plugin-Hauptklasse (Fassade)
@@ -556,6 +572,8 @@ plugins/schemaOrgData/
 │                        Formular-Rendering, Validierung, Admin-Orchestrierung …)
 └── sprachen/         # admin_language_*.txt, cms_language_*.txt
 ```
+
+</details>
 
 Die vertiefende Dokumentation (`docs/`, dieser Ordner) liegt als Geschwister
 von `plugins/` am Repo-Root, analog zu `tests/` — sie ist nicht Teil des
