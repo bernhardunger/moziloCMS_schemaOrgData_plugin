@@ -511,8 +511,7 @@ Das Plugin ist in eine schlanke Fassaden-Klasse (`index.php`) und
 eigenständige Komponenten unter `lib/` aufgeteilt — jede Komponente mit
 eigenem `IS_CMS`-Guard, per `require_once` geladen. Neue Schema-Types
 kommen ausschließlich als `.json`-Datei in `schemas/` hinzu (Validierung
-und Formularfelder in einer Datei), ohne PHP-Änderung. Der vollständige
-Datei- und Ordnerbaum steht in [docs/file-structure.md](docs/file-structure.md).
+und Formularfelder in einer Datei), ohne PHP-Änderung.
 
 Die vertiefende Dokumentation (`docs/`, dieser Ordner) liegt als Geschwister
 von `plugins/` am Repo-Root, analog zu `tests/` — sie ist nicht Teil des
@@ -527,7 +526,6 @@ FTP-Hinweis).
 Weiterführende Entwicklerdokumentation:
 
 - [docs/architecture.md](docs/architecture.md) — Komponentenaufbau und Zusammenspiel der `lib/`-Klassen
-- [docs/file-structure.md](docs/file-structure.md) — vollständiger Datei- und Ordnerbaum
 - [docs/schema-extending.md](docs/schema-extending.md) — neuen Schema-Type per JSON-Datei hinzufügen, Sprachschlüssel-Konvention
 - [docs/schema/](docs/schema/) — Referenz der schema-getriebenen `ui:`-Properties
 - [docs/rendering.md](docs/rendering.md) — Formular-Rendering und JSON-LD-Erzeugung im Detail

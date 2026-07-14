@@ -132,7 +132,6 @@ in [import.md](import.md).
 ## Siehe auch
 
 - [../README.md](../README.md) — Feature-Überblick und Nutzerdokumentation
-- [file-structure.md](file-structure.md) — vollständiger Datei- und Ordnerbaum
 - [rendering.md](rendering.md) — Formular-Rendering und JSON-LD-Erzeugung im Detail
 - [configuration.md](configuration.md) — Settings-API, Geltungsbereiche und Speicherformat
 - [import.md](import.md) — Import-Feature im Detail
