@@ -140,6 +140,7 @@ Deutsch gehalten.
 ## Siehe auch
 
 - [../README.md](../README.md) — Abschnitt „Tests" für den Nutzer-Blickwinkel
+- [tests.md](tests.md) — Testarten, Skip-Bedeutung, Playwright-Regressionstests
 - [architecture.md](architecture.md) — warum die `lib/`-Klassen zustandslos sind (Testbarkeit)
 - [schema-extending.md](schema-extending.md) — neuen Schema-Type hinzufügen, ohne PHP anzufassen
 - [file-structure.md](file-structure.md) — Lage von `tests/` relativ zum Deployment-Ordner
