@@ -71,18 +71,27 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 <a id="features"></a>
 ## Features
 
+**Architektur**
 - JSON-LD-Ausgabe im `<head>` der Seite, nicht im Seiteninhalt
-- Drei Geltungsbereiche: **Global**, **Kategorie**, **Seite**
-- Vererbungslogik: Global → Kategorie → Seite (spezifischere Ebene überschreibt feldweise, siehe [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung))
-- **Schema-getriebenes Formular**: JSON-Schema-Dateien definieren sowohl Validierungsregeln als auch Formularfelder — kein hardcodiertes PHP pro Type (siehe [Entwicklerdokumentation](#entwicklerdokumentation))
-- **@id-Anker und Knotenreferenzen**: Seiten-Typen (z. B. `DonateAction`, `Event`) verweisen per `@id` auf global definierte Identitätsknoten — inkl. Schutzmechanismen gegen doppelte und hängende Referenzen (siehe [Organisations-Identität und @id-Anker](#organisations-identitaet))
-- Generisches `PostalAddress`-Schema nach schema.org (international)
+- **14 unterstützte Schema-Types** (LocalBusiness, Organization, Event, JobPosting, FAQPage u. a. — [vollständige Liste](#unterstuetzte-schema-types))
+- Drei Geltungsbereiche: **Global**, **Kategorie**, **Seite**, mit feldweiser Vererbung (Global → Kategorie → Seite, siehe [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung))
+
+**Redaktion & Bedienung**
+- Vollständig über Admin-Formulare pflegbar — kein Templating-Wissen nötig
 - Öffnungszeiten-Widget (inkl. optionalem zweitem Zeitraum je Wochentag, z. B. für Mittagspausen)
+- Generisches `PostalAddress`-Schema nach schema.org (international einsetzbar)
 - **Erweiterungsfeld** (JSON-Textarea) für zusätzliche Properties mit Live-Validierung
 - **Erkennung vorhandener JSON-LD-Blöcke** in Template und Seiteninhalt, wahlweise Beibehalten oder Überschreiben — plus **Import-Feld** zur Übernahme bestehender Daten ins Formular
 - **Debug-Modus**: erzeugte JSON-LD-Blöcke im Frontend als Pop-up anzeigen (zum Abgleich mit validator.schema.org)
+- Mehrsprachige Admin-Oberfläche und Frontend-Ausgabe
+
+**Datenqualität**
 - Validierung via **AJV.js** (lokal ausgeliefert, kein CDN) client-seitig, plus eigenständige server-seitige Validierung beim Speichern (unabhängig von JavaScript)
-- Mehrsprachige Labels via `$language->getLanguageValue()` und `$admin_lang->getLanguageValue()`
+- Umfangreiche automatisierte PHPUnit-Test-Suite (siehe [docs/tests.md](docs/tests.md))
+
+**Für Entwickler**
+- **Schema-getriebenes Formular**: JSON-Schema-Dateien definieren sowohl Validierungsregeln als auch Formularfelder — kein hardcodiertes PHP pro Type (siehe [Entwicklerdokumentation](#entwicklerdokumentation))
+- **@id-Anker und Knotenreferenzen**: Seiten-Typen (z. B. `DonateAction`, `Event`) verweisen per `@id` auf global definierte Identitätsknoten — inkl. Schutzmechanismen gegen doppelte und hängende Referenzen (siehe [Organisations-Identität und @id-Anker](#organisations-identitaet))
 
 <a id="unterstuetzte-schema-types"></a>
 ### Unterstützte Schema-Types
