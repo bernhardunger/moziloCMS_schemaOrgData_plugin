@@ -11,7 +11,7 @@ Für lokales Setup, Testausführung und das Bootstrap-Mocking siehe
 | PHPUnit-Unit-/Komponententests | Serverseitige Logik: Scope-Auflösung, JSON-LD-Erzeugung, Formular-Rendering, Validierung, Persistenz — je `lib/`-Klasse eigene Testdatei | `tests/*.php` |
 | PHPUnit-Feldvalidator-Tests | Je ein Test pro serverseitigem Feldvalidator (E-Mail, URL, Telefon, PLZ, Öffnungszeiten, Geo-Koordinaten) | `tests/Validation/` |
 | Jest-Tests | Clientseitige Live-Validierung (`js/validator.js`) in simulierter DOM-Umgebung | `tests/js/` |
-| Playwright-Regressionstests | Browsergestützte End-to-End-Verifikation gegen eine reale moziloCMS-Installation | `tests/PLAYWRIGHT-VERIFICATION.md`, `tests/PLAYWRIGHT-VERIFICATION-accountingservice-usecase.md` |
+| Playwright-Regressionstests | Browsergestützte End-to-End-Verifikation gegen eine reale moziloCMS-Installation | intern dokumentiert |
 
 Die ersten drei Testarten laufen automatisiert und ohne manuelles
 Zutun; Playwright-Regressionstests sind anleitungsgestützte manuelle
@@ -56,8 +56,8 @@ den betreffenden Codepfad zu erreichen. Die genaue Anzahl wird hier bewusst
 nicht genannt — sie veraltet bei jeder Testerweiterung (siehe README-eigene
 Konvention dazu, [../README.md](../README.md#tests)). Diese Fälle sind
 kein Hinweis auf eine Lücke in der Testabdeckung, sondern eine Grenze des
-Mock-Bootstraps; die betroffenen Codepfade werden stattdessen über die
-Playwright-Regressionstests (siehe unten) gegen eine echte Installation mit
+Mock-Bootstraps; die betroffenen Codepfade werden stattdessen durch
+ergänzende Browser-Regressionstests gegen eine echte Installation mit
 aktivem `CAT_REQUEST`/`PAGE_REQUEST` abgedeckt.
 
 ## Jest: clientseitige Validierung
@@ -73,20 +73,6 @@ Widget-Interaktionen (`address-required-widget`, `event-date-range-widget`,
 prüfen ausschließlich Browser-seitiges Verhalten — die serverseitige
 Gegenprüfung derselben Felder liegt in `tests/Validation/` bzw. den
 `ValidatorTest`-Methoden.
-
-## Playwright: Browser-Regressionstests
-
-`tests/PLAYWRIGHT-VERIFICATION.md` ist die allgemeine Anleitung für einen
-manuellen bzw. Playwright-MCP-gestützten Regressionslauf gegen eine echte
-moziloCMS-Installation — u. a. für Verhalten, das PHPUnit strukturell nicht
-erreichen kann (siehe „Was die dokumentierten Skips bedeuten" oben), sowie
-für rein visuelle/interaktive Aspekte (Formular-Rendering im echten
-Browser, Debug-Widget-Popup, Live-Validierungs-Feedback). Voraussetzung ist
-laut dieser Anleitung eine per Copy/Junction verlinkte Installation, in der
-`plugins/schemaOrgData/` 1:1 dem Deployment-Ordner entspricht.
-`tests/PLAYWRIGHT-VERIFICATION-accountingservice-usecase.md` ist ein
-zweites, enger gefasstes Anleitungsdokument speziell für den
-`AccountingService`-Use-Case.
 
 ## Grundprinzip beim Erweitern
 
