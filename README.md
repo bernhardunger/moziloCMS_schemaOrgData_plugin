@@ -577,7 +577,8 @@ Kurz gefasst: so wenig Types wie nötig, global nur genau eine
 Organisations-Identität, Seiten-Types nur dort, wo der Inhalt es hergibt,
 und nach jeder Änderung mit [validator.schema.org](https://validator.schema.org)
 bzw. dem [Rich-Results-Test](https://search.google.com/test/rich-results)
-gegenprüfen.
+gegenprüfen. Einen Überblick über Aufbau und Umfang des Vokabulars bietet die
+[offizielle schema.org-Dokumentation](https://schema.org/docs/documents.html).
 
 > 📄 Vertiefung (vollständige Empfehlungsliste): [docs/best-practices.md](docs/best-practices.md)
 
