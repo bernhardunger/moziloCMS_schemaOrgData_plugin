@@ -151,7 +151,8 @@ Results bevorzugt ausgewertet wird.
 <a id="installation"></a>
 ## Installation
 
-1. Ordner `schemaOrgData` in `plugins/` hochladen
+1. Die Installation erfolgt über die moziloCMS-Admin-Oberfläche der
+   Plugin-Verwaltung (ZIP-Upload).
 2. Im moziloCMS-Admin unter **Plugins** aktivieren
 3. **Wichtig:** Den Platzhalter `{schemaOrgData}` an passender Stelle im
    `<head>`-Bereich des aktiven Layout-Templates (`template.html`) ergänzen —
