@@ -273,7 +273,7 @@ Ausgabe entfernt; vollständig leere Knoten werden gar nicht ausgegeben.
 
 > 📄 Vertiefung (gallerytemplate-Sonderfall, Types nur auf Globalebene,
 > De-Dup-Verhalten (Duplikat-Vermeidung), weitere Ausgabe-Beispiele):
-> [docs/rendering.md](docs/rendering.md) · [docs/examples/](docs/examples/)
+> [docs/rendering.md](docs/rendering.md)
 
 <a id="adressschema-postaladdress"></a>
 ### Adressschema (PostalAddress)
