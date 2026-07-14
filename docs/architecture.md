@@ -87,70 +87,41 @@ von `renderFrontend()`.
 
 ## Kontrollfluss: Admin-Request
 
-Grobe Flughöhe: Fassade → Scope-Auflösung / POST-Dispatch → Speichern
-(Validierung inklusive) → Formular-Rendering. Der folgende
-ASCII-Aufrufbaum ist die maßgebliche Detailquelle (exakte Methodennamen
-und Verzweigungslogik):
+Grobe Flughöhe:
 
 ```
 schemaOrgData::getContent()
-  └─ SchemaOrgData_AdminController::renderAdminPage(AdminRequestContext)
-       ├─ falls $_POST nicht leer:
-       │    SchemaOrgData_AdminRequestHandler::handlePostRequest()
-       │      ├─ Import-Button gesetzt?  → handleImportAction()
-       │      │     → SchemaOrgData_ImportService::importJsonLd()
-       │      │     → schreibt Ergebnis zurück nach $_POST['schemaOrgData'][scope]
-       │      └─ sonst je Geltungsebene (global/category/page):
-       │            SchemaOrgData_ScopeResolver::deleteConfig()
-       │            oder
-       │            SchemaOrgData_ConfigSaveService::saveConfig()
-       │              ├─ resolveInheritableFields()
-       │              ├─ SchemaOrgData_Validator::validateFormData()
-       │              ├─ validateExtensionField() → SchemaOrgData_ValidationResult
-       │              ├─ sanitizePostData() / sanitizeAddressData()
-       │              └─ $settings->set(scopeKey, $config)
-       ├─ SchemaOrgData_CollisionDetector::extractExistingJsonLdBlocksFromTemplateAdmin()
-       │     → SchemaOrgData_ScopeResolver::saveScopeMeta('global', …)
+  └─ AdminController::renderAdminPage()
+       ├─ POST vorhanden? → AdminRequestHandler::handlePostRequest()
+       │    (Import-Dispatch oder ConfigSaveService::saveConfig() je Geltungsebene)
+       ├─ Kollisionserkennung im aktiven Template persistieren (Global-Scope)
        └─ je Geltungsebene (Global + alle Kategorien + alle Seiten, vorgerendert):
-            SchemaOrgData_AdminController::renderScopeSection()
-              ├─ SchemaOrgData_AdminPageRenderer::renderInfoBlock() / renderExistingJsonLdNotice() / …
-              ├─ SchemaOrgData_IdReferenceService::resolveAvailableGlobalFragments()
-              └─ je verfügbarem Type:
-                   SchemaOrgData_FormRenderer::renderTypeFields()
-                     └─ renderField() je Property (siehe rendering.md)
+            AdminController::renderScopeSection()
+              → FormRenderer::renderTypeFields() je verfügbarem Type (siehe rendering.md)
 ```
 
-Nur die aktive Sektion ist sichtbar und ihre Felder sind nicht `disabled`;
-`initScopeSelector()` (`js/validator.js`) schaltet beim Scope-Wechsel
-Sichtbarkeit und `disabled`-Status clientseitig um, ohne die Seite neu zu
-laden (moziloCMS öffnet die Plugin-Einstellungen über einen JS-Tab, ein
-Page-Reload würde diesen schließen). Alle Sektionen werden dennoch serverseitig
-vorgerendert — inaktive per Regex (`preg_replace('/<(input|select|textarea)(\s)/i',
-…)`) nachträglich mit `disabled="disabled"` versehen, damit beim Speichern nur
-die aktive Sektion übertragen wird.
+Damit der Scope-Wechsel ohne Page-Reload funktioniert (moziloCMS öffnet
+die Plugin-Einstellungen über einen JS-Tab, ein Reload würde ihn
+schließen), werden alle Geltungsebenen vorgerendert; nur die aktive
+Sektion ist sichtbar und ihre Felder nicht `disabled` —
+`initScopeSelector()` (`js/validator.js`) schaltet das beim Wechsel
+clientseitig um. Inaktive Sektionen werden serverseitig zusätzlich per
+Regex mit `disabled="disabled"` versehen, damit beim Speichern nur die
+aktive Sektion übertragen wird.
 
 ## Kontrollfluss: Frontend-Request
 
-Grobe Flughöhe: Fassade → Scope-Auflösung/Filter → JSON-LD-Aufbau →
-Ausgabe. Der folgende ASCII-Aufrufbaum ist die maßgebliche Detailquelle
-(exakte Methodennamen und Verzweigungslogik):
+Grobe Flughöhe:
 
 ```
 schemaOrgData::getContent($value)
-  └─ SchemaOrgData_FrontendRenderer::renderFrontend($value, FrontendRequestContext)
-       ├─ Galerie-Vollansicht (GET-Parameter "galtemplate")? → '' (kein JSON-LD)
-       ├─ CAT_REQUEST/PAGE_REQUEST sanitizen (Lese-/Schreibpfad-Symmetrie)
-       ├─ SchemaOrgData_ScopeResolver::loadScopeConfig() je Ebene (global/category/page)
-       ├─ excluded_cats-Filter → globale Ebene ggf. verwerfen
-       ├─ jsonld_mode = 'keep'-Filter je Ebene → Ebene ggf. verwerfen ($globalSuppressedByKeep)
-       ├─ SchemaOrgData_ScopeResolver::resolveTypeInheritance() (feldweise Vererbung)
-       ├─ SchemaOrgData_IdReferenceService::applyDanglingReferenceGuard()
-       ├─ je verbleibendem Type:
-       │    SchemaOrgData_JsonLdBuilder::resolveNodeId()   (@id-Vergabe, De-Dup-Guard)
-       │    SchemaOrgData_JsonLdBuilder::buildJsonLdScript() (<script>-Block)
-       ├─ debug_output aktiv? → buildDebugWidget() anhängen
-       └─ SchemaOrgData_CollisionDetector::extractExistingJsonLdBlocksFromTemplate() / …Blocks($value)
-            → SchemaOrgData_ScopeResolver::saveScopeMeta() (nur bei Änderung, scope-genau)
+  └─ FrontendRenderer::renderFrontend()
+       ├─ Galerie-Vollansicht? → '' (kein JSON-LD)
+       ├─ ScopeResolver::loadScopeConfig() je Ebene, excluded_cats-/keep-Filter
+       ├─ ScopeResolver::resolveTypeInheritance() (feldweise Vererbung)
+       ├─ IdReferenceService::applyDanglingReferenceGuard()
+       ├─ je verbleibendem Type: JsonLdBuilder::resolveNodeId() + buildJsonLdScript()
+       └─ Kollisionserkennung scope-genau persistieren
 ```
 
 Details zu den einzelnen Guards (`excluded_cats`, `jsonld_mode`, De-Dup-,
