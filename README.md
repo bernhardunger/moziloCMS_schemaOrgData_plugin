@@ -27,8 +27,10 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 
 ---
 
+## Inhaltsverzeichnis
+
 <details>
-<summary>Inhaltsverzeichnis</summary>
+<summary>Inhaltsverzeichnis anzeigen</summary>
 
 - [Features](#features)
   - [Unterstützte Schema-Types](#unterstuetzte-schema-types)
