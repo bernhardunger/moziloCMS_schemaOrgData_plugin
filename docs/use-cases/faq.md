@@ -7,7 +7,7 @@
 > müssen **wortgleich** auf der Seite sichtbar sein. Ein FAQ-Markup als
 > reiner „SEO-Trick" auf einer normalen Inhaltsseite verstößt gegen die
 > Google-Richtlinien und kann zum Ausschluss von Rich Results führen —
-> siehe [Typische Fehler](../common-mistakes.md).
+> siehe [Best Practices](../best-practices.md#faqpage-ohne-sichtbare-inhalte).
 
 ## Felder im Überblick
 
@@ -71,5 +71,4 @@ Vererbung einzelner Fragen.
 ## Siehe auch
 
 - [../../README.md](../../README.md#use-case-faq) — Kurzübersicht
-- [../best-practices.md](../best-practices.md) — Grundregel „Markup entspricht sichtbarem Inhalt"
-- [../common-mistakes.md](../common-mistakes.md#faqpage-ohne-sichtbare-inhalte) — FAQ als SEO-Trick
+- [../best-practices.md](../best-practices.md#faqpage-ohne-sichtbare-inhalte) — Grundregel „Markup entspricht sichtbarem Inhalt", FAQ als SEO-Trick

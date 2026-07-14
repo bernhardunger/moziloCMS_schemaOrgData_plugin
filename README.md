@@ -486,7 +486,7 @@ gegenprüfen.
 - ❌ Mehrere Organisations-Identitäten (**Organization**, **NGO**, **LocalBusiness**) gleichzeitig global konfigurieren
 - ❌ Felder befüllen, „weil sie da sind" — geschätzte/erfundene Werte schaden mehr als leere Felder
 
-> 📄 Vertiefung (alle Beispiele inkl. Begründung): [docs/common-mistakes.md](docs/common-mistakes.md)
+> 📄 Vertiefung (alle Beispiele inkl. Begründung): [docs/best-practices.md](docs/best-practices.md)
 
 ---
 

@@ -62,4 +62,4 @@ bei `FAQPage` (siehe [Best Practices](../best-practices.md)).
 - [../../README.md](../../README.md#use-case-donateaction) — Kurzübersicht
 - [../widgets.md](../widgets.md) — Mechanik von `id_reference`, Dangling-Reference-Guard
 - [organization-identity.md](organization-identity.md) — Organisationsknoten und `@id`-Fragmente
-- [../common-mistakes.md](../common-mistakes.md) — Spendenaufruf ohne echte Spendenmöglichkeit
+- [../best-practices.md](../best-practices.md#seiten-types-nur-wo-passend) — Spendenaufruf ohne echte Spendenmöglichkeit

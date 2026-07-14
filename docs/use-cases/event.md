@@ -77,7 +77,7 @@ Server-Zeitzone.
 Ein `Event` mit vergangenem `startDate`/`endDate` bleibt im Markup, wenn
 die Seitenkonfiguration nach der Veranstaltung nicht entfernt oder
 aktualisiert wird — Suchmaschinen werten das als veraltetes Signal. Siehe
-[Typische Fehler](../common-mistakes.md#veraltete-events).
+[Best Practices](../best-practices.md#veraltete-events).
 
 ## Siehe auch
 
