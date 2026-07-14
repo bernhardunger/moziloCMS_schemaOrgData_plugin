@@ -86,7 +86,7 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 - Mehrsprachige Admin-Oberfläche und Frontend-Ausgabe
 
 **Datenqualität**
-- Validierung via **AJV.js** (lokal ausgeliefert, kein CDN) client-seitig, plus eigenständige server-seitige Validierung beim Speichern (unabhängig von JavaScript)
+- Validierung via **[AJV.js](https://ajv.js.org/)** (lokal ausgeliefert, kein CDN) client-seitig, plus eigenständige server-seitige Validierung beim Speichern (unabhängig von JavaScript)
 - Umfangreiche automatisierte PHPUnit-Test-Suite (siehe [docs/tests.md](docs/tests.md))
 
 **Für Entwickler**
@@ -541,7 +541,7 @@ Ausgabe-Beispiel.
 ### Formularvalidierung
 
 Alle Formularfelder werden zweistufig validiert: **live im Browser**
-(JavaScript/AJV) und **server-seitig in PHP** beim Speichern — diese Prüfung
+(JavaScript/[AJV](https://ajv.js.org/)) und **server-seitig in PHP** beim Speichern — diese Prüfung
 greift eigenständig auch ohne JavaScript. Das Feedback ist dreistufig: ✅
 grün (OK) · ⚠️ gelb (Warnung) · ❌ rot (Fehler).
 
