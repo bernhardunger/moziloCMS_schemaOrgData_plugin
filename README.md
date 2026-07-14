@@ -472,29 +472,21 @@ Betreibers:
 > nicht sichtbar sind, als irreführend — im schlimmsten Fall führt das zum
 > Ausschluss der gesamten Website von Rich Results.
 
-Googles eigene Richtlinien gehen an einigen Stellen über die schema.org-Spec
-hinaus, siehe [Intro to Structured Data](https://developers.google.com/search/docs/appearance/structured-data/intro-structured-data).
-
 Kurz gefasst: so wenig Types wie nötig, global nur genau eine
 Organisations-Identität, Seiten-Types nur dort, wo der Inhalt es hergibt,
 und nach jeder Änderung mit [validator.schema.org](https://validator.schema.org)
-bzw. dem [Rich-Results-Test](https://search.google.com/test/rich-results)
-gegenprüfen. Einen Überblick über Aufbau und Umfang des Vokabulars bietet die
-[offizielle schema.org-Dokumentation](https://schema.org/docs/documents.html).
+gegenprüfen.
 
-> 📄 Vertiefung (vollständige Empfehlungsliste): [docs/best-practices.md](docs/best-practices.md)
+> 📄 Vertiefung (vollständige Empfehlungsliste, Google-Richtlinien, schema.org-Vokabular): [docs/best-practices.md](docs/best-practices.md)
 
 <a id="typische-fehler"></a>
 ### Typische Fehler — so bitte nicht
 
 - ❌ `FAQPage` ohne wortgleich sichtbare Fragen/Antworten auf der Seite
-- ❌ Abgelaufene `Event`-Einträge stehen lassen
-- ❌ `DonateAction` ohne tatsächliche, nachvollziehbare Spendenmöglichkeit
-- ❌ Keyword-Stuffing im `name`-Feld statt des tatsächlichen Namens
 - ❌ Mehrere Organisations-Identitäten (**Organization**, **NGO**, **LocalBusiness**) gleichzeitig global konfigurieren
 - ❌ Felder befüllen, „weil sie da sind" — geschätzte/erfundene Werte schaden mehr als leere Felder
 
-> 📄 Vertiefung (Begründungen im Detail): [docs/common-mistakes.md](docs/common-mistakes.md)
+> 📄 Vertiefung (alle Beispiele inkl. Begründung): [docs/common-mistakes.md](docs/common-mistakes.md)
 
 ---
 
