@@ -91,7 +91,7 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 
 **Für Entwickler**
 - **Schema-getriebenes Formular**: JSON-Schema-Dateien definieren sowohl Validierungsregeln als auch Formularfelder — kein hardcodiertes PHP für die meisten Types (siehe [Entwicklerdokumentation](#entwicklerdokumentation))
-- **@id-Anker und Knotenreferenzen**: Seiten-Typen (z. B. `DonateAction`, `Event`) verweisen per `@id` auf global definierte Identitätsknoten — inkl. Schutzmechanismen gegen doppelte und hängende Referenzen (siehe [Organisations-Identität und @id-Anker](#organisations-identitaet))
+- **@id-Anker und Knotenreferenzen**: Seiten-Typen (z. B. **DonateAction**, **Event**) verweisen per `@id` auf global definierte Identitätsknoten — inkl. Schutzmechanismen gegen doppelte und hängende Referenzen (siehe [Organisations-Identität und @id-Anker](#organisations-identitaet))
 
 <a id="unterstuetzte-schema-types"></a>
 ### Unterstützte Schema-Types
@@ -198,8 +198,8 @@ Schema-Type zugewiesen bekommen hat.
    auswählen — diese Ebene wird auf jeder Seite ausgegeben (siehe
    [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung)).
 2. **Identität festlegen.** Für die globale Ebene genau einen
-   Identitäts-Type wählen, der zur Website passt: `Organization`, `NGO`,
-   `Person` oder einen `LocalBusiness`-Typ (siehe
+   Identitäts-Type wählen, der zur Website passt: **Organization**, **NGO**,
+   **Person** oder einen **LocalBusiness**-Typ (siehe
    [Organisations-Identität und @id-Anker](#organisations-identitaet) sowie
    [Best Practices](#best-practices) — „Global nur die Identität").
 3. **Pflichtfelder ausfüllen.** Pflichtfelder sind im Formular markiert;
@@ -412,9 +412,9 @@ Produktivbetrieb gedacht.
 
 Für Unternehmen mit physischer Adresse (Ladengeschäft, Praxis, Kanzlei,
 Beratung) steht die `LocalBusiness`-Familie zur Verfügung:
-`LocalBusiness`, `ProfessionalService`, `LegalService` (Anwaltskanzlei /
-Rechtsberatung), `MedicalBusiness` (Arztpraxis / medizinische Einrichtung)
-und `AccountingService` (Steuerberatung / Buchhaltung) — jeweils auf
+**LocalBusiness**, **ProfessionalService**, **LegalService** (Anwaltskanzlei /
+Rechtsberatung), **MedicalBusiness** (Arztpraxis / medizinische Einrichtung)
+und **AccountingService** (Steuerberatung / Buchhaltung) — jeweils auf
 Global- oder Kategorie-Ebene konfigurierbar, inkl. `PostalAddress`- und
 Öffnungszeiten-Widget.
 
@@ -423,10 +423,10 @@ Global- oder Kategorie-Ebene konfigurierbar, inkl. `PostalAddress`- und
 <a id="organisations-identitaet"></a>
 ### Organisations-Identität und @id-Anker
 
-Ausgewählte Schema-Types (`Organization`, `NGO`, die `LocalBusiness`-Familie,
-`Person`) erhalten zusätzlich eine stabile `@id` — eine URI, die den Knoten
-im Datengraphen eindeutig identifiziert. Seiten-Types wie `DonateAction`
-oder `Event` können darüber per `@id` auf den global definierten
+Ausgewählte Schema-Types (**Organization**, **NGO**, die **LocalBusiness**-Familie,
+**Person**) erhalten zusätzlich eine stabile `@id` — eine URI, die den Knoten
+im Datengraphen eindeutig identifiziert. Seiten-Types wie **DonateAction**
+oder **Event** können darüber per `@id` auf den global definierten
 Organisations- bzw. Personen-Knoten verweisen, ohne ihn auf jeder Seite zu
 wiederholen:
 
@@ -468,8 +468,8 @@ graph LR
 
 > ℹ️ De-Dup-Guard (Schutz vor doppelten Anker-IDs): Pro Fragment
 > (`#organization`, `#person`) erhält nur der
-> erste Knoten in Ausgabereihenfolge die `@id` — sind z. B. `NGO` und
-> `Organization` gleichzeitig global konfiguriert, bleibt der zweite Knoten
+> erste Knoten in Ausgabereihenfolge die `@id` — sind z. B. **NGO** und
+> **Organization** gleichzeitig global konfiguriert, bleibt der zweite Knoten
 > ohne Anker.
 
 > 📄 Ausführliches Beispiel (De-Dup-Guard, Person-Fragment, Basis-URL-Empfehlung): [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
@@ -496,7 +496,7 @@ hängende `@id`-Verweise.
 abgebildet (siehe [Adressschema](#adressschema-postaladdress)),
 `organizer` nutzt das Widget `id_reference_or_literal` (siehe
 [Verknüpfte Inhalte](#verknuepfte-inhalte)) — Referenz auf eine global
-konfigurierte `Person`/`NGO` oder Direkteingabe. Datumsfelder (`startDate`,
+konfigurierte **Person**/**NGO** oder Direkteingabe. Datumsfelder (`startDate`,
 `endDate`) werden im deutschen Format eingegeben und validiert (siehe
 [Formularvalidierung](#formularvalidierung)).
 
@@ -594,7 +594,7 @@ gegenprüfen. Einen Überblick über Aufbau und Umfang des Vokabulars bietet die
 - ❌ Abgelaufene `Event`-Einträge stehen lassen
 - ❌ `DonateAction` ohne tatsächliche, nachvollziehbare Spendenmöglichkeit
 - ❌ Keyword-Stuffing im `name`-Feld statt des tatsächlichen Namens
-- ❌ Mehrere Organisations-Identitäten (`Organization`, `NGO`, `LocalBusiness`) gleichzeitig global konfigurieren
+- ❌ Mehrere Organisations-Identitäten (**Organization**, **NGO**, **LocalBusiness**) gleichzeitig global konfigurieren
 - ❌ Felder befüllen, „weil sie da sind" — geschätzte/erfundene Werte schaden mehr als leere Felder
 
 > 📄 Vertiefung (Begründungen im Detail): [docs/common-mistakes.md](docs/common-mistakes.md)

@@ -200,9 +200,9 @@ davon unberührt.
 
 ## LocalBusiness-Familie (`ui:family`)
 
-Types mit demselben `ui:family`-Wert (aktuell `LocalBusiness`,
-`ProfessionalService`, `LegalService`, `MedicalBusiness`,
-`AccountingService` — alle `"localBusiness"`) gelten als gegenseitig
+Types mit demselben `ui:family`-Wert (aktuell **LocalBusiness**,
+**ProfessionalService**, **LegalService**, **MedicalBusiness**,
+**AccountingService** — alle `"localBusiness"`) gelten als gegenseitig
 exklusiv unterhalb von Global: Ist auf Global bereits ein Familienmitglied
 konfiguriert, filtert `SchemaOrgData_AdminController::
 renderScopeSection()` die übrigen Mitglieder aus dem

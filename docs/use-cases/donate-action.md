@@ -14,8 +14,8 @@ und Dangling-Reference-Guard.
 
 `recipient` ist im Formular keine editierbare Eingabe, sondern zeigt
 schreibgeschützt die aufgelöste Ziel-URI des global konfigurierten
-Organisationsknotens an (`NGO`, `Organization` oder ein
-`LocalBusiness`-Typ) — siehe
+Organisationsknotens an (**NGO**, **Organization** oder ein
+**LocalBusiness**-Typ) — siehe
 [Organisations-Identität und @id-Anker](organization-identity.md).
 
 ## Vollständiges Beispiel

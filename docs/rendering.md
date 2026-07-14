@@ -202,7 +202,7 @@ Type-Name). `resolveNodeId(schemaRepo, urlHelper, pluginSelfDir, $type,
 
 Weil `$assignedFragments` für die gesamte Seite (alle Geltungsebenen,
 alle Types) durchgereicht wird, erhält bei geteiltem Fragment (z. B.
-`LocalBusiness` und `Organization` teilen sich `"organization"`) nur der
+**LocalBusiness** und **Organization** teilen sich `"organization"`) nur der
 in Ausgabereihenfolge erste Knoten tatsächlich eine `@id` — unabhängig
 davon, auf welcher Geltungsebene er steht.
 

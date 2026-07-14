@@ -22,8 +22,8 @@ Risiko im Sinne der Grundregel oben.
 ## Global nur die Identität
 
 Auf globaler Ebene gehört hin, wer hinter der Website steht
-(`Organization`, `NGO`, `Person` oder ein `LocalBusiness`-Typ) sowie ggf.
-`WebSite` — und zwar **genau eine** Organisations-Identität, nicht
+(**Organization**, **NGO**, **Person** oder ein **LocalBusiness**-Typ) sowie ggf.
+**WebSite** — und zwar **genau eine** Organisations-Identität, nicht
 mehrere parallel. Innerhalb der `LocalBusiness`-Familie den **spezifischsten
 passenden Type** wählen (siehe
 [Lokales Unternehmen](use-cases/local-business.md)) — z. B. `AccountingService`
@@ -31,7 +31,7 @@ statt generisches `LocalBusiness` für eine Steuerkanzlei.
 
 ## Seiten-Types nur dort, wo der Inhalt es hergibt
 
-`Event`, `JobPosting`, `DonateAction`, `FAQPage` und `Article` gehören auf
+**Event**, **JobPosting**, **DonateAction**, **FAQPage** und **Article** gehören auf
 die Kategorie bzw. Seite, die den entsprechenden Inhalt tatsächlich
 sichtbar zeigt:
 
@@ -64,7 +64,7 @@ insbesondere nach:
 Strukturierte Daten sind kein Einmal-Setup: Bei Inhaltsänderungen
 (Veranstaltung vorbei, Stelle besetzt, Öffnungszeiten geändert) muss die
 Konfiguration mitziehen. In der Praxis bewährt sich ein fester Rhythmus —
-z. B. `Event`- und `JobPosting`-Konfigurationen bei jeder inhaltlichen
+z. B. **Event**- und **JobPosting**-Konfigurationen bei jeder inhaltlichen
 Aktualisierung der jeweiligen Seite mitprüfen, statt sie als
 „einmal eingerichtet, nie wieder angefasst" zu behandeln.
 

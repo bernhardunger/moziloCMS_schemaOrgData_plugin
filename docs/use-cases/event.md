@@ -37,7 +37,7 @@ ab — z. B. Jahreshauptversammlung, Vortrag, Messeauftritt, Konzert.
 ## Veranstalter (`organizer`)
 
 `organizer` nutzt das Widget `id_reference_or_literal` — Referenz auf eine
-global konfigurierte `Person`/`NGO` oder Direkteingabe von Name und
+global konfigurierte **Person**/**NGO** oder Direkteingabe von Name und
 Rolle. Details zu beiden Modi stehen in [widgets.md](../widgets.md).
 
 ## Vollständiges Beispiel

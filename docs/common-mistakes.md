@@ -58,15 +58,15 @@ eigene Properties bzw. den sichtbaren Seiteninhalt.
 
 ## ❌ Mehrere Organisations-Identitäten global parallel
 
-`Organization`, `NGO` und ein `LocalBusiness`-Typ gleichzeitig global zu
+**Organization**, **NGO** und ein **LocalBusiness**-Typ gleichzeitig global zu
 konfigurieren erzeugt konkurrierende Aussagen darüber, wer die Website
 betreibt. Technisch verhindert das der [De-Dup-Guard](use-cases/organization-identity.md)
 nicht vollständig — nur der erste ausgegebene Knoten erhält die `@id`,
 die übrigen Knoten werden trotzdem ausgegeben, nur ohne Anker.
 
 **Richtig:** Einen Type wählen, der am besten passt — im Zweifel den
-spezifischsten (z. B. `NGO` statt `Organization` für einen e. V.,
-`AccountingService` statt `LocalBusiness` für eine Steuerkanzlei). Siehe
+spezifischsten (z. B. **NGO** statt **Organization** für einen e. V.,
+**AccountingService** statt **LocalBusiness** für eine Steuerkanzlei). Siehe
 [Global nur die Identität](best-practices.md#globaler-scope).
 
 ## ❌ Daten eintragen, „weil das Feld da ist"

@@ -26,10 +26,10 @@ schreibgeschützte Info angezeigt.
 `ui:idTarget` referenziert das Fragment (siehe
 [use-cases/organization-identity.md](use-cases/organization-identity.md)),
 nicht einen konkreten Type — welcher Type das Fragment aktuell trägt
-(`NGO`, `Organization`, ein `LocalBusiness`-Typ …), ist für das Widget
+(**NGO**, **Organization**, ein **LocalBusiness**-Typ …), ist für das Widget
 irrelevant.
 
-**Ausgabe-Beispiel** (`DonateAction` auf einer Spenden-Seite, `NGO`
+**Ausgabe-Beispiel** (**DonateAction** auf einer Spenden-Seite, **NGO**
 global):
 
 ```html
@@ -81,8 +81,8 @@ zwei Modi.
 ### a) Referenz-Modus — Verknüpfen mit globalem Knoten
 
 Das Dropdown listet automatisch alle aktuell im Global-Scope
-konfigurierten Typen, die ein `ui:idFragment` besitzen (z. B. `NGO`,
-`Person`). Gespeichert werden `_mode: "reference"` und
+konfigurierten Typen, die ein `ui:idFragment` besitzen (z. B. **NGO**,
+**Person**). Gespeichert werden `_mode: "reference"` und
 `_fragment: "<fragment>"`. Zur Ausgabezeit emittiert das Plugin
 `{"@id": "<Basis-URL>#<fragment>"}` — exakt wie `id_reference`. Der
 Dangling-Reference-Guard (siehe unten) greift für den Referenz-Modus wie

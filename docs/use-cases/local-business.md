@@ -2,9 +2,9 @@
 
 Für Unternehmen mit physischer Adresse — Ladengeschäft, Praxis, Kanzlei,
 Beratung — steht die `LocalBusiness`-Familie zur Verfügung:
-`LocalBusiness` (generisch), `ProfessionalService` (Dienstleister),
-`LegalService` (Anwaltskanzlei / Rechtsberatung), `MedicalBusiness`
-(Arztpraxis / medizinische Einrichtung) und `AccountingService`
+**LocalBusiness** (generisch), **ProfessionalService** (Dienstleister),
+**LegalService** (Anwaltskanzlei / Rechtsberatung), **MedicalBusiness**
+(Arztpraxis / medizinische Einrichtung) und **AccountingService**
 (Steuerberatung / Buchhaltung).
 
 ## Welchen Type wählen?
@@ -75,7 +75,7 @@ und [Öffnungszeiten](../../README.md#oeffnungszeiten).
 
 Eine `AccountingService`-Konfiguration auf Global schließt weitere,
 seitenspezifische Types nicht aus — z. B. kann eine einzelne Seite
-zusätzlich `FAQPage` oder `JobPosting` tragen (siehe
+zusätzlich **FAQPage** oder **JobPosting** tragen (siehe
 [FAQPage](faq.md), [JobPosting](job-posting.md)). Die
 Organisations-Identität aus `AccountingService` (bzw. dem gewählten
 Familienmitglied) kann dabei per `@id` von anderen Seiten-Types

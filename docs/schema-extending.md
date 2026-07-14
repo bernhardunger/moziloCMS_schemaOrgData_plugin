@@ -98,7 +98,7 @@ Block unverändert übernehmen.
 ```
 
 `ui:idTarget` benennt das `ui:idFragment` eines global konfigurierbaren
-Types (z. B. `Organization`, `NGO`). Zur Ausgabezeit fügt
+Types (z. B. **Organization**, **NGO**). Zur Ausgabezeit fügt
 `SchemaOrgData_JsonLdBuilder::buildJsonLdScript()` automatisch
 `{"@id": "<Basis-URL>#organization"}` als Wert ein.
 
@@ -129,7 +129,7 @@ nötig, ein neuer Type mit `ui:idFragment` erscheint dort automatisch.
 ```
 
 Deklariert einen Type als potenziellen `@id`-Träger. Mehrere Types können
-sich dasselbe Fragment teilen (z. B. `LocalBusiness` und `Organization`
+sich dasselbe Fragment teilen (z. B. **LocalBusiness** und **Organization**
 teilen sich `"organization"` als unterschiedliche Ausprägungen derselben
 Identität) — pro Seite erhält dann nur der erste in Ausgabereihenfolge
 ausgegebene Knoten tatsächlich eine `@id` (De-Dup-Guard, siehe

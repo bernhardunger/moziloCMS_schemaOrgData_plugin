@@ -77,7 +77,7 @@ Zwei Details, die sich nur im Zusammenspiel mehrerer Blöcke zeigen:
 
 - Nur `LocalBusiness` trägt eine `@id` (`ui:idFragment: "organization"`,
   siehe [../use-cases/organization-identity.md](../use-cases/organization-identity.md))
-  — `Article` und `FAQPage` haben in ihrer Schema-Datei kein
+  — **Article** und **FAQPage** haben in ihrer Schema-Datei kein
   `ui:idFragment` und werden deshalb ohne `@id` ausgegeben.
 - Der `Article`-Block ist **nicht** von `LocalBusiness` abhängig, obwohl
   `author.name` inhaltlich denselben Namen trägt — es gibt keine

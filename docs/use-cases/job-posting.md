@@ -18,7 +18,7 @@
 
 `hiringOrganization` nutzt wie `Event.organizer` das Widget
 `id_reference_or_literal`: entweder Referenz auf den global konfigurierten
-Organisationsknoten (`NGO`, `Organization`, ein `LocalBusiness`-Typ) oder
+Organisationsknoten (**NGO**, **Organization**, ein **LocalBusiness**-Typ) oder
 Direkteingabe, falls die ausschreibende Stelle nicht mit der global
 gepflegten Identität übereinstimmt (z. B. bei einer Tochtergesellschaft).
 

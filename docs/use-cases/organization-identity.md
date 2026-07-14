@@ -30,7 +30,7 @@ ausschließlich in der jeweiligen Schema-Datei über die Property
 | `#organization` | `NGO`, `Organization`, `LocalBusiness`, `ProfessionalService`, `LegalService`, `MedicalBusiness`, `AccountingService` | Global |
 | `#person` | `Person` | Global |
 
-Die LocalBusiness-Familie teilt sich mit `NGO`/`Organization` bewusst
+Die LocalBusiness-Familie teilt sich mit **NGO**/**Organization** bewusst
 dasselbe Fragment (`organization`) — es geht um dieselbe Rolle
 („wer betreibt die Website"), unabhängig vom konkret gewählten Type.
 
@@ -50,7 +50,7 @@ flowchart TD
 </details>
 
 Pro Seite trägt **genau ein** Knoten ein gegebenes Fragment. Sind auf
-derselben Seite z. B. sowohl `NGO` als auch `Organization` global
+derselben Seite z. B. sowohl **NGO** als auch **Organization** global
 konfiguriert (was laut [Best Practices](../best-practices.md) ohnehin
 vermieden werden sollte), erhält nur der in Ausgabereihenfolge erste Knoten
 die `@id` — die übrigen bleiben ohne Anker. Eine einmal gesetzte `@id` wird
@@ -62,7 +62,7 @@ voneinander — De-Dup-Guard und Dangling-Reference-Guard (siehe
 
 ## Person-Fragment (`#person`)
 
-`Person` erhält analog zu `NGO`/`Organization` einen eigenen `@id`-Anker
+`Person` erhält analog zu **NGO**/**Organization** einen eigenen `@id`-Anker
 mit dem Fragment `person`. Damit können Seiten-Typen (z. B.
 `Event.organizer`) auf eine global definierte Person verweisen. `Person`
 ist ausschließlich auf dem **Global-Scope** verfügbar (kein
