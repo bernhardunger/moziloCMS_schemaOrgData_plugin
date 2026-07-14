@@ -106,6 +106,22 @@ Admin-Seitenaufruf bzw. jeder Frontend-Request einen
 
 ### `keep`/`override` und die Wirkung auf die eigene Ausgabe
 
+<details>
+<summary>Diagramm: Entscheidungsablauf bei erkanntem JSON-LD (Beibehalten vs. Überschreiben)</summary>
+
+```mermaid
+flowchart TD
+    A["Vorhandenes JSON-LD erkannt"] --> B{"Fundort?"}
+    B -->|Layout-Template| C["Hinweis im Global-Scope"]
+    B -->|Seiteninhalt| D["Hinweis im Seiten-Scope"]
+    C --> E{"Nutzerentscheidung"}
+    D --> E
+    E -->|Beibehalten| F["Kein eigenes JSON-LD für diesen Scope"]
+    E -->|Überschreiben| G["Plugin-JSON-LD zusätzlich zum vorhandenen Block<br/>(kein automatischer Merge, alter Block bleibt stehen)"]
+```
+
+</details>
+
 Ist `existing_jsonld = true` für einen Scope, zeigt
 `renderExistingJsonLdNotice()` eine Radio-Auswahl:
 

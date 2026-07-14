@@ -9,7 +9,11 @@ Betreibers. Dafür gilt eine einfache Grundregel:
 > die auf der Seite nicht sichtbar sind, als irreführend — im schlimmsten
 > Fall führt das zum Ausschluss der gesamten Website von Rich Results.
 
-Diese Regel ist der Maßstab für alle folgenden Empfehlungen.
+Diese Regel ist der Maßstab für alle folgenden Empfehlungen. Googles
+eigene Richtlinien gehen an einigen Stellen über die schema.org-Spec
+hinaus, siehe [Intro to Structured Data](https://developers.google.com/search/docs/appearance/structured-data/intro-structured-data).
+Einen Überblick über Aufbau und Umfang des Vokabulars bietet die
+[offizielle schema.org-Dokumentation](https://schema.org/docs/documents.html).
 
 ## So wenig Types wie nötig
 
