@@ -62,6 +62,7 @@ ab — es gibt keinen unterstützten `ImageObject`- oder
 `BreadcrumbList`-Schema-Type (siehe [../README.md](../README.md#unterstuetzte-schema-types)
 für die vollständige Liste der unterstützten Types).
 
+<a id="abhaengigkeiten"></a>
 ## Abhängigkeiten
 
 ### Laufzeit: AJV.js (client-seitig)
