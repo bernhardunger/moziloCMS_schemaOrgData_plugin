@@ -89,6 +89,33 @@ von `renderFrontend()`.
 
 ## Kontrollfluss: Admin-Request
 
+```mermaid
+sequenceDiagram
+    participant Core as moziloCMS-Core
+    participant Facade as schemaOrgData::getContent()
+    participant Controller as AdminController
+    participant Handler as AdminRequestHandler
+    participant Save as ConfigSaveService / ScopeResolver
+    participant Render as FormRenderer
+
+    Core->>Facade: getContent() (PLUGINADMIN)
+    Facade->>Controller: renderAdminPage(AdminRequestContext)
+    alt $_POST nicht leer
+        Controller->>Handler: handlePostRequest()
+        Handler->>Save: saveConfig() / deleteConfig() / handleImportAction()
+    end
+    Controller->>Controller: Kollisionserkennung + saveScopeMeta('global', …)
+    loop je Geltungsebene (Global + Kategorien + Seiten)
+        Controller->>Render: renderScopeSection() → renderTypeFields()/renderField()
+    end
+    Controller-->>Facade: fertiges Admin-HTML
+```
+
+Grobe Flughöhe des obigen Diagramms: Fassade → Scope-Auflösung /
+POST-Dispatch → Speichern (Validierung inklusive) → Formular-Rendering.
+Der folgende ASCII-Aufrufbaum bleibt die maßgebliche Detailquelle
+(exakte Methodennamen und Verzweigungslogik):
+
 ```
 schemaOrgData::getContent()
   └─ SchemaOrgData_AdminController::renderAdminPage(AdminRequestContext)
@@ -127,6 +154,28 @@ vorgerendert — inaktive per Regex (`preg_replace('/<(input|select|textarea)(\s
 die aktive Sektion übertragen wird.
 
 ## Kontrollfluss: Frontend-Request
+
+```mermaid
+flowchart TD
+    A["schemaOrgData::getContent($value)"] --> B["FrontendRenderer::renderFrontend()"]
+    B --> C{"Galerie-Vollansicht?<br/>(GET-Parameter galtemplate)"}
+    C -->|ja| Z["'' — kein JSON-LD"]
+    C -->|nein| D["ScopeResolver::loadScopeConfig()<br/>je Ebene (global/category/page)"]
+    D --> E["excluded_cats-Filter"]
+    E --> F["jsonld_mode = keep-Filter"]
+    F --> G["ScopeResolver::resolveTypeInheritance()<br/>(feldweise Vererbung)"]
+    G --> H["IdReferenceService::applyDanglingReferenceGuard()"]
+    H --> I["je verbleibendem Type:<br/>JsonLdBuilder::resolveNodeId() + buildJsonLdScript()"]
+    I --> J{"debug_output aktiv?"}
+    J -->|ja| K["buildDebugWidget() anhängen"]
+    J -->|nein| L["Kollisionserkennung + saveScopeMeta()"]
+    K --> L
+    L --> M["fertiger &lt;script&gt;-Output"]
+```
+
+Grobe Flughöhe: Fassade → Scope-Auflösung/Filter → JSON-LD-Aufbau →
+Ausgabe. Der folgende ASCII-Aufrufbaum bleibt die maßgebliche
+Detailquelle (exakte Methodennamen und Verzweigungslogik):
 
 ```
 schemaOrgData::getContent($value)

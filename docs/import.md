@@ -11,6 +11,24 @@ handleImportAction()`.
 
 ## Kollisionserkennung (`SchemaOrgData_CollisionDetector`)
 
+```mermaid
+flowchart TD
+    A["extractExistingJsonLdBlocks()<br/>Regex über &lt;script type=application/ld+json&gt;-Blöcke"] --> B["Extraktion je Kontext"]
+    B --> B1["Frontend: ...FromTemplate($templateFile)"]
+    B --> B2["Admin: ...FromTemplateAdmin($cmsConf)<br/>inkl. Draftlayout"]
+
+    B1 --> C["Platzhalter-Check<br/>detectPluginPlaceholderInTemplateAdmin()"]
+    B2 --> C
+    C --> C1["PLACEHOLDER_OK"]
+    C --> C2["PLACEHOLDER_OUTSIDE_HEAD"]
+    C --> C3["PLACEHOLDER_MISSING"]
+
+    C1 --> D["Scope-genaue Zuordnung"]
+    D --> D1["Fund im Layout-Template<br/>→ Global-Scope"]
+    D --> D2["Fund im Seiteninhalt ($value)<br/>→ Seiten-Scope"]
+    D --> D3["Kategorie-Scope<br/>erhält keinen eigenen Treffer"]
+```
+
 ### Extraktion
 
 `extractExistingJsonLdBlocks(string $html): string[]` ist die gemeinsame

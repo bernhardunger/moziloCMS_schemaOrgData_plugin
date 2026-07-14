@@ -36,6 +36,14 @@ dasselbe Fragment (`organization`) — es geht um dieselbe Rolle
 
 ## De-Dup-Guard
 
+```mermaid
+flowchart TD
+    A["Knoten mit ui:idFragment wird gerendert<br/>(z. B. #organization)"] --> B{"Wurde dieses Fragment<br/>auf dieser Seite bereits<br/>an einen Knoten vergeben?"}
+    B -->|nein| C["@id wird gesetzt<br/>(direkt hinter @type)"]
+    B -->|ja| D["Kein @id für diesen Knoten<br/>(Rest des Knotens bleibt unverändert)"]
+    C --> E["Fragment gilt ab jetzt<br/>als vergeben"]
+```
+
 Pro Seite trägt **genau ein** Knoten ein gegebenes Fragment. Sind auf
 derselben Seite z. B. sowohl `NGO` als auch `Organization` global
 konfiguriert (was laut [Best Practices](../best-practices.md) ohnehin

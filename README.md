@@ -228,6 +228,17 @@ Verschachtelte Felder (z. B. `address`, `openingHours`) werden dabei nicht
 innerhalb des Objekts gemergt — hier gewinnt die Ebene mit dem gefüllten
 Objekt vollständig.
 
+```mermaid
+flowchart LR
+    G["Global<br/>z. B. name, telephone"] -->|leeres Feld erbt| K["Kategorie<br/>überschreibt gefüllte Felder"]
+    K -->|leeres Feld erbt| S["Seite<br/>überschreibt gefüllte Felder"]
+
+    subgraph Sonderfall["Verschachtelte Objekte (address, openingHours)"]
+        direction LR
+        N1["kein Feld-Merge<br/>innerhalb des Objekts"] --> N2["spezifischste Ebene<br/>mit gefülltem Objekt gewinnt vollständig"]
+    end
+```
+
 **Ausschlussliste.** Im Admin-Bereich kann der Nutzer Kategorien definieren,
 auf denen die globale Ausgabe **nicht** erfolgt — z. B. Impressum,
 Datenschutz, Sitemap. Eine eigenständige Konfiguration der Kategorie oder
@@ -341,6 +352,17 @@ Plugin diesen Block **beibehält** (kein eigenes JSON-LD) oder ihn per
 eigener Konfiguration **überschreibt** — ein automatischer Merge findet
 nicht statt.
 
+```mermaid
+flowchart TD
+    A["Vorhandenes JSON-LD erkannt"] --> B{"Fundort?"}
+    B -->|Layout-Template| C["Hinweis im Global-Scope"]
+    B -->|Seiteninhalt| D["Hinweis im Seiten-Scope"]
+    C --> E{"Nutzerentscheidung"}
+    D --> E
+    E -->|Beibehalten| F["Kein eigenes JSON-LD für diesen Scope"]
+    E -->|Überschreiben| G["Plugin-JSON-LD zusätzlich zum vorhandenen Block<br/>(kein automatischer Merge, alter Block bleibt stehen)"]
+```
+
 Über ein **Import-Feld** lässt sich vorhandenes JSON-LD einfügen; das
 Plugin parst den Block und befüllt automatisch die bekannten Formularfelder
 (unbekannte Properties wandern ins Erweiterungsfeld).
@@ -402,6 +424,23 @@ jeweiligen JSON-Schema deklariert (`ui:idFragment`) — es gibt keine
 Type-Namen im PHP-Code. Pro Fragment (`#organization`, `#person`) trägt
 maximal ein Knoten pro Seite die `@id`; die absolute Basis-URL wird zur
 Ausgabezeit aus dem aktuellen Request abgeleitet.
+
+```mermaid
+graph LR
+    ORG["Global-Knoten<br/>NGO / Organization / LocalBusiness-Familie<br/>@id: #organization"]
+    PERS["Global-Knoten<br/>Person<br/>@id: #person"]
+    DONATE["Seite: DonateAction<br/>recipient"]
+    EVENT["Seite: Event<br/>organizer"]
+
+    DONATE -->|id_reference| ORG
+    EVENT -->|id_reference_or_literal| ORG
+    EVENT -->|id_reference_or_literal| PERS
+```
+
+> ℹ️ De-Dup-Guard: Pro Fragment (`#organization`, `#person`) erhält nur der
+> erste Knoten in Ausgabereihenfolge die `@id` — sind z. B. `NGO` und
+> `Organization` gleichzeitig global konfiguriert, bleibt der zweite Knoten
+> ohne Anker.
 
 > 📄 Ausführliches Beispiel (De-Dup-Guard, Person-Fragment, Basis-URL-Empfehlung): [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
 

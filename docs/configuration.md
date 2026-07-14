@@ -102,6 +102,27 @@ Plugin-Verwaltungsseite automatisch eine neue mit leerem Array.
 
 ## Feldweise Vererbung
 
+```mermaid
+flowchart TD
+    subgraph Input["Geladene Scope-Konfigurationen"]
+        GC["global"]
+        CC["category"]
+        PC["page"]
+    end
+
+    GC --> RTI
+    CC --> RTI
+    PC --> RTI
+
+    subgraph RTI["resolveTypeInheritance()"]
+        direction TD
+        TS["Schritt 1: Zielebene je Type ermitteln<br/>(spezifischste Ebene, auf der der Type vorkommt)"]
+        MC["Schritt 2: mergeConfigs($global, $category, $page)<br/>je Type: array_merge() Feld für Feld,<br/>verschachtelte Objekte werden komplett ersetzt"]
+        RD["Schritt 3: Redistribution<br/>Type wird nur auf seiner Zielebene ausgegeben,<br/>andere Ebenen werden für diesen Type geleert"]
+        TS --> MC --> RD
+    end
+```
+
 ### `mergeConfigs()`
 
 `mergeConfigs(array ...$configs): array` führt beliebig viele
