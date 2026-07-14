@@ -138,7 +138,7 @@ zeigt die [Google Search Gallery](https://developers.google.com/search/docs/appe
 - Kompatibel mit `seo_urls`-Plugin (optional): kanonische URLs aus
   `seo_urls` können manuell als `url`-Property eingetragen werden
 
-> 📄 Vertiefung: [docs/compatibility.md](docs/compatibility.md) · [docs/dependencies.md](docs/dependencies.md)
+> 📄 Vertiefung (inkl. Abhängigkeiten): [docs/compatibility.md](docs/compatibility.md)
 
 <a id="abgrenzung-core"></a>
 ### Abgrenzung zu bestehenden Core-Implementierungen

@@ -70,8 +70,8 @@ JSON-LD wandert, nicht nur offensichtlich gefährliche Felder.
 
 ## Server-seitige Validierung ist maßgeblich
 
-Die client-seitige AJV-Validierung (siehe [dependencies.md](dependencies.md))
-ist reiner Komfort — sie kann durch deaktiviertes JavaScript oder
+Die client-seitige AJV-Validierung (siehe
+[compatibility.md](compatibility.md#abhängigkeiten)) ist reiner Komfort — sie kann durch deaktiviertes JavaScript oder
 manipulierte Requests umgangen werden. Gespeichert wird ausschließlich,
 was die PHP-seitige Prüfung besteht:
 
@@ -93,12 +93,12 @@ einem externen Content-Delivery-Network geladen — keine externe
 Skript-Quelle, die bei einer restriktiven Content-Security-Policy blockiert
 werden könnte oder ein zusätzliches Supply-Chain-Risiko durch einen
 Drittanbieter darstellt. Details und Versionshinweise siehe
-[dependencies.md](dependencies.md).
+[compatibility.md](compatibility.md#abhängigkeiten).
 
 ## Siehe auch
 
 - [../README.md](../README.md#sicherheit) — Kurzübersicht
-- [dependencies.md](dependencies.md) — AJV.js im Detail, warum lokal statt CDN
+- [compatibility.md](compatibility.md#abhängigkeiten) — AJV.js im Detail, warum lokal statt CDN
 - [validation.md](validation.md) — Feld-für-Feld-Validierungsregeln (client- und serverseitig)
 - [configuration.md](configuration.md) — Settings-Key-Bildung und -Sanitizing im Kontext
 - [rendering.md](rendering.md) — `buildJsonLdScript()`-Transformationsreihenfolge inkl. `JSON_HEX_TAG`
