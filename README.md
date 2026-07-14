@@ -282,7 +282,9 @@ Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global +
 Kategorie + Seite = bis zu drei Blöcke). Leere Felder werden vor der
 Ausgabe entfernt; vollständig leere Knoten werden gar nicht ausgegeben.
 
-> 📄 Vertiefung (gallerytemplate-Sonderfall, Types nur auf Globalebene, De-Dup-Verhalten, weitere Ausgabe-Beispiele): [docs/rendering.md](docs/rendering.md) · [docs/examples/](docs/examples/)
+> 📄 Vertiefung (gallerytemplate-Sonderfall, Types nur auf Globalebene,
+> De-Dup-Verhalten (Duplikat-Vermeidung), weitere Ausgabe-Beispiele):
+> [docs/rendering.md](docs/rendering.md) · [docs/examples/](docs/examples/)
 
 <a id="adressschema-postaladdress"></a>
 ### Adressschema (PostalAddress)
@@ -453,7 +455,8 @@ graph LR
 
 </details>
 
-> ℹ️ De-Dup-Guard: Pro Fragment (`#organization`, `#person`) erhält nur der
+> ℹ️ De-Dup-Guard (Schutz vor doppelten Anker-IDs): Pro Fragment
+> (`#organization`, `#person`) erhält nur der
 > erste Knoten in Ausgabereihenfolge die `@id` — sind z. B. `NGO` und
 > `Organization` gleichzeitig global konfiguriert, bleibt der zweite Knoten
 > ohne Anker.
@@ -469,7 +472,8 @@ Verfügung: **`id_reference`** verweist zwingend auf einen festen Zielknoten
 lässt den Nutzer wählen zwischen Referenz auf einen globalen Knoten oder
 Direkteingabe (z. B. `Event.organizer`). Beide Widgets werden ausschließlich
 über Properties in der jeweiligen Schema-Datei deklariert, ein
-Dangling-Reference-Guard verhindert hängende `@id`-Verweise.
+Dangling-Reference-Guard (Schutz vor hängenden Referenzen) verhindert
+hängende `@id`-Verweise.
 
 > 📄 Mechanik, Referenz-/Literal-Modus, Schema-Deklaration und Ausgabe-Beispiele: [docs/widgets.md](docs/widgets.md)
 
