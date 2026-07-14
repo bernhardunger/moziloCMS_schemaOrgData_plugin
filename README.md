@@ -458,23 +458,7 @@ Alle Formularfelder werden zweistufig validiert: **live im Browser**
 greift eigenständig auch ohne JavaScript. Das Feedback ist dreistufig: ✅
 grün (OK) · ⚠️ gelb (Warnung) · ❌ rot (Fehler).
 
-<details>
-<summary>Tabelle: Validierungsregeln je Feld anzeigen</summary>
-
-| Feld | Prüfung | Nur DE |
-|---|---|---|
-| `postalCode` | Regex `[0-9]{5}` | ja |
-| `telephone` | Normalisierung + E.164-Prüfung | nein |
-| `url`, `logo`, `hasMap`, `image` | URL-Format; `http://` ergibt HTTPS-Warnung (⚠️) | nein |
-| `email` | E-Mail-Format | nein |
-| `openingHours` | Format + Von-Zeit < Bis-Zeit (24-Stunden-Format) | nein |
-| `addressCountry` | Enum-Prüfung gegen die Länderliste | nein |
-| `geo` (Erweiterungsfeld) | numerisch + Wertebereich (Breite/Länge) | nein |
-| Datumsfelder (`startDate`, `endDate`) | ausschließlich deutsches Format `TT.MM.YYYY` (optional mit Uhrzeit), kalendarische Gültigkeit; bei `Event` zusätzlich `endDate` nicht vor `startDate` | nein |
-
-</details>
-
-> 📄 Vertiefung (Regex-Details, E.164-Normalisierung, ISO-8601-Umwandlung der Datumsfelder): [docs/validation.md](docs/validation.md)
+> 📄 Vertiefung (Validierungsregeln je Feld, Regex-Details, E.164-Normalisierung, ISO-8601-Umwandlung der Datumsfelder): [docs/validation.md](docs/validation.md)
 
 <a id="best-practices"></a>
 ### Best Practices: Schema.org-Daten sinnvoll pflegen
