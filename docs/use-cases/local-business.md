@@ -84,7 +84,7 @@ referenziert werden — siehe
 
 ## Siehe auch
 
-- [../../README.md](../../README.md#lokales-unternehmen) — Kurzübersicht
+- [../../README.md](../../README.md#use-cases-und-beispiele) — Use Cases im Überblick
 - [organization-identity.md](organization-identity.md) — `@id`-Anker und Referenzierung
 - [../validation.md](../validation.md) — Feldvalidierung (Telefonnummer, PLZ, Land)
 - [../best-practices.md](../best-practices.md) — Auswahl des passenden Types

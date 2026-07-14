@@ -70,5 +70,5 @@ Vererbung einzelner Fragen.
 
 ## Siehe auch
 
-- [../../README.md](../../README.md#use-case-faq) — Kurzübersicht
+- [../../README.md](../../README.md#use-cases-und-beispiele) — Use Cases im Überblick
 - [../best-practices.md](../best-practices.md#faqpage-ohne-sichtbare-inhalte) — Grundregel „Markup entspricht sichtbarem Inhalt", FAQ als SEO-Trick

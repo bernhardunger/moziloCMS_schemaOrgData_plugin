@@ -44,17 +44,10 @@ maschinenlesbare JSON-LD-Blöcke (siehe
   - [Adressschema (PostalAddress)](#adressschema-postaladdress)
   - [Öffnungszeiten](#oeffnungszeiten)
   - [Erweiterungsfeld (erweiterte Properties)](#erweiterungsfeld)
-  - [Mehrsprachigkeit](#mehrsprachigkeit)
   - [Vorhandenes JSON-LD und Import](#vorhandenes-json-ld-und-import)
-  - [Debug-Modus](#debug-modus)
 - [Use Cases und Beispiele](#use-cases-und-beispiele)
-  - [Lokales Unternehmen](#lokales-unternehmen)
   - [Organisations-Identität und @id-Anker](#organisations-identitaet)
   - [Verknüpfte Inhalte (Widgets)](#verknuepfte-inhalte)
-  - [Event](#use-case-event)
-  - [FAQPage](#use-case-faq)
-  - [JobPosting](#use-case-jobposting)
-  - [DonateAction](#use-case-donateaction)
 - [Validierung und Best Practices](#validierung-und-best-practices)
   - [Formularvalidierung](#formularvalidierung)
   - [Best Practices: Schema.org-Daten sinnvoll pflegen](#best-practices)
@@ -82,8 +75,8 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 - Generisches `PostalAddress`-Schema nach schema.org (international einsetzbar)
 - **Erweiterungsfeld** (JSON-Textarea) für zusätzliche Properties mit Live-Validierung
 - **Erkennung vorhandener JSON-LD-Blöcke** in Template und Seiteninhalt, wahlweise Beibehalten oder Überschreiben — plus **Import-Feld** zur Übernahme bestehender Daten ins Formular
-- **Debug-Modus**: erzeugte JSON-LD-Blöcke im Frontend als Pop-up anzeigen (zum Abgleich mit validator.schema.org)
-- Mehrsprachige Admin-Oberfläche und Frontend-Ausgabe
+- <a id="debug-modus"></a>**Debug-Modus**: erzeugte JSON-LD-Blöcke im Frontend als Pop-up anzeigen (zum Abgleich mit validator.schema.org)
+- Mehrsprachige Admin-Oberfläche und Frontend-Ausgabe (initial Deutsch und Englisch)
 
 **Datenqualität**
 - Validierung via **[AJV.js](https://ajv.js.org/)** (lokal ausgeliefert, kein CDN) client-seitig, plus eigenständige server-seitige Validierung beim Speichern (unabhängig von JavaScript)
@@ -314,17 +307,6 @@ Die Validierung erfolgt zweistufig — client-seitig live per AJV.js
 bekannter Properties) und server-seitig in PHP beim Speichern
 (`json_decode()` sowie inhaltliche Prüfung bekannter Properties).
 
-<a id="mehrsprachigkeit"></a>
-### Mehrsprachigkeit
-
-Das Plugin folgt der Spracheinstellung des moziloCMS-Kerns: alle sichtbaren
-Texte sind lokalisiert — Formular-Labels und Fehlermeldungen im
-Admin-Bereich ebenso wie Frontend-Ausgaben wie die Wochentag-Labels in den
-Öffnungszeiten. Initiale Sprachen: **Deutsch** (`deDE`), **Englisch**
-(`enEN`).
-
-> 📄 Vertiefung (Sprachschlüssel-Konvention): [docs/schema-extending.md](docs/schema-extending.md)
-
 <a id="vorhandenes-json-ld-und-import"></a>
 ### Vorhandenes JSON-LD und Import
 
@@ -342,32 +324,15 @@ Plugin parst den Block und befüllt automatisch die bekannten Formularfelder
 
 > 📄 Vertiefung (Kollisionserkennung, Import-Parsing im Detail, empfohlene Migrations-Reihenfolge): [docs/import.md](docs/import.md)
 
-<a id="debug-modus"></a>
-### Debug-Modus
-
-In der globalen Konfiguration kann ein **Debug-Modus** aktiviert werden. Er
-blendet im Frontend einen kleinen Button ein, der alle auf der aktuellen
-Seite erzeugten JSON-LD-Blöcke als Pop-up anzeigt — zum Kopieren und
-manuellen Abgleich mit dem Schema.org-Validator. Nicht für den
-Produktivbetrieb gedacht.
-
 ---
 
 <a id="use-cases-und-beispiele"></a>
 ## Use Cases und Beispiele
 
-<a id="lokales-unternehmen"></a>
-### Lokales Unternehmen
-
-Für Unternehmen mit physischer Adresse (Ladengeschäft, Praxis, Kanzlei,
-Beratung) steht die `LocalBusiness`-Familie zur Verfügung:
-**LocalBusiness**, **ProfessionalService**, **LegalService** (Anwaltskanzlei /
-Rechtsberatung), **MedicalBusiness** (Arztpraxis / medizinische Einrichtung)
-und **AccountingService** (Steuerberatung / Buchhaltung) — jeweils auf
-Global- oder Kategorie-Ebene konfigurierbar, inkl. `PostalAddress`- und
-Öffnungszeiten-Widget.
-
-> 📄 Ausführliches Beispiel: [docs/use-cases/local-business.md](docs/use-cases/local-business.md)
+Zwei Konzepte ziehen sich durch mehrere Types — die globale
+Organisations-Identität samt `@id`-Verknüpfung und die beiden Widgets für
+Verweise auf solche Knoten. Im Anschluss folgen kompakte Links zu den
+ausführlichen Konfigurationsbeispielen je Type.
 
 <a id="organisations-identitaet"></a>
 ### Organisations-Identität und @id-Anker
@@ -391,59 +356,19 @@ Ausgabezeit aus dem aktuellen Request abgeleitet.
 ### Verknüpfte Inhalte (Widgets)
 
 Für Verweise auf global definierte Knoten stehen zwei Formular-Widgets zur
-Verfügung: **`id_reference`** verweist zwingend auf einen festen Zielknoten
-(z. B. `DonateAction.recipient` → Organisation), **`id_reference_or_literal`**
-lässt den Nutzer wählen zwischen Referenz auf einen globalen Knoten oder
-Direkteingabe (z. B. `Event.organizer`). Beide Widgets werden ausschließlich
-über Properties in der jeweiligen Schema-Datei deklariert, ein
-Dangling-Reference-Guard (Schutz vor hängenden Referenzen) verhindert
-hängende `@id`-Verweise.
+Verfügung: **`id_reference`** verweist zwingend auf einen festen Zielknoten,
+**`id_reference_or_literal`** lässt den Nutzer wählen zwischen Referenz auf
+einen globalen Knoten oder Direkteingabe.
 
 > 📄 Mechanik, Referenz-/Literal-Modus, Schema-Deklaration und Ausgabe-Beispiele: [docs/widgets.md](docs/widgets.md)
 
-<a id="use-case-event"></a>
-### Event
+### Konfigurationsbeispiele je Type
 
-`Event` bildet eine Veranstaltung oder einen Termin auf Seiten-Ebene ab.
-`location` wird als verschachteltes `Place`-Objekt mit `PostalAddress`
-abgebildet (siehe [Adressschema](#adressschema-postaladdress)),
-`organizer` nutzt das Widget `id_reference_or_literal` (siehe
-[Verknüpfte Inhalte](#verknuepfte-inhalte)) — Referenz auf eine global
-konfigurierte **Person**/**NGO** oder Direkteingabe. Datumsfelder (`startDate`,
-`endDate`) werden im deutschen Format eingegeben und validiert (siehe
-[Formularvalidierung](#formularvalidierung)).
-
-> 📄 Ausführliches Beispiel: [docs/use-cases/event.md](docs/use-cases/event.md)
-
-<a id="use-case-faq"></a>
-### FAQPage
-
-`FAQPage` bildet häufig gestellte Fragen auf Kategorie- oder Seiten-Ebene
-ab. Die im Markup hinterlegten Fragen/Antworten müssen wortgleich auf der
-Seite sichtbar sein (siehe [Best Practices](#best-practices) — „Typische
-Fehler").
-
-> 📄 Ausführliches Beispiel: [docs/use-cases/faq.md](docs/use-cases/faq.md)
-
-<a id="use-case-jobposting"></a>
-### JobPosting
-
-`JobPosting` bildet eine Stellenanzeige auf Seiten-Ebene ab, inkl.
-`hiringOrganization` (Widget `id_reference_or_literal`) und `jobLocation`
-(Place-Widget, analog zu `Event.location`).
-
-> 📄 Ausführliches Beispiel: [docs/use-cases/job-posting.md](docs/use-cases/job-posting.md)
-
-<a id="use-case-donateaction"></a>
-### DonateAction
-
-`DonateAction` bildet einen Spendenaufruf auf Seiten-Ebene ab und verweist
-per `id_reference` (`recipient`) auf den global definierten
-Organisationsknoten — siehe
-[Verknüpfte Inhalte](#verknuepfte-inhalte) für Mechanismus und
-Ausgabe-Beispiel.
-
-> 📄 Ausführliches Beispiel: [docs/use-cases/donate-action.md](docs/use-cases/donate-action.md)
+- [Lokales Unternehmen](docs/use-cases/local-business.md) — `LocalBusiness`-Familie (LocalBusiness, ProfessionalService, LegalService, MedicalBusiness, AccountingService)
+- [Event](docs/use-cases/event.md)
+- [FAQPage](docs/use-cases/faq.md)
+- [JobPosting](docs/use-cases/job-posting.md)
+- [DonateAction](docs/use-cases/donate-action.md)
 
 ---
 
@@ -511,8 +436,7 @@ Das Plugin ist in eine schlanke Fassaden-Klasse (`index.php`) und
 eigenständige Komponenten unter `lib/` aufgeteilt — jede Komponente mit
 eigenem `IS_CMS`-Guard, per `require_once` geladen. Neue Schema-Types
 kommen ausschließlich als `.json`-Datei in `schemas/` hinzu (Validierung
-und Formularfelder in einer Datei), ohne PHP-Änderung. Der vollständige
-Datei- und Ordnerbaum steht in [docs/file-structure.md](docs/file-structure.md).
+und Formularfelder in einer Datei), ohne PHP-Änderung.
 
 Die vertiefende Dokumentation (`docs/`, dieser Ordner) liegt als Geschwister
 von `plugins/` am Repo-Root, analog zu `tests/` — sie ist nicht Teil des
@@ -527,14 +451,13 @@ FTP-Hinweis).
 Weiterführende Entwicklerdokumentation:
 
 - [docs/architecture.md](docs/architecture.md) — Komponentenaufbau und Zusammenspiel der `lib/`-Klassen
-- [docs/file-structure.md](docs/file-structure.md) — vollständiger Datei- und Ordnerbaum
 - [docs/schema-extending.md](docs/schema-extending.md) — neuen Schema-Type per JSON-Datei hinzufügen, Sprachschlüssel-Konvention
 - [docs/schema/](docs/schema/) — Referenz der schema-getriebenen `ui:`-Properties
 - [docs/rendering.md](docs/rendering.md) — Formular-Rendering und JSON-LD-Erzeugung im Detail
 - [docs/widgets.md](docs/widgets.md) — `id_reference` / `id_reference_or_literal`: Mechanik und Schema-Deklaration
 - [docs/import.md](docs/import.md) — Import-Feature im Detail
 - [docs/configuration.md](docs/configuration.md) — Settings-API, Geltungsbereiche und Speicherformat
-- [docs/development.md](docs/development.md) — lokales Setup, Commit-Konventionen
+- [docs/tests.md](docs/tests.md) — lokales Setup, Commit-Konventionen, Testausführung
 
 ---
 

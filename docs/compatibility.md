@@ -68,40 +68,18 @@ für die vollständige Liste der unterstützten Types).
 ### Laufzeit: AJV.js (client-seitig)
 
 Das Plugin liefert den JSON-Schema-Validator **AJV** lokal mit aus:
-`plugins/schemaOrgData/js/ajv.min.js`. Es handelt sich um ein
-UMD-Bundle (`!function(e){"object"==typeof exports...`), das sich als
-globale Variable `window.ajv7` registriert — `js/validator.js` greift
-genau darauf zu (`typeof window.ajv7 !== 'undefined'`) und instanziiert
-daraus eine `Ajv`-Instanz mit `{ allErrors: true, strict: false }`. Die
-mitgelieferte Datei unterstützt **JSON-Schema Draft-07** — dasselbe
-Draft, das die Schema-Dateien in `schemas/*.json` deklarieren
-(`"$schema": "http://json-schema.org/draft-07/schema#"`). Die minifizierte
-Datei trägt keinen eingebetteten Versions- oder Lizenzkommentar; falls die
-exakte Upstream-Version relevant wird, lässt sie sich nur durch Vergleich
-mit einer offiziell veröffentlichten AJV-Build-Datei ermitteln.
+`plugins/schemaOrgData/js/ajv.min.js`. Die mitgelieferte Datei
+unterstützt **JSON-Schema Draft-07** — dasselbe Draft, das die
+Schema-Dateien in `schemas/*.json` deklarieren (`"$schema":
+"http://json-schema.org/draft-07/schema#"`), relevant beim Anlegen eines
+neuen Schema-Types (siehe [schema-extending.md](schema-extending.md)).
 
-**Warum lokal statt über ein CDN:**
-
-- **Keine externe Laufzeit-Abhängigkeit.** Das Formular validiert auch
-  dann live, wenn der Zugriff auf ein CDN durch eine restriktive
-  Content-Security-Policy, einen Netzwerk-Ausfall oder eine
-  Offline-/Intranet-Installation blockiert ist.
-- **Kein Tracking-/Verfügbarkeitsrisiko eines Drittanbieters.** Ein
-  CDN-Betreiber könnte Anfragen protokollieren oder — bei kompromittiertem
-  CDN — eine manipulierte Datei ausliefern (Supply-Chain-Risiko). Siehe
-  auch [security.md](security.md), Abschnitt „Kein CDN".
-- **Versionsstabilität.** Die ausgelieferte Datei ändert sich nur, wenn
-  ein Plugin-Update sie explizit ersetzt — kein unerwartetes Verhalten
-  durch ein automatisches CDN-Versions-Update.
-
-Eingebunden wird die Datei ausschließlich im **Admin-Formular**
-(`SchemaOrgData_AdminPageRenderer`), mit einem `filemtime()`-basierten
-Cache-Busting-Query-Parameter (`?v=<mtime>`,
-`resolveAssetCacheBuster()` in `SchemaOrgData_AdminController`) — verhindert,
-dass ein Browser nach einem Update von `ajv.min.js`/`validator.js` eine
-veraltete, gecachte Fassung weiterverwendet. Im **Frontend** wird AJV
-nicht geladen; die dort ausgegebenen JSON-LD-`<script>`-Blöcke sind reine
-Daten, keine Formulare, die client-seitige Validierung erfordern.
+Der lokale Bezug statt über ein CDN vermeidet eine externe
+Laufzeit-Abhängigkeit und ein Supply-Chain-Risiko (siehe auch
+[security.md](security.md), Abschnitt „Kein CDN"). Eingebunden wird die
+Datei ausschließlich im **Admin-Formular**; im **Frontend** wird AJV
+nicht geladen, da die dort ausgegebenen JSON-LD-`<script>`-Blöcke reine
+Daten sind, keine Formulare, die client-seitige Validierung erfordern.
 
 ### Entwicklungszeit: Composer (PHP)
 
@@ -123,7 +101,7 @@ keinen Composer-Autoloader; alle produktiven Klassen werden über
 transitiver Abhängigkeiten wie `sebastian/*`, `phar-io/*`,
 `nikic/php-parser`) ist in `.gitignore` eingetragen und wird nicht ins
 Repository eingecheckt — `composer install` ist vor dem ersten Testlauf
-notwendig (siehe [development.md](development.md)), aber irrelevant für
+notwendig (siehe [tests.md](tests.md)), aber irrelevant für
 eine reguläre Plugin-Installation.
 
 ### Entwicklungszeit: npm/Jest (JavaScript)
@@ -156,5 +134,5 @@ und Jest existieren ausschließlich im Entwicklungs-Repository
 - [../README.md](../README.md#voraussetzungen-und-kompatibilitaet) — Kurzübersicht
 - [configuration.md](configuration.md) — Settings-API, `plugin.conf.php`-Speicherformat
 - [security.md](security.md) — warum kein CDN und keine externen Laufzeit-Abhängigkeiten
-- [development.md](development.md) — `composer install` im Entwicklungsalltag
+- [tests.md](tests.md) — `composer install` im Entwicklungsalltag
 - [tests.md](tests.md) — `npm install`/Jest-Testausführung im Detail
