@@ -143,19 +143,13 @@ zeigt die [Google Search Gallery](https://developers.google.com/search/docs/appe
 <a id="abgrenzung-core"></a>
 ### Abgrenzung zu bestehenden Core-Implementierungen
 
-moziloCMS 3.0 enthält bereits folgende Schema.org-Implementierungen als
-Microdata:
+moziloCMS 3.0 enthält bereits Schema.org-Implementierungen als Microdata
+(u. a. `Article`-Wrapper, `ImageObject`, `BreadcrumbList`, `LocalBusiness`
+im Body). Dieses Plugin **ersetzt** diese Core-Microdata nicht, sondern
+**ergänzt** sie um JSON-LD im `<head>`, das von Google und anderen
+Suchmaschinen für Rich Results bevorzugt ausgewertet wird.
 
-| Bereich | Core-Implementierung | Dieses Plugin |
-|---|---|---|
-| Seiteninhalt | `Article` (Wrapper, minimal) | `Article` als JSON-LD im `<head>` |
-| Bilder | `ImageObject` via `itemprop` | — |
-| Breadcrumb | `BreadcrumbList` via Microdata | — |
-| Kontakt | `LocalBusiness` via Microdata im Body | `LocalBusiness` als JSON-LD im `<head>` |
-
-Dieses Plugin **ersetzt** die Core-Microdata nicht, sondern **ergänzt** sie
-um JSON-LD im `<head>`, das von Google und anderen Suchmaschinen für Rich
-Results bevorzugt ausgewertet wird.
+> 📄 Vertiefung (Tabelle im Detail): [docs/compatibility.md](docs/compatibility.md#abgrenzung-core)
 
 ---
 
@@ -240,22 +234,6 @@ Verschachtelte Felder (z. B. `address`, `openingHours`) werden dabei nicht
 innerhalb des Objekts gemergt — hier gewinnt die Ebene mit dem gefüllten
 Objekt vollständig.
 
-<details>
-<summary>Diagramm: Vererbungslogik der Geltungsbereiche</summary>
-
-```mermaid
-flowchart LR
-    G["Global<br/>z. B. name, telephone"] -->|leeres Feld erbt| K["Kategorie<br/>überschreibt gefüllte Felder"]
-    K -->|leeres Feld erbt| S["Seite<br/>überschreibt gefüllte Felder"]
-
-    subgraph Sonderfall["Verschachtelte Objekte (address, openingHours)"]
-        direction LR
-        N1["kein Feld-Merge<br/>innerhalb des Objekts"] --> N2["spezifischste Ebene<br/>mit gefülltem Objekt gewinnt vollständig"]
-    end
-```
-
-</details>
-
 **Ausschlussliste.** Im Admin-Bereich kann der Nutzer Kategorien definieren,
 auf denen die globale Ausgabe **nicht** erfolgt — z. B. Impressum,
 Datenschutz, Sitemap. Eine eigenständige Konfiguration der Kategorie oder
@@ -301,37 +279,24 @@ Ausgabe entfernt; vollständig leere Knoten werden gar nicht ausgegeben.
 ### Adressschema (PostalAddress)
 
 Das Adressfeld folgt exakt `schema.org/PostalAddress` und ist international
-ausgelegt:
+ausgelegt: Straße, Postleitzahl, Ort, Region und Land — nur **Ort** und
+**Land** sind Pflicht. Das Feld **Land** wird als Select-Box mit Klarnamen
+dargestellt (z. B. „Deutschland"), intern wird der
+**ISO-3166-1-alpha-2-Code** gespeichert (z. B. `DE`, Standard-Vorauswahl:
+Deutschland). Die Länderliste ist in der zugehörigen JSON-Schema-Datei als
+`enum` definiert und dort pflegbar.
 
-| Formularfeld | schema.org Property | Pflicht |
-|---|---|---|
-| Straße | `streetAddress` | nein |
-| Postleitzahl | `postalCode` | nein |
-| Ort | `addressLocality` | ja |
-| Region / Bundesland | `addressRegion` | nein |
-| Land | `addressCountry` | **ja** |
-
-Das Feld **Land** wird als Select-Box mit Klarnamen dargestellt (z. B.
-„Deutschland"), intern wird der **ISO-3166-1-alpha-2-Code** gespeichert
-(z. B. `DE`). Standard-Vorauswahl: Deutschland (`DE`).
-
-Die Länderliste ist in der zugehörigen JSON-Schema-Datei als `enum`
-definiert und dort pflegbar.
+> 📄 Vertiefung (Formularfelder im Detail): [docs/rendering.md](docs/rendering.md)
 
 <a id="oeffnungszeiten"></a>
 ### Öffnungszeiten
 
 Das Öffnungszeiten-Widget bildet die sieben Wochentage als Zeitraum-Felder
-ab (Von / Bis). Leere Felder werden als „geschlossen" interpretiert. Intern
+ab (Von / Bis, plus optionalem zweiten Zeitraum je Tag, z. B. für eine
+Mittagspause). Leere Felder werden als „geschlossen" interpretiert. Intern
 werden die Werte als `openingHours`-Array nach schema.org-Notation
-gespeichert:
-
-```json
-"openingHours": ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
-```
-
-Je Wochentag steht zusätzlich ein **optionaler zweiter Zeitraum** (z. B.
-Mittagspause) zur Verfügung. Es wird ausschließlich das
+gespeichert (Beispiel siehe [JSON-LD-Ausgabe im
+Detail](#json-ld-ausgabe-im-detail) oben). Es wird ausschließlich das
 **24-Stunden-Format** (`HH:MM`) unterstützt.
 
 > 📄 Vertiefung (Regeln für den zweiten Zeitraum): [docs/rendering.md](docs/rendering.md)
