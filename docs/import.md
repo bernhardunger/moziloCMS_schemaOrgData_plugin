@@ -136,13 +136,13 @@ Ergebnis.
 `renderExistingJsonLdNotice()` rendert unterhalb der `keep`/`override`-Wahl
 einen einklappbaren Import-Bereich: Wurde bereits ein automatisch
 befüllbarer Block erkannt, zeigt ein Autofill-Button eine Vorschau und
-überträgt den Block per Klick ins Import-Feld, ohne sofort zu speichern.
+überträgt den Block per Klick ins Import-Feld, ohne sofort zu speichern —
+tatsächlich löst der Klick direkt den Import aus (kein Zwischenschritt).
 Sind mehrere `<script>`-Blöcke gleichzeitig erkannt worden (kein gültiges
 Einzel-JSON mehr), wird der Autofill-Button zugunsten eines erklärenden
 Hinweistexts unterdrückt — der passende Block muss dann manuell aus der
 Vorschau kopiert werden. Daneben steht immer ein manueller Pfad (Textarea
-plus „Importieren"-Button) zur Verfügung, der sich in diesem Fall
-automatisch öffnet.
+plus „Importieren"-Button) zur Verfügung, der permanent sichtbar ist.
 
 `SchemaOrgData_AdminRequestHandler::handlePostRequest()` gibt dem
 Import-Dispatch Vorrang: Ist der Import-Button gesetzt, wird ausschließlich

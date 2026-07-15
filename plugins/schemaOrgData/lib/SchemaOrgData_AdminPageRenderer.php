@@ -263,14 +263,8 @@ class SchemaOrgData_AdminPageRenderer {
     * wird der Autofill-Button durch einen erklärenden Hinweistext
     * ersetzt statt den ungültigen konkatenierten Text ins Import-Feld
     * zu übernehmen. Der manuelle Pfad (Textarea + "Importieren"-Button)
-    * steckt zusätzlich in einem verschachtelten, standardmäßig
-    * geschlossenen <details> - der Ein-Klick-Autofill deckt den Happy
-    * Path bereits ab, ohne dass die Textarea sichtbar sein muss. Dieses
-    * innere <details> öffnet sich automatisch, wenn entweder ein
-    * Redisplay nach fehlgeschlagenem manuellem Import vorliegt
-    * ($importTextareaValue ist befüllt) oder die Mehrblock-Heuristik den
-    * Autofill-Button unterdrückt hat - in beiden Fällen ist der manuelle
-    * Pfad der nächste notwendige Schritt für den Nutzer.
+    * ist innerhalb dieses äußeren <details> immer sichtbar, ohne
+    * eigenen verschachtelten Aufklapper.
     *
     * @param string $scope 'global' | 'category' | 'page'
     * @param Language $lang Admin-Sprachobjekt
@@ -396,19 +390,17 @@ class SchemaOrgData_AdminPageRenderer {
 
         $html .= '</p>'."\n";
 
-        // Verschachteltes <details> für den manuellen Import-Pfad -
-        // standardmäßig geschlossen, da der Ein-Klick-Autofill oben den
-        // Happy Path bereits abdeckt. Öffnet sich automatisch, wenn der
-        // manuelle Pfad der nächste notwendige Schritt ist: entweder ein
-        // Redisplay nach fehlgeschlagenem manuellem Import
-        // ($importTextareaValue befüllt) oder die Mehrblock-Heuristik hat
-        // den Autofill-Button oben unterdrückt.
-        $manualDetailsOpenAttr = ($importTextareaValue !== '' || $looksLikeMultipleBlocks) ? ' open="open"' : '';
-        $html .= '<details'.$manualDetailsOpenAttr.'>'."\n";
-        $html .= '<summary>'.$lang->getLanguageHtml('label_import_manual').'</summary>'."\n";
+        // Manueller Import-Pfad ist immer sichtbar (kein verschachteltes
+        // <details> mehr) - ein RC-Test zeigte ein nicht reproduzierbares
+        // Öffnen/Sofort-Schließen dieses inneren Aufklappers beim Klick auf
+        // den Summary-Text, die Ursache blieb trotz Prüfung von validator.js
+        // und dem moziloCMS-Core-JS nicht auffindbar. Statt weiterer
+        // Ursachenforschung wurde die Komplexität entfernt: label_import_manual
+        // bleibt als sichtbare Überschrift erhalten, nur ohne <details>-Wrapper.
+        $html .= '<p class="schemaOrgData-import-manual-heading"><strong>'.$lang->getLanguageHtml('label_import_manual').'</strong></p>'."\n";
         $html .= '<p>'.$lang->getLanguageHtml('description_import_manual').'</p>'."\n";
 
-        // Doppel-Label-Fix: <summary> ist bereits die sichtbare
+        // Doppel-Label-Fix: die Überschrift oben ist bereits die sichtbare
         // Beschriftung, das Textarea erhält stattdessen ein aria-label.
         // Zusätzliche sichtbare <p>-Beschriftung direkt über der Textarea
         // (kein <label for="...">, sonst Doppel-Label-Regression).
@@ -419,7 +411,6 @@ class SchemaOrgData_AdminPageRenderer {
             .' class="schemaOrgData-import-textarea" rows="8" aria-label="'.$importAriaLabel.'">'.$importValueAttr.'</textarea><br />'."\n";
         $html .= '<button type="submit" name="schemaOrgData_import_action" value="'.$scope.'" class="mo-btn">'
             .$lang->getLanguageHtml('button_import').'</button>'."\n";
-        $html .= '</details>'."\n";
 
         $html .= '<p class="schemaOrgData-jsonld-notice__hint">'.$lang->getLanguageHtml('description_import_jsonld').'</p>'."\n";
         $html .= '</details>'."\n";
