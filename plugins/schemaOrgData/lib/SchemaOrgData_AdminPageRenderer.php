@@ -302,13 +302,15 @@ class SchemaOrgData_AdminPageRenderer {
         $html .= '<p class="schemaOrgData-jsonld-notice__title"><strong>'.$lang->getLanguageHtml($titleKey).'</strong></p>'."\n";
         $html .= '<p>'.$lang->getLanguageHtml('notice_existing_jsonld_text').'</p>'."\n";
 
+        // Hinweis vor den Radio-Buttons: der Nutzer soll die Konsequenz von
+        // "Vorhandenes beibehalten" bereits kennen, bevor er die Auswahl trifft.
+        $html .= '<p class="schemaOrgData-jsonld-notice__keep-hint">'.$lang->getLanguageHtml('notice_keep_consequence_hint').'</p>'."\n";
+
         foreach($options as $value => $labelKey) {
             $checked = ($meta['jsonld_mode'] === $value) ? ' checked="checked"' : '';
             $html .= '<label><input type="radio" name="'.$fieldName.'" value="'.$value.'"'.$checked.' /> '
                   .$lang->getLanguageHtml($labelKey).'</label><br />'."\n";
         }
-
-        $html .= '<p class="schemaOrgData-jsonld-notice__keep-hint">'.$lang->getLanguageHtml('notice_keep_consequence_hint').'</p>'."\n";
 
         // Import-Bereich per <details> einklappbar - initial offen nur wenn ein
         // Autofill-Button angeboten wird (Nutzer soll ihn sofort sehen),
