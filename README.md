@@ -174,7 +174,7 @@ Stelle des Platzhalters:
 | `AccountingService` | Steuerberatung / Buchhaltung | Global / Kategorie |
 | `Organization` | Organisation / Firma, mit `@id`-Anker `#organization` | Global |
 | `NGO` | Gemeinnützige Organisation (Verein, Stiftung u. a.), mit `@id`-Anker `#organization` | Global |
-| `Person` | Einzelperson, mit `@id`-Anker `#person` | Global |
+| `Person` | Einzelperson, mit `@id`-Anker `#person` | Global / Seite |
 | `WebSite` | Website-Metadaten | Global |
 | `FAQPage` | Häufig gestellte Fragen ([Google-Richtlinien beachten](https://developers.google.com/search/docs/appearance/structured-data/faqpage) — Rich Results seit 2023 auf wenige autoritative Quellen beschränkt) | Kategorie / Seite |
 | `Article` | Artikel / Blogbeitrag | Kategorie / Seite |

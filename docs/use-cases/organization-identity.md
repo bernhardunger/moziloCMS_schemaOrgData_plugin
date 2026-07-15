@@ -28,7 +28,10 @@ ausschließlich in der jeweiligen Schema-Datei über die Property
 | Fragment | Types | Scope |
 |---|---|---|
 | `#organization` | `NGO`, `Organization`, `LocalBusiness`, `ProfessionalService`, `LegalService`, `MedicalBusiness`, `AccountingService` | Global |
-| `#person` | `Person` | Global |
+| `#person` | `Person` | Global / Seite¹ |
+
+¹ Referenzierbar (z. B. als `Event.organizer`) ist ausschließlich eine
+  global konfigurierte Person — siehe Abschnitt „Person-Fragment" unten.
 
 Die LocalBusiness-Familie teilt sich mit **NGO**/**Organization** bewusst
 dasselbe Fragment (`organization`) — es geht um dieselbe Rolle
@@ -65,8 +68,12 @@ voneinander — De-Dup-Guard und Dangling-Reference-Guard (siehe
 `Person` erhält analog zu **NGO**/**Organization** einen eigenen `@id`-Anker
 mit dem Fragment `person`. Damit können Seiten-Typen (z. B.
 `Event.organizer`) auf eine global definierte Person verweisen. `Person`
-ist ausschließlich auf dem **Global-Scope** verfügbar (kein
-Kategorie-Scope) — analog zu `NGO`.
+ist auf **Global-** und **Seiten-Scope** verfügbar. Referenzierbar über
+dieses `@id`-Fragment ist jedoch ausschließlich eine **global**
+konfigurierte Person — ein rein seiten-scope konfigurierter Person-Knoten
+erhält zwar ebenfalls sein eigenes `@id`, kann aber nicht von anderen
+Types referenziert werden (`resolveAvailableGlobalFragments()` liest
+ausschließlich `config_global`).
 
 ```html
 <script type="application/ld+json">
