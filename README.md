@@ -1,29 +1,20 @@
 # schemaOrgData — moziloCMS Plugin
 
-**Strukturierte Daten ohne SEO-Agentur.** `schemaOrgData` macht die Inhalte
-einer moziloCMS-Website für Suchmaschinen eindeutig interpretierbar: wer hinter
-der Website steht (Unternehmen, Praxis, Kanzlei, Verein), was angeboten wird und
-welche Seiten besondere Inhalte tragen — Veranstaltungen, Stellenanzeigen,
-Spendenaufrufe, FAQ. Das erhöht die Chance auf **Rich Results** in der
-Google-Suche und verbessert die maschinelle Auswertbarkeit der Website insgesamt.
-Technisch geschieht das über validiertes, Schema.org-konformes **JSON-LD**, das
-vollständig im Admin-Bereich über Formulare gepflegt wird: kein Eingriff in
-Templates nötig (bis auf einen einmalig zu setzenden Platzhalter), keine
-Code-Kenntnisse erforderlich, client- und server-seitige Validierung inklusive.
-
 ![Version](https://img.shields.io/badge/version-0.9.20--rc-blue)
 ![PHP](https://img.shields.io/badge/PHP-8.1%2B-777bb4)
 ![moziloCMS](https://img.shields.io/badge/moziloCMS-3.0.4%2B-orange)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green)](https://www.gnu.org/licenses/gpl-3.0)
 
-Das Plugin arbeitet **konfigurationsgetrieben**: Die strukturierten Daten
-werden im Admin-Bereich über Formulare gepflegt und nicht automatisch aus dem
-Seiteninhalt abgeleitet. Für die typische moziloCMS-Website (überschaubare
-Seitenzahl, ein Betreiber) ist das der passende Zuschnitt — volle Kontrolle
-über die Ausgabe, kein Mapping-Setup nötig. Es ergänzt dabei die im
-moziloCMS-Core bereits vorhandenen Microdata-Implementierungen um
-maschinenlesbare JSON-LD-Blöcke (siehe
-[Abgrenzung zu bestehenden Core-Implementierungen](#abgrenzung-core)).
+**Strukturierte Daten ohne SEO-Agentur.** `schemaOrgData` schreibt validiertes,
+Schema.org-konformes **JSON-LD** in den `<head>` jeder moziloCMS-Seite — für
+Unternehmen, Praxen, Kanzleien und Vereine ebenso wie für Seiten mit besonderen
+Inhalten (Veranstaltungen, Stellenanzeigen, Spendenaufrufe, FAQ). Das erhöht die
+Chance auf **Rich Results** in der Google-Suche. Die komplette Pflege erfolgt
+**konfigurationsgetrieben über Formulare im Admin-Bereich**: keine
+Code-Kenntnisse nötig, kein Eingriff in Templates (bis auf einen einmalig zu
+setzenden Platzhalter), client- und server-seitige Validierung inklusive. Das
+Plugin ergänzt die im moziloCMS-Core vorhandenen Microdata um JSON-LD-Blöcke im
+`<head>` (siehe [Abgrenzung](#abgrenzung-core)).
 
 ---
 
@@ -32,12 +23,13 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 <details>
 <summary>Inhaltsverzeichnis anzeigen</summary>
 
+- [Direkter Einstieg](#direkter-einstieg)
+  - [Installation](#installation)
+  - [Erste Konfiguration](#erste-konfiguration)
 - [Features](#features)
   - [Unterstützte Schema-Types](#unterstuetzte-schema-types)
 - [Voraussetzungen und Kompatibilität](#voraussetzungen-und-kompatibilitaet)
   - [Abgrenzung zu bestehenden Core-Implementierungen](#abgrenzung-core)
-- [Installation](#installation)
-- [Erste Konfiguration](#erste-konfiguration)
 - [Nutzung im Alltag](#nutzung-im-alltag)
   - [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung)
   - [JSON-LD-Ausgabe im Detail](#json-ld-ausgabe-im-detail)
@@ -61,6 +53,87 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 
 ---
 
+<a id="direkter-einstieg"></a>
+## Direkter Einstieg
+
+Voraussetzungen in Kurzform: moziloCMS 3.0.4+, PHP 8.1+ — Details unter
+[Voraussetzungen und Kompatibilität](#voraussetzungen-und-kompatibilitaet).
+
+<a id="installation"></a>
+### Installation
+
+1. ZIP über die moziloCMS-Admin-Oberfläche der Plugin-Verwaltung hochladen
+2. Im moziloCMS-Admin unter **Plugins** aktivieren
+3. **Wichtig:** Den Platzhalter `{schemaOrgData}` an passender Stelle im
+   `<head>`-Bereich des aktiven Layout-Templates (`template.html`) ergänzen —
+   **ohne diesen Platzhalter gibt das Plugin im Frontend keinerlei JSON-LD
+   aus**, unabhängig von der Konfiguration. Fehlt der Platzhalter, zeigt der
+   Admin-Bereich einen entsprechenden Hinweis an. In `gallerytemplate.html`
+   sollte der Platzhalter nicht gesetzt werden (siehe
+   [JSON-LD-Ausgabe im Detail](#json-ld-ausgabe-im-detail)).
+
+> ⚠️ **`plugin.conf.php` ist zugleich Metadaten-Datei und alleiniger
+> Speicherort der kompletten Live-Konfiguration.** Ein Deploy dieser Datei per
+> FTP auf einen Server mit bestehender Konfiguration **überschreibt diese
+> vollständig, ohne Rückfrage**. Ein Update über die moziloCMS-Admin-Oberfläche
+> (ZIP-Upload) ist davon nicht betroffen — der Core-Installer überspringt
+> `plugin.conf.php` beim Entpacken, falls die Datei bereits existiert. Wer
+> manuell per FTP aktualisiert, sollte `plugin.conf.php` gezielt von der
+> Übertragung ausnehmen.
+
+<a id="erste-konfiguration"></a>
+### Erste Konfiguration
+
+Nach der Installation ist noch keine Ausgabe konfiguriert — das Plugin gibt so
+lange kein JSON-LD aus, bis mindestens ein Geltungsbereich einen Schema-Type
+zugewiesen bekommen hat. Der schnellste Weg zur ersten Ausgabe, unter
+**Plugins → schemaOrgData**:
+
+1. **Geltungsbereich wählen:** **Global** — diese Ebene wird auf jeder Seite
+   ausgegeben (siehe [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung)).
+2. **Identität festlegen:** genau einen Identitäts-Type wählen, der zur Website
+   passt — **Organization**, **NGO**, **Person** oder einen
+   **LocalBusiness**-Typ (siehe
+   [Organisations-Identität und @id-Anker](#organisations-identitaet) sowie
+   [Best Practices](#best-practices)).
+3. **Pflichtfelder ausfüllen:** Pflichtfelder sind im Formular markiert, die
+   Live-Validierung zeigt Fehler und Warnungen sofort an (siehe
+   [Formularvalidierung](#formularvalidierung)).
+
+![Globale Konfiguration mit Beispieldaten (LocalBusiness)](docs/images/global-konfiguration.png)
+
+4. **Speichern und prüfen:** Zur Kontrolle der tatsächlichen Ausgabe den
+   <a id="debug-modus"></a>**Debug-Modus** aktivieren (zeigt die erzeugten
+   JSON-LD-Blöcke im Frontend als Pop-up) und das Ergebnis mit
+   [validator.schema.org](https://validator.schema.org) abgleichen.
+5. **Weitere Ebenen bei Bedarf:** Für Kategorien oder einzelne Seiten mit
+   eigenem Inhalt (Event, FAQ, Stellenanzeige, Spendenaufruf …) analog auf
+   Kategorie- bzw. Seiten-Ebene fortfahren — konkrete Beispiele je Type unter
+   [Use Cases und Beispiele](#use-cases-und-beispiele).
+
+Im Frontend erscheint das Ergebnis als `<script>`-Block im `<head>` — an der
+Stelle des Platzhalters:
+
+```html
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "Muster GmbH",
+  "url": "https://www.example.com",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Musterstraße 12",
+    "postalCode": "12345",
+    "addressLocality": "Musterstadt",
+    "addressCountry": "DE"
+  },
+  "openingHours": ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
+}
+</script>
+```
+
+---
 <a id="features"></a>
 ## Features
 
@@ -75,7 +148,7 @@ maschinenlesbare JSON-LD-Blöcke (siehe
 - Generisches `PostalAddress`-Schema nach schema.org (international einsetzbar)
 - **Erweiterungsfeld** (JSON-Textarea) für zusätzliche Properties mit Live-Validierung
 - **Erkennung vorhandener JSON-LD-Blöcke** in Template und Seiteninhalt, wahlweise Beibehalten oder Überschreiben — plus **Import-Feld** zur Übernahme bestehender Daten ins Formular
-- <a id="debug-modus"></a>**Debug-Modus**: erzeugte JSON-LD-Blöcke im Frontend als Pop-up anzeigen (zum Abgleich mit validator.schema.org)
+- **Debug-Modus**: erzeugte JSON-LD-Blöcke im Frontend als Pop-up anzeigen (zum Abgleich mit validator.schema.org, siehe [Erste Konfiguration](#erste-konfiguration))
 - Mehrsprachige Admin-Oberfläche und Frontend-Ausgabe (initial Deutsch und Englisch)
 
 **Datenqualität**
@@ -137,71 +210,12 @@ zeigt die [Google Search Gallery](https://developers.google.com/search/docs/appe
 ### Abgrenzung zu bestehenden Core-Implementierungen
 
 moziloCMS 3.0 enthält bereits Schema.org-Implementierungen als Microdata
-(u. a. `Article`-Wrapper, `ImageObject`, `BreadcrumbList`, `LocalBusiness`
+(u. a. **Article**-Wrapper, **ImageObject**, **BreadcrumbList**, **LocalBusiness**
 im Body). Dieses Plugin **ersetzt** diese Core-Microdata nicht, sondern
 **ergänzt** sie um JSON-LD im `<head>`, das von Google und anderen
 Suchmaschinen für Rich Results bevorzugt ausgewertet wird.
 
 > 📄 Vertiefung (Tabelle im Detail): [docs/compatibility.md](docs/compatibility.md#abgrenzung-core)
-
----
-
-<a id="installation"></a>
-## Installation
-
-1. Die Installation erfolgt über die moziloCMS-Admin-Oberfläche der
-   Plugin-Verwaltung (ZIP-Upload).
-2. Im moziloCMS-Admin unter **Plugins** aktivieren
-3. **Wichtig:** Den Platzhalter `{schemaOrgData}` an passender Stelle im
-   `<head>`-Bereich des aktiven Layout-Templates (`template.html`) ergänzen —
-   **ohne diesen Platzhalter gibt das Plugin im Frontend keinerlei JSON-LD
-   aus**, unabhängig von der Konfiguration. Fehlt der Platzhalter, zeigt der
-   Admin-Bereich einen entsprechenden Hinweis an. In `gallerytemplate.html`
-   sollte der Platzhalter nicht gesetzt werden (siehe
-   [JSON-LD-Ausgabe im Detail](#json-ld-ausgabe-im-detail)).
-4. Konfiguration unter **Plugins → schemaOrgData** vornehmen (siehe
-   [Erste Konfiguration](#erste-konfiguration))
-
-> ⚠️ **`plugin.conf.php` ist zugleich Metadaten-Datei und alleiniger
-> Speicherort der kompletten Live-Konfiguration** (alle drei Geltungsbereiche
-> in einer Datei). Ein Deploy dieser Datei per FTP auf einen Server mit
-> bereits bestehender Konfiguration **überschreibt diese vollständig, ohne
-> Rückfrage**. Ein Update über die moziloCMS-Admin-Oberfläche (ZIP-Upload)
-> ist davon nicht betroffen — der Core-Installer überspringt
-> `plugin.conf.php` beim Entpacken, falls die Datei bereits existiert. Wer
-> stattdessen manuell per FTP aktualisiert, sollte `plugin.conf.php` gezielt
-> von der Übertragung ausnehmen.
-
----
-
-<a id="erste-konfiguration"></a>
-## Erste Konfiguration
-
-Nach der Installation ist noch keine Ausgabe konfiguriert — das Plugin gibt
-so lange kein JSON-LD aus, bis mindestens ein Geltungsbereich einen
-Schema-Type zugewiesen bekommen hat.
-
-1. **Geltungsbereich wählen.** Im Admin-Bereich zunächst **Global**
-   auswählen — diese Ebene wird auf jeder Seite ausgegeben (siehe
-   [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung)).
-2. **Identität festlegen.** Für die globale Ebene genau einen
-   Identitäts-Type wählen, der zur Website passt: **Organization**, **NGO**,
-   **Person** oder einen **LocalBusiness**-Typ (siehe
-   [Organisations-Identität und @id-Anker](#organisations-identitaet) sowie
-   [Best Practices](#best-practices) — „Global nur die Identität").
-3. **Pflichtfelder ausfüllen.** Pflichtfelder sind im Formular markiert;
-   Live-Validierung zeigt Fehler und Warnungen sofort an (siehe
-   [Formularvalidierung](#formularvalidierung)).
-4. **Speichern und prüfen.** Nach dem Speichern zeigt der Admin-Bereich eine
-   Erfolgs- oder Fehlermeldung. Zur Kontrolle der tatsächlichen Ausgabe
-   **Debug-Modus** aktivieren (siehe [Debug-Modus](#debug-modus)) und das
-   erzeugte JSON-LD mit [validator.schema.org](https://validator.schema.org)
-   abgleichen.
-5. **Weitere Ebenen bei Bedarf.** Für Kategorien oder einzelne Seiten mit
-   eigenem Inhalt (Event, FAQ, Stellenanzeige, Spendenaufruf …) analog auf
-   Kategorie- bzw. Seiten-Ebene fortfahren — siehe
-   [Use Cases und Beispiele](#use-cases-und-beispiele) für konkrete
-   Konfigurationsbeispiele je Type.
 
 ---
 
@@ -239,26 +253,8 @@ ihrer Seiten ist davon nicht betroffen.
 
 Das Plugin gibt das JSON-LD ([json-ld.org](https://json-ld.org/)) als
 `<script>`-Tag im `<head>` aus — an der Stelle, an der im Layout-Template
-der Platzhalter `{schemaOrgData}` steht (siehe [Installation](#installation)):
-
-```html
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "LocalBusiness",
-  "name": "Muster GmbH",
-  "url": "https://www.example.com",
-  "address": {
-    "@type": "PostalAddress",
-    "streetAddress": "Musterstraße 12",
-    "postalCode": "12345",
-    "addressLocality": "Musterstadt",
-    "addressCountry": "DE"
-  },
-  "openingHours": ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
-}
-</script>
-```
+der Platzhalter `{schemaOrgData}` steht (Ausgabe-Beispiel siehe
+[Erste Konfiguration](#erste-konfiguration)).
 
 Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global +
 Kategorie + Seite = bis zu drei Blöcke). Leere Felder werden vor der
@@ -288,8 +284,7 @@ Das Öffnungszeiten-Widget bildet die sieben Wochentage als Zeitraum-Felder
 ab (Von / Bis, plus optionalem zweiten Zeitraum je Tag, z. B. für eine
 Mittagspause). Leere Felder werden als „geschlossen" interpretiert. Intern
 werden die Werte als `openingHours`-Array nach schema.org-Notation
-gespeichert (Beispiel siehe [JSON-LD-Ausgabe im
-Detail](#json-ld-ausgabe-im-detail) oben). Es wird ausschließlich das
+gespeichert (Beispiel siehe [Erste Konfiguration](#erste-konfiguration)). Es wird ausschließlich das
 **24-Stunden-Format** (`HH:MM`) unterstützt.
 
 > 📄 Vertiefung (Regeln für den zweiten Zeitraum): [docs/rendering.md](docs/rendering.md)
