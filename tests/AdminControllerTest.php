@@ -278,8 +278,13 @@ final class AdminControllerTest extends TestCase {
         $this->assertStringContainsString('Neue Firma', $html);
         $this->assertStringContainsString('Neustadt', $html);
         $this->assertStringContainsString('nicht-eine-url', $html);
-        $this->assertStringNotContainsString('Alte Firma', $html);
-        $this->assertStringNotContainsString('Altstadt', $html);
+        // value="..." statt reiner Substring-Suche: das employee-Referenzfeld
+        // listet den weiterhin gespeicherten globalen LocalBusiness-Knoten
+        // ("Alte Firma") legitim als Options-Text im Referenz-Dropdown -
+        // das ist keine erneute Instanz des ursprünglichen Regressionsfalls
+        // (stale Werte in Formularfeld-value-Attributen).
+        $this->assertStringNotContainsString('value="Alte Firma"', $html);
+        $this->assertStringNotContainsString('value="Altstadt"', $html);
     }
 
     /***************************************************************

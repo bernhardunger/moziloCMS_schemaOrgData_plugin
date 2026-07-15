@@ -73,6 +73,7 @@ label_employment_type = Beschäftigungsart
 label_hiring_organization = Arbeitgeber (Organisation)
 placeholder_hiring_organization_name = z. B. Musterstadt Logistik GmbH
 label_job_location = Arbeitsort
+label_employee = Mitarbeiter
 
 label_location = Veranstaltungsort
 label_start_date = Beginn (Datum/Zeit)
