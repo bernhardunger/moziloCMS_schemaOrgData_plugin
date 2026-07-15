@@ -5,7 +5,7 @@
   "type": "object",
   "ui:typeLabel": "schema_type_person",
   "ui:idFragment": "person",
-  "ui:scopes": ["global"],
+  "ui:scopes": ["global", "page"],
   "required": ["name"],
   "properties": {
     "name": {

@@ -135,12 +135,12 @@ final class PersonIdRefOrLiteralTest extends TestCase {
             'Person.json muss ui:idFragment = "person" besitzen');
     }
 
-    function testPersonSchemaIsGlobalOnly(): void {
+    function testPersonSchemaSupportsGlobalAndPageScope(): void {
         $plugin = $this->createPlugin();
         $schema = (new \SchemaOrgData_SchemaRepository())->loadSchema($plugin->PLUGIN_SELF_DIR, 'Person');
 
-        $this->assertSame(['global'], $schema['ui:scopes'],
-            'Person.json muss ausschließlich den Scope "global" haben');
+        $this->assertSame(['global', 'page'], $schema['ui:scopes'],
+            'Person.json muss die Scopes "global" und "page" unterstützen');
     }
 
     function testPersonSchemaRequiresName(): void {
@@ -203,6 +203,30 @@ final class PersonIdRefOrLiteralTest extends TestCase {
         $this->assertArrayHasKey('organization', $fragments);
         $this->assertArrayHasKey('person', $fragments);
         $this->assertCount(2, $fragments);
+    }
+
+    /***************************************************************
+    *
+    * Person unterstützt seit der Scope-Erweiterung auch "page".
+    * resolveAvailableGlobalFragments() liest jedoch ausschließlich
+    * config_global (siehe SchemaOrgData_IdReferenceService.php) —
+    * ein rein seiten-scope konfigurierter Person-Knoten darf daher
+    * weiterhin NICHT als Referenzziel erscheinen.
+    *
+    ***************************************************************/
+    function testResolveFragmentsIgnoresPageScopedPerson(): void {
+        $plugin = $this->createPlugin();
+        // config_global bleibt leer; Person ist ausschließlich seiten-scope konfiguriert
+        $this->settings->set('config_page_test_page', ['Person' => ['name' => 'Max Mustermann']]);
+
+        $fragments = (new \SchemaOrgData_IdReferenceService())->resolveAvailableGlobalFragments(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $this->adminLang($plugin)
+        );
+
+        $this->assertArrayNotHasKey('person', $fragments,
+            'Seiten-scope konfigurierte Person darf nicht als globales Referenzziel erscheinen');
+        $this->assertSame([], $fragments);
     }
 
     // -----------------------------------------------------------
