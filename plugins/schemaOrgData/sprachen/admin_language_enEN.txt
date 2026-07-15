@@ -1,4 +1,4 @@
-plugin_description = Writes Schema.org-compliant JSON-LD (LocalBusiness, Organization, FAQPage, etc.) into the page's &lt;head&gt;.<br />Scopes: Global, Category, Page.
+plugin_description = Writes Schema.org-compliant JSON-LD (LocalBusiness, Organization, FAQPage, etc.) into the page's &lt;head&gt;.<br />Scopes: Global, Category, Page.<br /><br /><b>Requirements</b><table><tr><td><b>moziloCMS</b></td><td>3.0.x or higher (moziloCMS 2.x is not supported)<br /><small style="color:#666;">Note on the &ldquo;2.0&nbsp;/&nbsp;3.0&rdquo; version string: moziloCMS internally checks whether the version string contains the digit &ldquo;2&rdquo; (<code>strpos()</code> in <code>admin/plugins.php</code>). If it doesn't, moziloCMS automatically disables the plugin in the admin area.</small></td></tr><tr><td><b>PHP</b></td><td>8.1 or higher</td></tr></table>
 plugin_placeholder = Outputs this page's Schema.org JSON-LD data (insert into &lt;head&gt;)
 
 scope_global = Global
