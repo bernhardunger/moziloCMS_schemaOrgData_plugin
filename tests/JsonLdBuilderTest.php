@@ -662,47 +662,6 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
-    // employee (LocalBusiness-Familie) - stellvertretend über
-    // AccountingService geprüft, da alle fünf Types (ui:family:
-    // "localBusiness") die Property strukturell identisch definieren.
-    // -----------------------------------------------------------
-
-    function testAccountingServiceEmployeeReferenceModeEmitsAtIdDirekt(): void {
-        $_SERVER['HTTPS'] = 'on';
-        $_SERVER['HTTP_HOST'] = 'www.example.org';
-        $_SERVER['SCRIPT_NAME'] = '/index.php';
-
-        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'AccountingService', [
-            'name' => 'Musterkanzlei',
-            'url' => 'https://example.com',
-            'employee' => ['_mode' => 'reference', '_fragment' => 'person-max'],
-        ]);
-
-        $this->assertSame('https://www.example.org/#person-max', $decoded['employee']['@id']);
-    }
-
-    function testAccountingServiceEmployeeLiteralModeEmitsEmbeddedPersonDirekt(): void {
-        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'AccountingService', [
-            'name' => 'Musterkanzlei',
-            'url' => 'https://example.com',
-            'employee' => ['_mode' => 'literal', 'name' => 'Max Mustermann', 'jobTitle' => 'Steuerberater'],
-        ]);
-
-        $this->assertSame('Person', $decoded['employee']['@type']);
-        $this->assertSame('Max Mustermann', $decoded['employee']['name']);
-        $this->assertSame('Steuerberater', $decoded['employee']['jobTitle']);
-    }
-
-    function testAccountingServiceEmptyEmployeeWirdNichtAlsLeeresObjektAusgegebenDirekt(): void {
-        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'AccountingService', [
-            'name' => 'Musterkanzlei',
-            'url' => 'https://example.com',
-        ]);
-
-        $this->assertArrayNotHasKey('employee', $decoded);
-    }
-
-    // -----------------------------------------------------------
     // NGO/Organization-Feldsymmetrie - beide Types
     // beschreiben denselben globalen Organisationsknoten, daher dürfen
     // die verfügbaren Kontaktfelder nicht von der Type-Wahl abhängen.

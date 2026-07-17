@@ -96,18 +96,6 @@
         "Sa": "weekday_saturday",
         "Su": "weekday_sunday"
       }
-    },
-    "employee": {
-      "type": "object",
-      "ui:widget": "id_reference_or_literal",
-      "ui:label": "label_employee",
-      "ui:required": false,
-      "ui:literalFields": ["name", "jobTitle"],
-      "ui:literalFieldLabels": {
-        "name": "label_name",
-        "jobTitle": "label_job_title"
-      },
-      "ui:literalType": "Person"
     }
   },
   "definitions": {

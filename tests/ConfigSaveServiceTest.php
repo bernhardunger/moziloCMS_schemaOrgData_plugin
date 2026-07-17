@@ -357,7 +357,7 @@ final class ConfigSaveServiceTest extends TestCase {
         return $this->configSaveService()->saveConfig(
             $scope, $postData, $settings, $this->adminLang(), $this->scopeResolver(),
             $this->schemaRepository(), $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(),
-            $this->adminPageRenderer()
+            $this->adminPageRenderer(), new \SchemaOrgData_PersonsRegistryService(), new \SchemaOrgData_OrgRelationsService()
         );
     }
 
@@ -725,5 +725,147 @@ final class ConfigSaveServiceTest extends TestCase {
 
         $this->assertTrue($result['success']);
         $this->assertSame('Muster GmbH', $settings->get('config_global')['MedicalBusiness']['name']);
+    }
+
+    // -----------------------------------------------------------
+    // saveConfig() - Organisations-Relationen (org_relations, siehe
+    // SchemaOrgData_OrgRelationsService)
+    // -----------------------------------------------------------
+
+    private function setActivePerson(\InMemorySettings $settings, string $slug, array $overrides = []): void {
+        $registry = $settings->keyExists(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY)
+            ? $settings->get(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY)
+            : [];
+        $registry[$slug] = array_merge([
+            'name' => 'Max Mustermann',
+            'status' => \SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE,
+        ], $overrides);
+        $settings->set(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY, $registry);
+    }
+
+    function testSaveConfigSpeichertGueltigeOrgRelations(): void {
+        $settings = new \InMemorySettings();
+        $this->setActivePerson($settings, 'max-mustermann');
+
+        $postData = $this->validFamilyTypeData('AccountingService');
+        $postData['org_relations'] = [['person' => 'max-mustermann', 'role' => 'founder']];
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame(
+            [['person' => 'max-mustermann', 'role' => 'founder']],
+            $settings->get('config_global')['org_relations']
+        );
+    }
+
+    function testSaveConfigLehntOrgRelationMitUnbekannterRolleAbUndSpeichertNichts(): void {
+        $settings = new \InMemorySettings();
+        $this->setActivePerson($settings, 'max-mustermann');
+
+        $postData = $this->validFamilyTypeData('AccountingService');
+        $postData['org_relations'] = [['person' => 'max-mustermann', 'role' => 'ceo']];
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotSame([], $result['errors']);
+        $this->assertFalse($settings->keyExists('config_global'),
+            'Bei einer ungültigen Rolle darf gar nichts gespeichert werden - auch nicht die Type-Daten');
+    }
+
+    function testSaveConfigLehntOrgRelationMitUnbekanntemPersonSlugAb(): void {
+        $settings = new \InMemorySettings();
+        // Kein Registry-Eintrag für "geloescht".
+
+        $postData = $this->validFamilyTypeData('AccountingService');
+        $postData['org_relations'] = [['person' => 'geloescht', 'role' => 'founder']];
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotSame([], $result['errors']);
+    }
+
+    /***************************************************************
+    *
+    * Das Relationen-Widget erscheint nur für global aktive Organisations-
+    * Types (ui:idFragment == "organization", siehe SchemaOrgData_AdminController) -
+    * ist z. B. WebSite aktiv, fehlt "org_relations" im POST komplett. In
+    * diesem Fall darf saveConfig() eine bereits gespeicherte Relation
+    * NICHT stillschweigend löschen (Type-Wechsel-Stabilität, siehe README.md).
+    *
+    ***************************************************************/
+    function testSaveConfigOhneOrgRelationsImPostBehaeltBestehendeRelationenBei(): void {
+        $settings = new \InMemorySettings();
+        $this->setActivePerson($settings, 'max-mustermann');
+        $settings->set('config_global', [
+            'AccountingService' => ['name' => 'Alte Kanzlei', 'url' => 'https://www.example.com'],
+            'org_relations' => [['person' => 'max-mustermann', 'role' => 'founder']],
+        ]);
+
+        $postData = [
+            'type' => 'WebSite',
+            'data' => ['name' => 'Beispielseite', 'url' => 'https://www.example.com'],
+            'extension' => ['WebSite' => ''],
+        ];
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame(
+            [['person' => 'max-mustermann', 'role' => 'founder']],
+            $settings->get('config_global')['org_relations']
+        );
+    }
+
+    function testSaveConfigMitLeeremOrgRelationsArrayImPostLeertBestehendeRelationen(): void {
+        $settings = new \InMemorySettings();
+        $this->setActivePerson($settings, 'max-mustermann');
+        $settings->set('config_global', [
+            'AccountingService' => ['name' => 'Alte Kanzlei', 'url' => 'https://www.example.com'],
+            'org_relations' => [['person' => 'max-mustermann', 'role' => 'founder']],
+        ]);
+
+        $postData = $this->validFamilyTypeData('AccountingService');
+        $postData['org_relations'] = [];
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame([], $settings->get('config_global')['org_relations'],
+            'Ein explizit leer gesendetes org_relations-Array (aktives Organisations-Widget ohne Zeilen) '
+            .'muss eine bestehende Relation absichtlich löschen können');
+    }
+
+    /***************************************************************
+    *
+    * Type-Wechsel-Regressionstest (analog dem bestehenden Regressionstest
+    * aus adr_globale_id_fragmente.md für globale @id-Fragmente): ein
+    * Wechsel des globalen Organisations-Types innerhalb der LocalBusiness-
+    * Familie darf org_relations nicht verlieren.
+    *
+    ***************************************************************/
+    function testOrgRelationsUeberlebenTypeWechselInnerhalbDerLocalBusinessFamilie(): void {
+        $settings = new \InMemorySettings();
+        $this->setActivePerson($settings, 'max-mustermann');
+
+        $firstPost = $this->validFamilyTypeData('AccountingService');
+        $firstPost['org_relations'] = [['person' => 'max-mustermann', 'role' => 'founder']];
+        $firstResult = $this->callSaveConfig('global', $firstPost, $settings);
+        $this->assertTrue($firstResult['success'], implode(', ', $firstResult['errors']));
+
+        // Type-Wechsel: das vorgerenderte Formular des neu gewählten Types
+        // sendet dieselben, bereits gespeicherten org_relations erneut mit.
+        $secondPost = $this->validFamilyTypeData('LegalService');
+        $secondPost['org_relations'] = [['person' => 'max-mustermann', 'role' => 'founder']];
+        $secondResult = $this->callSaveConfig('global', $secondPost, $settings);
+        $this->assertTrue($secondResult['success'], implode(', ', $secondResult['errors']));
+
+        $config = $settings->get('config_global');
+        $this->assertArrayHasKey('LegalService', $config);
+        $this->assertArrayNotHasKey('AccountingService', $config,
+            'saveConfig() baut config_global bei jedem Speichern mit genau einem aktiven Type neu auf');
+        $this->assertSame([['person' => 'max-mustermann', 'role' => 'founder']], $config['org_relations']);
     }
 }

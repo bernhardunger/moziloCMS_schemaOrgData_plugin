@@ -83,10 +83,16 @@ class SchemaOrgData_FrontendRenderer {
         // Meta-Schlüssel analog zu excluded_cats).
         $debugOutput = !empty($scopeConfigs['global']['debug_output'] ?? false);
 
-        // Verwaltungsdaten (_meta, excluded_cats, debug_output) entfernen -
-        // übrig bleiben je Ebene nur noch die Schema-Type-Konfigurationen.
+        // Organisations-Relationen (org_relations, siehe SchemaOrgData_OrgRelationsService):
+        // ebenfalls ein Meta-Schlüssel in config_global, unabhängig vom aktiven
+        // globalen Schema-Type (übersteht dadurch einen Type-Wechsel innerhalb
+        // der LocalBusiness-Familie bzw. zwischen Organization/NGO).
+        $orgRelations = is_array($scopeConfigs['global']['org_relations'] ?? null) ? $scopeConfigs['global']['org_relations'] : [];
+
+        // Verwaltungsdaten (_meta, excluded_cats, debug_output, org_relations)
+        // entfernen - übrig bleiben je Ebene nur noch die Schema-Type-Konfigurationen.
         foreach($scopeConfigs as $scope => $config) {
-            unset($scopeConfigs[$scope]['_meta'], $scopeConfigs[$scope]['excluded_cats'], $scopeConfigs[$scope]['debug_output']);
+            unset($scopeConfigs[$scope]['_meta'], $scopeConfigs[$scope]['excluded_cats'], $scopeConfigs[$scope]['debug_output'], $scopeConfigs[$scope]['org_relations']);
         }
 
         // jsonld_mode prüfen: wurde bereits vorhandenes JSON-LD erkannt
@@ -119,15 +125,43 @@ class SchemaOrgData_FrontendRenderer {
         // (Global -> Kategorie -> Seite, siehe resolveTypeInheritance()).
         $scopeConfigs = $context->scopeResolver->resolveTypeInheritance($scopeConfigs);
 
+        // Organisations-Relationen dürfen nur dann Personen-Referenzen
+        // beitragen, wenn auf dieser Seite tatsächlich ein Knoten mit
+        // ui:idFragment == "organization" ausgegeben wird (z. B. nicht der
+        // Fall bei keep-Modus/excluded_cats-Unterdrückung des Global-Scopes,
+        // oder wenn der aktive globale Type kein Organisations-Type ist) -
+        // sonst blieben referenzierte Personen als Knoten ohne jede
+        // sichtbare Referenz im Graph zurück.
+        $orgNodePresent = false;
+        foreach($scopeConfigs as $config) {
+            foreach(array_keys($config) as $type) {
+                $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
+                if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === 'organization') {
+                    $orgNodePresent = true;
+                    break 2;
+                }
+            }
+        }
+        if(!$orgNodePresent) {
+            $orgRelations = [];
+        }
+
         // Dangling-Reference-Guard: prüft, ob eine id_reference auf einen
         // @id-Knoten verweist, der auf dieser Seite nicht ausgegeben wird,
         // und erzwingt ggf. einen Minimal-Stub (nur bei excluded_cats-
         // Unterdrückung). Bei keep-Modus wird die id_reference stattdessen
         // unterdrückt (siehe applyDanglingReferenceGuard(), README.md,
-        // "@id-Anker").
+        // "@id-Anker"). Organisations-Relationen (org_relations) fließen als
+        // zusätzliche Personen-Referenzquelle in denselben Mechanismus ein.
         [$scopeConfigs, $suppressedIdTargets, $activePersonSlugs] = $context->idReferenceService->applyDanglingReferenceGuard(
             $context->scopeResolver, $context->schemaRepository, $context->settings, $context->pluginSelfDir,
-            $scopeConfigs, $globalSuppressedByKeep, $context->personsRegistryService
+            $scopeConfigs, $globalSuppressedByKeep, $context->personsRegistryService, $orgRelations
+        );
+
+        // Gruppierte @id-Referenzen (Rolle => Liste) für den Organisations-
+        // Knoten - Status-/Dangling-Filter siehe SchemaOrgData_OrgRelationsService::buildOutputGroups().
+        $orgRelationsGrouped = $context->orgRelationsService->buildOutputGroups(
+            $orgRelations, $suppressedIdTargets, $context->settings, $context->personsRegistryService, $context->urlHelper
         );
 
         // JSON-LD-Blöcke der verbleibenden Types ausgeben; bei aktivem
@@ -139,6 +173,12 @@ class SchemaOrgData_FrontendRenderer {
         $debugBlocks = [];
         foreach($scopeConfigs as $scope => $config) {
             foreach($config as $type => $data) {
+                if($orgRelationsGrouped !== []) {
+                    $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
+                    if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === 'organization') {
+                        $data = array_merge($data, $orgRelationsGrouped);
+                    }
+                }
                 $nodeId = $context->jsonLdBuilder->resolveNodeId($context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, $type, $assignedFragments);
                 $output .= $context->jsonLdBuilder->buildJsonLdScript($context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets);
                 if($debugOutput) {
@@ -255,9 +295,8 @@ class SchemaOrgData_FrontendRenderer {
     * über eine eigene, partielle Nachbildung dessen Transformationen) -
     * das garantiert byte-identisches JSON zum echten <script>-Block,
     * inklusive Place-/PostalAddress-Verschachtelung (address/geo/
-    * employee/location/jobLocation) und id_reference(_or_literal)-
-    * Auflösung (z. B. Event.organizer), statt der rohen
-    * {"_mode": ...}-Repräsentation.
+    * location/jobLocation) und id_reference(_or_literal)-Auflösung
+    * (z. B. Event.organizer), statt der rohen {"_mode": ...}-Repräsentation.
     *
     * @param array<int, array{scope: string, type: string, data: array<string, mixed>, id: string}> $blocks
     *              je Block Scope ('global'|'cat_x'|'page_x_y'), Type, Properties und @id-Anker

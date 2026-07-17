@@ -169,7 +169,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         $output = $plugin->getContent('');
@@ -192,7 +194,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
@@ -212,7 +216,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
@@ -255,7 +261,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
@@ -277,7 +285,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
@@ -301,7 +311,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
@@ -328,7 +340,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
@@ -352,7 +366,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
@@ -379,7 +395,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         $blocks = $this->getJsonLdBlocks($plugin);
@@ -415,7 +433,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
         (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($this->settings, 'global', ['existing_jsonld' => true, 'jsonld_mode' => 'keep']);
 
@@ -436,7 +456,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
         (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($this->settings, 'global', ['existing_jsonld' => true, 'jsonld_mode' => 'override']);
 
@@ -612,7 +634,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         $output = $plugin->getContent('');
@@ -635,7 +659,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         $output = $plugin->getContent('');
@@ -676,7 +702,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         $output = $plugin->getContent('');
@@ -700,7 +728,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         $output = $plugin->getContent('');
@@ -726,7 +756,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         $output = $plugin->getContent('');
@@ -757,7 +789,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
 
         $output = $plugin->getContent('');
@@ -779,7 +813,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin1->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
         $output1 = $plugin1->getContent('');
 
@@ -796,7 +832,9 @@ final class JsonLdOutputTest extends TestCase {
             $plugin2->PLUGIN_SELF_DIR,
             new \SchemaOrgData_Validator(),
             new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_OrgRelationsService()
         );
         $output2 = $plugin2->getContent('');
 

@@ -332,6 +332,8 @@ class SchemaOrgData_ConfigSaveService {
     * @param array<string, mixed> $postData schemaOrgData[scope] aus $_POST
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer wird an resolveInheritableFields() durchgereicht
+    * @param SchemaOrgData_PersonsRegistryService $personsRegistryService für die Slug-Existenzprüfung der Organisations-Relationen
+    * @param SchemaOrgData_OrgRelationsService $orgRelationsService für Validierung/Bereinigung der Organisations-Relationen (nur global)
     * @return array{success: bool, errors: string[]}
     *
     ***************************************************************/
@@ -345,7 +347,9 @@ class SchemaOrgData_ConfigSaveService {
         string $pluginSelfDir,
         SchemaOrgData_Validator $validator,
         SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
-        SchemaOrgData_AdminPageRenderer $adminPageRenderer
+        SchemaOrgData_AdminPageRenderer $adminPageRenderer,
+        SchemaOrgData_PersonsRegistryService $personsRegistryService,
+        SchemaOrgData_OrgRelationsService $orgRelationsService
     ): array {
         // 1. Rohdaten
         [$cat, $page] = $scopeResolver->resolveScopeIdentifiers($scope);
@@ -365,6 +369,7 @@ class SchemaOrgData_ConfigSaveService {
         if($scope === 'global') {
             $config['excluded_cats'] = $existing['excluded_cats'] ?? '';
             $config['debug_output'] = !empty($existing['debug_output']);
+            $config['org_relations'] = is_array($existing['org_relations'] ?? null) ? $existing['org_relations'] : [];
         }
 
         $type = (string) ($postData['type'] ?? '');
@@ -416,6 +421,28 @@ class SchemaOrgData_ConfigSaveService {
             }
         }
 
+        // Organisations-Relationen (org_relations, nur global): Validierung
+        // VOR dem Fehler-Gate, damit eine unbekannte Rolle bzw. eine
+        // Referenz auf einen nicht (mehr) existierenden Personen-Slug das
+        // Speichern blockiert (analog zur Formularfeld-/Erweiterungsfeld-
+        // Validierung oben) statt still verworfen zu werden. Das Widget
+        // erscheint nur bei global aktivem Organisations-Type (ui:idFragment
+        // == "organization", siehe SchemaOrgData_AdminController), daher
+        // fehlt "org_relations" im POST komplett, wenn z. B. WebSite aktiv
+        // ist - in diesem Fall bleibt der bereits oben aus $existing gesetzte
+        // Wert unangetastet (Type-Wechsel-Stabilität, siehe README.md).
+        // array_key_exists() statt isset(), da ein Formular ohne jede
+        // Relation ein leeres Array sendet (unterscheidbar vom Fehlen des
+        // Feldes selbst).
+        $orgRelationsResult = null;
+        if($scope === 'global' and array_key_exists('org_relations', $postData)) {
+            $orgRelationsResult = $orgRelationsService->sanitizeAndValidate(
+                is_array($postData['org_relations']) ? $postData['org_relations'] : [],
+                $settings, $personsRegistryService, $lang
+            );
+            $errors = array_merge($errors, $orgRelationsResult['errors']);
+        }
+
         if($errors !== []) {
             return ['success' => false, 'errors' => $errors];
         }
@@ -430,6 +457,9 @@ class SchemaOrgData_ConfigSaveService {
             }
             $config['excluded_cats'] = implode(',', $excludedCats);
             $config['debug_output'] = !empty($postData['debug_output']);
+            if($orgRelationsResult !== null) {
+                $config['org_relations'] = $orgRelationsResult['relations'];
+            }
         }
 
         $jsonldMode = $_POST['schemaOrgData_jsonld_mode_'.$scope] ?? null;

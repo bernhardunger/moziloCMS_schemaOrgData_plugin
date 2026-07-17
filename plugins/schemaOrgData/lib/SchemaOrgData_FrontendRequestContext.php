@@ -21,6 +21,9 @@ final class SchemaOrgData_FrontendRequestContext {
     *              ohne Type-Hint, siehe SchemaOrgData_ScopeResolver -
     *              kompatibel zu Properties/InMemorySettings-Test-Mocks)
     * @param string $pluginSelfDir Plugin-Verzeichnis (PLUGIN_SELF_DIR)
+    * @param SchemaOrgData_OrgRelationsService $orgRelationsService Organisations-
+    *              Relationen (founder/employee/member, siehe README.md,
+    *              Abschnitt "@id-Anker und Knotenreferenzen")
     *
     ***************************************************************/
     public function __construct(
@@ -32,7 +35,8 @@ final class SchemaOrgData_FrontendRequestContext {
         public readonly SchemaOrgData_IdReferenceService $idReferenceService,
         public readonly SchemaOrgData_CollisionDetector $collisionDetector,
         public readonly SchemaOrgData_UrlHelper $urlHelper,
-        public readonly SchemaOrgData_PersonsRegistryService $personsRegistryService
+        public readonly SchemaOrgData_PersonsRegistryService $personsRegistryService,
+        public readonly SchemaOrgData_OrgRelationsService $orgRelationsService
     ) {
     }
 }

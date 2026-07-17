@@ -28,6 +28,9 @@ final class SchemaOrgData_AdminRequestContext {
     *              der Personen-Registry-Ansichten
     * @param SchemaOrgData_PersonsAdminRequestHandler $personsAdminRequestHandler
     *              POST-Dispatch der Personen-Registry
+    * @param SchemaOrgData_OrgRelationsService $orgRelationsService Organisations-
+    *              Relationen (founder/employee/member, siehe README.md,
+    *              Abschnitt "@id-Anker und Knotenreferenzen")
     *
     ***************************************************************/
     public function __construct(
@@ -52,7 +55,8 @@ final class SchemaOrgData_AdminRequestContext {
         public readonly SchemaOrgData_ImportService $importService,
         public readonly SchemaOrgData_PersonsRegistryService $personsRegistryService,
         public readonly SchemaOrgData_PersonsAdminRenderer $personsAdminRenderer,
-        public readonly SchemaOrgData_PersonsAdminRequestHandler $personsAdminRequestHandler
+        public readonly SchemaOrgData_PersonsAdminRequestHandler $personsAdminRequestHandler,
+        public readonly SchemaOrgData_OrgRelationsService $orgRelationsService
     ) {
     }
 }

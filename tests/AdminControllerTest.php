@@ -197,8 +197,12 @@ final class AdminControllerTest extends TestCase {
             $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(),
             $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService(),
             $this->importService(), $this->personsRegistryService(), $this->personsAdminRenderer(),
-            $this->personsAdminRequestHandler()
+            $this->personsAdminRequestHandler(), $this->orgRelationsService()
         );
+    }
+
+    private function orgRelationsService(): \SchemaOrgData_OrgRelationsService {
+        return new \SchemaOrgData_OrgRelationsService();
     }
 
     private function personsRegistryService(): \SchemaOrgData_PersonsRegistryService {
@@ -248,6 +252,52 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
+    * Organisations-Relationen-Widget (siehe SchemaOrgData_FormRenderer::
+    * renderOrgRelationsWidget()): erscheint ausschließlich für global
+    * verfügbare Types mit "ui:idFragment": "organization" - LocalBusiness,
+    * ProfessionalService, LegalService, MedicalBusiness, AccountingService,
+    * Organization, NGO (7 von 8 global verfügbaren Types), NICHT für
+    * WebSite. Da alle Type-Sektionen gemeinsam vorgerendert werden (siehe
+    * renderScopeSection()), wird die Anzahl der Widget-Legenden statt
+    * einer reinen Substring-Suche geprüft.
+    *
+    ***************************************************************/
+    function testRenderScopeSectionOrgRelationsWidgetErscheintNurFuerOrganisationsTypesDirekt(): void {
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', false, new \InMemorySettings());
+
+        $this->assertSame(7, substr_count($html, $this->adminLang()->getLanguageHtml('label_org_relations')));
+    }
+
+    function testRenderScopeSectionOrgRelationsWidgetErscheintNichtBeiNichtGlobalemScopeDirekt(): void {
+        $html = $this->callRenderScopeSection('category', 'ueber-uns', null, true, 'category', false, new \InMemorySettings());
+
+        $this->assertStringNotContainsString($this->adminLang()->getLanguageHtml('label_org_relations'), $html);
+    }
+
+    function testRenderScopeSectionOrgRelationsWidgetZeigtHinweisOhneAktivePersonenDirekt(): void {
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', false, new \InMemorySettings());
+
+        $this->assertStringContainsString($this->adminLang()->getLanguageHtml('hint_org_relations_no_persons'), $html);
+    }
+
+    function testRenderScopeSectionOrgRelationsWidgetListetAktivePersonUndVorausgewaehlteRelationDirekt(): void {
+        $settings = new \InMemorySettings();
+        $settings->set(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY, [
+            'max-mustermann' => ['name' => 'Max Mustermann', 'status' => \SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE],
+        ]);
+        $settings->set('config_global', [
+            'LocalBusiness' => ['name' => 'Muster GmbH', 'url' => 'https://www.example.com'],
+            'org_relations' => [['person' => 'max-mustermann', 'role' => 'founder']],
+        ]);
+
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', false, $settings);
+
+        $this->assertStringContainsString('value="max-mustermann" selected="selected"', $html);
+        $this->assertStringContainsString('value="founder" selected="selected"', $html);
+    }
+
+    /***************************************************************
+    *
     * Regressionstest: data-save-label wurde bislang zusätzlich zum
     * bereits HTML-escapten Ergebnis von buildSaveButtonLabel() ein
     * zweites Mal mit htmlspecialchars() escaped - im Attributwert
@@ -291,11 +341,6 @@ final class AdminControllerTest extends TestCase {
         $this->assertStringContainsString('Neue Firma', $html);
         $this->assertStringContainsString('Neustadt', $html);
         $this->assertStringContainsString('nicht-eine-url', $html);
-        // value="..." statt reiner Substring-Suche: das employee-Referenzfeld
-        // listet den weiterhin gespeicherten globalen LocalBusiness-Knoten
-        // ("Alte Firma") legitim als Options-Text im Referenz-Dropdown -
-        // das ist keine erneute Instanz des ursprünglichen Regressionsfalls
-        // (stale Werte in Formularfeld-value-Attributen).
         $this->assertStringNotContainsString('value="Alte Firma"', $html);
         $this->assertStringNotContainsString('value="Altstadt"', $html);
     }
@@ -392,7 +437,7 @@ final class AdminControllerTest extends TestCase {
         return $this->configSaveService()->saveConfig(
             $scope, $postData, $settings, $this->adminLang(), $this->scopeResolver(),
             $this->schemaRepository(), $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(),
-            $this->adminPageRenderer()
+            $this->adminPageRenderer(), new \SchemaOrgData_PersonsRegistryService(), new \SchemaOrgData_OrgRelationsService()
         );
     }
 
@@ -724,7 +769,7 @@ final class AdminControllerTest extends TestCase {
         $saveResult = $this->configSaveService()->saveConfig(
             'page', $postData, $settings, $this->adminLang(), $this->scopeResolver(),
             $this->schemaRepository(), $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(),
-            $this->adminPageRenderer()
+            $this->adminPageRenderer(), new \SchemaOrgData_PersonsRegistryService(), new \SchemaOrgData_OrgRelationsService()
         );
         $this->assertTrue($saveResult['success'], implode(', ', $saveResult['errors']));
 
