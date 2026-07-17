@@ -85,7 +85,6 @@ class SchemaOrgData_AdminPageRenderer {
    Negative Margins kompensieren exakt das Fieldset-Padding+Rahmen (1em + 1px je Seite),
    sodass beide Textarea-Typen auf dieselbe absolute Breite kommen. */
 .schemaOrgData-admin .schemaOrgData-extension-field { font-family: monospace; resize: vertical; width: calc(100% + 2em + 2px); margin-left: calc(-1em - 1px); margin-right: calc(-1em - 1px); }
-.schemaOrgData-admin .schemaOrgData-import-textarea { width: 100%; box-sizing: border-box; }
 .schemaOrgData-admin select[id$="_addressCountry"] { max-width: 200px; }
 .schemaOrgData-admin input[id$="_addressRegion"] { max-width: 300px; }
 .schemaOrgData-admin .schemaOrgData-idrl-container { margin-bottom: .25em; }
@@ -94,6 +93,7 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-jsonld-notice { background: #fff3e0; border: 1px solid #ffb74d; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-jsonld-notice__title { margin-top: 0; }
 .schemaOrgData-admin .schemaOrgData-jsonld-notice__multiblock-hint { color: #b8860b; font-weight: bold; }
+.schemaOrgData-admin .schemaOrgData-jsonld-block-heading { margin-top: 1em; }
 .schemaOrgData-admin .schemaOrgData-jsonld-preview { width: 100%; max-height: 300px; overflow: auto; box-sizing: border-box; font-family: monospace; font-size: .85em; background: #fafafa; border: 1px solid #ddd; border-radius: 4px; padding: .6em .75em; margin: .5em 0; }
 .schemaOrgData-admin .schemaOrgData-jsonld-preview-dialog { max-width: 800px; width: 90vw; max-height: 85vh; overflow: auto; border-radius: 6px; border: 1px solid #ccc; box-shadow: 0 4px 24px rgba(0,0,0,.2); padding: 1.25em; }
 .schemaOrgData-admin .schemaOrgData-jsonld-preview-dialog__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1em; border-bottom: 1px solid #eee; padding-bottom: .75em; }
@@ -247,7 +247,8 @@ class SchemaOrgData_AdminPageRenderer {
     /***************************************************************
     *
     * Rendert den Hinweis- und Auswahl-Block für bereits vorhandenes
-    * JSON-LD sowie das Import-Feld einer Geltungsebene.
+    * JSON-LD sowie den serverseitigen Pro-Block-Import einer
+    * Geltungsebene.
     *
     * Vorgesehen zur Einbindung in das schema-getriebene Admin-Formular
     * (siehe render-form) innerhalb des jeweiligen Geltungsbereich-Tabs.
@@ -260,22 +261,23 @@ class SchemaOrgData_AdminPageRenderer {
     * vorhandenen Block aus - dieser Konsequenz-Hinweis wird unterhalb
     * der Radio-Gruppe ausgegeben. Im Global-Scope stammt ein erkannter
     * Block aus dem Layout-Template statt "von dieser Seite", daher
-    * eigener Titel-Sprachschlüssel. Der Import-Bereich ist per
-    * <details> einklappbar, initial offen nur wenn bereits ein
-    * automatisch befüllbarer Block erkannt wurde. Deutet der Inhalt auf
-    * mehrere aneinandergereihte Root-Objekte hin (Mehrblock-Heuristik),
-    * wird der Autofill-Button durch einen erklärenden Hinweistext
-    * ersetzt statt den ungültigen konkatenierten Text ins Import-Feld
-    * zu übernehmen. Der manuelle Pfad (Textarea + "Importieren"-Button)
-    * ist innerhalb dieses äußeren <details> immer sichtbar, ohne
-    * eigenen verschachtelten Aufklapper.
+    * eigener Titel-Sprachschlüssel.
+    *
+    * Import-Bereich: pro erkanntem Block (existing_jsonld_blocks, siehe
+    * SchemaOrgData_ScopeResolver::loadScopeMeta()) eine Pretty-Print-
+    * Vorschau, ein Vollansicht-Button mit Dialog sowie ein eigener
+    * Submit-Button ("schemaOrgData_import_action", Value "{scope}:{i}").
+    * Der Import ist damit ein normaler Formular-Submit ohne
+    * JavaScript-Client-Roundtrip - SchemaOrgData_AdminRequestHandler::
+    * handleImportAction() liest den Rohtext serverseitig aus der Meta,
+    * nicht aus $_POST. Die Dialog-Verdrahtung (Öffnen/Schließen)
+    * übernimmt initPreviewDialogs() in validator.js über data-dialog/
+    * data-dialog-close, nicht mehr ein Inline-<script> je Block.
     *
     * @param string $scope 'global' | 'category' | 'page'
     * @param Language $lang Admin-Sprachobjekt
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @param string $importTextareaValue Rohwert für das Import-Textarea, z. B. nach
-    *        fehlgeschlagenem Import - sonst leer
-    * @return string HTML-Snippet (Hinweis, Radio-Buttons, Import-Textarea)
+    * @return string HTML-Snippet (Hinweis, Radio-Buttons, Block-Vorschauen)
     *                 oder '' wenn kein vorhandenes JSON-LD erkannt wurde
     *
     ***************************************************************/
@@ -285,8 +287,7 @@ class SchemaOrgData_AdminPageRenderer {
         ?string $page,
         Language $lang,
         SchemaOrgData_ScopeResolver $scopeResolver,
-        $settings,
-        string $importTextareaValue = ''
+        $settings
     ): string {
         $meta = $scopeResolver->loadScopeMeta($settings, $scope, $cat, $page);
 
@@ -316,110 +317,55 @@ class SchemaOrgData_AdminPageRenderer {
                   .$lang->getLanguageHtml($labelKey).'</label><br />'."\n";
         }
 
-        // Import-Bereich per <details> einklappbar - initial offen nur wenn ein
-        // Autofill-Button angeboten wird (Nutzer soll ihn sofort sehen),
-        // ansonsten geschlossen, da manuelles Einfügen der Ausnahmefall ist.
-        $detailsOpenAttr = !empty($meta['existing_jsonld_content']) ? ' open="open"' : '';
-        $html .= '<details'.$detailsOpenAttr.'>'."\n";
-        $html .= '<summary>'.$lang->getLanguageHtml('label_import_jsonld').'</summary>'."\n";
-        $html .= '<p>'."\n";
+        $blocks = $meta['existing_jsonld_blocks'];
 
-        // Nur bei erkannter Mehrblock-Konstellation (s. u.) öffnet sich
-        // das verschachtelte <details> des manuellen Pfads automatisch,
-        // weil dort der Autofill-Button fehlt - der Anfangswert deckt den
-        // Fall ohne existing_jsonld_content ab.
-        $looksLikeMultipleBlocks = false;
+        if($blocks !== []) {
+            $blockCount = count($blocks);
 
-        if(!empty($meta['existing_jsonld_content'])) {
-            $rawContent = (string) $meta['existing_jsonld_content'];
-            $escaped    = htmlspecialchars($rawContent, ENT_QUOTES, CHARSET);
+            $html .= '<details open="open">'."\n";
+            $html .= '<summary>'.$lang->getLanguageHtml('label_import_jsonld').'</summary>'."\n";
 
-            // Pretty-Print nur für die Anzeige - der Autofill-Button
-            // überträgt weiterhin $rawContent (data-existing-content), damit
-            // "Erkannten Block übernehmen" den unveränderten Rohtext liefert.
-            $decoded = json_decode($rawContent, true);
-            $prettyContent = (json_last_error() === JSON_ERROR_NONE)
-                ? (string) json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-                : $rawContent;
-            $escapedPretty = htmlspecialchars($prettyContent, ENT_QUOTES, CHARSET);
+            foreach($blocks as $i => $rawContent) {
+                $rawContent = (string) $rawContent;
 
-            // existing_jsonld_content entsteht durch implode("\n\n", ...)
-            // mehrerer erkannter <script>-Blöcke (siehe
-            // AdminController::renderAdminPage()/FrontendRenderer::renderFrontend()) -
-            // bei mehr als einem Block ist das Ergebnis kein gültiges Einzel-JSON
-            // mehr. Einfache Heuristik statt eines Parsers: ungültiges JSON UND
-            // ein "}"-gefolgt-von-"{"-Übergang deutet auf mehrere aneinandergereihte
-            // Root-Objekte hin. Bewusst kein automatischer Block-Splitter,
-            // nur ein transparenter Hinweis.
-            $looksLikeMultipleBlocks = json_last_error() !== JSON_ERROR_NONE
-                && preg_match('/\}\s*\{/', $rawContent) === 1;
+                // Pretty-Print nur für die Anzeige - importiert wird serverseitig
+                // der Rohtext aus der Meta (handleImportAction()).
+                $decoded = json_decode($rawContent, true);
+                $prettyContent = (json_last_error() === JSON_ERROR_NONE)
+                    ? (string) json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                    : $rawContent;
+                $escapedPretty = htmlspecialchars($prettyContent, ENT_QUOTES, CHARSET);
 
-            $dialogId  = 'schemaOrgData-preview-dialog-'.$scope;
-            $triggerId = 'schemaOrgData-preview-trigger-'.$scope;
-            $closeId   = 'schemaOrgData-preview-close-'.$scope;
+                $dialogId = 'schemaOrgData-preview-dialog-'.$scope.'-'.$i;
 
-            $html .= '<pre class="schemaOrgData-jsonld-preview">'.$escapedPretty.'</pre>'."\n";
-            $html .= '<button type="button" id="'.$triggerId.'" class="mo-btn schemaOrgData-preview-trigger-btn">'
-                .$lang->getLanguageHtml('button_show_full_jsonld').'</button>'."\n";
+                if($blockCount > 1) {
+                    $html .= '<p class="schemaOrgData-jsonld-block-heading"><strong>'
+                        .$lang->getLanguageHtml('label_detected_block').' '.($i + 1).'/'.$blockCount
+                        .'</strong></p>'."\n";
+                }
 
-            $html .= '<dialog id="'.$dialogId.'" class="schemaOrgData-jsonld-preview-dialog">'."\n";
-            $html .= '<div class="schemaOrgData-jsonld-preview-dialog__header">'."\n";
-            $html .= '<strong>'.$lang->getLanguageHtml('label_full_jsonld_preview').'</strong>'."\n";
-            $html .= '<button type="button" id="'.$closeId.'" class="schemaOrgData-jsonld-preview-dialog__close" aria-label="&#x2715;">&#x2715;</button>'."\n";
-            $html .= '</div>'."\n";
-            $html .= '<pre class="schemaOrgData-jsonld-preview-full">'.$escapedPretty.'</pre>'."\n";
-            $html .= '</dialog>'."\n";
+                $html .= '<pre class="schemaOrgData-jsonld-preview">'.$escapedPretty.'</pre>'."\n";
+                $html .= '<button type="button" class="mo-btn schemaOrgData-preview-trigger-btn"'
+                    .' data-dialog="'.$dialogId.'">'
+                    .$lang->getLanguageHtml('button_show_full_jsonld').'</button>'."\n";
 
-            $html .= '<script>(function(){'
-                .'var t=document.getElementById("'.$triggerId.'");'
-                .'var d=document.getElementById("'.$dialogId.'");'
-                .'var c=document.getElementById("'.$closeId.'");'
-                .'if(t&&d&&d.showModal){t.addEventListener("click",function(){d.showModal();});}'
-                .'if(c&&d){c.addEventListener("click",function(){d.close();});}'
-                .'})();</script>'."\n";
+                $html .= '<dialog id="'.$dialogId.'" class="schemaOrgData-jsonld-preview-dialog">'."\n";
+                $html .= '<div class="schemaOrgData-jsonld-preview-dialog__header">'."\n";
+                $html .= '<strong>'.$lang->getLanguageHtml('label_full_jsonld_preview').'</strong>'."\n";
+                $html .= '<button type="button" class="schemaOrgData-jsonld-preview-dialog__close" data-dialog-close="'.$dialogId.'" aria-label="&#x2715;">&#x2715;</button>'."\n";
+                $html .= '</div>'."\n";
+                $html .= '<pre class="schemaOrgData-jsonld-preview-full">'.$escapedPretty.'</pre>'."\n";
+                $html .= '</dialog>'."\n";
 
-            if($looksLikeMultipleBlocks) {
-                // Der Autofill-Button würde hier den konkatenierten, ungültigen
-                // Mehrblock-Text ins Import-Feld schreiben und den Import mit
-                // einem JSON-Fehler abbrechen lassen - daher hier bewusst
-                // unterdrückt statt angeboten. Der Hinweistext leitet zum
-                // manuellen Kopieren des passenden Blocks aus der Vorschau an.
-                $html .= '<p class="schemaOrgData-jsonld-notice__multiblock-hint">'
-                    .$lang->getLanguageHtml('notice_multiple_jsonld_blocks').'</p>'."\n";
-            } else {
-                $html .= '<button type="button" class="mo-btn schemaOrgData-autofill-btn"'
-                    .' data-target="schemaOrgData_import_'.$scope.'"'
-                    .' data-existing-content="'.$escaped.'">'
-                    .$lang->getLanguageHtml('button_use_detected_jsonld').'</button><br />'."\n";
+                $html .= '<button type="submit" name="schemaOrgData_import_action"'
+                    .' value="'.$scope.':'.$i.'" class="mo-btn">'
+                    .$lang->getLanguageHtml('button_use_detected_jsonld').'</button>'."\n";
             }
+
+            $html .= '<p class="schemaOrgData-jsonld-notice__hint">'.$lang->getLanguageHtml('description_import_jsonld').'</p>'."\n";
+            $html .= '</details>'."\n";
         }
 
-        $html .= '</p>'."\n";
-
-        // Manueller Import-Pfad ist immer sichtbar (kein verschachteltes
-        // <details> mehr) - ein RC-Test zeigte ein nicht reproduzierbares
-        // Öffnen/Sofort-Schließen dieses inneren Aufklappers beim Klick auf
-        // den Summary-Text, die Ursache blieb trotz Prüfung von validator.js
-        // und dem moziloCMS-Core-JS nicht auffindbar. Statt weiterer
-        // Ursachenforschung wurde die Komplexität entfernt: label_import_manual
-        // bleibt als sichtbare Überschrift erhalten, nur ohne <details>-Wrapper.
-        $html .= '<p class="schemaOrgData-import-manual-heading"><strong>'.$lang->getLanguageHtml('label_import_manual').'</strong></p>'."\n";
-        $html .= '<p>'.$lang->getLanguageHtml('description_import_manual').'</p>'."\n";
-
-        // Doppel-Label-Fix: die Überschrift oben ist bereits die sichtbare
-        // Beschriftung, das Textarea erhält stattdessen ein aria-label.
-        // Zusätzliche sichtbare <p>-Beschriftung direkt über der Textarea
-        // (kein <label for="...">, sonst Doppel-Label-Regression).
-        $html .= '<p class="schemaOrgData-import-target-label">'.$lang->getLanguageHtml('label_import_target').'</p>'."\n";
-        $importAriaLabel = htmlspecialchars($lang->getLanguageValue('label_import_target'), ENT_QUOTES, CHARSET);
-        $importValueAttr = htmlspecialchars($importTextareaValue, ENT_QUOTES, CHARSET);
-        $html .= '<textarea id="schemaOrgData_import_'.$scope.'" name="schemaOrgData_import_'.$scope.'"'
-            .' class="schemaOrgData-import-textarea" rows="8" aria-label="'.$importAriaLabel.'">'.$importValueAttr.'</textarea><br />'."\n";
-        $html .= '<button type="submit" name="schemaOrgData_import_action" value="'.$scope.'" class="mo-btn">'
-            .$lang->getLanguageHtml('button_import').'</button>'."\n";
-
-        $html .= '<p class="schemaOrgData-jsonld-notice__hint">'.$lang->getLanguageHtml('description_import_jsonld').'</p>'."\n";
-        $html .= '</details>'."\n";
         $html .= '</div>'."\n";
 
         return $html;

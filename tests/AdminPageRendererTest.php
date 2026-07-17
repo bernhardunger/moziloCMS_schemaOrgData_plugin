@@ -367,6 +367,15 @@ final class AdminPageRendererTest extends TestCase {
     // renderExistingJsonLdNotice()
     // -----------------------------------------------------------
 
+    private function seedBlocks($settings, string $scope, array $blocks, ?string $cat = null, ?string $page = null): void {
+        $this->scopeResolver()->saveScopeMeta($settings, $scope, [
+            'existing_jsonld' => true,
+            'jsonld_mode' => 'keep',
+            'existing_jsonld_content' => implode("\n\n", $blocks),
+            'existing_jsonld_blocks' => $blocks,
+        ], $cat, $page);
+    }
+
     function testRenderExistingJsonLdNoticeLeerOhneVorhandenesJsonLd(): void {
         $settings = new \InMemorySettings();
 
@@ -379,45 +388,33 @@ final class AdminPageRendererTest extends TestCase {
 
     function testRenderExistingJsonLdNoticeMitVorhandenemJsonLd(): void {
         $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
-            ],
-        ]);
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness"}']);
 
         $html = $this->renderer()->renderExistingJsonLdNotice(
             'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
         );
 
         $this->assertStringContainsString('schemaOrgData-jsonld-notice', $html);
-        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
+        $this->assertStringContainsString('name="schemaOrgData_import_action" value="global:0"', $html);
     }
 
     /***************************************************************
     *
-    * XSS-relevant: Sonderzeichen im gespeicherten existing_jsonld_content
-    * dürfen nicht roh in das data-Attribut des Autofill-Buttons gelangen.
+    * Kein automatischer Import-Client-Roundtrip mehr: kein Textarea
+    * und kein POST-Feld schemaOrgData_import_{scope} im Output. Der
+    * Import ist ein normaler Submit (schemaOrgData_import_action).
     *
     ***************************************************************/
-    function testRenderExistingJsonLdNoticeEscaptSonderzeichenImDataAttributDirekt(): void {
+    function testRenderExistingJsonLdNoticeEnthaeltKeinTextareaUndKeinScopeSpezifischesPostFeld(): void {
         $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"name":"Müller & Söhne <GmbH>"}',
-            ],
-        ]);
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness"}']);
 
         $html = $this->renderer()->renderExistingJsonLdNotice(
             'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
         );
 
-        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
-        $this->assertStringNotContainsString('data-existing-content="{"', $html);
-        $this->assertStringContainsString('data-existing-content=', $html);
+        $this->assertStringNotContainsString('<textarea', $html);
+        $this->assertStringNotContainsString('name="schemaOrgData_import_global"', $html);
     }
 
     /***************************************************************
@@ -470,25 +467,25 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringContainsString($lang->getLanguageHtml('notice_existing_jsonld_title'), $html);
     }
 
-    function testRenderExistingJsonLdNoticeDetailsOffenBeiVorhandenemContent(): void {
+    function testRenderExistingJsonLdNoticeDetailsOffenBeiVorhandenenBloecken(): void {
         $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
-            ],
-        ]);
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness"}']);
 
         $html = $this->renderer()->renderExistingJsonLdNotice(
             'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
         );
 
         $this->assertStringContainsString('<details open="open">', $html);
-        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
     }
 
-    function testRenderExistingJsonLdNoticeDetailsGeschlossenOhneContent(): void {
+    /***************************************************************
+    *
+    * blocks === [] (existing_jsonld gesetzt, aber kein erkannter
+    * Block, z. B. Category-Scope mit Flag ohne Content): kein
+    * Import-<details> mehr - nur die Radio-Gruppe.
+    *
+    ***************************************************************/
+    function testRenderExistingJsonLdNoticeKeinDetailsOhneBloecke(): void {
         $settings = new \InMemorySettings();
         $settings->set('config_global', [
             '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
@@ -498,18 +495,27 @@ final class AdminPageRendererTest extends TestCase {
             'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
         );
 
-        $this->assertStringContainsString('<details>', $html);
-        $this->assertStringNotContainsString('<details open="open">', $html);
+        $this->assertStringNotContainsString('<details', $html);
     }
 
-    function testRenderExistingJsonLdNoticeManuellerImportBereichImmerSichtbar(): void {
+    function testRenderExistingJsonLdNoticeEinBlockGenauEinSubmitOhneBlockueberschrift(): void {
         $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
-            ],
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness"}']);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertSame(1, substr_count($html, 'name="schemaOrgData_import_action"'));
+        $this->assertStringContainsString('value="global:0"', $html);
+        $this->assertStringNotContainsString('schemaOrgData-jsonld-block-heading', $html);
+    }
+
+    function testRenderExistingJsonLdNoticeZweiBloeckeZweiSubmitsUndUeberschriften(): void {
+        $settings = new \InMemorySettings();
+        $this->seedBlocks($settings, 'global', [
+            '{"@type":"LocalBusiness"}',
+            '{"@context":"https://schema.org","@type":"AccountingService"}',
         ]);
 
         $lang = $this->adminLang();
@@ -517,50 +523,31 @@ final class AdminPageRendererTest extends TestCase {
             'global', null, null, $lang, $this->scopeResolver(), $settings
         );
 
-        $manualSummary = $lang->getLanguageHtml('label_import_manual');
-
-        $this->assertStringNotContainsString('<summary>'.$manualSummary.'</summary>', $html);
-        $this->assertStringContainsString('<strong>'.$manualSummary.'</strong>', $html);
-        $this->assertStringContainsString('schemaOrgData-import-target-label', $html);
-        $this->assertStringContainsString('schemaOrgData-import-textarea', $html);
-        $this->assertStringContainsString('name="schemaOrgData_import_action"', $html);
-        $this->assertStringContainsString('type="submit"', $html);
-        $this->assertStringContainsString($lang->getLanguageHtml('description_import_manual'), $html);
+        $this->assertSame(2, substr_count($html, 'name="schemaOrgData_import_action"'));
+        $this->assertStringContainsString('value="global:0"', $html);
+        $this->assertStringContainsString('value="global:1"', $html);
+        $this->assertStringContainsString($lang->getLanguageHtml('label_detected_block').' 1/2', $html);
+        $this->assertStringContainsString($lang->getLanguageHtml('label_detected_block').' 2/2', $html);
     }
 
-    function testRenderExistingJsonLdNoticeManuellerImportBereichZeigtRedisplayWertNachFehlgeschlagenemImport(): void {
+    /***************************************************************
+    *
+    * Kein Inline-<script> mehr je Block - die Dialog-Verdrahtung
+    * übernimmt initPreviewDialogs() (validator.js) über data-dialog/
+    * data-dialog-close.
+    *
+    ***************************************************************/
+    function testRenderExistingJsonLdNoticeEnthaeltKeinInlineScriptMehr(): void {
         $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
-        ]);
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness"}']);
 
-        $lang = $this->adminLang();
         $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $lang, $this->scopeResolver(), $settings,
-            '{"@type":"LocalBusiness"'
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
         );
 
-        $this->assertStringContainsString('{&quot;@type&quot;:&quot;LocalBusiness&quot;', $html);
-    }
-
-    function testRenderExistingJsonLdNoticeManuellerImportBereichBeiMehrblockKonstellation(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness"}'."\n\n".'{"@context":"https://schema.org","@type":"AccountingService"}',
-            ],
-        ]);
-
-        $lang = $this->adminLang();
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $lang, $this->scopeResolver(), $settings
-        );
-
-        $this->assertStringContainsString('schemaOrgData-jsonld-notice__multiblock-hint', $html);
-        $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
-        $this->assertStringContainsString('schemaOrgData-import-textarea', $html);
+        $this->assertStringNotContainsString('<script', $html);
+        $this->assertStringContainsString('data-dialog="schemaOrgData-preview-dialog-global-0"', $html);
+        $this->assertStringContainsString('data-dialog-close="schemaOrgData-preview-dialog-global-0"', $html);
     }
 
     /***************************************************************
@@ -592,125 +579,25 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringNotContainsString('checked="checked"', $html);
     }
 
-    function testAutofillButtonRenderedWhenContentPresent(): void {
+    function testRenderExistingJsonLdNoticeAbwesendWennKeineBloeckeUndKeinContent(): void {
         [$plugin, $settings] = $this->pluginWithInMemorySettings();
-        (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($settings, 'global', [
-            'existing_jsonld' => true,
-            'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
-        ]);
 
         $html = $this->renderer()->renderExistingJsonLdNotice(
             'global', null, null, $this->adminLang(), new \SchemaOrgData_ScopeResolver(), $settings
         );
 
-        $this->assertStringContainsString('schemaOrgData-autofill-btn', $html);
-        $this->assertStringContainsString('data-target="schemaOrgData_import_global"', $html);
-        $this->assertStringContainsString('data-existing-content="{&quot;@type&quot;:&quot;LocalBusiness&quot;}"', $html);
-    }
-
-    /***************************************************************
-    *
-    * Import-Textarea erhält die Klasse schemaOrgData-import-textarea
-    * (width:100% via CSS) und rows="8" statt bisher rows="6".
-    *
-    ***************************************************************/
-    /***************************************************************
-    *
-    * Import-Textarea sichtbar beschriften: eine
-    * sichtbare <p>-Beschriftung erscheint direkt über der Textarea
-    * (kein <label for="...">, sonst Doppel-Label-Regression - Test
-    * testRenderExistingJsonLdNoticeInnerLabelEntfernt() bleibt grün).
-    *
-    ***************************************************************/
-    function testRenderExistingJsonLdNoticeZeigtSichtbareImportBeschriftung(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
-        ]);
-
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertStringContainsString('schemaOrgData-import-target-label', $html);
-        $this->assertStringContainsString($this->adminLang()->getLanguageValue('label_import_target'), $html);
-    }
-
-    function testRenderExistingJsonLdNoticeImportTextareaHatKlasseUndAchtZeilen(): void {
-        [$plugin, $settings] = $this->pluginWithInMemorySettings();
-        (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($settings, 'global', ['existing_jsonld' => true]);
-
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), new \SchemaOrgData_ScopeResolver(), $settings
-        );
-
-        $this->assertStringContainsString('class="schemaOrgData-import-textarea" rows="8"', $html);
-    }
-
-    /***************************************************************
-    *
-    * existing_jsonld_content entsteht in AdminController/FrontendRenderer
-    * per implode("\n\n", ...) mehrerer erkannter <script>-Blöcke. Enthält
-    * der gespeicherte Inhalt mehr als ein Root-Objekt (ungültiges JSON
-    * + "}"-gefolgt-von-"{"-Übergang), erscheint ein Hinweistext -
-    * bewusst kein automatischer Block-Splitter.
-    *
-    ***************************************************************/
-    function testRenderExistingJsonLdNoticeZeigtHinweisBeiMehrerenBloecken(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness"}'."\n\n".'{"@context":"https://schema.org","@type":"AccountingService"}',
-            ],
-        ]);
-
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertStringContainsString('schemaOrgData-jsonld-notice__multiblock-hint', $html);
-        $this->assertStringContainsString($this->adminLang()->getLanguageHtml('notice_multiple_jsonld_blocks'), $html);
-        // Der Autofill-Button würde den ungültigen, konkatenierten Text ins
-        // Import-Feld schreiben - bei erkannter Mehrblock-Konstellation daher
-        // bewusst unterdrückt statt angeboten.
-        $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
-    }
-
-    function testRenderExistingJsonLdNoticeZeigtKeinenHinweisBeiEinzelnemBlock(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
-            ],
-        ]);
-
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertStringNotContainsString('schemaOrgData-jsonld-notice__multiblock-hint', $html);
+        $this->assertSame('', $html);
     }
 
     /***************************************************************
     *
     * Import-Vorschau: die Vorschau des
-    * erkannten Blocks ist ein read-only <pre>, keine Textarea - eine
-    * Textarea würde fälschlich Editierbarkeit suggerieren.
+    * erkannten Blocks ist ein read-only <pre>.
     *
     ***************************************************************/
     function testExistingJsonLdVorschauIstReadOnlyPre(): void {
         $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness","name":"Müller & Söhne"}',
-            ],
-        ]);
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness","name":"Müller & Söhne"}']);
 
         $html = $this->renderer()->renderExistingJsonLdNotice(
             'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
@@ -719,39 +606,26 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringContainsString('class="schemaOrgData-jsonld-preview"', $html);
         $this->assertStringContainsString('<pre class="schemaOrgData-jsonld-preview">', $html);
         $this->assertStringContainsString('Müller &amp; Söhne', $html);
-        $this->assertStringNotContainsString('<textarea class="schemaOrgData-jsonld-preview"', $html);
+        $this->assertStringNotContainsString('<textarea', $html);
     }
 
-    function testExistingJsonLdVorschauEnthaeltVollansichtDialogMitScopeEindeutigerId(): void {
+    function testExistingJsonLdVorschauEnthaeltVollansichtDialogMitScopeUndBlockindexEindeutigerId(): void {
         $settings = new \InMemorySettings();
-        $settings->set('config_cat_ueber-uns', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness"}',
-            ],
-        ]);
+        $this->seedBlocks($settings, 'category', ['{"@type":"LocalBusiness"}'], 'ueber-uns');
 
         $html = $this->renderer()->renderExistingJsonLdNotice(
             'category', 'ueber-uns', null, $this->adminLang(), $this->scopeResolver(), $settings
         );
 
-        $this->assertStringContainsString('id="schemaOrgData-preview-dialog-category"', $html);
-        $this->assertStringContainsString('id="schemaOrgData-preview-trigger-category"', $html);
-        $this->assertStringContainsString('id="schemaOrgData-preview-close-category"', $html);
+        $this->assertStringContainsString('data-dialog="schemaOrgData-preview-dialog-category-0"', $html);
+        $this->assertStringContainsString('id="schemaOrgData-preview-dialog-category-0"', $html);
         $this->assertStringContainsString('class="schemaOrgData-jsonld-preview-dialog"', $html);
         $this->assertStringContainsString('schemaOrgData-jsonld-preview-full', $html);
     }
 
     function testExistingJsonLdVorschauWirdBeiUngueltigemJsonAlsRohtextAngezeigt(): void {
         $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness"',
-            ],
-        ]);
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness"']);
 
         $html = $this->renderer()->renderExistingJsonLdNotice(
             'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
@@ -762,144 +636,22 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Übernehmen-Pfad (data-existing-content) liefert weiterhin den
-    * rohen, nicht pretty-geprinteten JSON-Text - der Autofill-Button
-    * liest per JS aus diesem Attribut, nicht aus der <pre>-Vorschau.
-    *
-    ***************************************************************/
-    function testAutofillButtonDataAttributBleibtRoherJsonText(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => [
-                'existing_jsonld' => true,
-                'jsonld_mode' => 'keep',
-                'existing_jsonld_content' => '{"@type":"LocalBusiness","name":"Muster"}',
-            ],
-        ]);
-
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertStringContainsString(
-            'data-existing-content="{&quot;@type&quot;:&quot;LocalBusiness&quot;,&quot;name&quot;:&quot;Muster&quot;}"',
-            $html
-        );
-    }
-
-    function testAutofillButtonAbsentWhenContentEmpty(): void {
-        [$plugin, $settings] = $this->pluginWithInMemorySettings();
-        (new \SchemaOrgData_ScopeResolver())->saveScopeMeta($settings, 'global', [
-            'existing_jsonld' => true,
-            'existing_jsonld_content' => '',
-        ]);
-
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), new \SchemaOrgData_ScopeResolver(), $settings
-        );
-
-        $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
-    }
-
-    function testAutofillButtonAbsentWhenNoExistingJsonLd(): void {
-        [$plugin, $settings] = $this->pluginWithInMemorySettings();
-
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), new \SchemaOrgData_ScopeResolver(), $settings
-        );
-
-        $this->assertSame('', $html);
-        $this->assertStringNotContainsString('schemaOrgData-autofill-btn', $html);
-    }
-
-    /***************************************************************
-    *
-    * Import-Verdrahtung: echter
-    * Submit-Button, Doppel-Label-Fix, Textarea-Erhalt bei Fehler.
+    * Import-Verdrahtung: echter Submit-Button je Block, kein
+    * data-Attribut-Übernehmen-Pfad mehr.
     *
     ***************************************************************/
     function testRenderExistingJsonLdNoticeEnthaeltImportButton(): void {
         $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
-        ]);
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness"}']);
 
         $lang = $this->adminLang();
         $html = $this->renderer()->renderExistingJsonLdNotice(
             'global', null, null, $lang, $this->scopeResolver(), $settings
         );
 
-        $this->assertStringContainsString($lang->getLanguageHtml('button_import'), $html);
-        $this->assertStringContainsString('name="schemaOrgData_import_action" value="global"', $html);
+        $this->assertStringContainsString($lang->getLanguageHtml('button_use_detected_jsonld'), $html);
+        $this->assertStringContainsString('name="schemaOrgData_import_action"', $html);
         $this->assertStringContainsString('type="submit"', $html);
-    }
-
-    function testRenderExistingJsonLdNoticeTextareaWertBleibtBeiFehlerErhalten(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
-        ]);
-
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings,
-            '{"@type":"LocalBusiness"'
-        );
-
-        $this->assertStringContainsString('>{&quot;@type&quot;:&quot;LocalBusiness&quot;</textarea>', $html);
-    }
-
-    function testRenderExistingJsonLdNoticeTextareaOhneParameterBleibtLeer(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
-        ]);
-
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertMatchesRegularExpression('/<textarea[^>]*><\/textarea>/', $html);
-    }
-
-    /***************************************************************
-    *
-    * Doppel-Label-Fix: das redundante innere
-    * <label for="schemaOrgData_import_{scope}"> entfällt, die sichtbare
-    * <p class="schemaOrgData-import-target-label"> direkt über dem
-    * Textarea bleibt die einzige sichtbare Beschriftung; das Textarea
-    * trägt stattdessen ein aria-label mit demselben Wortlaut
-    * (label_import_target).
-    *
-    ***************************************************************/
-    function testRenderExistingJsonLdNoticeInnerLabelEntfernt(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
-        ]);
-
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
-        );
-
-        $this->assertStringNotContainsString('<label for="schemaOrgData_import_', $html);
-    }
-
-    function testRenderExistingJsonLdNoticeAriaLabelAmTextareaVorhanden(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', [
-            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
-        ]);
-
-        $lang = $this->adminLang();
-        $html = $this->renderer()->renderExistingJsonLdNotice(
-            'global', null, null, $lang, $this->scopeResolver(), $settings
-        );
-
-        $ariaLabelAttr = htmlspecialchars($lang->getLanguageValue('label_import_target'), ENT_QUOTES, CHARSET);
-        $this->assertMatchesRegularExpression(
-            '/<textarea[^>]*aria-label="'.preg_quote($ariaLabelAttr, '/').'"[^>]*>/',
-            $html
-        );
     }
 
     // -----------------------------------------------------------

@@ -201,11 +201,22 @@ class SchemaOrgData_ScopeResolver {
     /***************************************************************
     *
     * Lädt die Kollisions-Metadaten einer Geltungsebene
-    * (existing_jsonld-Flag und gewählter jsonld_mode).
+    * (existing_jsonld-Flag, gewählter jsonld_mode sowie die erkannten
+    * JSON-LD-Blöcke als Einzelblock-Array für den serverseitigen
+    * Pro-Block-Import, siehe README.md, Abschnitt "Verhalten bei
+    * vorhandenem JSON-LD").
+    *
+    * Legacy-Normalisierung: Meta aus Versionen vor
+    * existing_jsonld_blocks enthält nur den content-String. Ist er
+    * als Ganzes gültiges JSON, war es ein Einzelblock und dient als
+    * blocks[0]. Ungültiges JSON deutet auf ein altes
+    * Mehrblock-Konkatenat (implode "\n\n") hin - blocks bleibt dann
+    * leer, bis der jeweilige Erkennungspfad (Admin-Load global /
+    * Frontend-Aufruf page) die Meta neu schreibt.
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $scope 'global' | 'category' | 'page'
-    * @return array{existing_jsonld: bool, jsonld_mode: string}
+    * @return array{existing_jsonld: bool, jsonld_mode: string, existing_jsonld_content: string, existing_jsonld_blocks: string[]}
     *
     ***************************************************************/
     public function loadScopeMeta(
@@ -214,13 +225,27 @@ class SchemaOrgData_ScopeResolver {
         ?string $cat  = null,
         ?string $page = null
     ): array {
-        $defaults = ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''];
+        $defaults = [
+            'existing_jsonld' => false,
+            'jsonld_mode' => 'keep',
+            'existing_jsonld_content' => '',
+            'existing_jsonld_blocks' => [],
+        ];
         $key = $this->getScopeSettingsKey($scope, $cat, $page);
         if ($key === null || !$settings->keyExists($key)) {
             return $defaults;
         }
         $data = $settings->get($key);
-        return array_merge($defaults, is_array($data) ? ($data['_meta'] ?? []) : []);
+        $meta = array_merge($defaults, is_array($data) ? ($data['_meta'] ?? []) : []);
+
+        if ($meta['existing_jsonld_blocks'] === [] && $meta['existing_jsonld_content'] !== '') {
+            json_decode($meta['existing_jsonld_content']);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $meta['existing_jsonld_blocks'] = [$meta['existing_jsonld_content']];
+            }
+        }
+
+        return $meta;
     }
 
     /***************************************************************
@@ -251,7 +276,12 @@ class SchemaOrgData_ScopeResolver {
             $existing = [];
         }
         $existing['_meta'] = array_merge(
-            $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => ''],
+            $existing['_meta'] ?? [
+                'existing_jsonld' => false,
+                'jsonld_mode' => 'keep',
+                'existing_jsonld_content' => '',
+                'existing_jsonld_blocks' => [],
+            ],
             $meta
         );
         // Schreibfehler protokollieren — saveScopeMeta hat kein Rückgabe-Array,

@@ -63,6 +63,7 @@ class SchemaOrgData_AdminRequestHandler {
         if(isset($_POST['schemaOrgData_import_action'])) {
             return $this->handleImportAction(
                 (string) $_POST['schemaOrgData_import_action'],
+                $settings, $scopeResolver,
                 $schemaRepository, $pluginSelfDir, $lang, $importService, $dataSplitHelper, $openingHoursHelper
             );
         }
@@ -126,41 +127,45 @@ class SchemaOrgData_AdminRequestHandler {
     * Verarbeitet den Import-Submit (Button "schemaOrgData_import_action",
     * siehe SchemaOrgData_AdminPageRenderer::renderExistingJsonLdNotice()).
     *
-    * Ermittelt den Schema-Type aus dem eingefügten JSON-LD selbst
-    * (Henne-Ei-Problem: importJsonLd() benötigt das Schema bereits für
-    * die Formular-/Erweiterungsfeld-Trennung, das Schema hängt aber vom
-    * @type des Imports ab) und validiert ihn gegen den aktiven Scope,
-    * bevor SchemaOrgData_ImportService::importJsonLd() aufgerufen wird
+    * Der Button-Value trägt "{scope}" oder "{scope}:{blockIndex}"; der
+    * zu importierende Rohtext wird serverseitig aus der persistierten
+    * Scope-Meta gelesen (existing_jsonld_blocks[$index], siehe
+    * SchemaOrgData_ScopeResolver::loadScopeMeta() inkl. Legacy-
+    * Normalisierung) - es gibt kein Import-Textarea und keinen
+    * Client-Roundtrip mehr. handlePostRequest() läuft vor der
+    * Template-Live-Erkennung in renderAdminPage(), die Meta entspricht
+    * daher exakt dem Stand, der dem Nutzer beim Klick angezeigt wurde.
+    *
+    * Ermittelt den Schema-Type aus dem Block selbst (Henne-Ei-Problem:
+    * importJsonLd() benötigt das Schema bereits für die Formular-/
+    * Erweiterungsfeld-Trennung, das Schema hängt aber vom @type ab)
+    * und validiert ihn gegen den aktiven Scope, bevor
+    * SchemaOrgData_ImportService::importJsonLd() aufgerufen wird
     * (bleibt dadurch unverändert/byte-identisch).
     *
     * Bei Erfolg wird das Ergebnis nach $_POST['schemaOrgData'][$scope]
     * zurückgeschrieben, damit der bestehende Redisplay-Pfad
     * (SchemaOrgData_AdminController::renderScopeSection(), $postScope)
-    * das importierte Formular ohne eigenen Mechanismus anzeigt. Die rohe
-    * Textarea-Eingabe wird dabei gelöscht, da sie nach erfolgreichem
-    * Import leer bleiben soll - das signalisiert renderScopeSection()
-    * zugleich eindeutig, dass kein Import-Fehler für diesen Scope vorliegt.
+    * das importierte Formular ohne eigenen Mechanismus anzeigt.
     *
-    * openingHours: importJsonLd() liefert openingHours unverändert in der
-    * komprimierten schema.org-Notation ("Mo-Th 08:00-12:00"), wie sie
-    * auch im importierten JSON-LD steht. Der $_POST-Redisplay-Pfad
-    * (renderScopeSection()/renderOpeningHoursWidget()) erwartet dort
-    * aber bereits die Pro-Tag-Formularstruktur (dieser Pfad wurde
-    * ursprünglich nur für das Redisplay nach fehlgeschlagenem Save
-    * gebaut, wo sanitizePostData() erst nach erfolgreicher Validierung
-    * komprimiert) - daher wird ein noch komprimierter Wert hier über
-    * parseOpeningHours() (dieselbe Methode, die auch beim regulären
-    * Rendering aus gespeicherter Config verwendet wird) in die
-    * Pro-Tag-Struktur konvertiert, bevor er zurückgeschrieben wird.
+    * openingHours: importJsonLd() liefert openingHours in komprimierter
+    * schema.org-Notation ("Mo-Th 08:00-12:00") - der $_POST-Redisplay-
+    * Pfad erwartet dort die Pro-Tag-Formularstruktur, daher Konvertierung
+    * über parseOpeningHours() (dieselbe Methode wie beim regulären
+    * Rendering aus gespeicherter Config).
     *
-    * @param string $rawScope Wert des Import-Buttons ("global"|"category"|"page")
-    * @param SchemaOrgData_DataSplitHelper $dataSplitHelper Mapper für importJsonLd()
-    * @param SchemaOrgData_OpeningHoursHelper $openingHoursHelper für die openingHours-Konvertierung
+    * Scope-Identifier für category/page stammen aus den bereits im
+    * Formular vorhandenen Feldern schemaOrgData_cat/schemaOrgData_page
+    * (sanitizeScopeIdentifier(), analog renderAdminPage()).
+    *
+    * @param string $rawAction Wert des Import-Buttons ("{scope}" | "{scope}:{index}")
     * @return array{success: bool, errors: string[], import: bool}
     *
     ***************************************************************/
     private function handleImportAction(
-        string $rawScope,
+        string $rawAction,
+        $settings,
+        SchemaOrgData_ScopeResolver $scopeResolver,
         SchemaOrgData_SchemaRepository $schemaRepository,
         string $pluginSelfDir,
         Language $lang,
@@ -168,18 +173,35 @@ class SchemaOrgData_AdminRequestHandler {
         SchemaOrgData_DataSplitHelper $dataSplitHelper,
         SchemaOrgData_OpeningHoursHelper $openingHoursHelper
     ): array {
-        if(!in_array($rawScope, ['global', 'category', 'page'], true)) {
+        $parts = explode(':', $rawAction, 2);
+        $rawScope = $parts[0];
+        $rawIndex = $parts[1] ?? '0';
+
+        if(!in_array($rawScope, ['global', 'category', 'page'], true) or !ctype_digit($rawIndex)) {
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_json_invalid')], 'import' => true];
         }
+        $blockIndex = (int) $rawIndex;
 
-        $raw = trim((string) ($_POST['schemaOrgData_import_'.$rawScope] ?? ''));
-        if($raw === '') {
-            return ['success' => false, 'errors' => [$lang->getLanguageValue('error_json_invalid')], 'import' => true];
+        // Scope-Identifier analog renderAdminPage(): für category/page aus
+        // den ohnehin mitgesendeten Formularfeldern.
+        $cat  = ($rawScope !== 'global' and isset($_POST['schemaOrgData_cat']))
+            ? ($scopeResolver->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_cat']) ?: null) : null;
+        $page = ($rawScope === 'page' and isset($_POST['schemaOrgData_page']))
+            ? ($scopeResolver->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_page']) ?: null) : null;
+
+        $meta = $scopeResolver->loadScopeMeta($settings, $rawScope, $cat, $page);
+        $blocks = $meta['existing_jsonld_blocks'];
+
+        if(!isset($blocks[$blockIndex])) {
+            // Meta veraltet (Template/Seiteninhalt zwischenzeitlich geändert)
+            // oder Legacy-Mehrblock-Konkatenat vor Neuerkennung.
+            return ['success' => false, 'errors' => [$lang->getLanguageValue('error_import_block_not_found')], 'import' => true];
         }
 
+        $raw = trim((string) $blocks[$blockIndex]);
         $decoded = json_decode($raw, true);
-        if(json_last_error() !== JSON_ERROR_NONE or !is_array($decoded)) {
-            return ['success' => false, 'errors' => [$lang->getLanguageValue('error_json_invalid')], 'import' => true];
+        if($raw === '' or json_last_error() !== JSON_ERROR_NONE or !is_array($decoded)) {
+            return ['success' => false, 'errors' => [$lang->getLanguageValue('error_detected_block_invalid')], 'import' => true];
         }
 
         $type = (string) ($decoded['@type'] ?? '');
@@ -192,7 +214,7 @@ class SchemaOrgData_AdminRequestHandler {
         $result = $importService->importJsonLd($raw, $schema, $dataSplitHelper);
 
         if(!$result['success']) {
-            return ['success' => false, 'errors' => [$lang->getLanguageValue('error_json_invalid')], 'import' => true];
+            return ['success' => false, 'errors' => [$lang->getLanguageValue('error_detected_block_invalid')], 'import' => true];
         }
 
         // openingHours liegt nach dem Import noch in komprimierter
@@ -217,7 +239,6 @@ class SchemaOrgData_AdminRequestHandler {
             'data' => $result['formData'],
             'extension' => [$result['type'] => $extensionJson],
         ];
-        unset($_POST['schemaOrgData_import_'.$rawScope]);
 
         return ['success' => true, 'errors' => [], 'import' => true];
     }

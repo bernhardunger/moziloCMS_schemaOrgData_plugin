@@ -240,28 +240,32 @@ class SchemaOrgData_FrontendRenderer {
         // er wird ausschließlich dem Seiten-Scope der aktuell gerenderten
         // Seite zugeordnet, sofern CAT_REQUEST und PAGE_REQUEST gesetzt sind.
         // Kategorie-Scope erhält über diesen Mechanismus keinen Eintrag.
-        $templateBlocks = $context->collisionDetector->extractExistingJsonLdBlocksFromTemplate((string) ($TEMPLATE_FILE ?? ''));
+        $templateBlocks = array_values(array_map('trim', $context->collisionDetector->extractExistingJsonLdBlocksFromTemplate((string) ($TEMPLATE_FILE ?? ''))));
         $hasJsonLdInTemplate = !empty($templateBlocks);
-        $templateContent = implode("\n\n", array_map('trim', $templateBlocks));
+        $templateContent = implode("\n\n", $templateBlocks);
         $metaGlobal = $context->scopeResolver->loadScopeMeta($context->settings, 'global');
         if($metaGlobal['existing_jsonld'] !== $hasJsonLdInTemplate
-            || $metaGlobal['existing_jsonld_content'] !== $templateContent) {
+            || $metaGlobal['existing_jsonld_content'] !== $templateContent
+            || $metaGlobal['existing_jsonld_blocks'] !== $templateBlocks) {
             $context->scopeResolver->saveScopeMeta($context->settings, 'global', [
                 'existing_jsonld' => $hasJsonLdInTemplate,
                 'existing_jsonld_content' => $templateContent,
+                'existing_jsonld_blocks' => $templateBlocks,
             ]);
         }
 
-        $contentBlocks = $context->collisionDetector->extractExistingJsonLdBlocks((string) $value);
+        $contentBlocks = array_values(array_map('trim', $context->collisionDetector->extractExistingJsonLdBlocks((string) $value)));
         $hasJsonLdInContent = !empty($contentBlocks);
-        $pageContent = implode("\n\n", array_map('trim', $contentBlocks));
+        $pageContent = implode("\n\n", $contentBlocks);
         if($cat !== null and $page !== null) {
             $metaPage = $context->scopeResolver->loadScopeMeta($context->settings, 'page', $cat, $page);
             if($metaPage['existing_jsonld'] !== $hasJsonLdInContent
-                || $metaPage['existing_jsonld_content'] !== $pageContent) {
+                || $metaPage['existing_jsonld_content'] !== $pageContent
+                || $metaPage['existing_jsonld_blocks'] !== $contentBlocks) {
                 $context->scopeResolver->saveScopeMeta($context->settings, 'page', [
                     'existing_jsonld' => $hasJsonLdInContent,
                     'existing_jsonld_content' => $pageContent,
+                    'existing_jsonld_blocks' => $contentBlocks,
                 ], $cat, $page);
             }
         }

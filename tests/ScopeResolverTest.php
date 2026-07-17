@@ -267,6 +267,7 @@ final class ScopeResolverTest extends TestCase {
             'existing_jsonld' => false,
             'jsonld_mode' => 'keep',
             'existing_jsonld_content' => '',
+            'existing_jsonld_blocks' => [],
         ], $result);
     }
 
@@ -367,6 +368,87 @@ final class ScopeResolverTest extends TestCase {
 
         $this->assertSame($globalContent, $metaGlobal['existing_jsonld_content']);
         $this->assertSame($pageContent, $metaPage['existing_jsonld_content']);
+    }
+
+    /***************************************************************
+    *
+    * existing_jsonld_blocks als Einzelblock-Array: Default-Wert und
+    * Round-Trip über saveScopeMeta()/loadScopeMeta().
+    *
+    ***************************************************************/
+    function testExistingJsonLdBlocksWirdGespeichertUndGeladen(): void {
+        $settings = new \InMemorySettings();
+        $blocks = ['{"@type":"LocalBusiness"}', '{"@type":"WebSite"}'];
+        $this->resolver()->saveScopeMeta($settings, 'global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => implode("\n\n", $blocks),
+            'existing_jsonld_blocks' => $blocks,
+        ]);
+        $meta = $this->resolver()->loadScopeMeta($settings, 'global');
+        $this->assertSame($blocks, $meta['existing_jsonld_blocks']);
+    }
+
+    /***************************************************************
+    *
+    * Legacy-Normalisierung (siehe loadScopeMeta()): Meta ohne
+    * existing_jsonld_blocks-Feld, deren existing_jsonld_content ein
+    * gültiges Einzelblock-JSON ist, liefert blocks[0].
+    *
+    ***************************************************************/
+    function testLoadScopeMetaNormalisiertLegacyEinzelblockAlsBlocksEins(): void {
+        $settings = new \InMemorySettings();
+        $resolver = $this->resolver();
+        $content = '{"@type":"LocalBusiness","name":"Muster GmbH"}';
+        $resolver->saveScopeMeta($settings, 'global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => $content,
+        ]);
+        $key = $resolver->getScopeSettingsKey('global');
+        $stored = $settings->get($key);
+        unset($stored['_meta']['existing_jsonld_blocks']);
+        $settings->set($key, $stored);
+
+        $meta = $resolver->loadScopeMeta($settings, 'global');
+        $this->assertSame([$content], $meta['existing_jsonld_blocks']);
+    }
+
+    /***************************************************************
+    *
+    * Legacy-Mehrblock-Konkatenat (implode("\n\n", ...) mehrerer
+    * Blöcke vor existing_jsonld_blocks) ist als Ganzes kein gültiges
+    * JSON mehr - blocks bleibt leer, bis der jeweilige Erkennungspfad
+    * die Meta neu schreibt.
+    *
+    ***************************************************************/
+    function testLoadScopeMetaLaesstBlocksLeerBeiLegacyMehrblockKonkatenat(): void {
+        $settings = new \InMemorySettings();
+        $resolver = $this->resolver();
+        $content = "{\"@type\":\"LocalBusiness\"}\n\n{\"@type\":\"WebSite\"}";
+        $resolver->saveScopeMeta($settings, 'global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => $content,
+        ]);
+        $key = $resolver->getScopeSettingsKey('global');
+        $stored = $settings->get($key);
+        unset($stored['_meta']['existing_jsonld_blocks']);
+        $settings->set($key, $stored);
+
+        $meta = $resolver->loadScopeMeta($settings, 'global');
+        $this->assertSame([], $meta['existing_jsonld_blocks']);
+    }
+
+    /***************************************************************
+    *
+    * Leerer existing_jsonld_content liefert ebenfalls ein leeres
+    * blocks-Array (kein json_decode('')-Fehlversuch).
+    *
+    ***************************************************************/
+    function testLoadScopeMetaLaesstBlocksLeerBeiLeeremContent(): void {
+        $settings = new \InMemorySettings();
+
+        $meta = $this->resolver()->loadScopeMeta($settings, 'global');
+
+        $this->assertSame([], $meta['existing_jsonld_blocks']);
     }
 
     // deleteConfig() -------------------------------------------------------------
