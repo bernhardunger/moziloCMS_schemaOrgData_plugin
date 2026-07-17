@@ -107,6 +107,10 @@ class SchemaOrgData_AdminPageRenderer {
    "align-items: center" fällt der Flex-Container auf den Default "stretch" zurück, wodurch
    der Pfeil sichtbar versetzt zum Text erscheint statt sauber davor. */
 .schemaOrgData-admin details summary { align-items: center; gap: .3em; }
+.schemaOrgData-admin .schemaOrgData-persons-toggle { margin-bottom: 1.25em; }
+.schemaOrgData-admin .schemaOrgData-persons-table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+.schemaOrgData-admin .schemaOrgData-persons-table th, .schemaOrgData-admin .schemaOrgData-persons-table td { padding: .4em .6em; text-align: left; border-bottom: 1px solid #eee; }
+.schemaOrgData-admin .schemaOrgData-persons-form-actions { margin-top: 1em; }
 ';
     }
 

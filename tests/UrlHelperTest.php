@@ -154,4 +154,13 @@ final class UrlHelperTest extends TestCase {
 
         $this->assertSame('http://example.com/administration/', $result);
     }
+
+    // resolveMediaBaseDir() (Personen-Registry, siehe
+    // SchemaOrgData_Validator::validatePersonImageExistence()) ------------
+
+    function testResolveMediaBaseDirLiefertBaseDirPlusContentFilesDirName(): void {
+        $result = $this->helper()->resolveMediaBaseDir();
+
+        $this->assertSame(\BASE_DIR.\CONTENT_FILES_DIR_NAME.'/', $result);
+    }
 }

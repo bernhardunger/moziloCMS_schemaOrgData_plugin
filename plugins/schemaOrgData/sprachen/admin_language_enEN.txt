@@ -181,3 +181,45 @@ button_save_page = Save configuration for page {PARAM1}
 
 admin_button = Settings
 plugin_description_short = Schema.org JSON-LD for all pages
+
+button_manage_persons = 👤 Manage persons
+button_back_to_scopes = ← Back to global/category/page
+
+label_persons_registry_title = Persons registry
+description_persons_registry = Central management of persons (e.g. employees, founders) that can be referenced elsewhere - e.g. as an article author or in the organization relations.
+label_persons_registry_empty = No persons have been added yet.
+
+label_person_name = Name
+label_honorific_prefix = Title
+label_job_title = Job title
+label_person_description = Description
+label_person_url = Profile URL
+label_person_same_as = Other profiles (one URL per line, e.g. LinkedIn, Xing)
+label_person_image = Image (relative media path or absolute URL)
+label_person_status = Status
+label_person_status_active = Active
+label_person_status_inactive = Inactive
+label_sort_order = Sort order
+label_person_slug = Slug
+hint_person_slug = Derived from the name, cannot be changed afterwards. Lowercase letters, digits, hyphen and underscore only.
+
+label_add_person_title = Add new person
+label_edit_person_title = Edit person
+
+button_add_person = + New person
+button_edit_person = Edit
+button_delete_person = Delete
+button_save_person = Save person
+button_create_person = Create person
+button_cancel_person = Cancel
+confirm_delete_person = Really delete this person? Existing references (e.g. article author) will no longer resolve.
+
+notice_person_created = The person has been created.
+notice_person_updated = The person has been saved.
+notice_person_deleted = The person has been deleted.
+
+error_person_slug_required = Please provide a slug or a name a slug can be derived from.
+error_person_slug_exists = This slug is already taken (existing person: "{PARAM1}"). Please choose a different slug.
+error_person_not_found = The person could not be found - it may have been deleted in the meantime.
+error_person_invalid_action = Invalid action for the persons registry.
+warning_person_image_not_found = No file was found at this path in the media directory. The file can be uploaded afterwards.

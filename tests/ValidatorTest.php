@@ -1002,4 +1002,66 @@ final class ValidatorTest extends TestCase {
 
         $this->assertNotEmpty($errors);
     }
+
+    // validateSameAsEntries() / validatePersonImageExistence()
+    // (Personen-Registry, SchemaOrgData_PersonsRegistryService) -----------
+
+    function testValidateSameAsEntriesOkBeiLeererListe(): void {
+        $validator = new \SchemaOrgData_Validator();
+
+        $this->assertSame([], $validator->validateSameAsEntries([], $this->adminLang()));
+    }
+
+    function testValidateSameAsEntriesOkBeiGueltigenUrls(): void {
+        $validator = new \SchemaOrgData_Validator();
+
+        $errors = $validator->validateSameAsEntries(
+            ['https://www.linkedin.com/in/max', 'https://www.xing.com/profile/max'],
+            $this->adminLang()
+        );
+
+        $this->assertSame([], $errors);
+    }
+
+    function testValidateSameAsEntriesMeldetUngueltigeUrl(): void {
+        $validator = new \SchemaOrgData_Validator();
+
+        $errors = $validator->validateSameAsEntries(['nicht-eine-url'], $this->adminLang());
+
+        $this->assertNotEmpty($errors);
+    }
+
+    function testValidatePersonImageExistenceLeerLiefertKeinenStatus(): void {
+        $validator = new \SchemaOrgData_Validator();
+
+        $result = $validator->validatePersonImageExistence('', \BASE_DIR.\CONTENT_FILES_DIR_NAME.'/', $this->adminLang());
+
+        $this->assertNull($result['status']);
+    }
+
+    function testValidatePersonImageExistenceWarntBeiNichtVorhandenerDatei(): void {
+        $validator = new \SchemaOrgData_Validator();
+
+        $result = $validator->validatePersonImageExistence(
+            'persons/definitiv-nicht-vorhanden.jpg', \BASE_DIR.\CONTENT_FILES_DIR_NAME.'/', $this->adminLang()
+        );
+
+        $this->assertSame('warning', $result['status']);
+    }
+
+    function testValidatePersonImageExistenceOkBeiVorhandenerDatei(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $mediaBaseDir = \BASE_DIR.\CONTENT_FILES_DIR_NAME.'/';
+        @mkdir($mediaBaseDir, 0777, true);
+        file_put_contents($mediaBaseDir.'schemaOrgData-test-image.jpg', 'x');
+
+        try {
+            $result = $validator->validatePersonImageExistence(
+                'schemaOrgData-test-image.jpg', $mediaBaseDir, $this->adminLang()
+            );
+            $this->assertSame('ok', $result['status']);
+        } finally {
+            unlink($mediaBaseDir.'schemaOrgData-test-image.jpg');
+        }
+    }
 }

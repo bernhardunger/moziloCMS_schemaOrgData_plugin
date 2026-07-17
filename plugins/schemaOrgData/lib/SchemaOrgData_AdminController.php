@@ -325,7 +325,19 @@ class SchemaOrgData_AdminController {
         $importService = $context->importService;
         $dataSplitHelper = $context->dataSplitHelper;
 
-        $saveResult = ($_POST !== []) ? $adminRequestHandler->handlePostRequest(
+        // Personen-Registry (vierter Admin-Bereich, siehe README.md) hat
+        // Vorrang vor der normalen Scope-Verarbeitung, sobald ein
+        // "schemaOrgData_persons_action"-Submit-Button geklickt wurde -
+        // analog zum bereits bestehenden Vorrang des Imports
+        // (handleImportAction()). Die noch im POST enthaltenen
+        // schemaOrgData[...]-Felder der zuletzt aktiven Scope-Sektion
+        // werden in diesem Fall bewusst ignoriert (unverändertes Redisplay).
+        $isPersonsAction = isset($_POST['schemaOrgData_persons_action']);
+        $personsSaveResult = $isPersonsAction ? $context->personsAdminRequestHandler->handlePersonsPostRequest(
+            $settings, $lang, $context->personsRegistryService, $validator
+        ) : null;
+
+        $saveResult = (!$isPersonsAction and $_POST !== []) ? $adminRequestHandler->handlePostRequest(
             $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper,
             $adminPageRenderer, $configSaveService, $importService, $dataSplitHelper
         ) : null;
@@ -358,6 +370,20 @@ class SchemaOrgData_AdminController {
             $selectedPage = $scopeResolver->sanitizeScopeIdentifier((string) $_GET['schemaOrgData_page']) ?: null;
         }
 
+        // Aktive Personen-Ansicht (Liste/Anlegen/Bearbeiten) und ggf.
+        // POST-Redisplay-Daten nach fehlgeschlagener Personen-Aktion -
+        // analog zu $saveFailed/$usePostData der Scope-Sektionen oben.
+        $personsAdminRenderer = $context->personsAdminRenderer;
+        $personsActiveView = $personsAdminRenderer->listViewId();
+        $personsRedisplayData = [];
+
+        if($personsSaveResult !== null and $personsSaveResult['success'] === false) {
+            $personsRedisplayData = is_array($_POST['schemaOrgData_persons_data'] ?? null) ? $_POST['schemaOrgData_persons_data'] : [];
+            $personsActiveView = ($personsSaveResult['action'] === 'update' and $personsSaveResult['slug'] !== null)
+                ? $personsAdminRenderer->buildEditViewId($personsSaveResult['slug'])
+                : $personsAdminRenderer->newViewId();
+        }
+
         $formAction = URL_BASE . ADMIN_DIR_NAME . '/index.php';
         $saveButtonLabel = $adminPageRenderer->buildSaveButtonLabel($selectedCat, $selectedPage, $lang);
 
@@ -373,6 +399,33 @@ class SchemaOrgData_AdminController {
             $successMessageKey = $importApplied ? 'notice_import_success' : 'notice_config_saved';
             $html .= $adminPageRenderer->renderSaveResultNotice($saveResult, $lang, $successMessageKey);
         }
+
+        if($personsSaveResult !== null) {
+            $personsSuccessKey = match($personsSaveResult['action']) {
+                'create' => 'notice_person_created',
+                'update' => 'notice_person_updated',
+                'delete' => 'notice_person_deleted',
+                default  => 'notice_config_save_error',
+            };
+            $html .= $adminPageRenderer->renderSaveResultNotice($personsSaveResult, $lang, $personsSuccessKey);
+        }
+
+        // Personen-Registry-Umschalter: blendet den Scope-Bereich (Global/
+        // Kategorie/Seite) aus und den Personen-Bereich ein bzw. umgekehrt -
+        // vollständig entkoppelt von initScopeSelector() (siehe
+        // SchemaOrgData_PersonsAdminRenderer, Docblock).
+        $html .= '<div class="schemaOrgData-persons-toggle">'."\n";
+        $html .= '<button type="button" id="schemaOrgData_persons_toggle_btn" class="mo-btn" '
+            .'onclick="document.getElementById(\'schemaOrgData_scope_container\').style.display=\'none\';'
+            .'document.getElementById(\'schemaOrgData_persons_container\').style.display=\'\';">'
+            .$lang->getLanguageHtml('button_manage_persons').'</button>'."\n";
+        $html .= '<button type="button" id="schemaOrgData_persons_back_btn" class="mo-btn" '
+            .'onclick="document.getElementById(\'schemaOrgData_persons_container\').style.display=\'none\';'
+            .'document.getElementById(\'schemaOrgData_scope_container\').style.display=\'\';">'
+            .$lang->getLanguageHtml('button_back_to_scopes').'</button>'."\n";
+        $html .= '</div>'."\n";
+
+        $html .= '<div id="schemaOrgData_scope_container"'.($isPersonsAction ? ' style="display:none"' : '').'>'."\n";
 
         // Zusätzlicher Speichern-Button am Formularanfang (oben rechts) -
         // derselbe Submit wie der Button am Formularende, damit lange
@@ -484,7 +537,14 @@ class SchemaOrgData_AdminController {
                . $saveButtonLabel.'</button>'."\n";
         $html .= '</div>'."\n";
 
-        $html .= '</div>'."\n";
+        $html .= '</div>'."\n"; // schließt #schemaOrgData_scope_container
+
+        $html .= $personsAdminRenderer->renderPersonsSection(
+            $settings, $lang, $context->personsRegistryService, $validator, $context->urlHelper, $context->formRenderer,
+            $isPersonsAction, $personsActiveView, $personsRedisplayData, $personsSaveResult['errors'] ?? []
+        );
+
+        $html .= '</div>'."\n"; // schließt .schemaOrgData-admin
         $html .= '</form>'."\n";
 
         // Lokalisierte Texte für die clientseitige Validierung (validator.js)

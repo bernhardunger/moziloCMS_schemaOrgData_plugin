@@ -196,8 +196,21 @@ final class AdminControllerTest extends TestCase {
             'deDE', $this->pluginSelfDir(), $this->weekdayLang(), $this->idReferenceService(),
             $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(),
             $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService(),
-            $this->importService()
+            $this->importService(), $this->personsRegistryService(), $this->personsAdminRenderer(),
+            $this->personsAdminRequestHandler()
         );
+    }
+
+    private function personsRegistryService(): \SchemaOrgData_PersonsRegistryService {
+        return new \SchemaOrgData_PersonsRegistryService();
+    }
+
+    private function personsAdminRenderer(): \SchemaOrgData_PersonsAdminRenderer {
+        return new \SchemaOrgData_PersonsAdminRenderer();
+    }
+
+    private function personsAdminRequestHandler(): \SchemaOrgData_PersonsAdminRequestHandler {
+        return new \SchemaOrgData_PersonsAdminRequestHandler();
     }
 
     private function callRenderScopeSection(
@@ -898,5 +911,155 @@ final class AdminControllerTest extends TestCase {
         // Nicht auf die bloße CSS-Klasse prüfen - die steht wegen getAdminCss()
         // ohnehin immer im <style>-Block, unabhängig vom Prüfergebnis.
         $this->assertStringNotContainsString('<div class="schemaOrgData-notice schemaOrgData-placeholder-notice">', $html);
+    }
+
+    // -----------------------------------------------------------
+    // renderAdminPage() - Personen-Registry (vierter Admin-Bereich)
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Ende-zu-Ende-Test über renderAdminPage(): ein
+    * "schemaOrgData_persons_action=create"-Submit legt eine Person in
+    * der Registry an, zeigt den Erfolgshinweis und rendert den
+    * Personen-Container initial sichtbar (statt des Scope-Bereichs).
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageErstelltPersonUndZeigtErfolgshinweis(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $_POST['schemaOrgData_persons_action'] = 'create';
+        $_POST['schemaOrgData_persons_data'] = ['name' => 'Max Mustermann', 'slug' => 'max'];
+
+        $settings = new \InMemorySettings();
+        $html = $this->callRenderAdminPage($settings);
+
+        $this->assertStringContainsString('schemaOrgData-notice--success', $html);
+        $this->assertStringContainsString('Max Mustermann', $html);
+        $this->assertTrue((new \SchemaOrgData_PersonsRegistryService())->slugExists($settings, 'max'));
+
+        // Der Personen-Container ist nach einer Personen-Aktion initial
+        // sichtbar, der Scope-Container (Global/Kategorie/Seite) verborgen.
+        $this->assertMatchesRegularExpression(
+            '/<div id="schemaOrgData_scope_container"[^>]*style="display:none"/',
+            $html
+        );
+    }
+
+    /***************************************************************
+    *
+    * Ende-zu-Ende-Test: eine fehlgeschlagene Personen-Aktion (leerer
+    * Name) speichert nichts, zeigt die Fehlermeldung und aktiviert die
+    * "Neue Person"-Ansicht (Redisplay der POST-Daten statt Datenverlust).
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageFehlgeschlageneAnlageZeigtFehlerUndRedisplay(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $_POST['schemaOrgData_persons_action'] = 'create';
+        $_POST['schemaOrgData_persons_data'] = ['name' => '', 'jobTitle' => 'Steuerberater'];
+
+        $settings = new \InMemorySettings();
+        $html = $this->callRenderAdminPage($settings);
+
+        $this->assertStringContainsString('schemaOrgData-notice--error', $html);
+        $this->assertSame([], (new \SchemaOrgData_PersonsRegistryService())->loadRegistry($settings));
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="schemaOrgData_persons_view_new"[^>]*style="display:none"/',
+            $html
+        );
+        $this->assertStringContainsString('value="Steuerberater"', $html);
+    }
+
+    /***************************************************************
+    *
+    * Ende-zu-Ende-Test: "update:<slug>" aktualisiert eine bestehende
+    * Person und aktiviert nach einem Fehlschlag deren Bearbeiten-Ansicht.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageAktualisiertBestehendePerson(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $settings = new \InMemorySettings();
+        $registryService = new \SchemaOrgData_PersonsRegistryService();
+        $registryService->createPerson($settings, ['name' => 'Max Mustermann', 'slug' => 'max'], $this->adminLang(), $this->validator());
+
+        $_POST['schemaOrgData_persons_action'] = 'update:max';
+        $_POST['schemaOrgData_persons_data'] = ['name' => 'Max M. Mustermann'];
+
+        $html = $this->callRenderAdminPage($settings);
+
+        $this->assertStringContainsString('schemaOrgData-notice--success', $html);
+        $this->assertSame('Max M. Mustermann', $registryService->getPerson($settings, 'max')['name']);
+    }
+
+    /***************************************************************
+    *
+    * Ende-zu-Ende-Test: "delete:<slug>" entfernt eine bestehende Person
+    * über renderAdminPage().
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageLoeschtPerson(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $settings = new \InMemorySettings();
+        $registryService = new \SchemaOrgData_PersonsRegistryService();
+        $registryService->createPerson($settings, ['name' => 'Max Mustermann', 'slug' => 'max'], $this->adminLang(), $this->validator());
+
+        $_POST['schemaOrgData_persons_action'] = 'delete:max';
+
+        $html = $this->callRenderAdminPage($settings);
+
+        $this->assertStringContainsString('schemaOrgData-notice--success', $html);
+        $this->assertFalse($registryService->slugExists($settings, 'max'));
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest: eine Personen-Aktion darf die normale Scope-
+    * Verarbeitung (SchemaOrgData_AdminRequestHandler::handlePostRequest())
+    * nicht auslösen, selbst wenn zusätzlich (unveränderte) Scope-
+    * Formulardaten im selben POST enthalten sind - siehe
+    * SchemaOrgData_AdminController::renderAdminPage(), $isPersonsAction.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPagePersonenAktionUeberschreibtScopeKonfigurationNicht(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $settings = new \InMemorySettings();
+        // Absichtlich ungültige Scope-Daten (fehlendes Pflichtfeld "url") -
+        // würde handlePostRequest() dafür ausgeführt, gäbe es einen
+        // zusätzlichen Fehlerhinweis der Scope-Verarbeitung.
+        $_POST['schemaOrgData'] = ['global' => ['type' => 'LocalBusiness', 'data' => ['name' => 'Ohne URL']]];
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+        $_POST['schemaOrgData_persons_action'] = 'create';
+        $_POST['schemaOrgData_persons_data'] = ['name' => 'Max Mustermann', 'slug' => 'max'];
+
+        $html = $this->callRenderAdminPage($settings);
+
+        $this->assertStringContainsString('schemaOrgData-notice--success', $html);
+        $this->assertFalse($settings->keyExists('config_global'));
+        $this->assertTrue((new \SchemaOrgData_PersonsRegistryService())->slugExists($settings, 'max'));
     }
 }

@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 *
 * Tests für SchemaOrgData_AdminRequestContext:
 *
-*   - Konstruktor setzt alle 19 Properties korrekt
+*   - Konstruktor setzt alle 22 Properties korrekt
 *   - Properties sind readonly (Schreibversuch wirft Error)
 *
 ***************************************************************/
@@ -46,7 +46,10 @@ final class AdminRequestContextTest extends TestCase {
             new \SchemaOrgData_AdminPageRenderer(),
             new \SchemaOrgData_AdminRequestHandler(),
             new \SchemaOrgData_ConfigSaveService(),
-            new \SchemaOrgData_ImportService()
+            new \SchemaOrgData_ImportService(),
+            new \SchemaOrgData_PersonsRegistryService(),
+            new \SchemaOrgData_PersonsAdminRenderer(),
+            new \SchemaOrgData_PersonsAdminRequestHandler()
         );
     }
 
@@ -68,6 +71,9 @@ final class AdminRequestContextTest extends TestCase {
         $adminRequestHandler = new \SchemaOrgData_AdminRequestHandler();
         $configSaveService = new \SchemaOrgData_ConfigSaveService();
         $importService = new \SchemaOrgData_ImportService();
+        $personsRegistryService = new \SchemaOrgData_PersonsRegistryService();
+        $personsAdminRenderer = new \SchemaOrgData_PersonsAdminRenderer();
+        $personsAdminRequestHandler = new \SchemaOrgData_PersonsAdminRequestHandler();
 
         $context = new \SchemaOrgData_AdminRequestContext(
             $settings,
@@ -88,7 +94,10 @@ final class AdminRequestContextTest extends TestCase {
             $adminPageRenderer,
             $adminRequestHandler,
             $configSaveService,
-            $importService
+            $importService,
+            $personsRegistryService,
+            $personsAdminRenderer,
+            $personsAdminRequestHandler
         );
 
         $this->assertSame($settings, $context->settings);
@@ -110,6 +119,9 @@ final class AdminRequestContextTest extends TestCase {
         $this->assertSame($adminRequestHandler, $context->adminRequestHandler);
         $this->assertSame($configSaveService, $context->configSaveService);
         $this->assertSame($importService, $context->importService);
+        $this->assertSame($personsRegistryService, $context->personsRegistryService);
+        $this->assertSame($personsAdminRenderer, $context->personsAdminRenderer);
+        $this->assertSame($personsAdminRequestHandler, $context->personsAdminRequestHandler);
     }
 
     function testSchreibversuchAufReadonlyPropertyWirftError(): void {
