@@ -243,6 +243,80 @@ final class FrontendRendererTest extends TestCase {
         }
     }
 
+    /***************************************************************
+    *
+    * existing_jsonld_blocks wird als Einzelblock-Array persistiert -
+    * Grundlage des serverseitigen Pro-Block-Imports (siehe
+    * SchemaOrgData_ScopeResolver::loadScopeMeta()).
+    *
+    ***************************************************************/
+    function testRenderFrontendTemplateJsonLdPersistiertBlocksArray(): void {
+        $settings = new \InMemorySettings();
+
+        $templateFile = sys_get_temp_dir().'/schemaOrgData_tpl_'.uniqid().'.html';
+        file_put_contents(
+            $templateFile,
+            '<script type="application/ld+json">{"@type":"LocalBusiness"}</script>'
+            .'<script type="application/ld+json">{"@type":"WebSite"}</script>'
+        );
+        $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;
+        $GLOBALS['TEMPLATE_FILE'] = $templateFile;
+
+        try {
+            $this->callRenderFrontend('', $settings);
+
+            $metaGlobal = $this->scopeResolver()->loadScopeMeta($settings, 'global');
+            $this->assertSame(
+                ['{"@type":"LocalBusiness"}', '{"@type":"WebSite"}'],
+                $metaGlobal['existing_jsonld_blocks']
+            );
+        } finally {
+            unlink($templateFile);
+            $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
+        }
+    }
+
+    /***************************************************************
+    *
+    * Der Schreib-Guard greift auch bei reiner Reihenfolge-Änderung
+    * der Blöcke, bei der Flag und implodierter Content-String gleich
+    * blieben (implode() ist reihenfolge-sensitiv, der reine
+    * String-Vergleich griffe hier zwar bereits - dieser Test
+    * dokumentiert den Fall explizit als Regressionsanker für den
+    * neuen Blocks-Vergleich).
+    *
+    ***************************************************************/
+    function testRenderFrontendTemplateJsonLdSchreibtBeiBlockReihenfolgeAenderung(): void {
+        $settings = new \InMemorySettings();
+        $this->scopeResolver()->saveScopeMeta($settings, 'global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => "{\"@type\":\"WebSite\"}\n\n{\"@type\":\"LocalBusiness\"}",
+            'existing_jsonld_blocks' => ['{"@type":"WebSite"}', '{"@type":"LocalBusiness"}'],
+        ]);
+
+        $templateFile = sys_get_temp_dir().'/schemaOrgData_tpl_'.uniqid().'.html';
+        file_put_contents(
+            $templateFile,
+            '<script type="application/ld+json">{"@type":"LocalBusiness"}</script>'
+            .'<script type="application/ld+json">{"@type":"WebSite"}</script>'
+        );
+        $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;
+        $GLOBALS['TEMPLATE_FILE'] = $templateFile;
+
+        try {
+            $this->callRenderFrontend('', $settings);
+
+            $metaGlobal = $this->scopeResolver()->loadScopeMeta($settings, 'global');
+            $this->assertSame(
+                ['{"@type":"LocalBusiness"}', '{"@type":"WebSite"}'],
+                $metaGlobal['existing_jsonld_blocks']
+            );
+        } finally {
+            unlink($templateFile);
+            $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
+        }
+    }
+
     function testRenderFrontendOhneTemplateTrefferGlobalMetaBleibtFalse(): void {
         $settings = new \InMemorySettings();
         $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;

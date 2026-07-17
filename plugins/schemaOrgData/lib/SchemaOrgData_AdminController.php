@@ -479,18 +479,23 @@ class SchemaOrgData_AdminController {
         // set() ein No-Op). Reihenfolge: erst saveScopeMeta(), dann
         // renderScopeSection(), damit renderExistingJsonLdNotice() das
         // frisch gesetzte Flag und den Inhalt (Autofill-Button) sieht.
-        $templateBlocks = $collisionDetector->extractExistingJsonLdBlocksFromTemplateAdmin($CMS_CONF);
+        $templateBlocks = array_values(array_map('trim', $collisionDetector->extractExistingJsonLdBlocksFromTemplateAdmin($CMS_CONF)));
         $templateHasJsonLd = !empty($templateBlocks);
-        $templateContent = implode("\n\n", array_map('trim', $templateBlocks));
+        $templateContent = implode("\n\n", $templateBlocks);
 
         // Schreib-Guard: nur bei tatsächlicher Änderung persistieren, um
         // nicht bei jedem Admin-Load einen file_put_contents auszulösen.
+        // Der Blocks-Vergleich greift zusätzlich bei reiner
+        // Reihenfolge-Änderung, bei der Flag und implodierter Content
+        // gleich blieben.
         $metaGlobal = $scopeResolver->loadScopeMeta($settings, 'global');
         if ($metaGlobal['existing_jsonld'] !== $templateHasJsonLd
-            || $metaGlobal['existing_jsonld_content'] !== $templateContent) {
+            || $metaGlobal['existing_jsonld_content'] !== $templateContent
+            || $metaGlobal['existing_jsonld_blocks'] !== $templateBlocks) {
             $scopeResolver->saveScopeMeta($settings, 'global', [
                 'existing_jsonld' => $templateHasJsonLd,
                 'existing_jsonld_content' => $templateContent,
+                'existing_jsonld_blocks' => $templateBlocks,
             ]);
         }
 
