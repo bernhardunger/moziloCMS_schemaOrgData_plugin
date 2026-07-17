@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 *
 * Tests für SchemaOrgData_AdminRequestContext:
 *
-*   - Konstruktor setzt alle 22 Properties korrekt
+*   - Konstruktor setzt alle 23 Properties korrekt
 *   - Properties sind readonly (Schreibversuch wirft Error)
 *
 ***************************************************************/
@@ -49,7 +49,8 @@ final class AdminRequestContextTest extends TestCase {
             new \SchemaOrgData_ImportService(),
             new \SchemaOrgData_PersonsRegistryService(),
             new \SchemaOrgData_PersonsAdminRenderer(),
-            new \SchemaOrgData_PersonsAdminRequestHandler()
+            new \SchemaOrgData_PersonsAdminRequestHandler(),
+            new \SchemaOrgData_OrgRelationsService()
         );
     }
 
@@ -74,6 +75,7 @@ final class AdminRequestContextTest extends TestCase {
         $personsRegistryService = new \SchemaOrgData_PersonsRegistryService();
         $personsAdminRenderer = new \SchemaOrgData_PersonsAdminRenderer();
         $personsAdminRequestHandler = new \SchemaOrgData_PersonsAdminRequestHandler();
+        $orgRelationsService = new \SchemaOrgData_OrgRelationsService();
 
         $context = new \SchemaOrgData_AdminRequestContext(
             $settings,
@@ -97,7 +99,8 @@ final class AdminRequestContextTest extends TestCase {
             $importService,
             $personsRegistryService,
             $personsAdminRenderer,
-            $personsAdminRequestHandler
+            $personsAdminRequestHandler,
+            $orgRelationsService
         );
 
         $this->assertSame($settings, $context->settings);
@@ -122,6 +125,7 @@ final class AdminRequestContextTest extends TestCase {
         $this->assertSame($personsRegistryService, $context->personsRegistryService);
         $this->assertSame($personsAdminRenderer, $context->personsAdminRenderer);
         $this->assertSame($personsAdminRequestHandler, $context->personsAdminRequestHandler);
+        $this->assertSame($orgRelationsService, $context->orgRelationsService);
     }
 
     function testSchreibversuchAufReadonlyPropertyWirftError(): void {

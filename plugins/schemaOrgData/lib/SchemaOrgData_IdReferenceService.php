@@ -130,10 +130,23 @@ class SchemaOrgData_IdReferenceService {
     * auflösbar (nur die Auswahlliste in resolveAvailableGlobalFragments()
     * blendet inaktive Personen aus).
     *
+    * Organisations-Relationen (org_relations, siehe
+    * SchemaOrgData_OrgRelationsService) fließen als zusätzliche
+    * "person-{slug}"-Ziele in dieselbe Sammelschleife ein, statt einen
+    * eigenen Dangling-Mechanismus zu duplizieren - eine Relation zu
+    * einem gelöschten Slug landet dadurch wie jede andere hängende
+    * Personen-Referenz in $suppressedIdTargets, ein weiterhin
+    * existierender Slug in $activePersonSlugs (Emission des
+    * Person-Knotens). Die zusätzliche Status-Filterung der
+    * org_relations-Ausgabe selbst (inaktive Personen werden dort NICHT
+    * ausgegeben, anders als bei id_reference_or_literal) erfolgt separat
+    * in SchemaOrgData_OrgRelationsService::buildOutputGroups().
+    *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param array<string, array<string, mixed>> $scopeConfigs finale Scope-Konfiguration (nach resolveTypeInheritance)
     * @param bool $globalSuppressedByKeep true, wenn Global durch keep unterdrückt wurde
+    * @param array<int, array{person: string, role: string}> $orgRelations siehe SchemaOrgData_OrgRelationsService
     * @return array{0: array<string, array<string, mixed>>, 1: array<string>, 2: string[]} [$scopeConfigs, $suppressedIdTargets, $activePersonSlugs]
     *
     ***************************************************************/
@@ -144,7 +157,8 @@ class SchemaOrgData_IdReferenceService {
         string $pluginSelfDir,
         array $scopeConfigs,
         bool $globalSuppressedByKeep,
-        SchemaOrgData_PersonsRegistryService $personsRegistryService
+        SchemaOrgData_PersonsRegistryService $personsRegistryService,
+        array $orgRelations = []
     ): array {
         $suppressedIdTargets = [];
         $activePersonSlugs = [];
@@ -176,6 +190,13 @@ class SchemaOrgData_IdReferenceService {
                         }
                     }
                 }
+            }
+        }
+
+        foreach($orgRelations as $relation) {
+            $slug = trim((string) ($relation['person'] ?? ''));
+            if($slug !== '') {
+                $activeTargets[] = SchemaOrgData_PersonsRegistryService::buildFragment($slug);
             }
         }
 

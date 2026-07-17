@@ -186,4 +186,67 @@ final class IdReferenceServiceTest extends TestCase {
         $this->assertSame([], $suppressed, 'Literal-Modus darf keinen Dangling-Guard auslösen');
         $this->assertSame($scopeConfigs, $result, 'scopeConfigs darf bei Literal-Modus nicht verändert werden');
     }
+
+    // -----------------------------------------------------------
+    // applyDanglingReferenceGuard() - org_relations als zusätzliche
+    // Personen-Referenzquelle (siehe SchemaOrgData_OrgRelationsService)
+    // -----------------------------------------------------------
+
+    function testOrgRelationsSlugWirdAlsAktivePersonSlugsAufgenommen(): void {
+        $service = new \SchemaOrgData_IdReferenceService();
+        $settings = new \InMemorySettings();
+        $settings->set(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY, [
+            'max-mustermann' => ['name' => 'Max Mustermann', 'status' => \SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE],
+        ]);
+
+        [, $suppressed, $activePersonSlugs] = $service->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
+            $settings, $this->pluginSelfDir(), [], false, new \SchemaOrgData_PersonsRegistryService(),
+            [['person' => 'max-mustermann', 'role' => 'founder']]
+        );
+
+        $this->assertSame([], $suppressed);
+        $this->assertSame(['max-mustermann'], $activePersonSlugs);
+    }
+
+    function testOrgRelationsSlugAufGeloeschtePersonWirdUnterdrueckt(): void {
+        $service = new \SchemaOrgData_IdReferenceService();
+        $settings = new \InMemorySettings();
+        // Kein Registry-Eintrag - Slug existiert nicht (mehr).
+
+        [, $suppressed, $activePersonSlugs] = $service->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
+            $settings, $this->pluginSelfDir(), [], false, new \SchemaOrgData_PersonsRegistryService(),
+            [['person' => 'geloescht', 'role' => 'founder']]
+        );
+
+        $this->assertSame(['person-geloescht'], $suppressed);
+        $this->assertSame([], $activePersonSlugs);
+    }
+
+    function testOrgRelationsUndIdReferenceOrLiteralAufDenselbenSlugDedupenZuEinemEintrag(): void {
+        $service = new \SchemaOrgData_IdReferenceService();
+        $settings = new \InMemorySettings();
+        $settings->set(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY, [
+            'max-mustermann' => ['name' => 'Max Mustermann', 'status' => \SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE],
+        ]);
+
+        $scopeConfigs = [
+            'page' => ['Event' => [
+                'name' => 'Termin',
+                'startDate' => '2026-09-15T19:00:00+02:00',
+                'organizer' => ['_mode' => 'reference', '_fragment' => 'person-max-mustermann'],
+            ]],
+        ];
+
+        [, $suppressed, $activePersonSlugs] = $service->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
+            $settings, $this->pluginSelfDir(), $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService(),
+            [['person' => 'max-mustermann', 'role' => 'employee']]
+        );
+
+        $this->assertSame([], $suppressed);
+        $this->assertSame(['max-mustermann'], $activePersonSlugs,
+            'org_relations und id_reference_or_literal dürfen für denselben Slug nur einen Eintrag ergeben');
+    }
 }

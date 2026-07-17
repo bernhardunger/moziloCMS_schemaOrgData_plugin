@@ -423,9 +423,13 @@ final class PersonFragmentEmissionTest extends TestCase {
     // "false" gesetzt (siehe JsonLdOutputTest.php) - Seiten-Scope-
     // Konfiguration (z. B. Event.organizer) kann über getContent()
     // daher nicht getestet werden. Die Ende-zu-Ende-Tests nutzen
-    // stattdessen LocalBusiness.employee (Global-Scope, ebenfalls
-    // id_reference_or_literal mit generischem Fragment-Ziel) als
-    // Trägerfeld - der Emissionsmechanismus selbst ist feldunabhängig.
+    // stattdessen org_relations (Global-Scope, siehe
+    // SchemaOrgData_OrgRelationsService) als Trägermechanismus - der
+    // zugrundeliegende Personen-Emissionsmechanismus (applyDanglingReferenceGuard()/
+    // $activePersonSlugs/resolvePersonNodeId()) ist identisch zu dem der
+    // id_reference_or_literal-Widgets (z. B. Event.organizer, Article.author),
+    // seit dem Entfall des LocalBusiness.employee-Einzelfelds (AP3) jedoch
+    // ohne global erreichbaren id_reference_or_literal-Träger mehr.
     // -----------------------------------------------------------
 
     private function validLocalBusinessConfig(array $overrides = []): array {
@@ -435,7 +439,7 @@ final class PersonFragmentEmissionTest extends TestCase {
         ], $overrides);
     }
 
-    function testGlobalEmployeeReferenceEmitsStandalonePersonNode(): void {
+    function testGlobalOrgRelationReferenceEmitsStandalonePersonNode(): void {
         $_SERVER['HTTPS'] = 'on';
         $_SERVER['HTTP_HOST'] = 'www.example.org';
         $_SERVER['SCRIPT_NAME'] = '/index.php';
@@ -447,9 +451,8 @@ final class PersonFragmentEmissionTest extends TestCase {
             'image' => 'personen/max.jpg',
         ]);
         $this->settings->set('config_global', [
-            'LocalBusiness' => $this->validLocalBusinessConfig([
-                'employee' => ['_mode' => 'reference', '_fragment' => 'person-max-mustermann'],
-            ]),
+            'LocalBusiness' => $this->validLocalBusinessConfig(),
+            'org_relations' => [['person' => 'max-mustermann', 'role' => 'employee']],
         ]);
 
         $blocks = $this->getJsonLdBlocks($plugin);
@@ -463,7 +466,7 @@ final class PersonFragmentEmissionTest extends TestCase {
         $this->assertSame('Max Mustermann', $byType['Person']['name']);
         $this->assertSame('Geschäftsführer', $byType['Person']['jobTitle']);
         $this->assertSame('https://www.example.org/dateien/personen/max.jpg', $byType['Person']['image']);
-        $this->assertSame('https://www.example.org/#person-max-mustermann', $byType['LocalBusiness']['employee']['@id']);
+        $this->assertSame('https://www.example.org/#person-max-mustermann', $byType['LocalBusiness']['employee'][0]['@id']);
     }
 
     function testNoPersonNodeWithoutReference(): void {
@@ -482,7 +485,7 @@ final class PersonFragmentEmissionTest extends TestCase {
         $this->assertNotContains('Person', $types);
     }
 
-    function testDanglingReferenceToDeletedSlugEmitsNeitherNodeNorId(): void {
+    function testDanglingOrgRelationToDeletedSlugEmitsNeitherNodeNorId(): void {
         $_SERVER['HTTPS'] = 'on';
         $_SERVER['HTTP_HOST'] = 'www.example.org';
         $_SERVER['SCRIPT_NAME'] = '/index.php';
@@ -490,9 +493,8 @@ final class PersonFragmentEmissionTest extends TestCase {
         $plugin = $this->createPlugin();
         // Kein Registry-Eintrag - Referenz zeigt auf einen (mehr) nicht existierenden Slug.
         $this->settings->set('config_global', [
-            'LocalBusiness' => $this->validLocalBusinessConfig([
-                'employee' => ['_mode' => 'reference', '_fragment' => 'person-geloescht'],
-            ]),
+            'LocalBusiness' => $this->validLocalBusinessConfig(),
+            'org_relations' => [['person' => 'geloescht', 'role' => 'employee']],
         ]);
 
         $blocks = $this->getJsonLdBlocks($plugin);
@@ -506,7 +508,25 @@ final class PersonFragmentEmissionTest extends TestCase {
             'Dangling-Referenz darf kein hängendes {"@id": ...} im LocalBusiness-Knoten hinterlassen');
     }
 
-    function testInactivePersonStillEmittedWhenReferenced(): void {
+    /***************************************************************
+    *
+    * Kontrast-Test zur AP2-Statuslogik (siehe testGuardIncludesInactivePersonSlugAsActive()
+    * oben): Für id_reference_or_literal-Referenzen (z. B. Event.organizer,
+    * künftig Article.author) ist der Status einer referenzierten Person
+    * für deren Emission irrelevant - eine inaktive Person bleibt bei
+    * bestehender Referenz sichtbar. Für org_relations gilt bewusst das
+    * Gegenteil (SRD Abschnitt 4.6): die Relation selbst (das Array-Element
+    * im "employee"/"founder"/"member"-Property des Organisations-Knotens)
+    * wird für eine inaktive Person NICHT ausgegeben. Die zugrundeliegende
+    * Personen-Emission (applyDanglingReferenceGuard()/$activePersonSlugs)
+    * bleibt dabei unverändert status-unabhängig - dieselbe Person kann
+    * daher trotzdem als eigenständiger Knoten erscheinen, sofern sie noch
+    * über eine andere, sichtbare Quelle referenziert wird. Beide
+    * Verhaltensweisen dürfen künftig nicht versehentlich vereinheitlicht
+    * werden.
+    *
+    ***************************************************************/
+    function testInactivePersonOrgRelationNotEmittedInGroupedOutput(): void {
         $_SERVER['HTTPS'] = 'on';
         $_SERVER['HTTP_HOST'] = 'www.example.org';
         $_SERVER['SCRIPT_NAME'] = '/index.php';
@@ -514,40 +534,58 @@ final class PersonFragmentEmissionTest extends TestCase {
         $plugin = $this->createPlugin();
         $this->setActivePerson('max-mustermann', ['status' => \SchemaOrgData_PersonsRegistryService::STATUS_INACTIVE]);
         $this->settings->set('config_global', [
-            'LocalBusiness' => $this->validLocalBusinessConfig([
-                'employee' => ['_mode' => 'reference', '_fragment' => 'person-max-mustermann'],
-            ]),
+            'LocalBusiness' => $this->validLocalBusinessConfig(),
+            'org_relations' => [['person' => 'max-mustermann', 'role' => 'employee']],
         ]);
 
         $blocks = $this->getJsonLdBlocks($plugin);
-        $types = array_column($blocks, '@type');
+        $byType = [];
+        foreach($blocks as $block) {
+            $byType[$block['@type']] = $block;
+        }
 
-        $this->assertContains('Person', $types,
-            'Eine inaktive, aber weiterhin existierende Person bleibt bei bestehender Referenz emittiert');
+        $this->assertArrayNotHasKey('employee', $byType['LocalBusiness'],
+            'Eine Relation zu einer inaktiven Person wird nicht in der gruppierten Ausgabe des Organisations-Knotens aufgeführt');
+
+        // Reaktivierung: dieselbe Relation erscheint automatisch wieder,
+        // ohne dass org_relations selbst erneut gespeichert werden muss -
+        // die Relation blieb während der Inaktivität unverändert bestehen.
+        $this->setActivePerson('max-mustermann', ['status' => \SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE]);
+        $blocksReactivated = $this->getJsonLdBlocks($plugin);
+        $byTypeReactivated = [];
+        foreach($blocksReactivated as $block) {
+            $byTypeReactivated[$block['@type']] = $block;
+        }
+
+        $this->assertSame('https://www.example.org/#person-max-mustermann', $byTypeReactivated['LocalBusiness']['employee'][0]['@id']);
     }
 
-    function testTwoReferencesToSameSlugEmitOnlyOnePersonNode(): void {
+    function testTwoOrgRelationsToSameSlugEmitOnlyOnePersonNode(): void {
         $_SERVER['HTTPS'] = 'on';
         $_SERVER['HTTP_HOST'] = 'www.example.org';
         $_SERVER['SCRIPT_NAME'] = '/index.php';
 
         $plugin = $this->createPlugin();
         $this->setActivePerson('max-mustermann');
-        // Zwei verschiedene global konfigurierte Types referenzieren
-        // denselben Slug über je ein eigenes id_reference_or_literal-Feld.
+        // Zwei Relationen (unterschiedliche Rollen) referenzieren denselben Slug.
         $this->settings->set('config_global', [
-            'LocalBusiness' => $this->validLocalBusinessConfig([
-                'employee' => ['_mode' => 'reference', '_fragment' => 'person-max-mustermann'],
-            ]),
-            'AccountingService' => array_merge($this->validLocalBusinessConfig(), [
-                'employee' => ['_mode' => 'reference', '_fragment' => 'person-max-mustermann'],
-            ]),
+            'LocalBusiness' => $this->validLocalBusinessConfig(),
+            'org_relations' => [
+                ['person' => 'max-mustermann', 'role' => 'founder'],
+                ['person' => 'max-mustermann', 'role' => 'employee'],
+            ],
         ]);
 
         $blocks = $this->getJsonLdBlocks($plugin);
         $personBlocks = array_values(array_filter($blocks, fn(array $b): bool => ($b['@type'] ?? '') === 'Person'));
+        $byType = [];
+        foreach($blocks as $block) {
+            $byType[$block['@type']] = $block;
+        }
 
-        $this->assertCount(1, $personBlocks, 'Zwei Referenzen auf denselben Slug dürfen nur einen Personen-Knoten erzeugen');
+        $this->assertCount(1, $personBlocks, 'Zwei Relationen auf denselben Slug dürfen nur einen Personen-Knoten erzeugen');
+        $this->assertSame('https://www.example.org/#person-max-mustermann', $byType['LocalBusiness']['founder'][0]['@id']);
+        $this->assertSame('https://www.example.org/#person-max-mustermann', $byType['LocalBusiness']['employee'][0]['@id']);
     }
 
     // -----------------------------------------------------------

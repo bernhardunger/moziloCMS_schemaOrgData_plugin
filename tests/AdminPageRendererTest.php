@@ -87,7 +87,7 @@ final class AdminPageRendererTest extends TestCase {
         return $this->configSaveService()->saveConfig(
             $scope, $postData, $settings, $this->adminLang(), $this->scopeResolver(),
             $this->schemaRepository(), $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(),
-            $this->renderer()
+            $this->renderer(), new \SchemaOrgData_PersonsRegistryService(), new \SchemaOrgData_OrgRelationsService()
         );
     }
 

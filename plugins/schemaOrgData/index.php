@@ -22,6 +22,7 @@ require_once __DIR__.'/lib/SchemaOrgData_FrontendRequestContext.php';
 require_once __DIR__.'/lib/SchemaOrgData_PersonsRegistryService.php';
 require_once __DIR__.'/lib/SchemaOrgData_PersonsAdminRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_PersonsAdminRequestHandler.php';
+require_once __DIR__.'/lib/SchemaOrgData_OrgRelationsService.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 
 /***************************************************************
@@ -53,7 +54,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.10.1-beta';
+    private const PLUGIN_VERSION = '0.10.2-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -133,6 +134,9 @@ class schemaOrgData extends Plugin {
     /** Lazy-Instanz von SchemaOrgData_PersonsAdminRequestHandler (siehe personsAdminRequestHandler()) */
     private ?SchemaOrgData_PersonsAdminRequestHandler $personsAdminRequestHandlerInstance = null;
 
+    /** Lazy-Instanz von SchemaOrgData_OrgRelationsService (siehe orgRelationsService()) */
+    private ?SchemaOrgData_OrgRelationsService $orgRelationsServiceInstance = null;
+
     function __construct() {
         parent::__construct();
         // Komponenten werden lazy verdrahtet (siehe urlHelper(), languageService(), schemaRepository()).
@@ -158,7 +162,7 @@ class schemaOrgData extends Plugin {
                     $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(),
                     $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService(),
                     $this->importService(), $this->personsRegistryService(), $this->personsAdminRenderer(),
-                    $this->personsAdminRequestHandler()
+                    $this->personsAdminRequestHandler(), $this->orgRelationsService()
                 )
             );
         }
@@ -168,7 +172,8 @@ class schemaOrgData extends Plugin {
             new SchemaOrgData_FrontendRequestContext(
                 $this->settings, $this->PLUGIN_SELF_DIR, $this->scopeResolver(),
                 $this->schemaRepository(), $this->jsonLdBuilder(), $this->idReferenceService(),
-                $this->collisionDetector(), $this->urlHelper(), $this->personsRegistryService()
+                $this->collisionDetector(), $this->urlHelper(), $this->personsRegistryService(),
+                $this->orgRelationsService()
             )
         );
     }
@@ -266,6 +271,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_PersonsAdminRequestHandler. */
     private function personsAdminRequestHandler(): SchemaOrgData_PersonsAdminRequestHandler {
         return $this->personsAdminRequestHandlerInstance ??= new SchemaOrgData_PersonsAdminRequestHandler();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_OrgRelationsService. */
+    private function orgRelationsService(): SchemaOrgData_OrgRelationsService {
+        return $this->orgRelationsServiceInstance ??= new SchemaOrgData_OrgRelationsService();
     }
 
     /** Lazy-Accessor für SchemaOrgData_LanguageService. */

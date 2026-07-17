@@ -238,6 +238,30 @@ class SchemaOrgData_AdminController {
                 $pluginLang, $pluginSelfUrl, $openingHoursHelper, $validator,
                 $weekdayLang, $availableFragments,
             );
+
+            // Organisations-Relationen (founder/employee/member, siehe
+            // SchemaOrgData_OrgRelationsService): erscheinen ausschließlich
+            // global und ausschließlich für Types mit der globalen
+            // Organisations-Identität ("ui:idFragment": "organization",
+            // siehe README.md, "@id-Anker und Knotenreferenzen"). Liegt
+            // innerhalb des .schemaOrgData-type-fields-Wrappers, damit
+            // applyTypeFieldsState() (validator.js) die Felder bei
+            // Typ-Wechsel korrekt (de)aktiviert (last-value-wins-Schutz).
+            if($scope === 'global' and ($schema['ui:idFragment'] ?? '') === 'organization') {
+                $orgRelationsRaw = ($postScope !== null and $type === $selectedType)
+                    ? (is_array($postScope['org_relations'] ?? null) ? $postScope['org_relations'] : [])
+                    : (is_array($config['org_relations'] ?? null) ? $config['org_relations'] : []);
+
+                $availablePersons = [];
+                foreach($availableFragments as $fragment => $fragLabel) {
+                    if(str_starts_with($fragment, 'person-')) {
+                        $availablePersons[substr($fragment, strlen('person-'))] = $fragLabel;
+                    }
+                }
+
+                $html .= $formRenderer->renderOrgRelationsWidget($scope, $orgRelationsRaw, $typeIdPrefix, $lang, $availablePersons);
+            }
+
             $html .= '</div>'."\n";
         }
 
@@ -340,7 +364,8 @@ class SchemaOrgData_AdminController {
 
         $saveResult = (!$isPersonsAction and $_POST !== []) ? $adminRequestHandler->handlePostRequest(
             $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper,
-            $adminPageRenderer, $configSaveService, $importService, $dataSplitHelper
+            $adminPageRenderer, $configSaveService, $importService, $dataSplitHelper,
+            $context->personsRegistryService, $context->orgRelationsService
         ) : null;
 
         // Bei fehlgeschlagenem Speichern wird die aktive Sektion in

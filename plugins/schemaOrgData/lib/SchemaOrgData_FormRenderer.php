@@ -869,6 +869,88 @@ class SchemaOrgData_FormRenderer {
 
     /***************************************************************
     *
+    * Rendert das Widget der Organisations-Relationen (founder/employee/
+    * member zwischen der globalen Organisations-Identität und
+    * Registry-Personen, siehe SchemaOrgData_OrgRelationsService und
+    * README.md, Abschnitt "@id-Anker und Knotenreferenzen"): je Relation
+    * ein Personen-Dropdown und ein Rollen-Dropdown, plus eine
+    * zusätzliche leere Zeile zum Anlegen einer neuen Relation (analog
+    * renderFaqListWidget()). Erscheint im Formular ausschließlich für
+    * global konfigurierte Types mit "ui:idFragment": "organization"
+    * (siehe SchemaOrgData_AdminController::renderScopeSection()).
+    *
+    * @param string $scope stets "global" (org_relations ist ein reiner Global-Meta-Schlüssel)
+    * @param array<int, array{person?: mixed, role?: mixed}> $orgRelations gespeicherte bzw. POST-Rohdaten
+    * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
+    * @param Language $lang für Labels/Hinweise
+    * @param array<string,string> $availablePersons Slug => Label, nur aktive Registry-Personen
+    *        (gefiltert aus SchemaOrgData_IdReferenceService::resolveAvailableGlobalFragments())
+    *
+    ***************************************************************/
+    public function renderOrgRelationsWidget(string $scope, array $orgRelations, ?string $idPrefix, Language $lang, array $availablePersons): string {
+        $idPrefix = $idPrefix ?? $scope;
+        $fieldNameBase = 'schemaOrgData['.$scope.'][org_relations]';
+
+        $html = '<fieldset class="schemaOrgData-fieldset">'."\n";
+        $html .= '<legend>'.$lang->getLanguageHtml('label_org_relations').'</legend>'."\n";
+        $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_org_relations').'</p>'."\n";
+
+        if($availablePersons === []) {
+            $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_org_relations_no_persons').'</p>'."\n";
+        } else {
+            $entries = array_values($orgRelations);
+            $entries[] = ['person' => '', 'role' => ''];
+
+            foreach($entries as $index => $entry) {
+                $personId = 'schemaOrgData_'.$idPrefix.'_org_relations_'.$index.'_person';
+                $roleId = 'schemaOrgData_'.$idPrefix.'_org_relations_'.$index.'_role';
+                $personName = $fieldNameBase.'['.$index.'][person]';
+                $roleName = $fieldNameBase.'['.$index.'][role]';
+                $personValue = (string) ($entry['person'] ?? '');
+                $roleValue = (string) ($entry['role'] ?? '');
+
+                $html .= '<div class="schemaOrgData-org-relation-entry">'."\n";
+
+                $html .= '<div class="c-content schemaOrgData-field-row">'
+                    .'<div class="mo-in-li-l"><label for="'.$personId.'">'.$lang->getLanguageHtml('label_org_relation_person').'</label></div>'
+                    .'<div class="mo-in-li-r"><div class="mo-select-div flex"><select id="'.$personId.'" name="'.htmlspecialchars($personName, ENT_QUOTES, CHARSET).'" class="mo-select flex-100">'."\n"
+                    .'<option value="">'.$lang->getLanguageHtml('label_select_placeholder').'</option>'."\n";
+                foreach($availablePersons as $slug => $personLabel) {
+                    $selected = ((string) $slug === $personValue) ? ' selected="selected"' : '';
+                    $html .= '<option value="'.htmlspecialchars((string) $slug, ENT_QUOTES, CHARSET).'"'.$selected.'>'
+                        .htmlspecialchars($personLabel, ENT_QUOTES, CHARSET).'</option>'."\n";
+                }
+                $html .= '</select></div></div></div>'."\n";
+
+                $html .= '<div class="c-content schemaOrgData-field-row">'
+                    .'<div class="mo-in-li-l"><label for="'.$roleId.'">'.$lang->getLanguageHtml('label_org_relation_role').'</label></div>'
+                    .'<div class="mo-in-li-r"><div class="mo-select-div flex"><select id="'.$roleId.'" name="'.htmlspecialchars($roleName, ENT_QUOTES, CHARSET).'" class="mo-select flex-100">'."\n";
+                foreach(SchemaOrgData_OrgRelationsService::roles() as $role) {
+                    $selected = ($role === $roleValue) ? ' selected="selected"' : '';
+                    $html .= '<option value="'.$role.'"'.$selected.'>'.$lang->getLanguageHtml('label_role_'.$role).'</option>'."\n";
+                }
+                $html .= '</select></div></div></div>'."\n";
+
+                $html .= '</div>'."\n";
+            }
+        }
+
+        // Wiederverwendung des bereits am Formularanfang vorhandenen
+        // Personen-Registry-Umschalters (siehe SchemaOrgData_AdminController::
+        // renderAdminPage()) - kein Modal, kein eigener JS-Mechanismus.
+        $html .= '<p class="schemaOrgData-hint">'
+            .'<button type="button" class="mo-btn" onclick="'
+            .'document.getElementById(\'schemaOrgData_scope_container\').style.display=\'none\';'
+            .'document.getElementById(\'schemaOrgData_persons_container\').style.display=\'\';">'
+            .$lang->getLanguageHtml('button_manage_persons').'</button></p>'."\n";
+
+        $html .= '</fieldset>'."\n";
+
+        return $html;
+    }
+
+    /***************************************************************
+    *
     * Rendert das Erweiterungsfeld (JSON-Textarea) für zusätzliche,
     * im Schema nicht abgebildete Properties. Die Live-Validierung
     * (Syntax, Property-Whitelist, Format) erfolgt clientseitig via

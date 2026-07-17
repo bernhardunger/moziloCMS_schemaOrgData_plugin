@@ -110,7 +110,8 @@ final class AdminRequestHandlerTest extends TestCase {
         return $this->adminRequestHandler()->handlePostRequest(
             $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
             $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(), $this->adminPageRenderer(),
-            $this->configSaveService(), $this->importService(), $this->dataSplitHelper()
+            $this->configSaveService(), $this->importService(), $this->dataSplitHelper(),
+            new \SchemaOrgData_PersonsRegistryService(), new \SchemaOrgData_OrgRelationsService()
         );
     }
 

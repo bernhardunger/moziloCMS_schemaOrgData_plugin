@@ -72,7 +72,17 @@ label_employment_type = Employment Type
 label_hiring_organization = Hiring Organization
 placeholder_hiring_organization_name = e.g. Musterstadt Logistics Ltd.
 label_job_location = Job Location
-label_employee = Employee
+
+label_org_relations = Organization Relations
+description_org_relations = Links the global organization identity to registry persons (e.g. founders, employees, members). The relations are kept even when the schema type is changed.
+hint_org_relations_no_persons = No active person exists in the registry yet. Please add a person first.
+label_org_relation_person = Person
+label_org_relation_role = Role
+label_role_founder = Founder
+label_role_employee = Employee
+label_role_member = Member
+error_org_relation_invalid_role = Invalid role "{PARAM1}" for an organization relation.
+error_org_relation_unknown_person = The referenced person "{PARAM1}" no longer exists in the persons registry.
 
 label_location = Event Location
 label_start_date = Start (Date/Time)

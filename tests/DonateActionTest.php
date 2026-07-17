@@ -108,7 +108,8 @@ final class DonateActionTest extends TestCase {
         return (new \SchemaOrgData_ConfigSaveService())->saveConfig(
             'page', $postData, $this->settings, $this->adminLang($plugin), new \SchemaOrgData_ScopeResolver(),
             new \SchemaOrgData_SchemaRepository(), $plugin->PLUGIN_SELF_DIR, new \SchemaOrgData_Validator(),
-            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_AdminPageRenderer()
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_AdminPageRenderer(),
+            new \SchemaOrgData_PersonsRegistryService(), new \SchemaOrgData_OrgRelationsService()
         );
     }
 

@@ -85,13 +85,18 @@ final class FrontendRendererTest extends TestCase {
         return new \SchemaOrgData_PersonsRegistryService();
     }
 
+    private function orgRelationsService(): \SchemaOrgData_OrgRelationsService {
+        return new \SchemaOrgData_OrgRelationsService();
+    }
+
     private function callRenderFrontend($value, \InMemorySettings $settings): string {
         return $this->renderer()->renderFrontend(
             $value,
             new \SchemaOrgData_FrontendRequestContext(
                 $settings, $this->pluginDir, $this->scopeResolver(),
                 $this->schemaRepository(), $this->jsonLdBuilder(), $this->idReferenceService(),
-                $this->collisionDetector(), $this->urlHelper(), $this->personsRegistryService()
+                $this->collisionDetector(), $this->urlHelper(), $this->personsRegistryService(),
+                $this->orgRelationsService()
             )
         );
     }

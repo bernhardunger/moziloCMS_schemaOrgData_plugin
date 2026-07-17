@@ -40,6 +40,8 @@ class SchemaOrgData_AdminRequestHandler {
     * @param SchemaOrgData_ConfigSaveService $configSaveService für den saveConfig()-Aufruf
     * @param SchemaOrgData_ImportService $importService für handleImportAction()
     * @param SchemaOrgData_DataSplitHelper $dataSplitHelper für handleImportAction() (importJsonLd())
+    * @param SchemaOrgData_PersonsRegistryService $personsRegistryService wird an saveConfig() durchgereicht
+    * @param SchemaOrgData_OrgRelationsService $orgRelationsService wird an saveConfig() durchgereicht
     * @return ?array{success: bool, errors: string[], import?: bool}
     *
     ***************************************************************/
@@ -54,7 +56,9 @@ class SchemaOrgData_AdminRequestHandler {
         SchemaOrgData_AdminPageRenderer $adminPageRenderer,
         SchemaOrgData_ConfigSaveService $configSaveService,
         SchemaOrgData_ImportService $importService,
-        SchemaOrgData_DataSplitHelper $dataSplitHelper
+        SchemaOrgData_DataSplitHelper $dataSplitHelper,
+        SchemaOrgData_PersonsRegistryService $personsRegistryService,
+        SchemaOrgData_OrgRelationsService $orgRelationsService
     ): ?array {
         if(isset($_POST['schemaOrgData_import_action'])) {
             return $this->handleImportAction(
@@ -93,7 +97,7 @@ class SchemaOrgData_AdminRequestHandler {
 
             $result = !empty($_POST['schemaOrgData_delete_global'])
                 ? $scopeResolver->deleteConfig($settings, 'global')
-                : $configSaveService->saveConfig('global', $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer);
+                : $configSaveService->saveConfig('global', $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
 
             $success = $success && $result['success'];
             $errors = array_merge($errors, $result['errors']);
@@ -108,7 +112,7 @@ class SchemaOrgData_AdminRequestHandler {
 
             $result = !empty($_POST['schemaOrgData_delete_'.$scope])
                 ? $scopeResolver->deleteConfig($settings, $scope)
-                : $configSaveService->saveConfig($scope, $scopes[$scope], $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer);
+                : $configSaveService->saveConfig($scope, $scopes[$scope], $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
 
             $success = $success && $result['success'];
             $errors = array_merge($errors, $result['errors']);
