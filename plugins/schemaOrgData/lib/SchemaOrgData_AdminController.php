@@ -1,66 +1,66 @@
-<?php if(!defined('IS_CMS')) die();
+<?php if (!defined('IS_CMS')) die();
 
 /***************************************************************
-*
-* SchemaOrgData_AdminController
-*
-* Admin-Formular: Orchestrierung von Sektions-Rendering
-* (renderScopeSection()) und der vollständigen Admin-Seite
-* (renderAdminPage()). Die reinen Anzeige-Bausteine (Info-Block,
-* Scope-Label/Selektor, Speichern-Button-Beschriftung, Speicher-
-* Ergebnis-Hinweis, Hinweis auf vorhandenes/kollidierendes JSON-LD,
-* Ausschlussliste, Admin-CSS, Schema-Type-Auswahl) sind in
-* SchemaOrgData_AdminPageRenderer ausgelagert, die POST-Verarbeitung
-* (handlePostRequest()) in SchemaOrgData_AdminRequestHandler, die
-* feldweise Vererbungsanzeige (resolveInheritableFields()),
-* POST-Sanitizing (sanitizePostData(), sanitizeAddressData()) und
-* Speichern/Validieren (saveConfig()) in SchemaOrgData_ConfigSaveService.
-*
-* Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
-* SchemaOrgData_SchemaRepository, SchemaOrgData_FormRenderer,
-* SchemaOrgData_Validator, SchemaOrgData_OpeningHoursHelper,
-* SchemaOrgData_CollisionDetector, SchemaOrgData_IdReferenceService,
-* SchemaOrgData_AdminPageRenderer, SchemaOrgData_ConfigSaveService,
-* $this->settings, PLUGIN_SELF_DIR/PLUGIN_SELF_URL) werden je Aufruf
-* als Parameter übergeben, nicht im Konstruktor eingefroren (siehe
-* README.md, Abschnitt "Architektur").
-*
-***************************************************************/
+ *
+ * SchemaOrgData_AdminController
+ *
+ * Admin-Formular: Orchestrierung von Sektions-Rendering
+ * (renderScopeSection()) und der vollständigen Admin-Seite
+ * (renderAdminPage()). Die reinen Anzeige-Bausteine (Info-Block,
+ * Scope-Label/Selektor, Speichern-Button-Beschriftung, Speicher-
+ * Ergebnis-Hinweis, Hinweis auf vorhandenes/kollidierendes JSON-LD,
+ * Ausschlussliste, Admin-CSS, Schema-Type-Auswahl) sind in
+ * SchemaOrgData_AdminPageRenderer ausgelagert, die POST-Verarbeitung
+ * (handlePostRequest()) in SchemaOrgData_AdminRequestHandler, die
+ * feldweise Vererbungsanzeige (resolveInheritableFields()),
+ * POST-Sanitizing (sanitizePostData(), sanitizeAddressData()) und
+ * Speichern/Validieren (saveConfig()) in SchemaOrgData_ConfigSaveService.
+ *
+ * Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
+ * SchemaOrgData_SchemaRepository, SchemaOrgData_FormRenderer,
+ * SchemaOrgData_Validator, SchemaOrgData_OpeningHoursHelper,
+ * SchemaOrgData_CollisionDetector, SchemaOrgData_IdReferenceService,
+ * SchemaOrgData_AdminPageRenderer, SchemaOrgData_ConfigSaveService,
+ * $this->settings, PLUGIN_SELF_DIR/PLUGIN_SELF_URL) werden je Aufruf
+ * als Parameter übergeben, nicht im Konstruktor eingefroren (siehe
+ * README.md, Abschnitt "Architektur").
+ *
+ ***************************************************************/
 class SchemaOrgData_AdminController {
 
     /***************************************************************
-    *
-    * Rendert den vollständigen Konfigurationsblock einer
-    * Geltungsebene: Info-Block, Hinweis auf vorhandenes JSON-LD
-    * (siehe renderExistingJsonLdNotice), Type-Auswahl,
-    * Type-Kollisionshinweis, Formularfelder je verfügbarem Type
-    * (sichtbar nur für den aktuell gewählten Type, Umschaltung
-    * erfolgt clientseitig) sowie - nur für "global" - die
-    * Ausschlussliste.
-    *
-    * Die Sektion erhält data-scope-cat/data-scope-page Attribute,
-    * über die initScopeSelector() (validator.js) sie dem
-    * passenden Button im Scope-Selektor zuordnet, sowie
-    * data-scope-label (siehe buildScopeLabel()) für den Hinweis
-    * auf ungespeicherte Eingaben beim Scope-Wechsel. Ist $active
-    * false, wird die Sektion initial mit style="display:none"
-    * ausgeblendet und alle enthaltenen Formularelemente erhalten
-    * disabled="disabled" (JS-loses Laden zeigt dennoch die aktive
-    * Sektion, initScopeSelector toggled disabled beim Umschalten).
-    *
-    * @param string $scope 'global' | 'category' | 'page'
-    * @param bool   $active ob diese Sektion initial sichtbar ist
-    * @param string|null $idPrefix Präfix für HTML-IDs dieser Sektion
-    *                     (z. B. "global", "cat_Startseite"; Fallback: $scope)
-    * @param bool $saveFailed Sektion aus POST-Daten statt gespeicherter
-    *        Konfiguration befüllen - trotz des Namens nicht nur bei
-    *        fehlgeschlagenem Speichern true, sondern auch nach einem
-    *        (erfolgreichen oder fehlgeschlagenen) Import (siehe
-    *        renderAdminPage(), $usePostData)
-    * @param SchemaOrgData_AdminRequestContext $context Laufzeit-Kollaboratoren (siehe dort)
-    * @return string HTML-Snippet
-    *
-    ***************************************************************/
+     *
+     * Rendert den vollständigen Konfigurationsblock einer
+     * Geltungsebene: Info-Block, Hinweis auf vorhandenes JSON-LD
+     * (siehe renderExistingJsonLdNotice), Type-Auswahl,
+     * Type-Kollisionshinweis, Formularfelder je verfügbarem Type
+     * (sichtbar nur für den aktuell gewählten Type, Umschaltung
+     * erfolgt clientseitig) sowie - nur für "global" - die
+     * Ausschlussliste.
+     *
+     * Die Sektion erhält data-scope-cat/data-scope-page Attribute,
+     * über die initScopeSelector() (validator.js) sie dem
+     * passenden Button im Scope-Selektor zuordnet, sowie
+     * data-scope-label (siehe buildScopeLabel()) für den Hinweis
+     * auf ungespeicherte Eingaben beim Scope-Wechsel. Ist $active
+     * false, wird die Sektion initial mit style="display:none"
+     * ausgeblendet und alle enthaltenen Formularelemente erhalten
+     * disabled="disabled" (JS-loses Laden zeigt dennoch die aktive
+     * Sektion, initScopeSelector toggled disabled beim Umschalten).
+     *
+     * @param string $scope 'global' | 'category' | 'page'
+     * @param bool   $active ob diese Sektion initial sichtbar ist
+     * @param string|null $idPrefix Präfix für HTML-IDs dieser Sektion
+     *                     (z. B. "global", "cat_Startseite"; Fallback: $scope)
+     * @param bool $saveFailed Sektion aus POST-Daten statt gespeicherter
+     *        Konfiguration befüllen - trotz des Namens nicht nur bei
+     *        fehlgeschlagenem Speichern true, sondern auch nach einem
+     *        (erfolgreichen oder fehlgeschlagenen) Import (siehe
+     *        renderAdminPage(), $usePostData)
+     * @param SchemaOrgData_AdminRequestContext $context Laufzeit-Kollaboratoren (siehe dort)
+     * @return string HTML-Snippet
+     *
+     ***************************************************************/
     public function renderScopeSection(
         string $scope,
         ?string $cat,
@@ -96,15 +96,15 @@ class SchemaOrgData_AdminController {
         // befüllen, damit fehlerhafte Eingaben nicht verloren gehen
         // (siehe renderAdminPage()).
         $postScope = null;
-        if($active and $saveFailed and is_array($_POST['schemaOrgData'][$scope] ?? null)) {
+        if ($active and $saveFailed and is_array($_POST['schemaOrgData'][$scope] ?? null)) {
             $postScope = $_POST['schemaOrgData'][$scope];
         }
 
         // verfügbare Schema-Types für diesen Geltungsbereich ermitteln
         $availableTypes = [];
-        foreach($schemaRepository->getAvailableSchemaTypes($pluginSelfDir) as $type) {
+        foreach ($schemaRepository->getAvailableSchemaTypes($pluginSelfDir) as $type) {
             $schema = $schemaRepository->loadSchema($pluginSelfDir, $type);
-            if($schema !== null and in_array($scope, $schema['ui:scopes'] ?? [], true)) {
+            if ($schema !== null and in_array($scope, $schema['ui:scopes'] ?? [], true)) {
                 $availableTypes[$type] = $schema;
             }
         }
@@ -112,17 +112,17 @@ class SchemaOrgData_AdminController {
         // LocalBusiness-Familie: bei Kategorie/Seite nur den bei Global
         // aktiven Familien-Type anbieten.
         $familyFilterGlobalLabel = null;
-        if($scope !== 'global') {
+        if ($scope !== 'global') {
             $globalConfig = $scopeResolver->loadScopeConfig($settings, 'global');
             $globalActiveType = $schemaRepository->resolveActiveType($globalConfig, $pluginSelfDir);
             $globalSchema = $globalActiveType !== null
                 ? $schemaRepository->loadSchema($pluginSelfDir, $globalActiveType) : null;
             $globalFamily = $globalSchema['ui:family'] ?? null;
 
-            if($globalFamily !== null) {
-                foreach($availableTypes as $type => $schema) {
+            if ($globalFamily !== null) {
+                foreach ($availableTypes as $type => $schema) {
                     $family = $schema['ui:family'] ?? null;
-                    if($family === $globalFamily and $type !== $globalActiveType) {
+                    if ($family === $globalFamily and $type !== $globalActiveType) {
                         unset($availableTypes[$type]);
                         $familyFilterGlobalLabel = $lang->getLanguageHtml($globalSchema['ui:typeLabel'] ?? $globalActiveType);
                     }
@@ -134,15 +134,15 @@ class SchemaOrgData_AdminController {
         // Speichern der vom Nutzer im Formular gewählte Type (POST), sonst
         // der erste bekannte Type in $config
         $selectedType = null;
-        if($postScope !== null) {
+        if ($postScope !== null) {
             $postedType = (string) ($postScope['type'] ?? '');
-            if(isset($availableTypes[$postedType])) {
+            if (isset($availableTypes[$postedType])) {
                 $selectedType = $postedType;
             }
         }
-        if($selectedType === null) {
-            foreach(array_keys($config) as $type) {
-                if(isset($availableTypes[$type])) {
+        if ($selectedType === null) {
+            foreach (array_keys($config) as $type) {
+                if (isset($availableTypes[$type])) {
                     $selectedType = $type;
                     break;
                 }
@@ -163,39 +163,44 @@ class SchemaOrgData_AdminController {
             $lang
         );
         $displayStyle = $active ? '' : ' style="display:none"';
-        $html = '<div class="schemaOrgData-scope card mb" data-scope="'.$scope.'"'
-              . ' data-scope-cat="'.$catAttr.'" data-scope-page="'.$pageAttr.'"'
-              . ' data-scope-label="'.$labelAttr.'" data-save-label="'.$saveLabelAttr.'"'.$displayStyle.'>'."\n";
-        $html .= '<h3>'.$lang->getLanguageHtml('scope_'.$scope).'</h3>'."\n";
+        $html = '<div class="schemaOrgData-scope card mb" data-scope="' . $scope . '"'
+            . ' data-scope-cat="' . $catAttr . '" data-scope-page="' . $pageAttr . '"'
+            . ' data-scope-label="' . $labelAttr . '" data-save-label="' . $saveLabelAttr . '"' . $displayStyle . '>' . "\n";
+        $html .= '<h3>' . $lang->getLanguageHtml('scope_' . $scope) . '</h3>' . "\n";
 
         $html .= $adminPageRenderer->renderInfoBlock($scope, $lang);
 
         $html .= $adminPageRenderer->renderExistingJsonLdNotice($scope, $cat, $page, $lang, $scopeResolver, $settings);
 
-        if($selectedType !== null) {
+        if ($selectedType !== null) {
             $html .= $adminPageRenderer->renderCollisionNotice($scope, $cat, $page, $selectedType, $lang, $scopeResolver, $settings);
         }
 
         $html .= '<div class="c-content schemaOrgData-field-row schemaOrgData-type-selector-row">'
-            .'<div class="mo-in-li-l"><label for="schemaOrgData_'.$idPrefix.'_type">'.$lang->getLanguageHtml('label_schema_type').'</label></div>'
-            .'<div class="mo-in-li-r">'.$adminPageRenderer->renderTypeSelector($scope, $availableTypes, $selectedType, $idPrefix, $lang).'</div>'
-            .'</div>'."\n";
+            . '<div class="mo-in-li-l"><label for="schemaOrgData_' . $idPrefix . '_type">' . $lang->getLanguageHtml('label_schema_type') . '</label></div>'
+            . '<div class="mo-in-li-r">' . $adminPageRenderer->renderTypeSelector($scope, $availableTypes, $selectedType, $idPrefix, $lang) . '</div>'
+            . '</div>' . "\n";
 
-        if($familyFilterGlobalLabel !== null) {
+        if ($familyFilterGlobalLabel !== null) {
             $html .= $adminPageRenderer->renderFamilyFilterNotice($familyFilterGlobalLabel, $lang);
         }
 
         // @id-Referenz-Fragmente (id_reference/id_reference_or_literal-Widgets)
         // je Sektion einmalig ermitteln - siehe SchemaOrgData_IdReferenceService.
         $availableFragments = $idReferenceService->resolveAvailableGlobalFragments(
-            $scopeResolver, $schemaRepository, $settings, $pluginSelfDir, $lang, $personsRegistryService
+            $scopeResolver,
+            $schemaRepository,
+            $settings,
+            $pluginSelfDir,
+            $lang,
+            $personsRegistryService
         );
 
-        foreach($availableTypes as $type => $schema) {
+        foreach ($availableTypes as $type => $schema) {
             $display = ($type === $selectedType) ? '' : ' style="display:none"';
             $extensionOverride = null;
 
-            if($postScope !== null and $type === $selectedType) {
+            if ($postScope !== null and $type === $selectedType) {
                 $postData = is_array($postScope['data'] ?? null) ? $postScope['data'] : [];
                 $data = $configSaveService->sanitizePostData($postData, $schema, $schemaRepository, $openingHoursHelper, $validator);
                 $extensionOverride = (string) ($postScope['extension'][$type] ?? '');
@@ -210,10 +215,10 @@ class SchemaOrgData_AdminController {
                 // Paar-Pflicht blockiert (nur eines der beiden Felder gefüllt),
                 // ginge ohne diesen Override auch der bereits gültige Wert des
                 // angefassten Feldes beim Re-Display verloren (Regressionsfall 1.15).
-                foreach($schema['properties'] ?? [] as $propName => $propSchema) {
+                foreach ($schema['properties'] ?? [] as $propName => $propSchema) {
                     $propSchema = $schemaRepository->resolveSchemaRef($propSchema, $schema);
                     $rawWidget = $propSchema['ui:widget'] ?? '';
-                    if(($rawWidget === 'opening_hours' or $rawWidget === 'geo') and is_array($postData[$propName] ?? null)) {
+                    if (($rawWidget === 'opening_hours' or $rawWidget === 'geo') and is_array($postData[$propName] ?? null)) {
                         $data[$propName] = $postData[$propName];
                     }
                 }
@@ -221,15 +226,28 @@ class SchemaOrgData_AdminController {
                 $data = is_array($config[$type] ?? null) ? $config[$type] : [];
             }
 
-            $typeIdPrefix = $idPrefix.'_'.$type;
+            $typeIdPrefix = $idPrefix . '_' . $type;
             $inheritable = $configSaveService->resolveInheritableFields($scope, $cat, $page, $type, $lang, $scopeResolver, $settings, $adminPageRenderer);
 
-            $html .= '<div class="schemaOrgData-type-fields" data-schema-type="'.htmlspecialchars($type, ENT_QUOTES, CHARSET).'"'.$display.'>'."\n";
+            $html .= '<div class="schemaOrgData-type-fields" data-schema-type="' . htmlspecialchars($type, ENT_QUOTES, CHARSET) . '"' . $display . '>' . "\n";
             $html .= $formRenderer->renderTypeFields(
-                $scope, $type, $schema, $data, $typeIdPrefix, $extensionOverride, $inheritable,
-                $dataSplitHelper, $lang, $schemaRepository, $urlHelper,
-                $pluginLang, $pluginSelfUrl, $openingHoursHelper, $validator,
-                $weekdayLang, $availableFragments,
+                $scope,
+                $type,
+                $schema,
+                $data,
+                $typeIdPrefix,
+                $extensionOverride,
+                $inheritable,
+                $dataSplitHelper,
+                $lang,
+                $schemaRepository,
+                $urlHelper,
+                $pluginLang,
+                $pluginSelfUrl,
+                $openingHoursHelper,
+                $validator,
+                $weekdayLang,
+                $availableFragments,
             );
 
             // Organisations-Relationen (founder/employee/member, siehe
@@ -240,14 +258,14 @@ class SchemaOrgData_AdminController {
             // innerhalb des .schemaOrgData-type-fields-Wrappers, damit
             // applyTypeFieldsState() (validator.js) die Felder bei
             // Typ-Wechsel korrekt (de)aktiviert (last-value-wins-Schutz).
-            if($scope === 'global' and ($schema['ui:idFragment'] ?? '') === 'organization') {
+            if ($scope === 'global' and ($schema['ui:idFragment'] ?? '') === 'organization') {
                 $orgRelationsRaw = ($postScope !== null and $type === $selectedType)
                     ? (is_array($postScope['org_relations'] ?? null) ? $postScope['org_relations'] : [])
                     : (is_array($config['org_relations'] ?? null) ? $config['org_relations'] : []);
 
                 $availablePersons = [];
-                foreach($availableFragments as $fragment => $fragLabel) {
-                    if(str_starts_with($fragment, 'person-')) {
+                foreach ($availableFragments as $fragment => $fragLabel) {
+                    if (str_starts_with($fragment, 'person-')) {
                         $availablePersons[substr($fragment, strlen('person-'))] = $fragLabel;
                     }
                 }
@@ -255,15 +273,15 @@ class SchemaOrgData_AdminController {
                 $html .= $formRenderer->renderOrgRelationsWidget($scope, $orgRelationsRaw, $typeIdPrefix, $lang, $availablePersons);
             }
 
-            $html .= '</div>'."\n";
+            $html .= '</div>' . "\n";
         }
 
-        if($scope === 'global') {
-            if($postScope !== null) {
+        if ($scope === 'global') {
+            if ($postScope !== null) {
                 $excludedCats = [];
-                foreach((array) ($postScope['excluded_cats'] ?? []) as $excludedCat) {
+                foreach ((array) ($postScope['excluded_cats'] ?? []) as $excludedCat) {
                     $excludedCat = $scopeResolver->sanitizeScopeIdentifier(trim((string) $excludedCat));
-                    if($excludedCat !== '') {
+                    if ($excludedCat !== '') {
                         $excludedCats[] = $excludedCat;
                     }
                 }
@@ -277,12 +295,12 @@ class SchemaOrgData_AdminController {
             $html .= $adminPageRenderer->renderExcludedCatsField($excludedCats, $debugOutput, $lang);
         }
 
-        $html .= '</div>'."\n";
+        $html .= '</div>' . "\n";
 
         // Inaktive Sektionen werden vorgerendert, aber deaktiviert,
         // damit beim Speichern nur die aktive Sektion übertragen wird
         // (initScopeSelector aktiviert/deaktiviert beim Umschalten erneut)
-        if(!$active) {
+        if (!$active) {
             $html = (string) preg_replace('/<(input|select|textarea)(\s)/i', '<$1 disabled="disabled"$2', $html);
         }
 
@@ -290,39 +308,39 @@ class SchemaOrgData_AdminController {
     }
 
     /***************************************************************
-    *
-    * Rendert die vollständige Admin-UI (schema-getriebenes
-    * Konfigurationsformular, Geltungsbereiche Global / Kategorie /
-    * Seite) im PLUGINADMIN-Kontext (Iframe-Dialog der Plugin-
-    * Verwaltung). Wird von getContent() zurückgegeben, sobald
-    * PLUGINADMIN definiert ist.
-    *
-    * Enthält $_POST-Daten (Formular wurde abgeschickt), werden diese
-    * zuerst über handlePostRequest() validiert und gespeichert; das
-    * Ergebnis wird als Hinweisblock (renderSaveResultNotice())
-    * oberhalb der Geltungsbereiche ausgegeben.
-    *
-    * Das Formular wird mit einem echten <form>-Element ausgegeben
-    * (analog MetaKeywordsDescription - PLUGINADMIN und ACTION sind
-    * im Iframe-Kontext definiert): die moziloCMS-Pflichtfelder
-    * "pluginadmin" und "action" werden als hidden inputs mitgesendet,
-    * der Speichern-Button ist ein echter <button type="submit">.
-    * moziloCMS speichert $this->settings nach Rückgabe dieser Methode
-    * automatisch - saveConfig() (aufgerufen über handlePostRequest())
-    * persistiert daher zuverlässig über $this->settings->set(), ohne
-    * eigenen JS-Workaround.
-    *
-    * Damit der Scope-Wechsel ohne Page-Reload funktioniert, werden
-    * alle Geltungsbereiche (Global + alle Kategorien + alle Seiten
-    * aller Kategorien) vorgerendert. Nur die aktive Sektion ist
-    * sichtbar und ihre Felder sind nicht disabled;
-    * initScopeSelector() (validator.js) schaltet beim Wechsel des
-    * Geltungsbereichs Sichtbarkeit und disabled-Status um, damit
-    * beim Speichern nur die aktive Sektion übertragen wird.
-    *
-    * @param SchemaOrgData_AdminRequestContext $context Laufzeit-Kollaboratoren (siehe dort)
-    *
-    ***************************************************************/
+     *
+     * Rendert die vollständige Admin-UI (schema-getriebenes
+     * Konfigurationsformular, Geltungsbereiche Global / Kategorie /
+     * Seite) im PLUGINADMIN-Kontext (Iframe-Dialog der Plugin-
+     * Verwaltung). Wird von getContent() zurückgegeben, sobald
+     * PLUGINADMIN definiert ist.
+     *
+     * Enthält $_POST-Daten (Formular wurde abgeschickt), werden diese
+     * zuerst über handlePostRequest() validiert und gespeichert; das
+     * Ergebnis wird als Hinweisblock (renderSaveResultNotice())
+     * oberhalb der Geltungsbereiche ausgegeben.
+     *
+     * Das Formular wird mit einem echten <form>-Element ausgegeben
+     * (analog MetaKeywordsDescription - PLUGINADMIN und ACTION sind
+     * im Iframe-Kontext definiert): die moziloCMS-Pflichtfelder
+     * "pluginadmin" und "action" werden als hidden inputs mitgesendet,
+     * der Speichern-Button ist ein echter <button type="submit">.
+     * moziloCMS speichert $this->settings nach Rückgabe dieser Methode
+     * automatisch - saveConfig() (aufgerufen über handlePostRequest())
+     * persistiert daher zuverlässig über $this->settings->set(), ohne
+     * eigenen JS-Workaround.
+     *
+     * Damit der Scope-Wechsel ohne Page-Reload funktioniert, werden
+     * alle Geltungsbereiche (Global + alle Kategorien + alle Seiten
+     * aller Kategorien) vorgerendert. Nur die aktive Sektion ist
+     * sichtbar und ihre Felder sind nicht disabled;
+     * initScopeSelector() (validator.js) schaltet beim Wechsel des
+     * Geltungsbereichs Sichtbarkeit und disabled-Status um, damit
+     * beim Speichern nur die aktive Sektion übertragen wird.
+     *
+     * @param SchemaOrgData_AdminRequestContext $context Laufzeit-Kollaboratoren (siehe dort)
+     *
+     ***************************************************************/
     public function renderAdminPage(SchemaOrgData_AdminRequestContext $context): string {
         global $CatPage;
         global $CMS_CONF;
@@ -352,13 +370,26 @@ class SchemaOrgData_AdminController {
         // werden in diesem Fall bewusst ignoriert (unverändertes Redisplay).
         $isPersonsAction = isset($_POST['schemaOrgData_persons_action']);
         $personsSaveResult = $isPersonsAction ? $context->personsAdminRequestHandler->handlePersonsPostRequest(
-            $settings, $lang, $context->personsRegistryService, $validator
+            $settings,
+            $lang,
+            $context->personsRegistryService,
+            $validator
         ) : null;
 
         $saveResult = (!$isPersonsAction and $_POST !== []) ? $adminRequestHandler->handlePostRequest(
-            $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper,
-            $adminPageRenderer, $configSaveService, $importService, $dataSplitHelper,
-            $context->personsRegistryService, $context->orgRelationsService
+            $settings,
+            $lang,
+            $scopeResolver,
+            $schemaRepository,
+            $pluginSelfDir,
+            $validator,
+            $openingHoursHelper,
+            $adminPageRenderer,
+            $configSaveService,
+            $importService,
+            $dataSplitHelper,
+            $context->personsRegistryService,
+            $context->orgRelationsService
         ) : null;
 
         // Bei fehlgeschlagenem Speichern wird die aktive Sektion in
@@ -396,7 +427,7 @@ class SchemaOrgData_AdminController {
         $personsActiveView = $personsAdminRenderer->listViewId();
         $personsRedisplayData = [];
 
-        if($personsSaveResult !== null and $personsSaveResult['success'] === false) {
+        if ($personsSaveResult !== null and $personsSaveResult['success'] === false) {
             $personsRedisplayData = is_array($_POST['schemaOrgData_persons_data'] ?? null) ? $_POST['schemaOrgData_persons_data'] : [];
             $personsActiveView = ($personsSaveResult['action'] === 'update' and $personsSaveResult['slug'] !== null)
                 ? $personsAdminRenderer->buildEditViewId($personsSaveResult['slug'])
@@ -406,21 +437,21 @@ class SchemaOrgData_AdminController {
         $formAction = URL_BASE . ADMIN_DIR_NAME . '/index.php';
         $saveButtonLabel = $adminPageRenderer->buildSaveButtonLabel($selectedCat, $selectedPage, $lang);
 
-        $html = '<style>'.$adminPageRenderer->getAdminCss().'</style>'."\n";
-        $html .= '<form method="POST" action="'.htmlspecialchars($formAction, ENT_QUOTES, CHARSET).'">'."\n";
-        $html .= '<input type="hidden" name="pluginadmin" value="'.PLUGINADMIN.'" />'."\n";
-        $html .= '<input type="hidden" name="action" value="'.ACTION.'" />'."\n";
-        $html .= '<div class="schemaOrgData-admin">'."\n";
+        $html = '<style>' . $adminPageRenderer->getAdminCss() . '</style>' . "\n";
+        $html .= '<form method="POST" action="' . htmlspecialchars($formAction, ENT_QUOTES, CHARSET) . '">' . "\n";
+        $html .= '<input type="hidden" name="pluginadmin" value="' . PLUGINADMIN . '" />' . "\n";
+        $html .= '<input type="hidden" name="action" value="' . ACTION . '" />' . "\n";
+        $html .= '<div class="schemaOrgData-admin">' . "\n";
 
-        if($saveResult !== null) {
+        if ($saveResult !== null) {
             // Import-Erfolg zeigt einen eigenen Hinweis statt der
             // Speicher-Erfolgsmeldung - es wurde nichts gespeichert.
             $successMessageKey = $importApplied ? 'notice_import_success' : 'notice_config_saved';
             $html .= $adminPageRenderer->renderSaveResultNotice($saveResult, $lang, $successMessageKey);
         }
 
-        if($personsSaveResult !== null) {
-            $personsSuccessKey = match($personsSaveResult['action']) {
+        if ($personsSaveResult !== null) {
+            $personsSuccessKey = match ($personsSaveResult['action']) {
                 'create' => 'notice_person_created',
                 'update' => 'notice_person_updated',
                 'delete' => 'notice_person_deleted',
@@ -433,26 +464,26 @@ class SchemaOrgData_AdminController {
         // Kategorie/Seite) aus und den Personen-Bereich ein bzw. umgekehrt -
         // vollständig entkoppelt von initScopeSelector() (siehe
         // SchemaOrgData_PersonsAdminRenderer, Docblock).
-        $html .= '<div class="schemaOrgData-persons-toggle">'."\n";
+        $html .= '<div class="schemaOrgData-persons-toggle">' . "\n";
         $html .= '<button type="button" id="schemaOrgData_persons_toggle_btn" class="mo-btn" '
-            .'onclick="document.getElementById(\'schemaOrgData_scope_container\').style.display=\'none\';'
-            .'document.getElementById(\'schemaOrgData_persons_container\').style.display=\'\';">'
-            .$lang->getLanguageHtml('button_manage_persons').'</button>'."\n";
+            . 'onclick="document.getElementById(\'schemaOrgData_scope_container\').style.display=\'none\';'
+            . 'document.getElementById(\'schemaOrgData_persons_container\').style.display=\'\';">'
+            . $lang->getLanguageHtml('button_manage_persons') . '</button>' . "\n";
         $html .= '<button type="button" id="schemaOrgData_persons_back_btn" class="mo-btn" '
-            .'onclick="document.getElementById(\'schemaOrgData_persons_container\').style.display=\'none\';'
-            .'document.getElementById(\'schemaOrgData_scope_container\').style.display=\'\';">'
-            .$lang->getLanguageHtml('button_back_to_scopes').'</button>'."\n";
-        $html .= '</div>'."\n";
+            . 'onclick="document.getElementById(\'schemaOrgData_persons_container\').style.display=\'none\';'
+            . 'document.getElementById(\'schemaOrgData_scope_container\').style.display=\'\';">'
+            . $lang->getLanguageHtml('button_back_to_scopes') . '</button>' . "\n";
+        $html .= '</div>' . "\n";
 
-        $html .= '<div id="schemaOrgData_scope_container"'.($isPersonsAction ? ' style="display:none"' : '').'>'."\n";
+        $html .= '<div id="schemaOrgData_scope_container"' . ($isPersonsAction ? ' style="display:none"' : '') . '>' . "\n";
 
         // Zusätzlicher Speichern-Button am Formularanfang (oben rechts) -
         // derselbe Submit wie der Button am Formularende, damit lange
         // Formulare nicht erst bis zum Ende gescrollt werden müssen
-        $html .= '<div class="schemaOrgData-save-bar schemaOrgData-save-bar--top">'."\n";
+        $html .= '<div class="schemaOrgData-save-bar schemaOrgData-save-bar--top">' . "\n";
         $html .= '<button type="submit" class="mo-btn mo-btn--primary">'
-               . $saveButtonLabel.'</button>'."\n";
-        $html .= '</div>'."\n";
+            . $saveButtonLabel . '</button>' . "\n";
+        $html .= '</div>' . "\n";
 
         // Scope-Selektor rendern
         $html .= $adminPageRenderer->renderScopeSelector($selectedCat, $selectedPage, $lang);
@@ -471,7 +502,7 @@ class SchemaOrgData_AdminController {
         // schreibt im IS_ADMIN-Kontext auf die Platte (im Frontend war
         // set() ein No-Op). Reihenfolge: erst saveScopeMeta(), dann
         // renderScopeSection(), damit renderExistingJsonLdNotice() das
-        // frisch gesetzte Flag und den Inhalt (Autofill-Button) sieht.
+        // frisch gesetzte Flag sieht.
         $templateBlocks = array_values(array_map('trim', $collisionDetector->extractExistingJsonLdBlocksFromTemplateAdmin($CMS_CONF)));
         $templateHasJsonLd = !empty($templateBlocks);
         $templateContent = implode("\n\n", $templateBlocks);
@@ -482,9 +513,11 @@ class SchemaOrgData_AdminController {
         // Reihenfolge-Änderung, bei der Flag und implodierter Content
         // gleich blieben.
         $metaGlobal = $scopeResolver->loadScopeMeta($settings, 'global');
-        if ($metaGlobal['existing_jsonld'] !== $templateHasJsonLd
+        if (
+            $metaGlobal['existing_jsonld'] !== $templateHasJsonLd
             || $metaGlobal['existing_jsonld_content'] !== $templateContent
-            || $metaGlobal['existing_jsonld_blocks'] !== $templateBlocks) {
+            || $metaGlobal['existing_jsonld_blocks'] !== $templateBlocks
+        ) {
             $scopeResolver->saveScopeMeta($settings, 'global', [
                 'existing_jsonld' => $templateHasJsonLd,
                 'existing_jsonld_content' => $templateContent,
@@ -494,7 +527,9 @@ class SchemaOrgData_AdminController {
 
         // Global immer rendern (aktiv wenn keine Kategorie gewählt)
         $html .= $this->renderScopeSection(
-            'global', null, null,
+            'global',
+            null,
+            null,
             active: $selectedCat === null,
             idPrefix: 'global',
             saveFailed: $usePostData,
@@ -518,7 +553,9 @@ class SchemaOrgData_AdminController {
             $safeCat   = $scopeResolver->sanitizeScopeIdentifier($cat);
             $catActive = ($safeCat === $selectedCat && $selectedPage === null);
             $html .= $this->renderScopeSection(
-                'category', $cat, null,
+                'category',
+                $cat,
+                null,
                 active: $catActive,
                 idPrefix: 'cat_' . $safeCat,
                 saveFailed: $usePostData,
@@ -526,14 +563,18 @@ class SchemaOrgData_AdminController {
             );
 
             // Seiten aller Kategorien vorrendern - inaktive erhalten display:none
-            if (isset($CatPage) && is_object($CatPage)
-                && method_exists($CatPage, 'get_PageArray')) {
+            if (
+                isset($CatPage) && is_object($CatPage)
+                && method_exists($CatPage, 'get_PageArray')
+            ) {
                 $pages = $CatPage->get_PageArray($cat, [EXT_PAGE, EXT_HIDDEN], true);
                 foreach ($pages as $page) {
                     $safePage   = $scopeResolver->sanitizeScopeIdentifier($page);
                     $pageActive = ($safeCat === $selectedCat && $safePage === $selectedPage);
                     $html .= $this->renderScopeSection(
-                        'page', $cat, $page,
+                        'page',
+                        $cat,
+                        $page,
                         active: $pageActive,
                         idPrefix: 'page_' . $safeCat . '_' . $safePage,
                         saveFailed: $usePostData,
@@ -547,29 +588,37 @@ class SchemaOrgData_AdminController {
         // Scope-Wechsel (initScopeSelector); resolveScopeIdentifiers()
         // wertet sie für den POST-Geltungsbereich aus.
         $html .= '<input type="hidden" id="schemaOrgData_hidden_cat"'
-               . ' name="schemaOrgData_cat"'
-               . ' value="'.htmlspecialchars($selectedCat ?? '', ENT_QUOTES, CHARSET).'" />'."\n";
+            . ' name="schemaOrgData_cat"'
+            . ' value="' . htmlspecialchars($selectedCat ?? '', ENT_QUOTES, CHARSET) . '" />' . "\n";
         $html .= '<input type="hidden" id="schemaOrgData_hidden_page"'
-               . ' name="schemaOrgData_page"'
-               . ' value="'.htmlspecialchars($selectedPage ?? '', ENT_QUOTES, CHARSET).'" />'."\n";
+            . ' name="schemaOrgData_page"'
+            . ' value="' . htmlspecialchars($selectedPage ?? '', ENT_QUOTES, CHARSET) . '" />' . "\n";
 
         // Speichern-Button: echter Submit-Button innerhalb des
         // umgebenden <form> - kein verschachteltes Formular und kein
         // JS-Workaround mehr nötig
-        $html .= '<div class="schemaOrgData-save-bar">'."\n";
+        $html .= '<div class="schemaOrgData-save-bar">' . "\n";
         $html .= '<button type="submit" class="mo-btn mo-btn--primary">'
-               . $saveButtonLabel.'</button>'."\n";
-        $html .= '</div>'."\n";
+            . $saveButtonLabel . '</button>' . "\n";
+        $html .= '</div>' . "\n";
 
-        $html .= '</div>'."\n"; // schließt #schemaOrgData_scope_container
+        $html .= '</div>' . "\n"; // schließt #schemaOrgData_scope_container
 
         $html .= $personsAdminRenderer->renderPersonsSection(
-            $settings, $lang, $context->personsRegistryService, $validator, $context->urlHelper, $context->formRenderer,
-            $isPersonsAction, $personsActiveView, $personsRedisplayData, $personsSaveResult['errors'] ?? []
+            $settings,
+            $lang,
+            $context->personsRegistryService,
+            $validator,
+            $context->urlHelper,
+            $context->formRenderer,
+            $isPersonsAction,
+            $personsActiveView,
+            $personsRedisplayData,
+            $personsSaveResult['errors'] ?? []
         );
 
-        $html .= '</div>'."\n"; // schließt .schemaOrgData-admin
-        $html .= '</form>'."\n";
+        $html .= '</div>' . "\n"; // schließt .schemaOrgData-admin
+        $html .= '</form>' . "\n";
 
         // Lokalisierte Texte für die clientseitige Validierung (validator.js)
         $messages = [
@@ -609,36 +658,36 @@ class SchemaOrgData_AdminController {
         // Härtungsmuster zu buildJsonLdScript()/buildDebugWidget(), siehe
         // README.md, Abschnitt "Sicherheit").
         $html .= '<script>window.schemaOrgDataMessages = '
-            .json_encode($messages, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG).';</script>'."\n";
-        $html .= '<script src="'.$pluginSelfUrl.'js/ajv.min.js?v='.$this->resolveAssetCacheBuster($pluginSelfDir, 'js/ajv.min.js').'"></script>'."\n";
-        $html .= '<script src="'.$pluginSelfUrl.'js/validator.js?v='.$this->resolveAssetCacheBuster($pluginSelfDir, 'js/validator.js').'"></script>'."\n";
+            . json_encode($messages, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . ';</script>' . "\n";
+        $html .= '<script src="' . $pluginSelfUrl . 'js/ajv.min.js?v=' . $this->resolveAssetCacheBuster($pluginSelfDir, 'js/ajv.min.js') . '"></script>' . "\n";
+        $html .= '<script src="' . $pluginSelfUrl . 'js/validator.js?v=' . $this->resolveAssetCacheBuster($pluginSelfDir, 'js/validator.js') . '"></script>' . "\n";
         $html .= '<script>document.addEventListener("DOMContentLoaded", function () {'
-            .' if(window.schemaOrgDataValidator) { window.schemaOrgDataValidator.initAdminForm(); }'
-            .' });</script>'."\n";
+            . ' if(window.schemaOrgDataValidator) { window.schemaOrgDataValidator.initAdminForm(); }'
+            . ' });</script>' . "\n";
 
         return $html;
     }
 
     /***************************************************************
-    *
-    * Cache-Busting-Query-Parameter für ein ausgeliefertes JS-Asset
-    * (js/ajv.min.js, js/validator.js): liefert filemtime() der
-    * tatsächlich auf dem Server liegenden Datei, damit ein Browser
-    * nach jedem Deployment (FTP-Upload, ZIP-Install) automatisch die
-    * neue Fassung nachlädt statt eine bereits gecachte, veraltete
-    * Version weiterzuverwenden - ohne diesen Parameter blieben
-    * <script src="...js/validator.js">-Requests ohne jedes
-    * Cache-Invalidierungssignal (Root Cause eines RC-Bugs, bei dem
-    * eine neue Live-Validierung im Browser nicht ankam, obwohl PHP-
-    * und Jest-Tests bereits grün waren). Fallback "0", falls die
-    * Datei nicht lesbar ist (z. B. isoliertes Testfixture).
-    *
-    * @param string $pluginSelfDir Basis-Verzeichnis des Plugins (PLUGIN_SELF_DIR)
-    * @param string $relativeAssetPath Pfad relativ zu $pluginSelfDir, z. B. "js/validator.js"
-    *
-    ***************************************************************/
+     *
+     * Cache-Busting-Query-Parameter für ein ausgeliefertes JS-Asset
+     * (js/ajv.min.js, js/validator.js): liefert filemtime() der
+     * tatsächlich auf dem Server liegenden Datei, damit ein Browser
+     * nach jedem Deployment (FTP-Upload, ZIP-Install) automatisch die
+     * neue Fassung nachlädt statt eine bereits gecachte, veraltete
+     * Version weiterzuverwenden - ohne diesen Parameter blieben
+     * <script src="...js/validator.js">-Requests ohne jedes
+     * Cache-Invalidierungssignal (Root Cause eines RC-Bugs, bei dem
+     * eine neue Live-Validierung im Browser nicht ankam, obwohl PHP-
+     * und Jest-Tests bereits grün waren). Fallback "0", falls die
+     * Datei nicht lesbar ist (z. B. isoliertes Testfixture).
+     *
+     * @param string $pluginSelfDir Basis-Verzeichnis des Plugins (PLUGIN_SELF_DIR)
+     * @param string $relativeAssetPath Pfad relativ zu $pluginSelfDir, z. B. "js/validator.js"
+     *
+     ***************************************************************/
     private function resolveAssetCacheBuster(string $pluginSelfDir, string $relativeAssetPath): string {
-        $mtime = @filemtime($pluginSelfDir.$relativeAssetPath);
+        $mtime = @filemtime($pluginSelfDir . $relativeAssetPath);
         return $mtime !== false ? (string) $mtime : '0';
     }
 }
