@@ -19,6 +19,7 @@ define('PLUGIN_DIR_NAME', 'plugins');
 define('URL_BASE', 'http://localhost/');
 define('BASE_DIR', dirname(__DIR__).'/');
 define('LAYOUT_DIR_NAME', 'layouts');
+define('CONTENT_FILES_DIR_NAME', 'dateien');
 
 // Im Test ohne aktive Kategorie/Seite (entspricht der Startseite)
 define('CAT_REQUEST', false);

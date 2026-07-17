@@ -763,6 +763,64 @@ class SchemaOrgData_Validator {
 
     /***************************************************************
     *
+    * Validiert eine Liste von sameAs-URLs (Personen-Registry,
+    * je Zeile eine URL) über validateUrl(). Nur Fehler werden
+    * gesammelt - eine HTTP-Warnung blockiert das Speichern nicht
+    * und wird hier bewusst nicht zurückgegeben (analog zu den
+    * übrigen Formularfeldern, deren Warnungen nur clientseitig/beim
+    * Redisplay angezeigt werden).
+    *
+    * @param string[] $urls bereits von Leerzeilen bereinigte URLs
+    * @param Language $lang für die Fehlermeldungen
+    * @return string[] Fehlermeldungen (leer = alle Prüfungen ok)
+    *
+    ***************************************************************/
+    public function validateSameAsEntries(array $urls, Language $lang): array {
+        $errors = [];
+
+        foreach($urls as $url) {
+            $result = $this->validateUrl((string) $url, $lang);
+            if($result['status'] === 'error') {
+                $errors[] = $result['message'];
+            }
+        }
+
+        return $errors;
+    }
+
+    /***************************************************************
+    *
+    * Prüft, ob eine bereits sanitierte relative Medienpfad-Angabe
+    * (Personen-Registry, Feld "image") unterhalb des moziloCMS-
+    * Medienverzeichnisses existiert. Nicht blockierend - eine fehlende
+    * Datei ergibt nur eine Warnung, da die Datei nachträglich
+    * hochgeladen werden kann. Absolute URLs (http(s)://) werden hier
+    * nicht behandelt - dafür validateUrl() verwenden.
+    *
+    * @param string $sanitizedRelativePath bereits sanitierter Pfad (siehe
+    *        SchemaOrgData_PersonsRegistryService::sanitizeRelativeMediaPath())
+    * @param string $mediaBaseDir absolutes Basisverzeichnis (siehe
+    *        SchemaOrgData_UrlHelper::resolveMediaBaseDir())
+    * @param Language $lang für die Warnmeldung
+    * @return array{status: string|null, message: string|null}
+    *
+    ***************************************************************/
+    public function validatePersonImageExistence(string $sanitizedRelativePath, string $mediaBaseDir, Language $lang): array {
+        if($sanitizedRelativePath === '' or $mediaBaseDir === '') {
+            return ['status' => null, 'message' => null];
+        }
+
+        $fullPath = rtrim($mediaBaseDir, '/').'/'.$sanitizedRelativePath;
+
+        if(is_file($fullPath)) {
+            return ['status' => 'ok', 'message' => null];
+        }
+
+        return ['status' => 'warning', 'message' => $lang->getLanguageValue('warning_person_image_not_found')];
+    }
+
+    /***************************************************************
+    *
     * Prüft, ob mindestens ein FAQ-Eintrag mit Frage UND Antwort
     * vorhanden ist. Einträge ohne beides werden von
     * sanitizePostData() verworfen (siehe renderFaqListWidget, das

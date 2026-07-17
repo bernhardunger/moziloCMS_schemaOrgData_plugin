@@ -181,3 +181,45 @@ button_save_page = Konfiguration Seite {PARAM1} speichern
 
 admin_button = Einstellungen
 plugin_description_short = Schema.org JSON-LD für alle Seiten
+
+button_manage_persons = 👤 Personen verwalten
+button_back_to_scopes = ← Zurück zu Global/Kategorie/Seite
+
+label_persons_registry_title = Personen-Registry
+description_persons_registry = Zentrale Verwaltung von Personen (z. B. Mitarbeiter, Gründer), die an anderer Stelle referenziert werden können - z. B. als Artikel-Autor oder in den Organisations-Relationen.
+label_persons_registry_empty = Es sind noch keine Personen angelegt.
+
+label_person_name = Name
+label_honorific_prefix = Titel
+label_job_title = Position / Berufsbezeichnung
+label_person_description = Beschreibung
+label_person_url = Profil-URL
+label_person_same_as = Weitere Profile (je Zeile eine URL, z. B. LinkedIn, Xing)
+label_person_image = Bild (relativer Medienpfad oder absolute URL)
+label_person_status = Status
+label_person_status_active = Aktiv
+label_person_status_inactive = Inaktiv
+label_sort_order = Sortierung
+label_person_slug = Kennung (Slug)
+hint_person_slug = Wird aus dem Namen abgeleitet, ist danach nicht mehr änderbar. Nur Kleinbuchstaben, Ziffern, Bindestrich und Unterstrich.
+
+label_add_person_title = Neue Person anlegen
+label_edit_person_title = Person bearbeiten
+
+button_add_person = + Neue Person
+button_edit_person = Bearbeiten
+button_delete_person = Löschen
+button_save_person = Person speichern
+button_create_person = Person anlegen
+button_cancel_person = Abbrechen
+confirm_delete_person = Person wirklich löschen? Bestehende Referenzen (z. B. Artikel-Autor) werden dadurch nicht mehr aufgelöst.
+
+notice_person_created = Die Person wurde angelegt.
+notice_person_updated = Die Person wurde gespeichert.
+notice_person_deleted = Die Person wurde gelöscht.
+
+error_person_slug_required = Bitte eine Kennung (Slug) angeben oder einen Namen eintragen, aus dem eine Kennung abgeleitet werden kann.
+error_person_slug_exists = Die Kennung ist bereits vergeben (vorhandene Person: "{PARAM1}"). Bitte eine andere Kennung wählen.
+error_person_not_found = Die Person wurde nicht gefunden - möglicherweise wurde sie zwischenzeitlich gelöscht.
+error_person_invalid_action = Ungültige Aktion für die Personen-Registry.
+warning_person_image_not_found = Unter diesem Pfad wurde keine Datei im Medienverzeichnis gefunden. Die Datei kann nachträglich hochgeladen werden.

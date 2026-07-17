@@ -22,6 +22,12 @@ final class SchemaOrgData_AdminRequestContext {
     * @param string $pluginSelfUrl Plugin-Basis-URL (PLUGIN_SELF_URL)
     * @param Language $weekdayLang CMS-Sprachinstanz für Wochentag-Labels
     *              (cms_language_*.txt)
+    * @param SchemaOrgData_PersonsRegistryService $personsRegistryService Personen-Registry
+    *              (vierter Admin-Bereich, siehe README.md, Personen-Registry)
+    * @param SchemaOrgData_PersonsAdminRenderer $personsAdminRenderer Rendering
+    *              der Personen-Registry-Ansichten
+    * @param SchemaOrgData_PersonsAdminRequestHandler $personsAdminRequestHandler
+    *              POST-Dispatch der Personen-Registry
     *
     ***************************************************************/
     public function __construct(
@@ -43,7 +49,10 @@ final class SchemaOrgData_AdminRequestContext {
         public readonly SchemaOrgData_AdminPageRenderer $adminPageRenderer,
         public readonly SchemaOrgData_AdminRequestHandler $adminRequestHandler,
         public readonly SchemaOrgData_ConfigSaveService $configSaveService,
-        public readonly SchemaOrgData_ImportService $importService
+        public readonly SchemaOrgData_ImportService $importService,
+        public readonly SchemaOrgData_PersonsRegistryService $personsRegistryService,
+        public readonly SchemaOrgData_PersonsAdminRenderer $personsAdminRenderer,
+        public readonly SchemaOrgData_PersonsAdminRequestHandler $personsAdminRequestHandler
     ) {
     }
 }

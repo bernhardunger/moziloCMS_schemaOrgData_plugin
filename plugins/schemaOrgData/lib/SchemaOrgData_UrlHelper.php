@@ -90,4 +90,26 @@ class SchemaOrgData_UrlHelper {
 
         return $baseUrl;
     }
+
+    /***************************************************************
+    *
+    * Liefert das absolute, lokale Basisverzeichnis der moziloCMS-
+    * Mediendateien (CONTENT_FILES_DIR_NAME, Core-Konstante) für die
+    * serverseitige Existenzprüfung relativer Medienpfade (Personen-
+    * Registry, Feld "image", siehe
+    * SchemaOrgData_Validator::validatePersonImageExistence()).
+    *
+    * @return string absolutes Verzeichnis mit abschließendem "/" oder ''
+    *                (leer, wenn BASE_DIR/CONTENT_FILES_DIR_NAME nicht
+    *                definiert sind - dann wird keine Existenzprüfung
+    *                durchgeführt)
+    *
+    ***************************************************************/
+    public function resolveMediaBaseDir(): string {
+        if(!defined('BASE_DIR') or !defined('CONTENT_FILES_DIR_NAME')) {
+            return '';
+        }
+
+        return BASE_DIR.CONTENT_FILES_DIR_NAME.'/';
+    }
 }
