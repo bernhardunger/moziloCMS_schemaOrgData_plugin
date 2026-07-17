@@ -177,6 +177,9 @@ button_use_detected_jsonld = Erkannten Block importieren
 button_show_full_jsonld = Vollansicht
 label_full_jsonld_preview = Erkannter JSON-LD-Block (Vollansicht)
 notice_multiple_jsonld_blocks = Es wurden mehrere JSON-LD-Blöcke erkannt. Die automatische Übernahme ist deshalb deaktiviert - bitte den passenden Block manuell aus der Vorschau oben kopieren und ins Import-Feld einfügen, importiert werden kann nur ein einzelner Block.
+label_detected_block = Erkannter Block
+error_detected_block_invalid = Der erkannte JSON-LD-Block konnte nicht gelesen werden (ungültiges JSON). Bitte den Block an seiner Quelle korrigieren (Layout-Template bzw. Seiteninhalt).
+error_import_block_not_found = Der gewählte Block wurde nicht mehr gefunden - vermutlich wurde die Quelle zwischenzeitlich geändert. Bitte die Admin-Seite neu laden und erneut importieren.
 
 hint_id_reference_auto_link = Wird automatisch verknüpft mit:
 

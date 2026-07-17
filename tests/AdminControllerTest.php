@@ -913,14 +913,19 @@ final class AdminControllerTest extends TestCase {
         define('ADMIN_DIR_NAME', 'admin');
 
         $settings = new \InMemorySettings();
-        $_POST['schemaOrgData_import_action'] = 'global';
-        $_POST['schemaOrgData_import_global'] = json_encode([
+        $importedBlock = json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
             'name' => 'Importierte Firma',
             'url' => 'https://www.example.com',
             'hasMap' => 'https://maps.example.org/importiert',
         ]);
+        $this->scopeResolver()->saveScopeMeta($settings, 'global', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => $importedBlock,
+            'existing_jsonld_blocks' => [$importedBlock],
+        ]);
+        $_POST['schemaOrgData_import_action'] = 'global';
 
         $html = $this->callRenderAdminPage($settings);
 
@@ -932,7 +937,7 @@ final class AdminControllerTest extends TestCase {
         $this->assertStringContainsString($lang->getLanguageHtml('notice_import_success'), $html);
         $this->assertStringNotContainsString($lang->getLanguageHtml('notice_config_saved'), $html);
 
-        $this->assertFalse($settings->keyExists('config_global'));
+        $this->assertArrayNotHasKey('LocalBusiness', $this->scopeResolver()->loadScopeConfig($settings, 'global'));
     }
 
     /***************************************************************
@@ -959,15 +964,21 @@ final class AdminControllerTest extends TestCase {
         $settings = new \InMemorySettings();
         $this->callSaveConfig('global', $this->validLocalBusinessData('Global GmbH'), $settings);
 
-        $_POST['schemaOrgData_cat'] = $cat;
-        $_POST['schemaOrgData_page'] = '';
-        $_POST['schemaOrgData_import_action'] = 'category';
-        $_POST['schemaOrgData_import_category'] = json_encode([
+        $importedBlock = json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
             'name' => 'Filiale Über-uns',
             'url' => 'https://www.example.com/ueber-uns',
         ]);
+        $this->scopeResolver()->saveScopeMeta($settings, 'category', [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => $importedBlock,
+            'existing_jsonld_blocks' => [$importedBlock],
+        ], $cat);
+
+        $_POST['schemaOrgData_cat'] = $cat;
+        $_POST['schemaOrgData_page'] = '';
+        $_POST['schemaOrgData_import_action'] = 'category';
 
         $html = $this->callRenderAdminPage($settings);
 

@@ -161,49 +161,104 @@ final class AdminRequestHandlerTest extends TestCase {
         ]);
     }
 
+    /***************************************************************
+    *
+    * Seedet die erkannten Blöcke einer Geltungsebene in der
+    * Scope-Meta (existing_jsonld_blocks, siehe
+    * SchemaOrgData_ScopeResolver::loadScopeMeta()) - Quelle des
+    * serverseitigen Imports (handleImportAction() liest NICHT aus
+    * $_POST).
+    *
+    * @param string[] $blocks
+    *
+    ***************************************************************/
+    private function seedScopeBlocks($settings, string $scope, array $blocks, ?string $cat = null, ?string $page = null): void {
+        $this->scopeResolver()->saveScopeMeta($settings, $scope, [
+            'existing_jsonld' => true,
+            'existing_jsonld_content' => implode("\n\n", $blocks),
+            'existing_jsonld_blocks' => $blocks,
+        ], $cat, $page);
+    }
+
     function testImportMitGueltigemJsonLdFuelltPostZurueckUndSpeichertNichts(): void {
         $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', [$this->validLocalBusinessJsonLd()]);
         $_POST['schemaOrgData_import_action'] = 'global';
-        $_POST['schemaOrgData_import_global'] = $this->validLocalBusinessJsonLd();
 
         $result = $this->callHandlePostRequest($settings);
 
         $this->assertTrue($result['success']);
         $this->assertTrue($result['import']);
-        $this->assertFalse($settings->keyExists('config_global'));
+        $this->assertArrayNotHasKey('LocalBusiness', $this->scopeResolver()->loadScopeConfig($settings, 'global'));
 
         $this->assertSame('LocalBusiness', $_POST['schemaOrgData']['global']['type']);
         $this->assertSame('Muster GmbH', $_POST['schemaOrgData']['global']['data']['name']);
         $this->assertSame('https://www.example.com', $_POST['schemaOrgData']['global']['data']['url']);
         $this->assertStringContainsString('hasMap', $_POST['schemaOrgData']['global']['extension']['LocalBusiness']);
-
-        // Rohe Textarea-Eingabe wird bei Erfolg gelöscht (ADR, Entscheidung (g))
-        $this->assertArrayNotHasKey('schemaOrgData_import_global', $_POST);
     }
 
-    function testImportMitUngueltigemJsonLiefertFehler(): void {
+    function testImportOhneIndexImportiertBlockNull(): void {
         $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', [$this->validLocalBusinessJsonLd()]);
         $_POST['schemaOrgData_import_action'] = 'global';
-        $_POST['schemaOrgData_import_global'] = '{ungültiges json';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('Muster GmbH', $_POST['schemaOrgData']['global']['data']['name']);
+    }
+
+    function testImportMitExplizitemIndexImportiertPassendenBlock(): void {
+        $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', [
+            $this->validLocalBusinessJsonLd(),
+            json_encode(['@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => 'Beispiel-Website', 'url' => 'https://www.example.com']),
+        ]);
+        $_POST['schemaOrgData_import_action'] = 'global:1';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('WebSite', $_POST['schemaOrgData']['global']['type']);
+        $this->assertSame('Beispiel-Website', $_POST['schemaOrgData']['global']['data']['name']);
+    }
+
+    function testImportMitNichtVorhandenemIndexLiefertFehler(): void {
+        $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', [$this->validLocalBusinessJsonLd()]);
+        $_POST['schemaOrgData_import_action'] = 'global:5';
 
         $result = $this->callHandlePostRequest($settings);
 
         $this->assertFalse($result['success']);
         $this->assertTrue($result['import']);
-        $this->assertSame($this->adminLang()->getLanguageValue('error_json_invalid'), $result['errors'][0]);
-        $this->assertFalse($settings->keyExists('config_global'));
+        $this->assertSame($this->adminLang()->getLanguageValue('error_import_block_not_found'), $result['errors'][0]);
+        $this->assertArrayNotHasKey('LocalBusiness', $this->scopeResolver()->loadScopeConfig($settings, 'global'));
+    }
+
+    function testImportMitUngueltigemJsonLiefertFehler(): void {
+        $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', ['{ungültiges json']);
+        $_POST['schemaOrgData_import_action'] = 'global';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertTrue($result['import']);
+        $this->assertSame($this->adminLang()->getLanguageValue('error_detected_block_invalid'), $result['errors'][0]);
+        $this->assertArrayNotHasKey('LocalBusiness', $this->scopeResolver()->loadScopeConfig($settings, 'global'));
     }
 
     function testImportMitFuerScopeUnzulaessigemTypeLiefertFehler(): void {
         $settings = new \InMemorySettings();
         $_POST['schemaOrgData_cat'] = '';
         $_POST['schemaOrgData_page'] = '';
-        $_POST['schemaOrgData_import_action'] = 'global';
-        $_POST['schemaOrgData_import_global'] = json_encode([
+        $this->seedScopeBlocks($settings, 'global', [json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'Event',
             'name' => 'Sommerfest',
-        ]);
+        ])]);
+        $_POST['schemaOrgData_import_action'] = 'global';
 
         $result = $this->callHandlePostRequest($settings);
 
@@ -217,8 +272,8 @@ final class AdminRequestHandlerTest extends TestCase {
 
     function testImportAktionHatVorrangVorMitgesendetenFormulardaten(): void {
         $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', [$this->validLocalBusinessJsonLd()]);
         $_POST['schemaOrgData_import_action'] = 'global';
-        $_POST['schemaOrgData_import_global'] = $this->validLocalBusinessJsonLd();
         // gleichzeitig mitgesendete (gültige) Formulardaten der aktiven Sektion -
         // dürfen bei gesetzter Import-Aktion NICHT gespeichert werden (ADR (b))
         $_POST['schemaOrgData'] = ['global' => $this->validLocalBusinessData('Andere Firma')];
@@ -227,7 +282,32 @@ final class AdminRequestHandlerTest extends TestCase {
 
         $this->assertTrue($result['success']);
         $this->assertTrue($result['import']);
-        $this->assertFalse($settings->keyExists('config_global'));
+        $this->assertArrayNotHasKey('LocalBusiness', $this->scopeResolver()->loadScopeConfig($settings, 'global'));
+    }
+
+    /***************************************************************
+    *
+    * page-Scope: schemaOrgData_cat/schemaOrgData_page werden für die
+    * loadScopeMeta()-Quelle der Blöcke herangezogen, analog
+    * resolveScopeIdentifiers().
+    *
+    ***************************************************************/
+    function testImportImPageScopeNutztCatUndPageAusPost(): void {
+        $settings = new \InMemorySettings();
+        $articleJsonLd = json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'Article',
+            'headline' => 'Ein Testartikel',
+        ]);
+        $this->seedScopeBlocks($settings, 'page', [$articleJsonLd], 'blog', 'kontakt');
+        $_POST['schemaOrgData_cat'] = 'blog';
+        $_POST['schemaOrgData_page'] = 'kontakt';
+        $_POST['schemaOrgData_import_action'] = 'page';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('Ein Testartikel', $_POST['schemaOrgData']['page']['data']['headline']);
     }
 
     // -----------------------------------------------------------
@@ -236,14 +316,14 @@ final class AdminRequestHandlerTest extends TestCase {
 
     function testImportMitKomprimiertenOpeningHoursKonvertiertZuProTagStruktur(): void {
         $settings = new \InMemorySettings();
-        $_POST['schemaOrgData_import_action'] = 'global';
-        $_POST['schemaOrgData_import_global'] = json_encode([
+        $this->seedScopeBlocks($settings, 'global', [json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
             'name' => 'Muster GmbH',
             'url' => 'https://www.example.com',
             'openingHours' => ['Mo-Th 08:00-12:00', 'Mo-Th 13:00-17:00', 'Fr 08:00-12:00'],
-        ]);
+        ])]);
+        $_POST['schemaOrgData_import_action'] = 'global';
 
         $result = $this->callHandlePostRequest($settings);
 
@@ -271,8 +351,8 @@ final class AdminRequestHandlerTest extends TestCase {
 
     function testImportOhneOpeningHoursBleibtUnveraendert(): void {
         $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', [$this->validLocalBusinessJsonLd()]);
         $_POST['schemaOrgData_import_action'] = 'global';
-        $_POST['schemaOrgData_import_global'] = $this->validLocalBusinessJsonLd();
 
         $result = $this->callHandlePostRequest($settings);
 
@@ -282,10 +362,9 @@ final class AdminRequestHandlerTest extends TestCase {
 
     function testImportMitBereitsProTagArtigemOpeningHoursWirdNichtDoppeltKonvertiert(): void {
         $settings = new \InMemorySettings();
-        $_POST['schemaOrgData_import_action'] = 'global';
         // Praxisfremder Randfall (echtes JSON-LD liefert nie Pro-Tag-Objekte je Eintrag),
         // dient nur als Absicherung des isPerDayOpeningHoursValue()-Guards.
-        $_POST['schemaOrgData_import_global'] = json_encode([
+        $this->seedScopeBlocks($settings, 'global', [json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
             'name' => 'Muster GmbH',
@@ -293,7 +372,8 @@ final class AdminRequestHandlerTest extends TestCase {
             'openingHours' => [
                 'Mo' => ['from' => '09:00', 'to' => '18:00'],
             ],
-        ]);
+        ])]);
+        $_POST['schemaOrgData_import_action'] = 'global';
 
         $result = $this->callHandlePostRequest($settings);
 

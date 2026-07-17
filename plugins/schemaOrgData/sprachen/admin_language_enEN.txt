@@ -177,6 +177,9 @@ button_use_detected_jsonld = Import detected block
 button_show_full_jsonld = Full view
 label_full_jsonld_preview = Detected JSON-LD block (full view)
 notice_multiple_jsonld_blocks = Multiple JSON-LD blocks were detected. Automatic takeover is therefore disabled - please copy the matching block from the preview above into the import field manually, only a single block can be imported.
+label_detected_block = Detected block
+error_detected_block_invalid = The detected JSON-LD block could not be read (invalid JSON). Please fix the block at its source (layout template or page content).
+error_import_block_not_found = The selected block could no longer be found - the source was likely changed in the meantime. Please reload the admin page and import again.
 
 hint_id_reference_auto_link = Automatically linked to:
 
