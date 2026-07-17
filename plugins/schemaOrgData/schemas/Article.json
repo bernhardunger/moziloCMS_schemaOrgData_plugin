@@ -29,10 +29,19 @@
       "ui:required": false
     },
     "author": {
-      "type": "string",
-      "ui:widget": "text",
+      "type": "object",
+      "ui:widget": "id_reference_or_literal",
       "ui:label": "label_author",
-      "ui:placeholder": "Max Mustermann",
+      "ui:required": false,
+      "ui:literalFields": ["name"],
+      "ui:literalFieldPlaceholders": { "name": "placeholder_author_name" },
+      "ui:literalType": "Person"
+    },
+    "publisher": {
+      "type": "object",
+      "ui:widget": "id_reference",
+      "ui:label": "label_publisher",
+      "ui:idTarget": "organization",
       "ui:required": false
     },
     "datePublished": {
