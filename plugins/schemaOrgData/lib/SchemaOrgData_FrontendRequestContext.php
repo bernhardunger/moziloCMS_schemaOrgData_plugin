@@ -31,7 +31,8 @@ final class SchemaOrgData_FrontendRequestContext {
         public readonly SchemaOrgData_JsonLdBuilder $jsonLdBuilder,
         public readonly SchemaOrgData_IdReferenceService $idReferenceService,
         public readonly SchemaOrgData_CollisionDetector $collisionDetector,
-        public readonly SchemaOrgData_UrlHelper $urlHelper
+        public readonly SchemaOrgData_UrlHelper $urlHelper,
+        public readonly SchemaOrgData_PersonsRegistryService $personsRegistryService
     ) {
     }
 }

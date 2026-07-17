@@ -100,7 +100,7 @@ final class DonateActionTest extends TestCase {
     private function availableFragments(\schemaOrgData $plugin): array {
         return (new \SchemaOrgData_IdReferenceService())->resolveAvailableGlobalFragments(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
-            $plugin->PLUGIN_SELF_DIR, $this->adminLang($plugin)
+            $plugin->PLUGIN_SELF_DIR, $this->adminLang($plugin), new \SchemaOrgData_PersonsRegistryService()
         );
     }
 
@@ -216,7 +216,7 @@ final class DonateActionTest extends TestCase {
 
         [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
-            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertSame($scopeConfigs, $result);
@@ -250,7 +250,7 @@ final class DonateActionTest extends TestCase {
 
         [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
-            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertSame($scopeConfigs, $result, 'Organization deckt den Zielknoten bereits ab - Guard bleibt No-op');
@@ -292,7 +292,7 @@ final class DonateActionTest extends TestCase {
 
         [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
-            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertSame($scopeConfigs, $result, 'Ohne jeglichen globalen Identitäts-Type kann kein Stub gebildet werden');

@@ -116,6 +116,41 @@ class SchemaOrgData_JsonLdBuilder {
 
     /***************************************************************
     *
+    * Wie resolveNodeId(), aber für Registry-Personen (siehe README.md,
+    * "@id-Anker und Knotenreferenzen"): das Fragment wird ausschließlich
+    * aus dem Slug gebildet (SchemaOrgData_PersonsRegistryService::buildFragment()),
+    * kein Schema-Lookup - Registry-Personen haben kein eigenes
+    * Schema-Type-File mehr. Nutzt denselben $assignedFragments-De-Dup-
+    * Guard wie resolveNodeId(), damit beide Mechanismen konsistent
+    * bleiben, falls ein Fragment künftig aus beiden Quellen vergeben
+    * werden könnte.
+    *
+    * @param string $slug Registry-Slug der Person
+    * @param string[] $assignedFragments bereits vergebene Fragmente (per Referenz)
+    * @return string vollständige @id-URI oder '' (kein Anker)
+    *
+    ***************************************************************/
+    public function resolvePersonNodeId(
+        SchemaOrgData_UrlHelper $urlHelper,
+        string $slug,
+        array &$assignedFragments
+    ): string {
+        $fragment = SchemaOrgData_PersonsRegistryService::buildFragment($slug);
+        if(in_array($fragment, $assignedFragments, true)) {
+            return '';
+        }
+
+        $baseUrl = $urlHelper->resolveBaseUrl();
+        if($baseUrl === '') {
+            return '';
+        }
+
+        $assignedFragments[] = $fragment;
+        return $baseUrl.'#'.$fragment;
+    }
+
+    /***************************************************************
+    *
     * Erzeugt aus den zusammengeführten Properties einen
     * <script type="application/ld+json">-Block.
     *

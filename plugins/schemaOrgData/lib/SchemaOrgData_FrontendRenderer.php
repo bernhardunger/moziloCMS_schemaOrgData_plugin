@@ -7,9 +7,10 @@
 * Orchestriert die Frontend-Ausgabepipeline von getContent():
 * Scope-Konfiguration laden, excluded_cats- und jsonld_mode='keep'-
 * Filter anwenden, feldweise Vererbung und Dangling-Reference-Guard
-* durchlaufen, JSON-LD-Blöcke je Type ausgeben, optional das
-* Debug-Widget anhängen sowie die scope-genaue Kollisionserkennung
-* (existing_jsonld-Meta) persistieren.
+* durchlaufen, JSON-LD-Blöcke je Type ausgeben, tatsächlich
+* referenzierte Registry-Personen als eigenständige Knoten emittieren,
+* optional das Debug-Widget anhängen sowie die scope-genaue
+* Kollisionserkennung (existing_jsonld-Meta) persistieren.
 *
 * Zustandslos: keine Konstruktor-Injection, alle Kollaboratoren
 * werden je Aufruf als Parameter durchgereicht (siehe README.md,
@@ -124,8 +125,9 @@ class SchemaOrgData_FrontendRenderer {
         // Unterdrückung). Bei keep-Modus wird die id_reference stattdessen
         // unterdrückt (siehe applyDanglingReferenceGuard(), README.md,
         // "@id-Anker").
-        [$scopeConfigs, $suppressedIdTargets] = $context->idReferenceService->applyDanglingReferenceGuard(
-            $context->scopeResolver, $context->schemaRepository, $context->settings, $context->pluginSelfDir, $scopeConfigs, $globalSuppressedByKeep
+        [$scopeConfigs, $suppressedIdTargets, $activePersonSlugs] = $context->idReferenceService->applyDanglingReferenceGuard(
+            $context->scopeResolver, $context->schemaRepository, $context->settings, $context->pluginSelfDir,
+            $scopeConfigs, $globalSuppressedByKeep, $context->personsRegistryService
         );
 
         // JSON-LD-Blöcke der verbleibenden Types ausgeben; bei aktivem
@@ -147,6 +149,38 @@ class SchemaOrgData_FrontendRenderer {
                     };
                     $debugBlocks[] = ['scope' => $scopeKey, 'type' => $type, 'data' => $data, 'id' => $nodeId];
                 }
+            }
+        }
+
+        // Registry-Personen-Knoten (siehe README.md, "@id-Anker und
+        // Knotenreferenzen"): $activePersonSlugs enthält nur Slugs, die
+        // tatsächlich referenziert UND in der Registry vorhanden sind
+        // (Dangling-Vermeidung bereits durch applyDanglingReferenceGuard()
+        // erledigt) - Status der Person ist hier bewusst irrelevant.
+        foreach($activePersonSlugs as $slug) {
+            $person = $context->personsRegistryService->getPerson($context->settings, $slug);
+            if($person === null) {
+                continue;
+            }
+
+            $personData = [
+                'name'            => $person['name'] ?? '',
+                'honorificPrefix' => $person['honorificPrefix'] ?? '',
+                'jobTitle'        => $person['jobTitle'] ?? '',
+                'description'     => $person['description'] ?? '',
+                'url'             => $person['url'] ?? '',
+                'sameAs'          => $person['sameAs'] ?? [],
+                'image'           => $context->personsRegistryService->resolveAbsoluteImageUrl(
+                    (string) ($person['image'] ?? ''), $context->urlHelper
+                ),
+            ];
+
+            $nodeId = $context->jsonLdBuilder->resolvePersonNodeId($context->urlHelper, $slug, $assignedFragments);
+            $output .= $context->jsonLdBuilder->buildJsonLdScript(
+                $context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, 'Person', $personData, $nodeId, $suppressedIdTargets
+            );
+            if($debugOutput) {
+                $debugBlocks[] = ['scope' => 'person_'.$slug, 'type' => 'Person', 'data' => $personData, 'id' => $nodeId];
             }
         }
 

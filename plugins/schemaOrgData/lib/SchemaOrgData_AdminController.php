@@ -86,6 +86,7 @@ class SchemaOrgData_AdminController {
         $validator = $context->validator;
         $adminPageRenderer = $context->adminPageRenderer;
         $configSaveService = $context->configSaveService;
+        $personsRegistryService = $context->personsRegistryService;
 
         $idPrefix = $idPrefix ?? $scope;
         $config = $scopeResolver->loadScopeConfig($settings, $scope, $cat, $page);
@@ -194,7 +195,7 @@ class SchemaOrgData_AdminController {
         // @id-Referenz-Fragmente (id_reference/id_reference_or_literal-Widgets)
         // je Sektion einmalig ermitteln - siehe SchemaOrgData_IdReferenceService.
         $availableFragments = $idReferenceService->resolveAvailableGlobalFragments(
-            $scopeResolver, $schemaRepository, $settings, $pluginSelfDir, $lang
+            $scopeResolver, $schemaRepository, $settings, $pluginSelfDir, $lang, $personsRegistryService
         );
 
         foreach($availableTypes as $type => $schema) {
