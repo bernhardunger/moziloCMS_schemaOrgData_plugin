@@ -348,7 +348,7 @@ final class IdAnchorTest extends TestCase {
 
         $fragments = (new \SchemaOrgData_IdReferenceService())->resolveAvailableGlobalFragments(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
-            $plugin->PLUGIN_SELF_DIR, $this->adminLang($plugin)
+            $plugin->PLUGIN_SELF_DIR, $this->adminLang($plugin), new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertArrayHasKey('organization', $fragments);
@@ -382,7 +382,7 @@ final class IdAnchorTest extends TestCase {
 
         [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
-            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertSame($scopeConfigs, $result, 'AccountingService deckt den Zielknoten bereits ab - Guard bleibt No-op');
@@ -423,7 +423,7 @@ final class IdAnchorTest extends TestCase {
 
         [$result, $suppressed] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
-            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertSame($scopeConfigs, $result, 'LegalService deckt den Zielknoten bereits ab - Guard bleibt No-op');
@@ -459,7 +459,7 @@ final class IdAnchorTest extends TestCase {
         ];
         [$resultBefore, $suppressedBefore] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
-            $plugin->PLUGIN_SELF_DIR, $scopeConfigsBefore, false
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigsBefore, false, new \SchemaOrgData_PersonsRegistryService()
         );
         $decodedBefore = $this->buildDecoded('DonateAction', $resultBefore['page']['DonateAction'], '', $suppressedBefore);
 
@@ -470,7 +470,7 @@ final class IdAnchorTest extends TestCase {
         ];
         [$resultAfter, $suppressedAfter] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
-            $plugin->PLUGIN_SELF_DIR, $scopeConfigsAfter, false
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigsAfter, false, new \SchemaOrgData_PersonsRegistryService()
         );
         $decodedAfter = $this->buildDecoded('DonateAction', $resultAfter['page']['DonateAction'], '', $suppressedAfter);
 

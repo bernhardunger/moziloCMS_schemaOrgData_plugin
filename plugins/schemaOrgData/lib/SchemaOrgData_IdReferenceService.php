@@ -30,6 +30,15 @@ class SchemaOrgData_IdReferenceService {
     * Label = Schema-Type-Bezeichnung + gespeicherter name-Wert (falls vorhanden).
     * Types ohne ui:idFragment werden übersprungen.
     *
+    * Zusätzlich werden alle aktiven (status === "active") Registry-
+    * Personen als Referenzziele aufgenommen (siehe README.md, "@id-Anker
+    * und Knotenreferenzen"): Fragment "person-{slug}", Label "name"
+    * bzw. "name – jobTitle" bei gefülltem jobTitle, sortiert nach
+    * sortOrder aufsteigend (bei Gleichstand nach Name). Inaktive
+    * Personen bleiben hier ausgeblendet - eine bereits gespeicherte
+    * Referenz auf eine später inaktiv gesetzte Person bleibt davon
+    * unberührt (weiterhin auflösbar, siehe applyDanglingReferenceGuard()).
+    *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param Language $adminLang bereits aufgelöste Admin-Sprache
@@ -41,7 +50,8 @@ class SchemaOrgData_IdReferenceService {
         SchemaOrgData_SchemaRepository $schemaRepo,
         $settings,
         string $pluginSelfDir,
-        Language $adminLang
+        Language $adminLang,
+        SchemaOrgData_PersonsRegistryService $personsRegistryService
     ): array {
         $globalConfig = $scopeResolver->loadScopeConfig($settings, 'global');
         $result = [];
@@ -62,6 +72,23 @@ class SchemaOrgData_IdReferenceService {
             $typeLabel = $adminLang->getLanguageValue($typeLabelKey);
             $name = trim((string) ($typeData['name'] ?? ''));
             $result[$fragment] = $name !== '' ? $typeLabel.' — '.$name : $typeLabel;
+        }
+
+        $activePersons = array_filter(
+            $personsRegistryService->loadRegistry($settings),
+            fn($person): bool => is_array($person)
+                and ($person['status'] ?? '') === SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE
+        );
+        uasort($activePersons, function(array $a, array $b): int {
+            $sortCmp = ((int) ($a['sortOrder'] ?? 100)) <=> ((int) ($b['sortOrder'] ?? 100));
+            return $sortCmp !== 0 ? $sortCmp : strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+        });
+
+        foreach($activePersons as $slug => $person) {
+            $name = trim((string) ($person['name'] ?? ''));
+            $jobTitle = trim((string) ($person['jobTitle'] ?? ''));
+            $result[SchemaOrgData_PersonsRegistryService::buildFragment((string) $slug)] =
+                $jobTitle !== '' ? $name.' – '.$jobTitle : $name;
         }
 
         return $result;
@@ -86,11 +113,28 @@ class SchemaOrgData_IdReferenceService {
     *   einfügen (nur @type, @id und name). Der Stub durchläuft denselben
     *   resolveNodeId()-Mechanismus wie reguläre Knoten.
     *
+    * Ziele mit dem Fragment-Präfix "person-" (Registry-Personen, siehe
+    * README.md, "@id-Anker und Knotenreferenzen") werden eigens
+    * behandelt, da sie nicht Teil von $scopeConfigs sind, sondern separat
+    * aus der Personen-Registry emittiert werden (siehe
+    * SchemaOrgData_FrontendRenderer::renderFrontend()): existiert der
+    * referenzierte Slug in der Registry, gilt das Ziel als vorhanden -
+    * der Slug landet in $activePersonSlugs, die Emission des Knotens
+    * übernimmt der Aufrufer. Existiert der Slug NICHT (mehr), wird die
+    * Referenz unterdrückt (lieber keine Referenz als eine hängende @id
+    * - ein Minimal-Stub wie bei schema-statischen Fragmenten ist hier
+    * nicht möglich, da es keine globale Ersatzkonfiguration für eine
+    * gelöschte Person gibt). Der Status der Person ist für diese
+    * Prüfung irrelevant - eine bereits gespeicherte Referenz auf eine
+    * inzwischen inaktive, aber weiterhin existierende Person bleibt
+    * auflösbar (nur die Auswahlliste in resolveAvailableGlobalFragments()
+    * blendet inaktive Personen aus).
+    *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param array<string, array<string, mixed>> $scopeConfigs finale Scope-Konfiguration (nach resolveTypeInheritance)
     * @param bool $globalSuppressedByKeep true, wenn Global durch keep unterdrückt wurde
-    * @return array{0: array<string, array<string, mixed>>, 1: array<string>} [$scopeConfigs, $suppressedIdTargets]
+    * @return array{0: array<string, array<string, mixed>>, 1: array<string>, 2: string[]} [$scopeConfigs, $suppressedIdTargets, $activePersonSlugs]
     *
     ***************************************************************/
     public function applyDanglingReferenceGuard(
@@ -99,9 +143,11 @@ class SchemaOrgData_IdReferenceService {
         $settings,
         string $pluginSelfDir,
         array $scopeConfigs,
-        bool $globalSuppressedByKeep
+        bool $globalSuppressedByKeep,
+        SchemaOrgData_PersonsRegistryService $personsRegistryService
     ): array {
         $suppressedIdTargets = [];
+        $activePersonSlugs = [];
 
         // Alle id_reference- und id_reference_or_literal-Targets sammeln.
         $activeTargets = [];
@@ -134,7 +180,7 @@ class SchemaOrgData_IdReferenceService {
         }
 
         if($activeTargets === []) {
-            return [$scopeConfigs, $suppressedIdTargets];
+            return [$scopeConfigs, $suppressedIdTargets, $activePersonSlugs];
         }
 
         // Bereits im Graph vorhandene @id-Fragmente bestimmen.
@@ -153,6 +199,19 @@ class SchemaOrgData_IdReferenceService {
         }
 
         foreach(array_unique($activeTargets) as $target) {
+            if(str_starts_with($target, 'person-')) {
+                // Registry-Personen sind nicht Teil von $scopeConfigs -
+                // Präsenz wird stattdessen gegen die Registry geprüft
+                // (siehe Docblock oben).
+                $slug = substr($target, strlen('person-'));
+                if($personsRegistryService->slugExists($settings, $slug)) {
+                    $activePersonSlugs[] = $slug;
+                } else {
+                    $suppressedIdTargets[] = $target;
+                }
+                continue;
+            }
+
             if(in_array($target, $presentFragments, true)) {
                 // Zielknoten vorhanden - kein Eingriff nötig.
                 continue;
@@ -197,6 +256,6 @@ class SchemaOrgData_IdReferenceService {
             }
         }
 
-        return [$scopeConfigs, $suppressedIdTargets];
+        return [$scopeConfigs, $suppressedIdTargets, $activePersonSlugs];
     }
 }

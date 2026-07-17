@@ -45,7 +45,7 @@ final class FormRendererTest extends TestCase {
 
         return (new \SchemaOrgData_IdReferenceService())->resolveAvailableGlobalFragments(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $settings,
-            $plugin->PLUGIN_SELF_DIR, $this->adminLang()
+            $plugin->PLUGIN_SELF_DIR, $this->adminLang(), new \SchemaOrgData_PersonsRegistryService()
         );
     }
 

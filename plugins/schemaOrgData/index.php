@@ -53,7 +53,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.10.0-beta';
+    private const PLUGIN_VERSION = '0.10.1-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -168,7 +168,7 @@ class schemaOrgData extends Plugin {
             new SchemaOrgData_FrontendRequestContext(
                 $this->settings, $this->PLUGIN_SELF_DIR, $this->scopeResolver(),
                 $this->schemaRepository(), $this->jsonLdBuilder(), $this->idReferenceService(),
-                $this->collisionDetector(), $this->urlHelper()
+                $this->collisionDetector(), $this->urlHelper(), $this->personsRegistryService()
             )
         );
     }

@@ -173,7 +173,7 @@ final class JsonLdBuilderTest extends TestCase {
      * Legt ein isoliertes Schema-Verzeichnis mit dem Hilfsschema
      * TestIdRefType.json an (Property "organizer" als
      * id_reference_or_literal) - identischer Schema-Inhalt wie in
-     * PersonIdRefOrLiteralTest::createPlugin(). buildJsonLdScript()
+     * PersonFragmentEmissionTest::createPlugin(). buildJsonLdScript()
      * benötigt für dieses Schema keine weiteren Schema-Dateien (der
      * Referenz-Modus liest das Ziel-Fragment direkt aus dem
      * gespeicherten Wert, nicht aus dem Zielschema).
@@ -449,12 +449,12 @@ final class JsonLdBuilderTest extends TestCase {
         $_SERVER['SCRIPT_NAME'] = '/admin/index.php';
 
         $dir = $this->createTestIdRefTypeDir();
-        $data = ['organizer' => ['_mode' => 'reference', '_fragment' => 'person']];
+        $data = ['organizer' => ['_mode' => 'reference', '_fragment' => 'person-max']];
         $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
 
         $this->assertArrayHasKey('organizer', $decoded);
         $this->assertArrayHasKey('@id', $decoded['organizer']);
-        $this->assertStringEndsWith('#person', $decoded['organizer']['@id']);
+        $this->assertStringEndsWith('#person-max', $decoded['organizer']['@id']);
     }
 
     function testIdRefOrLiteralReferenceModeInternalKeysNotInOutputDirekt(): void {
@@ -463,7 +463,7 @@ final class JsonLdBuilderTest extends TestCase {
         $_SERVER['SCRIPT_NAME'] = '/admin/index.php';
 
         $dir = $this->createTestIdRefTypeDir();
-        $data = ['organizer' => ['_mode' => 'reference', '_fragment' => 'person']];
+        $data = ['organizer' => ['_mode' => 'reference', '_fragment' => 'person-max']];
         $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
 
         $organizer = $decoded['organizer'];
@@ -675,10 +675,10 @@ final class JsonLdBuilderTest extends TestCase {
         $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'AccountingService', [
             'name' => 'Musterkanzlei',
             'url' => 'https://example.com',
-            'employee' => ['_mode' => 'reference', '_fragment' => 'person'],
+            'employee' => ['_mode' => 'reference', '_fragment' => 'person-max'],
         ]);
 
-        $this->assertSame('https://www.example.org/#person', $decoded['employee']['@id']);
+        $this->assertSame('https://www.example.org/#person-max', $decoded['employee']['@id']);
     }
 
     function testAccountingServiceEmployeeLiteralModeEmitsEmbeddedPersonDirekt(): void {

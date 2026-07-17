@@ -33,7 +33,7 @@ final class IdReferenceServiceTest extends TestCase {
 
         $fragments = $service->resolveAvailableGlobalFragments(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
-            $settings, $this->pluginSelfDir(), $this->adminLang()
+            $settings, $this->pluginSelfDir(), $this->adminLang(), new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertArrayHasKey('organization', $fragments);
@@ -49,7 +49,7 @@ final class IdReferenceServiceTest extends TestCase {
 
         $fragments = $service->resolveAvailableGlobalFragments(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
-            $settings, $this->pluginSelfDir(), $this->adminLang()
+            $settings, $this->pluginSelfDir(), $this->adminLang(), new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertArrayHasKey('organization', $fragments);
@@ -65,7 +65,7 @@ final class IdReferenceServiceTest extends TestCase {
 
         $fragments = $service->resolveAvailableGlobalFragments(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
-            $settings, $this->pluginSelfDir(), $this->adminLang()
+            $settings, $this->pluginSelfDir(), $this->adminLang(), new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertSame([], $fragments);
@@ -86,7 +86,7 @@ final class IdReferenceServiceTest extends TestCase {
 
         [$result, $suppressed] = $service->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
-            $settings, $this->pluginSelfDir(), $scopeConfigs, false
+            $settings, $this->pluginSelfDir(), $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertSame($scopeConfigs, $result);
@@ -101,7 +101,7 @@ final class IdReferenceServiceTest extends TestCase {
 
         [$result, $suppressed] = $service->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
-            $settings, $this->pluginSelfDir(), $scopeConfigs, true
+            $settings, $this->pluginSelfDir(), $scopeConfigs, true, new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertArrayNotHasKey('global', $result,
@@ -119,7 +119,7 @@ final class IdReferenceServiceTest extends TestCase {
 
         [$result, $suppressed] = $service->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
-            $settings, $this->pluginSelfDir(), $scopeConfigs, false
+            $settings, $this->pluginSelfDir(), $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->assertSame([], $suppressed);
@@ -137,7 +137,7 @@ final class IdReferenceServiceTest extends TestCase {
     * würde loadSchema() bereits null liefern und die Schleife den Typ
     * überspringen, bevor der _mode-Zweig überhaupt geprüft wird - der
     * Test wäre dann nur zufällig grün. Deshalb hier das Hilfsschema
-    * TestIdRefType.json analog PersonIdRefOrLiteralTest::createPlugin()
+    * TestIdRefType.json analog PersonFragmentEmissionTest::createPlugin()
     * in einem eigenen Temp-Verzeichnis nachgebaut.
     *
     ***************************************************************/
@@ -178,7 +178,7 @@ final class IdReferenceServiceTest extends TestCase {
 
         [$result, $suppressed] = $service->applyDanglingReferenceGuard(
             new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
-            $settings, $pluginSelfDir, $scopeConfigs, false
+            $settings, $pluginSelfDir, $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
         );
 
         $this->removeTempPluginDir($pluginSelfDir);

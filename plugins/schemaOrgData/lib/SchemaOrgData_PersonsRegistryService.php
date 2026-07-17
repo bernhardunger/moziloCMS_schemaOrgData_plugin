@@ -356,6 +356,39 @@ class SchemaOrgData_PersonsRegistryService {
 
     /***************************************************************
     *
+    * Baut das @id-Fragment einer Registry-Person aus ihrem Slug
+    * (siehe README.md, Abschnitt "@id-Anker und Knotenreferenzen").
+    * Rein slug-basiert - keine Type-Namen-Kopplung im PHP.
+    *
+    ***************************************************************/
+    public static function buildFragment(string $slug): string {
+        return 'person-'.$slug;
+    }
+
+    /***************************************************************
+    *
+    * Vervollständigt einen relativen image-Pfad (bereits über
+    * sanitizeRelativeMediaPath() bereinigt) zu einer absoluten URL für
+    * die JSON-LD-Ausgabe, gespiegelt zur lokalen Existenzprüfung in
+    * checkImageAvailability() (dort resolveMediaBaseDir(), hier
+    * resolveMediaBaseUrl() - beide kombinieren dieselbe relative
+    * Pfadangabe mit dem jeweils passenden Basis-Pendant). Absolute
+    * URLs (http(s)://) bleiben unverändert. Lässt sich keine Basis-URL
+    * auflösen, bleibt der Rohwert unverändert (kein leerer/kaputter
+    * Link).
+    *
+    ***************************************************************/
+    public function resolveAbsoluteImageUrl(string $image, SchemaOrgData_UrlHelper $urlHelper): string {
+        if($image === '' or preg_match('#^https?://#i', $image) === 1) {
+            return $image;
+        }
+
+        $mediaBaseUrl = $urlHelper->resolveMediaBaseUrl();
+        return $mediaBaseUrl !== '' ? $mediaBaseUrl.$image : $image;
+    }
+
+    /***************************************************************
+    *
     * Erweiterungspunkt für eine Fundstellen-Prüfung vor dem Löschen
     * einer Person (org_relations, gespeicherter Artikel-Autor u. a.).
     * Beide Datenquellen existieren zum jetzigen Umsetzungsstand noch

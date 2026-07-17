@@ -112,4 +112,29 @@ class SchemaOrgData_UrlHelper {
 
         return BASE_DIR.CONTENT_FILES_DIR_NAME.'/';
     }
+
+    /***************************************************************
+    *
+    * URL-Pendant zu resolveMediaBaseDir(): absolute Basis-URL der
+    * moziloCMS-Mediendateien für die Vervollständigung eines relativen
+    * Medienpfads zu einer absoluten URL (Personen-Registry, Feld
+    * "image", siehe SchemaOrgData_PersonsRegistryService::resolveAbsoluteImageUrl()).
+    *
+    * @return string absolute Basis-URL mit abschließendem "/" oder ''
+    *                (leer, wenn resolveFrontendBaseUrl() leer ist oder
+    *                CONTENT_FILES_DIR_NAME nicht definiert ist)
+    *
+    ***************************************************************/
+    public function resolveMediaBaseUrl(): string {
+        if(!defined('CONTENT_FILES_DIR_NAME')) {
+            return '';
+        }
+
+        $baseUrl = $this->resolveFrontendBaseUrl();
+        if($baseUrl === '') {
+            return '';
+        }
+
+        return $baseUrl.CONTENT_FILES_DIR_NAME.'/';
+    }
 }

@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 *
 * Tests für SchemaOrgData_FrontendRequestContext:
 *
-*   - Konstruktor setzt alle 8 Properties korrekt
+*   - Konstruktor setzt alle 9 Properties korrekt
 *   - Properties sind readonly (Schreibversuch wirft Error)
 *
 ***************************************************************/
@@ -23,7 +23,8 @@ final class FrontendRequestContextTest extends TestCase {
             new \SchemaOrgData_JsonLdBuilder(),
             new \SchemaOrgData_IdReferenceService(),
             new \SchemaOrgData_CollisionDetector(),
-            new \SchemaOrgData_UrlHelper()
+            new \SchemaOrgData_UrlHelper(),
+            new \SchemaOrgData_PersonsRegistryService()
         );
     }
 
@@ -35,6 +36,7 @@ final class FrontendRequestContextTest extends TestCase {
         $idReferenceService = new \SchemaOrgData_IdReferenceService();
         $collisionDetector = new \SchemaOrgData_CollisionDetector();
         $urlHelper = new \SchemaOrgData_UrlHelper();
+        $personsRegistryService = new \SchemaOrgData_PersonsRegistryService();
 
         $context = new \SchemaOrgData_FrontendRequestContext(
             $settings,
@@ -44,7 +46,8 @@ final class FrontendRequestContextTest extends TestCase {
             $jsonLdBuilder,
             $idReferenceService,
             $collisionDetector,
-            $urlHelper
+            $urlHelper,
+            $personsRegistryService
         );
 
         $this->assertSame($settings, $context->settings);
@@ -55,6 +58,7 @@ final class FrontendRequestContextTest extends TestCase {
         $this->assertSame($idReferenceService, $context->idReferenceService);
         $this->assertSame($collisionDetector, $context->collisionDetector);
         $this->assertSame($urlHelper, $context->urlHelper);
+        $this->assertSame($personsRegistryService, $context->personsRegistryService);
     }
 
     function testSchreibversuchAufReadonlyPropertyWirftError(): void {
