@@ -1158,6 +1158,17 @@ class SchemaOrgData_FormRenderer {
         }
 
         if($widget === 'id_reference_or_literal') {
+            // Lesekompatibilität für Freitext-Bestandsdaten (z. B. Article.author
+            // vor der Umstellung auf dieses Widget): ein gespeicherter reiner
+            // String wird beim Redisplay transparent als Literal-Wert im ersten
+            // konfigurierten Literal-Feld interpretiert, ohne die Settings zu
+            // verändern - erst ein erneutes Speichern schreibt das reguläre
+            // {_mode, ...}-Format.
+            if(is_string($value) and $value !== '') {
+                $literalFields = $fieldSchema['ui:literalFields'] ?? [];
+                $primaryField = (string) ($literalFields[0] ?? 'name');
+                $value = ['_mode' => 'literal', $primaryField => $value];
+            }
             $inner = $this->renderIdReferenceOrLiteralWidget(
                 $scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, $lang, $availableFragments
             );

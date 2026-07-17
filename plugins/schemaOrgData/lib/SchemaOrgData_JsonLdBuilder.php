@@ -222,9 +222,22 @@ class SchemaOrgData_JsonLdBuilder {
                     }
                 } elseif($widget === 'id_reference_or_literal') {
                     // Gespeicherten Wert (Array mit _mode + _fragment oder Literal-Felder)
-                    // in das fertige JSON-LD-Objekt umwandeln.
-                    $stored = is_array($data[$propName] ?? null) ? $data[$propName] : null;
+                    // in das fertige JSON-LD-Objekt umwandeln. Lesekompatibilität für
+                    // Freitext-Bestandsdaten (z. B. Article.author vor der Umstellung
+                    // auf dieses Widget): ein reiner String wird als Literal-Wert im
+                    // ersten konfigurierten Literal-Feld behandelt, damit die Ausgabe
+                    // ohne erneutes Speichern erhalten bleibt.
+                    $rawValue = $data[$propName] ?? null;
                     unset($data[$propName]);
+                    if(is_array($rawValue)) {
+                        $stored = $rawValue;
+                    } elseif(is_string($rawValue) and trim($rawValue) !== '') {
+                        $literalFields = $propSchema['ui:literalFields'] ?? [];
+                        $primaryField = (string) ($literalFields[0] ?? 'name');
+                        $stored = ['_mode' => 'literal', $primaryField => trim($rawValue)];
+                    } else {
+                        $stored = null;
+                    }
                     if($stored !== null) {
                         $mode = (string) ($stored['_mode'] ?? '');
                         if($mode === 'reference') {

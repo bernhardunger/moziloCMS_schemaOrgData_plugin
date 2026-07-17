@@ -54,7 +54,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.10.2-beta';
+    private const PLUGIN_VERSION = '0.10.3-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';

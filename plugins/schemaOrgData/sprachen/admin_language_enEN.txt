@@ -49,6 +49,8 @@ schema_type_event = 📅 Event / Appointment (Event)
 label_recipient = Recipient (Organisation)
 label_organizer = Organizer
 placeholder_organizer_name = e.g. Musterstadt Cultural Association
+placeholder_author_name = e.g. Max Mustermann
+label_publisher = Publisher (Organisation)
 
 label_name = Name
 label_description = Description
