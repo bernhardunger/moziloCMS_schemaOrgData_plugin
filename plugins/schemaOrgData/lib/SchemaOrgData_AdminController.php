@@ -170,14 +170,7 @@ class SchemaOrgData_AdminController {
 
         $html .= $adminPageRenderer->renderInfoBlock($scope, $lang);
 
-        // Rohe Textarea-Eingabe nur erhalten, wenn der Import-Button für
-        // GENAU diese Sektion abgeschickt wurde - handleImportAction()
-        // (SchemaOrgData_AdminRequestHandler) löscht den POST-Rohwert bei
-        // Erfolg, sodass hier zuverlässig nur der Fehlerfall übrig bleibt.
-        $importTextareaValue = $active && ($_POST['schemaOrgData_import_action'] ?? null) === $scope
-            ? (string) ($_POST['schemaOrgData_import_'.$scope] ?? '')
-            : '';
-        $html .= $adminPageRenderer->renderExistingJsonLdNotice($scope, $cat, $page, $lang, $scopeResolver, $settings, $importTextareaValue);
+        $html .= $adminPageRenderer->renderExistingJsonLdNotice($scope, $cat, $page, $lang, $scopeResolver, $settings);
 
         if($selectedType !== null) {
             $html .= $adminPageRenderer->renderCollisionNotice($scope, $cat, $page, $selectedType, $lang, $scopeResolver, $settings);

@@ -167,16 +167,11 @@ option_override_existing_jsonld = Overwrite with plugin configuration
 notice_keep_consequence_hint = Note: As long as "Keep existing" is selected, the plugin does not output any JSON-LD of its own for this scope - even if the form below is filled in and saved. The form data only takes effect once you switch to "Overwrite with plugin configuration".
 
 label_import_jsonld = Import existing JSON-LD
-label_import_target = JSON-LD block to import:
-label_import_manual = Paste JSON-LD manually
-description_import_jsonld = Insert an existing JSON-LD block. Known fields are filled in automatically, unknown properties are moved to the extension field. This overwrites the current configuration. Clicking "Import detected block" runs the import right away; for different text or multiple detected blocks, use the manual path under "Paste JSON-LD manually". The form fields below are then filled in with the detected values - nothing is saved until you click the save button.
-description_import_manual = For JSON-LD blocks from other sources, for choosing one block when multiple blocks were detected, or for correcting the input after a failed import. Paste the block and click "Import".
-button_import = Import
+description_import_jsonld = Applies the detected JSON-LD block directly to the form. Known fields are filled in automatically, unknown properties are moved to the extension field. This overwrites the current configuration of this scope - nothing is saved until you click the save button.
 
-button_use_detected_jsonld = Import detected block
+button_use_detected_jsonld = Import this block
 button_show_full_jsonld = Full view
 label_full_jsonld_preview = Detected JSON-LD block (full view)
-notice_multiple_jsonld_blocks = Multiple JSON-LD blocks were detected. Automatic takeover is therefore disabled - please copy the matching block from the preview above into the import field manually, only a single block can be imported.
 label_detected_block = Detected block
 error_detected_block_invalid = The detected JSON-LD block could not be read (invalid JSON). Please fix the block at its source (layout template or page content).
 error_import_block_not_found = The selected block could no longer be found - the source was likely changed in the meantime. Please reload the admin page and import again.

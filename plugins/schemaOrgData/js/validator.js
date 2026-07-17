@@ -1418,38 +1418,28 @@
     }
 
     /**
-     * Aktiviert den "Erkannten Block importieren"-Button
-     * (.schemaOrgData-autofill-btn, siehe
-     * SchemaOrgData_AdminPageRenderer::renderExistingJsonLdNotice()). Klick
-     * überträgt den Wert aus dataset.existingContent per direkter
-     * DOM-Property-Zuweisung in das Import-Textarea und löst danach den
-     * bestehenden Import-Submit-Button (schemaOrgData_import_action)
-     * innerhalb desselben <details>-Blocks aus — kein zweiter manueller
-     * Klick, kein AJAX, kein neuer serverseitiger Pfad. Textarea und
-     * Submit-Button bleiben dabei unverändert bedienbar, falls kein
-     * Submit-Button gefunden wird (z. B. isolierte Testfixtures ohne
-     * ihn), bricht die Befüllung nicht ab.
+     * Verdrahtet die Vollansicht-Dialoge der erkannten JSON-LD-Blöcke
+     * (.schemaOrgData-preview-trigger-btn / data-dialog bzw.
+     * data-dialog-close, siehe
+     * SchemaOrgData_AdminPageRenderer::renderExistingJsonLdNotice()).
+     * Der Import selbst ist ein normaler Formular-Submit (Button
+     * "schemaOrgData_import_action") und funktioniert vollständig ohne
+     * JavaScript - nur die Dialog-Vollansicht ist JS-abhängig, die
+     * <pre>-Vorschau bleibt in jedem Fall sichtbar.
      */
-    function initAutofillButton() {
-        var buttons = document.querySelectorAll('.schemaOrgData-autofill-btn');
-
-        for (var i = 0; i < buttons.length; i++) {
-            buttons[i].addEventListener('click', function (event) {
-                var btn = event.currentTarget;
-                var targetId = btn.getAttribute('data-target');
-                var textarea = targetId ? document.getElementById(targetId) : null;
-                if (!textarea) {
-                    return;
-                }
-                textarea.value = btn.dataset.existingContent || '';
-
-                var container = btn.closest('details');
-                var submitBtn = container
-                    ? container.querySelector('button[type="submit"][name="schemaOrgData_import_action"]')
-                    : null;
-                if (submitBtn) {
-                    submitBtn.click();
-                }
+    function initPreviewDialogs() {
+        var triggers = document.querySelectorAll('[data-dialog]');
+        for (var i = 0; i < triggers.length; i++) {
+            triggers[i].addEventListener('click', function (event) {
+                var d = document.getElementById(event.currentTarget.getAttribute('data-dialog'));
+                if (d && d.showModal) { d.showModal(); }
+            });
+        }
+        var closers = document.querySelectorAll('[data-dialog-close]');
+        for (var i = 0; i < closers.length; i++) {
+            closers[i].addEventListener('click', function (event) {
+                var d = document.getElementById(event.currentTarget.getAttribute('data-dialog-close'));
+                if (d) { d.close(); }
             });
         }
     }
@@ -1466,7 +1456,7 @@
         initFieldValidation();
         initExtensionFieldValidation();
         initExcludedCatsSelectAll();
-        initAutofillButton();
+        initPreviewDialogs();
     }
 
     // Öffentliche API
@@ -1488,7 +1478,7 @@
         isEventDateInPast: isEventDateInPast,
         showExtensionFeedback: showExtensionFeedback,
         initExcludedCatsSelectAll: initExcludedCatsSelectAll,
-        initAutofillButton: initAutofillButton,
+        initPreviewDialogs: initPreviewDialogs,
         initAdminForm: initAdminForm
     };
 
