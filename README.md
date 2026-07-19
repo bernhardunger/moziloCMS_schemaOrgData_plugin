@@ -32,6 +32,7 @@ Plugin ergänzt die im moziloCMS-Core vorhandenen Microdata um JSON-LD-Blöcke i
   - [Abgrenzung zu bestehenden Core-Implementierungen](#abgrenzung-core)
 - [Nutzung im Alltag](#nutzung-im-alltag)
   - [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung)
+  - [Personen-Registry](#personen-registry)
   - [JSON-LD-Ausgabe im Detail](#json-ld-ausgabe-im-detail)
   - [Adressschema (PostalAddress)](#adressschema-postaladdress)
   - [Öffnungszeiten](#oeffnungszeiten)
@@ -92,8 +93,7 @@ zugewiesen bekommen hat. Der schnellste Weg zur ersten Ausgabe, unter
 1. **Geltungsbereich wählen:** **Global** — diese Ebene wird auf jeder Seite
    ausgegeben (siehe [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung)).
 2. **Identität festlegen:** genau einen Identitäts-Type wählen, der zur Website
-   passt — **Organization**, **NGO**, **Person** oder einen
-   **LocalBusiness**-Typ (siehe
+   passt — **Organization**, **NGO** oder einen **LocalBusiness**-Typ (siehe
    [Organisations-Identität und @id-Anker](#organisations-identitaet) sowie
    [Best Practices](#best-practices)).
 3. **Pflichtfelder ausfüllen:** Pflichtfelder sind im Formular markiert, die
@@ -139,15 +139,16 @@ Stelle des Platzhalters:
 
 **Architektur**
 - JSON-LD-Ausgabe im `<head>` der Seite, nicht im Seiteninhalt
-- **14 unterstützte Schema-Types** (LocalBusiness, Organization, Event, JobPosting, FAQPage u. a. — [vollständige Liste](#unterstuetzte-schema-types))
+- **13 unterstützte Schema-Types** (LocalBusiness, Organization, Event, JobPosting, FAQPage u. a. — [vollständige Liste](#unterstuetzte-schema-types))
 - Drei Geltungsbereiche: **Global**, **Kategorie**, **Seite**, mit feldweiser Vererbung (Global → Kategorie → Seite, siehe [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung))
 
 **Redaktion & Bedienung**
 - Vollständig über Admin-Formulare pflegbar — kein Templating-Wissen nötig
+- **Personen-Registry**: eigener Admin-Bereich zur Verwaltung referenzierbarer Personen (Autoren, Ansprechpartner) mit Rollen-Relationen zur Organisation (siehe [Personen-Registry](#personen-registry))
 - Öffnungszeiten-Widget (inkl. optionalem zweitem Zeitraum je Wochentag, z. B. für Mittagspausen)
 - Generisches `PostalAddress`-Schema nach schema.org (international einsetzbar)
 - **Erweiterungsfeld** (JSON-Textarea) für zusätzliche Properties mit Live-Validierung
-- **Erkennung vorhandener JSON-LD-Blöcke** in Template und Seiteninhalt, wahlweise Beibehalten oder Überschreiben — plus **Import-Feld** zur Übernahme bestehender Daten ins Formular
+- **Erkennung vorhandener JSON-LD-Blöcke** in Template und Seiteninhalt, wahlweise Beibehalten oder Überschreiben — plus **Import-Button je erkanntem Block** zur direkten Übernahme ins Formular
 - **Debug-Modus**: erzeugte JSON-LD-Blöcke im Frontend als Pop-up anzeigen (zum Abgleich mit validator.schema.org, siehe [Erste Konfiguration](#erste-konfiguration))
 - Mehrsprachige Admin-Oberfläche und Frontend-Ausgabe (initial Deutsch und Englisch)
 
@@ -157,7 +158,7 @@ Stelle des Platzhalters:
 
 **Für Entwickler**
 - **Schema-getriebenes Formular**: JSON-Schema-Dateien definieren sowohl Validierungsregeln als auch Formularfelder — kein hardcodiertes PHP für die meisten Types (siehe [Entwicklerdokumentation](#entwicklerdokumentation))
-- **@id-Anker und Knotenreferenzen**: Seiten-Typen (z. B. **DonateAction**, **Event**) verweisen per `@id` auf global definierte Identitätsknoten — inkl. Schutzmechanismen gegen doppelte und hängende Referenzen (siehe [Organisations-Identität und @id-Anker](#organisations-identitaet))
+- **@id-Anker und Knotenreferenzen**: Seiten-Typen (z. B. **DonateAction**, **Event**) verweisen per `@id` auf global definierte Identitätsknoten bzw. Registry-Personen — inkl. Schutzmechanismen gegen doppelte und hängende Referenzen (siehe [Organisations-Identität und @id-Anker](#organisations-identitaet))
 
 <a id="unterstuetzte-schema-types"></a>
 ### Unterstützte Schema-Types
@@ -174,10 +175,9 @@ Stelle des Platzhalters:
 | `AccountingService` | Steuerberatung / Buchhaltung | Global / Kategorie |
 | `Organization` | Organisation / Firma, mit `@id`-Anker `#organization` | Global |
 | `NGO` | Gemeinnützige Organisation (Verein, Stiftung u. a.), mit `@id`-Anker `#organization` | Global |
-| `Person` | Einzelperson, mit `@id`-Anker `#person` | Global / Seite |
 | `WebSite` | Website-Metadaten | Global |
 | `FAQPage` | Häufig gestellte Fragen ([Google-Richtlinien beachten](https://developers.google.com/search/docs/appearance/structured-data/faqpage) — Rich Results seit 2023 auf wenige autoritative Quellen beschränkt) | Kategorie / Seite |
-| `Article` | Artikel / Blogbeitrag | Kategorie / Seite |
+| `Article` | Artikel / Blogbeitrag (`author` wahlweise als Organisation-Referenz, Referenz auf eine Registry-Person oder Gast-Autor als Direkteingabe; `publisher` als Organisation-Referenz) | Kategorie / Seite |
 | `JobPosting` | Stellenanzeige | Seite |
 | `DonateAction` | Spendenaufruf (verknüpft per `@id` mit dem globalen Org-Knoten) | Seite |
 | `Event` | Veranstaltung / Termin (`location` als `Place` mit Adresse, `organizer` wahlweise als Referenz oder Direkteingabe) | Seite |
@@ -248,6 +248,30 @@ ihrer Seiten ist davon nicht betroffen.
 
 > 📄 Vertiefung (Type-Kollision im Detail, Settings-API, `plugin.conf.php`): [docs/configuration.md](docs/configuration.md)
 
+<a id="personen-registry"></a>
+### Personen-Registry
+
+Neben den drei Geltungsbereichen gibt es einen vierten, eigenständigen
+Admin-Bereich: die **Personen-Registry**. Hier werden Personen (z. B.
+Mitarbeitende, Kanzlei-/Praxis-Inhaber, Vereinsvorstand) unabhängig von
+Global/Kategorie/Seite zentral gepflegt — Name, Titel, Position,
+Beschreibung, Profil-URL, Bild und Status (aktiv/inaktiv).
+
+Registrierte Personen sind an mehreren Stellen im Plugin referenzierbar,
+ohne die Daten dort erneut einzugeben:
+
+- als **Autor** eines Artikels (neben Organisation-Referenz und
+  Gast-Autor als Direkteingabe),
+- als **Ansprechpartner/Veranstalter** eines Events,
+- als **Rolle** (Gründer/in, Mitarbeiter/in, Mitglied) in den
+  **Organisations-Relationen** der globalen Identität.
+
+Nur aktive Personen stehen in diesen Auswahllisten zur Verfügung —
+bestehende Referenzen (z. B. ein bereits veröffentlichter Artikel) bleiben
+davon unberührt, siehe [Organisations-Identität und @id-Anker](#organisations-identitaet).
+
+> 📄 Vertiefung (Feldliste, `@id`-Konvention, Status-Semantik im Detail): [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
+
 <a id="json-ld-ausgabe-im-detail"></a>
 ### JSON-LD-Ausgabe im Detail
 
@@ -313,9 +337,11 @@ Plugin diesen Block **beibehält** (kein eigenes JSON-LD) oder ihn per
 eigener Konfiguration **überschreibt** — ein automatischer Merge findet
 nicht statt.
 
-Über ein **Import-Feld** lässt sich vorhandenes JSON-LD einfügen; das
-Plugin parst den Block und befüllt automatisch die bekannten Formularfelder
-(unbekannte Properties wandern ins Erweiterungsfeld).
+Für jeden erkannten Block zeigt das Plugin eine eigene Vorschau samt
+**Import-Button** — ein Klick übernimmt genau diesen Block direkt ins
+Formular (bekannte Properties in die passenden Felder, unbekannte ins
+Erweiterungsfeld). Sind mehrere Blöcke gleichzeitig vorhanden, steht pro
+Block ein eigener Button zur Verfügung.
 
 > 📄 Vertiefung (Kollisionserkennung, Import-Parsing im Detail, empfohlene Migrations-Reihenfolge): [docs/import.md](docs/import.md)
 
@@ -332,20 +358,24 @@ ausführlichen Konfigurationsbeispielen je Type.
 <a id="organisations-identitaet"></a>
 ### Organisations-Identität und @id-Anker
 
-Ausgewählte Schema-Types (**Organization**, **NGO**, die **LocalBusiness**-Familie,
-**Person**) erhalten zusätzlich eine stabile `@id` — eine URI, die den Knoten
+Ausgewählte Schema-Types (**Organization**, **NGO**, die **LocalBusiness**-Familie)
+erhalten zusätzlich eine stabile `@id` — eine URI, die den Knoten
 im Datengraphen eindeutig identifiziert. Seiten-Types wie **DonateAction**
 oder **Event** können darüber per `@id` auf den global definierten
-Organisations- bzw. Personen-Knoten verweisen, ohne ihn auf jeder Seite zu
-wiederholen. Welcher Type welches `@id`-Fragment bekommt, wird ausschließlich
-im jeweiligen JSON-Schema deklariert (`ui:idFragment`) — es gibt keine
-Type-Namen im PHP-Code. Ein De-Dup-Guard sorgt dafür, dass pro Fragment
-(`#organization`, `#person`) maximal ein Knoten pro Seite die `@id` trägt
-(sind z. B. **NGO** und **Organization** gleichzeitig global konfiguriert,
-bleibt der zweite Knoten ohne Anker); die absolute Basis-URL wird zur
-Ausgabezeit aus dem aktuellen Request abgeleitet.
+Organisations-Knoten verweisen, ohne ihn auf jeder Seite zu wiederholen.
+Registrierte Personen (siehe [Personen-Registry](#personen-registry))
+erhalten bei tatsächlicher Referenzierung (Artikel-Autor,
+`Event.organizer`, Organisations-Relationen) auf dieselbe Weise ein
+eigenes `@id`-Fragment je Person. Welcher Type welches `@id`-Fragment
+bekommt, wird ausschließlich im jeweiligen JSON-Schema deklariert
+(`ui:idFragment`) — es gibt keine Type-Namen im PHP-Code. Ein De-Dup-Guard
+sorgt dafür, dass pro Fragment (`#organization`, `#person-{slug}`)
+maximal ein Knoten pro Seite die `@id` trägt (sind z. B. **NGO** und
+**Organization** gleichzeitig global konfiguriert, bleibt der zweite
+Knoten ohne Anker); die absolute Basis-URL wird zur Ausgabezeit aus dem
+aktuellen Request abgeleitet.
 
-> 📄 Ausführliches Beispiel (JSON-LD-Beispiel, De-Dup-Guard, Person-Fragment, Basis-URL-Empfehlung): [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
+> 📄 Ausführliches Beispiel (JSON-LD-Beispiel, De-Dup-Guard, Personen-Registry, Basis-URL-Empfehlung): [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
 
 <a id="verknuepfte-inhalte"></a>
 ### Verknüpfte Inhalte (Widgets)
@@ -353,7 +383,8 @@ Ausgabezeit aus dem aktuellen Request abgeleitet.
 Für Verweise auf global definierte Knoten stehen zwei Formular-Widgets zur
 Verfügung: **`id_reference`** verweist zwingend auf einen festen Zielknoten,
 **`id_reference_or_literal`** lässt den Nutzer wählen zwischen Referenz auf
-einen globalen Knoten oder Direkteingabe.
+einen globalen Knoten (Organisation oder Registry-Person) oder
+Direkteingabe.
 
 > 📄 Mechanik, Referenz-/Literal-Modus, Schema-Deklaration und Ausgabe-Beispiele: [docs/widgets.md](docs/widgets.md)
 
@@ -441,7 +472,8 @@ Die Konfigurationsdaten werden **nicht** als Dateien im Plugin-Ordner
 abgelegt, sondern über die moziloCMS-eigene Settings-API (`$this->settings`)
 unter ebenenspezifischen Schlüsseln gespeichert und landen physisch in
 `plugin.conf.php` (siehe [Installation](#installation) für den
-FTP-Hinweis).
+FTP-Hinweis). Die Personen-Registry nutzt denselben Mechanismus über einen
+eigenen, von den drei Geltungsebenen unabhängigen Settings-Schlüssel.
 
 Weiterführende Entwicklerdokumentation:
 

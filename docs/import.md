@@ -3,8 +3,8 @@
 Das Import-Feature besteht aus zwei zusammenspielenden, aber unabhängigen
 Teilen: **Kollisionserkennung** (`SchemaOrgData_CollisionDetector` findet
 vorhandenes JSON-LD in Template/Seiteninhalt) und **Import-Parsing**
-(`SchemaOrgData_ImportService` übernimmt einen vom Nutzer eingefügten
-JSON-LD-Block ins Formular). Die Admin-UI dafür rendert
+(`SchemaOrgData_ImportService` übernimmt einen erkannten JSON-LD-Block ins
+Formular). Die Admin-UI dafür rendert
 `SchemaOrgData_AdminPageRenderer::renderExistingJsonLdNotice()`, die
 POST-Verarbeitung übernimmt `SchemaOrgData_AdminRequestHandler::
 handleImportAction()`.
@@ -75,11 +75,15 @@ erhält über diesen Mechanismus grundsätzlich keinen eigenen Treffer —
 beide Quellen (Template, Seiteninhalt) haben kein kategoriespezifisches
 Signal.
 
-Das Ergebnis (`existing_jsonld`-Flag plus gefundener Inhalt) wird pro
-Scope über `SchemaOrgData_ScopeResolver::saveScopeMeta()` persistiert,
-identisch für Frontend- und Admin-Pfad. Ein Schreib-Guard verhindert dabei
-unnötige Schreibvorgänge: `saveScopeMeta()` wird nur aufgerufen, wenn sich
-Flag oder Inhalt seit dem letzten Laden geändert haben — sonst würde jeder
+Das Ergebnis (`existing_jsonld`-Flag plus die Liste gefundener Blöcke,
+`existing_jsonld_blocks`) wird pro Scope über
+`SchemaOrgData_ScopeResolver::saveScopeMeta()` persistiert, identisch für
+Frontend- und Admin-Pfad. Für Meta-Daten aus einer Version vor dem
+serverseitigen Pro-Block-Import (Einzelstring `existing_jsonld_content`
+statt Blockliste) normalisiert `loadScopeMeta()` beim Lesen automatisch
+auf das neue Array-Format. Ein Schreib-Guard verhindert unnötige
+Schreibvorgänge: `saveScopeMeta()` wird nur aufgerufen, wenn sich Flag
+oder Inhalt seit dem letzten Laden geändert haben — sonst würde jeder
 Admin-Seitenaufruf bzw. jeder Frontend-Request einen `file_put_contents()`
 auf `plugin.conf.php` auslösen.
 
@@ -126,34 +130,49 @@ Properties per `SchemaOrgData_DataSplitHelper::splitDataForRendering()`
 in bekannte Formularfelder und unbekannte Erweiterungs-Properties trennen
 — derselbe Mapper, der auch beim regulären Formular-Rendering die
 gespeicherte Konfiguration aufteilt (siehe [rendering.md](rendering.md)).
+Der serverseitige Import-Umbau (siehe unten) hat an diesem Service nichts
+geändert — er bleibt byte-identisch und bekommt weiterhin genau einen
+Rohtext-Block pro Aufruf übergeben.
 
 Es erfolgt **kein Merge** mit der aktuellen Formularkonfiguration — der
 Aufrufer ersetzt die Konfiguration dieser Ebene vollständig mit dem
 Ergebnis.
 
-## Admin-UI: Autofill vs. manueller Import
+## Admin-UI: Pro-Block-Import
 
 `renderExistingJsonLdNotice()` rendert unterhalb der `keep`/`override`-Wahl
-einen einklappbaren Import-Bereich: Wurde bereits ein automatisch
-befüllbarer Block erkannt, zeigt ein Autofill-Button eine Vorschau und
-überträgt den Block per Klick ins Import-Feld, ohne sofort zu speichern —
-tatsächlich löst der Klick direkt den Import aus (kein Zwischenschritt).
-Sind mehrere `<script>`-Blöcke gleichzeitig erkannt worden (kein gültiges
-Einzel-JSON mehr), wird der Autofill-Button zugunsten eines erklärenden
-Hinweistexts unterdrückt — der passende Block muss dann manuell aus der
-Vorschau kopiert werden. Daneben steht immer ein manueller Pfad (Textarea
-plus „Importieren"-Button) zur Verfügung, der permanent sichtbar ist.
+für **jeden** erkannten Block (`existing_jsonld_blocks`) eine eigene
+Pretty-Print-Vorschau (`<pre>`) mit zugehörigem Vollansicht-Dialog
+(`data-dialog`/`data-dialog-close`, verdrahtet über `initPreviewDialogs()`
+in `js/validator.js`) sowie einen eigenen Submit-Button
+(`schemaOrgData_import_action`, Value `"{scope}"` bzw. `"{scope}:{index}"`
+— Index-Default `0`). Bei genau einem erkannten Block erscheint der Button
+ohne Blocküberschrift, bei mehreren mit „… 1/2"/„… 2/2" usw. Ein Klick löst
+den Import dieses konkreten Blocks unmittelbar aus — es gibt keinen
+Zwischenschritt und keinen weiteren Bestätigungsklick.
+
+Es gibt **kein** Import-Textarea und **keinen** manuellen Einfüge-Pfad
+mehr: Der frühere zweistufige Ablauf (Autofill-Button überträgt den Block
+per Client-Roundtrip in ein Textarea, das dann separat abgeschickt wird,
+bzw. alternativ manuelles Einfügen in dasselbe Textarea) ist mit dem
+serverseitigen Pro-Block-Import entfallen. `handleImportAction()`
+(`SchemaOrgData_AdminRequestHandler`) liest den zu importierenden Rohtext
+stattdessen serverseitig direkt aus der persistierten Scope-Meta
+(`existing_jsonld_blocks[$index]`) — nicht mehr aus `$_POST`. Ein nicht
+vorhandener Index liefert `error_import_block_not_found`, ungültiges
+Block-JSON `error_detected_block_invalid`.
 
 `SchemaOrgData_AdminRequestHandler::handlePostRequest()` gibt dem
-Import-Dispatch Vorrang: Ist der Import-Button gesetzt, wird ausschließlich
-der Import verarbeitet — auch wenn das Formular zusätzlich Felddaten der
-aktiven Sektion mitsendet, finden in diesem Request kein
+Import-Dispatch weiterhin Vorrang: Ist der Import-Button gesetzt, wird
+ausschließlich der Import verarbeitet — auch wenn das Formular zusätzlich
+Felddaten der aktiven Sektion mitsendet, finden in diesem Request kein
 `saveConfig()`/`deleteConfig()` statt.
 
 ## Empfohlene Migrations-Reihenfolge
 
-1. Vorhandenes JSON-LD in das Import-Feld übernehmen (Autofill-Button
-   oder manuell einfügen) und importieren.
+1. Gewünschten Block über seinen eigenen Import-Button übernehmen (bei
+   mehreren erkannten Blöcken zuvor per Vollansicht-Dialog den richtigen
+   identifizieren).
 2. Übernommene Formularfelder prüfen und anpassen.
 3. Alten JSON-LD-Block manuell aus Template bzw. Seiteninhalt entfernen.
 4. Auf `override` umstellen (oder, falls der alte Block bereits entfernt

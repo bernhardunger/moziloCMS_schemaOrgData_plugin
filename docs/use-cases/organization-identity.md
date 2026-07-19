@@ -23,15 +23,14 @@ Organisationsblock auf jeder Seite zu wiederholen.
 
 Ob und unter welchem URI-Fragment ein Type eine `@id` bekommt, wird
 ausschließlich in der jeweiligen Schema-Datei über die Property
-`ui:idFragment` festgelegt — es gibt keine Type-Namen im PHP-Code.
+`ui:idFragment` festgelegt — es gibt keine Type-Namen im PHP-Code. Eine
+Ausnahme bilden Registry-Personen (siehe unten): ihr Fragment wird nicht
+schema-statisch, sondern dynamisch aus dem Slug gebildet.
 
-| Fragment | Types | Scope |
+| Fragment | Types / Quelle | Scope |
 |---|---|---|
 | `#organization` | `NGO`, `Organization`, `LocalBusiness`, `ProfessionalService`, `LegalService`, `MedicalBusiness`, `AccountingService` | Global |
-| `#person` | `Person` | Global / Seite¹ |
-
-¹ Referenzierbar (z. B. als `Event.organizer`) ist ausschließlich eine
-  global konfigurierte Person — siehe Abschnitt „Person-Fragment" unten.
+| `#person-{slug}` | Registry-Personen (`persons_registry`), ein Fragment je Slug | über Referenzierung (Artikel-Autor, `Event.organizer`, Organisations-Relationen) |
 
 Die LocalBusiness-Familie teilt sich mit **NGO**/**Organization** bewusst
 dasselbe Fragment (`organization`) — es geht um dieselbe Rolle
@@ -52,40 +51,55 @@ flowchart TD
 
 </details>
 
-Pro Seite trägt **genau ein** Knoten ein gegebenes Fragment. Sind auf
-derselben Seite z. B. sowohl **NGO** als auch **Organization** global
-konfiguriert (was laut [Best Practices](../best-practices.md) ohnehin
-vermieden werden sollte), erhält nur der in Ausgabereihenfolge erste Knoten
-die `@id` — die übrigen bleiben ohne Anker. Eine einmal gesetzte `@id` wird
-nie still entfernt; sie steht immer direkt hinter `@type` im Output.
+Pro Seite trägt **genau ein** Knoten ein gegebenes `#organization`-Fragment.
+Sind auf derselben Seite z. B. sowohl **NGO** als auch **Organization**
+global konfiguriert (was laut [Best Practices](../best-practices.md)
+ohnehin vermieden werden sollte), erhält nur der in Ausgabereihenfolge
+erste Knoten die `@id` — die übrigen bleiben ohne Anker. Eine einmal
+gesetzte `@id` wird nie still entfernt; sie steht immer direkt hinter
+`@type` im Output.
 
-Die Fragmente `#organization` und `#person` sind vollständig unabhängig
-voneinander — De-Dup-Guard und Dangling-Reference-Guard (siehe
+`#person-{slug}` ist demgegenüber eine **Mehrknoten-Fragmentfamilie**: Da
+jeder Slug eindeutig ist, kann eine Seite gleichzeitig mehrere
+`#person-{slug}`-Knoten tragen (z. B. Artikel-Autor UND
+`Event.organizer` als unterschiedliche Personen) — der De-Dup-Guard greift
+hier pro Slug, nicht pro Type.
+
+Die Fragmente `#organization` und `#person-{slug}` sind vollständig
+unabhängig voneinander — De-Dup-Guard und Dangling-Reference-Guard (siehe
 [widgets.md](../widgets.md)) greifen für jedes Fragment separat.
 
-## Person-Fragment (`#person`)
+## Registry-Personen (`#person-{slug}`)
 
-`Person` erhält analog zu **NGO**/**Organization** einen eigenen `@id`-Anker
-mit dem Fragment `person`. Damit können Seiten-Typen (z. B.
-`Event.organizer`) auf eine global definierte Person verweisen. `Person`
-ist auf **Global-** und **Seiten-Scope** verfügbar. Referenzierbar über
-dieses `@id`-Fragment ist jedoch ausschließlich eine **global**
-konfigurierte Person — ein rein seiten-scope konfigurierter Person-Knoten
-erhält zwar ebenfalls sein eigenes `@id`, kann aber nicht von anderen
-Types referenziert werden (`resolveAvailableGlobalFragments()` liest
-ausschließlich `config_global`).
+Personen werden nicht als eigenständiger Schema-Type konfiguriert, sondern
+in einem vierten, von Global/Kategorie/Seite unabhängigen Admin-Bereich
+verwaltet (`persons_registry`-Settings-Key). Jede Person erhält bei
+tatsächlicher Referenzierung einen eigenen `@id`-Anker mit dem Fragment
+`person-{slug}` und wird als eigenständiger `Person`-JSON-LD-Knoten
+emittiert:
 
 ```html
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Person",
-  "@id": "https://www.example.org/#person",
+  "@id": "https://www.example.org/#person-maria-beispiel",
   "name": "Dr. Maria Beispiel",
   "jobTitle": "Geschäftsführerin"
 }
 </script>
 ```
+
+Referenzierbar sind Registry-Personen über drei Mechanismen: die
+Autoren-Auswahl von `Article.author` (neben Organisation-Referenz und
+Gast-Autor als Literal), `Event.organizer` sowie die
+Organisations-Relationen (`founder`/`employee`/`member`, siehe
+[widgets.md](../widgets.md)). Nur **aktive** Personen erscheinen in den
+zugehörigen Auswahl-Dropdowns; eine bereits gespeicherte Referenz auf eine
+inzwischen inaktive Person bleibt bei Artikel-Autor und
+`Event.organizer` weiterhin sichtbar, wird aber in den
+Organisations-Relationen aus der Ausgabe gefiltert (Details:
+`CLAUDE.md`, Abschnitt „Personen-Registry").
 
 ## Basis-URL
 
@@ -104,12 +118,13 @@ die `@id` stabil und eindeutig bleibt, sollte die Installation per
 > Datengraphen. Empfehlung: einheitliche 301-Weiterleitung auf genau eine
 > Host-Variante.
 
-## Praxisbeispiel: Verein mit Spendenseite und Event
+## Praxisbeispiel: Verein mit Spendenseite, Event und Autoren-Referenz
 
 ```
-Global:  NGO                    → @id: .../#organization
-Seite A: DonateAction            → recipient: { "@id": ".../#organization" }
-Seite B: Event, organizer=Person → { "@id": ".../#person" } oder Direkteingabe
+Global:  NGO                     → @id: .../#organization
+Seite A: DonateAction             → recipient: { "@id": ".../#organization" }
+Seite B: Event, organizer=Person  → { "@id": ".../#person-maria-beispiel" }
+Artikel: author=Registry-Person   → { "@id": ".../#person-julia-weber" }
 ```
 
 Mechanik und Formularverhalten der Widgets, die diese Referenzen erzeugen
