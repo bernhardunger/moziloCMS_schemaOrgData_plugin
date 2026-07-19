@@ -404,8 +404,10 @@ class SchemaOrgData_FrontendRenderer {
         $html .= '    var ta = document.createElement("textarea");'."\n";
         $html .= '    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";'."\n";
         $html .= '    document.body.appendChild(ta); ta.focus(); ta.select();'."\n";
-        $html .= '    try{ document.execCommand("copy"); }catch(e){}'."\n";
+        $html .= '    var success = false;'."\n";
+        $html .= '    try{ success = document.execCommand("copy"); }catch(e){ success = false; }'."\n";
         $html .= '    document.body.removeChild(ta);'."\n";
+        $html .= '    return success;'."\n";
         $html .= '  }'."\n";
 
         $html .= '  schemaOrgDataDebugData.blocks.forEach(function(block, i){'."\n";
@@ -437,9 +439,10 @@ class SchemaOrgData_FrontendRenderer {
         $html .= '      var text = pre.textContent || pre.innerText;'."\n";
         $html .= '      var orig = copyBtn.textContent;'."\n";
         $html .= '      function ok(){ copyBtn.textContent = "Kopiert!"; setTimeout(function(){ copyBtn.textContent = orig; }, 1500); }'."\n";
+        $html .= '      function fail(){ copyBtn.textContent = "Fehler beim Kopieren"; setTimeout(function(){ copyBtn.textContent = orig; }, 1500); }'."\n";
         $html .= '      if(navigator.clipboard && window.isSecureContext){'."\n";
-        $html .= '        navigator.clipboard.writeText(text).then(ok).catch(function(){ fallbackCopy(text); ok(); });'."\n";
-        $html .= '      }else{ fallbackCopy(text); ok(); }'."\n";
+        $html .= '        navigator.clipboard.writeText(text).then(ok).catch(function(){ if(fallbackCopy(text)){ ok(); }else{ fail(); } });'."\n";
+        $html .= '      }else{ if(fallbackCopy(text)){ ok(); }else{ fail(); } }'."\n";
         $html .= '    });'."\n";
         $html .= '  });'."\n";
 

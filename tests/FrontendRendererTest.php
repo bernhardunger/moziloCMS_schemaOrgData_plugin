@@ -447,6 +447,26 @@ final class FrontendRendererTest extends TestCase {
         $this->assertStringContainsString('validatorLink.href = "https://validator.schema.org"', $html);
     }
 
+    /***************************************************************
+    *
+    * Regressionstest gegen einen False-Success beim "JSON kopieren"-
+    * Button: fallbackCopy() muss den tatsächlichen execCommand("copy")-
+    * Erfolg zurückgeben, der Click-Handler darf "Kopiert!" nur bei
+    * echtem Erfolg anzeigen statt unconditional.
+    *
+    ***************************************************************/
+    function testBuildDebugWidgetCopyButtonPrueftFallbackCopyErfolg(): void {
+        $html = $this->buildDebugWidget(
+            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
+        );
+
+        $this->assertStringContainsString('return success;', $html);
+        $this->assertStringContainsString('function fail(){', $html);
+        $this->assertStringContainsString(
+            'if(fallbackCopy(text)){ ok(); }else{ fail(); }', $html
+        );
+    }
+
     function testBuildDebugWidgetJsonHexTagBleibtByteIdentischZuBuildJsonLdScript(): void {
         $payload = '</script><script>alert(1)</script>';
         $data = ['name' => $payload];
