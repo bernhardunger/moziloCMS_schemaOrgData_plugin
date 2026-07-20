@@ -408,6 +408,62 @@ final class AdminRequestHandlerTest extends TestCase {
             'Die mitgesendeten Formulardaten ("Andere Firma") dürfen nicht über saveConfig() gespeichert werden');
     }
 
+    /***************************************************************
+    *
+    * Post-Import-Redisplay (siehe SchemaOrgData_PersonSuggestionService::
+    * renderSuggestionNotice(), $fromImport): das Marker-Hidden-Feld
+    * signalisiert, dass "employee" noch nicht in der persistierten
+    * Konfiguration vorliegt, sondern nur im mitgesendeten POST - die
+    * aktive Sektion wird implizit gespeichert, bevor acceptSuggestion()
+    * aufgerufen wird.
+    *
+    ***************************************************************/
+    function testAcceptPersonSuggestionMitImportMarkerSpeichertZuerstDieAktiveSektion(): void {
+        $settings = new \InMemorySettings();
+        $data = $this->validLocalBusinessData();
+        $data['extension']['LocalBusiness'] = json_encode(['employee' => ['@type' => 'Person', 'name' => 'Julia Weber']]);
+        $_POST['schemaOrgData'] = ['global' => $data];
+        $_POST['schemaOrgData_person_suggestion_from_import'] = '1';
+        $_POST['schemaOrgData_accept_person_suggestion'] = 'employee';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame([], $result['errors']);
+
+        $registry = $settings->get(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY);
+        $this->assertArrayHasKey('julia-weber', $registry);
+
+        $config = $settings->get('config_global');
+        $this->assertSame('Muster GmbH', $config['LocalBusiness']['name']);
+        $this->assertSame([['person' => 'julia-weber', 'role' => 'employee']], $config['org_relations']);
+        $this->assertArrayNotHasKey('employee', $config['LocalBusiness']);
+    }
+
+    /***************************************************************
+    *
+    * Schlägt das implizite Speichern fehl (hier: Pflichtfeld "name"
+    * fehlt), werden die Fehler durchgereicht - weder config_global
+    * noch die Personen-Registry werden verändert (kein Teil-Update).
+    *
+    ***************************************************************/
+    function testAcceptPersonSuggestionMitImportMarkerUndFehlgeschlagenemSpeichernReichtFehlerDurch(): void {
+        $settings = new \InMemorySettings();
+        $data = $this->validLocalBusinessData();
+        $data['data']['name'] = '';
+        $data['extension']['LocalBusiness'] = json_encode(['employee' => ['@type' => 'Person', 'name' => 'Julia Weber']]);
+        $_POST['schemaOrgData'] = ['global' => $data];
+        $_POST['schemaOrgData_person_suggestion_from_import'] = '1';
+        $_POST['schemaOrgData_accept_person_suggestion'] = 'employee';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotSame([], $result['errors']);
+        $this->assertFalse($settings->keyExists('config_global'));
+        $this->assertFalse($settings->keyExists(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY));
+    }
+
     function testAcceptPersonSuggestionOhneAktivenOrganisationsTypeLiefertFehler(): void {
         $settings = new \InMemorySettings();
         $settings->set('config_global', ['WebSite' => ['name' => 'Muster GmbH', 'url' => 'https://www.example.com']]);

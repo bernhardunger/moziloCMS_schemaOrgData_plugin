@@ -74,7 +74,8 @@ class SchemaOrgData_AdminRequestHandler {
             return $this->handleAcceptPersonSuggestion(
                 (string) $_POST['schemaOrgData_accept_person_suggestion'],
                 $settings, $scopeResolver, $schemaRepository, $pluginSelfDir, $lang,
-                $personSuggestionService, $personsRegistryService, $orgRelationsService, $validator
+                $personSuggestionService, $personsRegistryService, $orgRelationsService, $validator,
+                $configSaveService, $openingHoursHelper, $adminPageRenderer
             );
         }
 
@@ -264,7 +265,16 @@ class SchemaOrgData_AdminRequestHandler {
     * Sektion, siehe SchemaOrgData_AdminController::renderScopeSection()).
     * Kein saveConfig() in diesem Request, auch wenn das Formular
     * zusätzlich Felddaten der aktiven Sektion mitsendet (analog zum
-    * Import-Dispatch).
+    * Import-Dispatch) - außer im Post-Import-Redisplay-Fall (siehe unten).
+    *
+    * Trägt das Marker-Hidden-Feld "schemaOrgData_person_suggestion_from_import"
+    * (siehe renderSuggestionNotice()) mit im POST, wird die globale Sektion
+    * zunächst implizit gespeichert, bevor acceptSuggestion() aufgerufen wird -
+    * direkt nach einem Import liegt "employee"/"founder"/"member" noch nicht
+    * in der persistierten Konfiguration vor, sondern nur im POST-Redisplay.
+    * Ohne dieses Marker-Feld bleibt der bestehende Vorrang-Schutz unverändert
+    * bestehen (kein implizites Speichern mitgesendeter, nicht gespeicherter
+    * Formulardaten im Normalfall).
     *
     * @return array{success: bool, errors: string[]}
     *
@@ -279,8 +289,25 @@ class SchemaOrgData_AdminRequestHandler {
         SchemaOrgData_PersonSuggestionService $personSuggestionService,
         SchemaOrgData_PersonsRegistryService $personsRegistryService,
         SchemaOrgData_OrgRelationsService $orgRelationsService,
-        SchemaOrgData_Validator $validator
+        SchemaOrgData_Validator $validator,
+        SchemaOrgData_ConfigSaveService $configSaveService,
+        SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
+        SchemaOrgData_AdminPageRenderer $adminPageRenderer
     ): array {
+        $fromImport = !empty($_POST['schemaOrgData_person_suggestion_from_import']);
+        $globalPostData = is_array($_POST['schemaOrgData']['global'] ?? null) ? $_POST['schemaOrgData']['global'] : null;
+
+        if($fromImport and $globalPostData !== null) {
+            $saveResult = $configSaveService->saveConfig(
+                'global', $globalPostData, $settings, $lang, $scopeResolver, $schemaRepository,
+                $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer,
+                $personsRegistryService, $orgRelationsService
+            );
+            if(!$saveResult['success']) {
+                return ['success' => false, 'errors' => $saveResult['errors']];
+            }
+        }
+
         $config = $scopeResolver->loadScopeConfig($settings, 'global');
         $type = $schemaRepository->resolveActiveType($config, $pluginSelfDir);
         $schema = ($type !== null) ? $schemaRepository->loadSchema($pluginSelfDir, $type) : null;

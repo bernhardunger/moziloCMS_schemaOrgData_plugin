@@ -307,7 +307,7 @@ class SchemaOrgData_AdminController {
                         $personsRegistryService,
                         $settings
                     );
-                    $html .= $personSuggestionService->renderSuggestionNotice($suggestions, $type, $lang, $typeIdPrefix);
+                    $html .= $personSuggestionService->renderSuggestionNotice($suggestions, $type, $lang, $typeIdPrefix, $postScope !== null);
                 }
             }
 
@@ -685,6 +685,12 @@ class SchemaOrgData_AdminController {
             // Property-Namen erfolgt erst clientseitig in
             // initExtensionFieldValidation() (validator.js).
             'unknownProperty'    => $lang->getLanguageValue('warning_unknown_property', '{PARAM1}'),
+            // '{PARAM1}' wird hier als Wert übergeben, damit
+            // getLanguageValue() den Platzhalter NICHT durch ""
+            // ersetzt (Default von $param1) - die Ersetzung mit dem
+            // Property-Namen erfolgt erst clientseitig in
+            // showExtensionFeedback() (validator.js).
+            'personSuggestionCandidate' => $lang->getLanguageValue('hint_extension_person_candidate', '{PARAM1}'),
             'jsonInvalid'        => $lang->getLanguageValue('error_json_invalid'),
             // '{PARAM1}' wird hier als Wert übergeben, damit
             // getLanguageValue() den Platzhalter NICHT durch ""

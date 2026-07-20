@@ -74,16 +74,36 @@ class SchemaOrgData_PersonSuggestionService {
     *
     * @param array<int, array{property: string, literal: array<string, mixed>, matchedSlug: string|null}> $suggestions
     * @param string $idPrefix Präfix für die HTML-ID des Hinweisblocks
+    * @param bool $fromImport true, wenn der Vorschlag im Post-Import-Redisplay
+    *        erscheint (siehe SchemaOrgData_AdminController::renderScopeSection()) -
+    *        rendert zusätzlich ein Marker-Hidden-Feld, das
+    *        SchemaOrgData_AdminRequestHandler::handleAcceptPersonSuggestion()
+    *        signalisiert, die aktive Sektion vor der Übernahme implizit zu
+    *        speichern (Redisplay-Daten liegen sonst noch nicht persistiert vor)
     * @return string HTML-Snippet oder '' ohne Funde
     *
     ***************************************************************/
-    public function renderSuggestionNotice(array $suggestions, string $type, Language $lang, string $idPrefix): string {
+    public function renderSuggestionNotice(array $suggestions, string $type, Language $lang, string $idPrefix, bool $fromImport = false): string {
         if($suggestions === []) {
             return '';
         }
 
         $html = '<div id="schemaOrgData-person-suggestion-'.htmlspecialchars($idPrefix, ENT_QUOTES, CHARSET).'"'
             .' class="schemaOrgData-notice schemaOrgData-notice--info schemaOrgData-person-suggestion">'."\n";
+
+        if($fromImport) {
+            // Signalisiert SchemaOrgData_AdminRequestHandler::handleAcceptPersonSuggestion(),
+            // dass dieser Vorschlag im Post-Import-Redisplay erscheint (siehe
+            // SchemaOrgData_AdminController::renderScopeSection()) - die aktive
+            // Sektion wurde noch nicht gespeichert, employee/founder/member liegt
+            // daher nur im POST vor, nicht in der persistierten Konfiguration.
+            // Nur in diesem eng abgegrenzten Fall wird implizit mitgespeichert,
+            // siehe dort - im Normalfall (Vorschlag auf Basis bereits gespeicherter
+            // Konfiguration) bleibt der bestehende Vorrang-Schutz unverändert
+            // bestehen (kein implizites Speichern mitgesendeter, nicht gespeicherter
+            // Formulardaten).
+            $html .= '<input type="hidden" name="schemaOrgData_person_suggestion_from_import" value="1">'."\n";
+        }
 
         foreach($suggestions as $suggestion) {
             $property = (string) $suggestion['property'];

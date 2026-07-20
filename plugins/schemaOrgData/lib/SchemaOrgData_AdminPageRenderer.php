@@ -50,6 +50,7 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-feedback--ok { color: #2e7d32; }
 .schemaOrgData-admin .schemaOrgData-feedback--warning { color: #b8860b; }
 .schemaOrgData-admin .schemaOrgData-feedback--error { color: #c0392b; }
+.schemaOrgData-admin .schemaOrgData-feedback--info { color: #1565c0; }
 .schemaOrgData-admin .schemaOrgData-opening-hours { border-collapse: collapse; }
 .schemaOrgData-admin .schemaOrgData-opening-hours th, .schemaOrgData-admin .schemaOrgData-opening-hours td { padding: .25em .5em; text-align: left; }
 .schemaOrgData-admin .schemaOrgData-opening-hours-group { display: flex; align-items: center; gap: 4px; }

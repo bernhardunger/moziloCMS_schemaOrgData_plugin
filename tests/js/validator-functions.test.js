@@ -210,6 +210,48 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
         });
     });
 
+    describe('isPersonSuggestionCandidate()', function () {
+        test('employee mit @type Person ist ein Kandidat', function () {
+            expect(validator.isPersonSuggestionCandidate('employee', { '@type': 'Person', name: 'Julia Weber' })).toBe(true);
+        });
+
+        test('founder mit @type Person ist ein Kandidat', function () {
+            expect(validator.isPersonSuggestionCandidate('founder', { '@type': 'Person', name: 'Julia Weber' })).toBe(true);
+        });
+
+        test('member mit @type Person ist ein Kandidat', function () {
+            expect(validator.isPersonSuggestionCandidate('member', { '@type': 'Person', name: 'Julia Weber' })).toBe(true);
+        });
+
+        test('Array statt Einzelobjekt ist kein Kandidat', function () {
+            expect(validator.isPersonSuggestionCandidate('employee', [{ '@type': 'Person', name: 'Julia Weber' }])).toBe(false);
+        });
+
+        test('anderer @type-Wert ist kein Kandidat', function () {
+            expect(validator.isPersonSuggestionCandidate('employee', { '@type': 'Organization', name: 'Andere GmbH' })).toBe(false);
+        });
+
+        test('andere Property-Namen sind kein Kandidat', function () {
+            expect(validator.isPersonSuggestionCandidate('foundingPerson', { '@type': 'Person', name: 'Julia Weber' })).toBe(false);
+        });
+
+        test('Nicht-Objekt-Werte (String) sind kein Kandidat', function () {
+            expect(validator.isPersonSuggestionCandidate('employee', 'Julia Weber')).toBe(false);
+        });
+
+        test('Nicht-Objekt-Werte (Zahl) sind kein Kandidat', function () {
+            expect(validator.isPersonSuggestionCandidate('employee', 42)).toBe(false);
+        });
+
+        test('null ist kein Kandidat', function () {
+            expect(validator.isPersonSuggestionCandidate('employee', null)).toBe(false);
+        });
+
+        test('undefined ist kein Kandidat', function () {
+            expect(validator.isPersonSuggestionCandidate('employee', undefined)).toBe(false);
+        });
+    });
+
     describe('checkFormats()/validateExtensionField() gegen Mini-Schema', function () {
         test('gültige Daten ergeben keine Formatfehler', function () {
             var errors = validator.checkFormats({ hasMap: 'https://example.com', count: 3 }, MINI_SCHEMA);

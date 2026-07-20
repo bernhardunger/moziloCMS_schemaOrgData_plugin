@@ -71,7 +71,8 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
         global.fetch = fetchMock;
 
         window.schemaOrgDataMessages = {
-            unknownProperty: 'UNBEKANNTE_PROPERTY {PARAM1}'
+            unknownProperty: 'UNBEKANNTE_PROPERTY {PARAM1}',
+            personSuggestionCandidate: 'PERSONEN_KANDIDAT {PARAM1}'
         };
 
         validator = loadPluginScripts.loadValidator();
@@ -124,6 +125,34 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
 
         var feedback = feedbackFor(GLOBAL_ID);
         expect(feedback.querySelector('.schemaOrgData-feedback--error')).not.toBeNull();
+    });
+
+    test('ein Personen-Suggestion-Kandidat (employee mit @type Person) erhält Info- statt Warnung-Feedback', async function () {
+        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        validator.initAdminForm();
+        await flushPromises();
+
+        document.getElementById(GLOBAL_ID).value = '{"employee": {"@type": "Person", "name": "Julia Weber"}}';
+        fire(document.getElementById(GLOBAL_ID), 'blur');
+
+        var feedback = feedbackFor(GLOBAL_ID);
+        expect(feedback.querySelector('.schemaOrgData-feedback--info')).not.toBeNull();
+        expect(feedback.querySelector('.schemaOrgData-feedback--warning')).toBeNull();
+        expect(feedback.textContent).toContain('PERSONEN_KANDIDAT employee');
+    });
+
+    test('ein Array unter employee bleibt eine gewöhnliche Unbekannt-Warnung (kein Personen-Suggestion-Kandidat)', async function () {
+        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        validator.initAdminForm();
+        await flushPromises();
+
+        document.getElementById(GLOBAL_ID).value = '{"employee": [{"@type": "Person", "name": "Julia Weber"}]}';
+        fire(document.getElementById(GLOBAL_ID), 'blur');
+
+        var feedback = feedbackFor(GLOBAL_ID);
+        expect(feedback.querySelector('.schemaOrgData-feedback--warning')).not.toBeNull();
+        expect(feedback.querySelector('.schemaOrgData-feedback--info')).toBeNull();
+        expect(feedback.textContent).toContain('UNBEKANNTE_PROPERTY employee');
     });
 
     test('mehrere Erweiterungsfelder verschiedener Scopes bleiben unabhängig - Blur eines Feldes aktualisiert nicht das Feedback des anderen Feldes', async function () {

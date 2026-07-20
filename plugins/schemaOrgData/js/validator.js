@@ -84,6 +84,31 @@
     }
 
     /**
+     * Prüft, ob eine unbekannte Erweiterungsfeld-Property ein
+     * Personen-Literal ist, das SchemaOrgData_PersonSuggestionService
+     * server-seitig als Übernahme-Vorschlag anbietet (siehe README.md,
+     * Abschnitt "Erweiterungsfeld"). Muss mit der PHP-Erkennung in
+     * SchemaOrgData_PersonSuggestionService::detectSuggestions() in Sync
+     * bleiben (Property-Whitelist + "@type": "Person" als einzelnes Objekt).
+     *
+     * @param {string} property
+     * @param {*} value
+     * @returns {boolean}
+     */
+    function isPersonSuggestionCandidate(property, value) {
+        // Muss mit SchemaOrgData_OrgRelationsService::ROLES (PHP) in Sync
+        // bleiben - dort keine JS-seitige Quelle verfügbar, daher hier
+        // dupliziert.
+        var PERSON_SUGGESTION_PROPERTIES = ['founder', 'employee', 'member'];
+
+        if (PERSON_SUGGESTION_PROPERTIES.indexOf(property) === -1) {
+            return false;
+        }
+
+        return !!value && typeof value === 'object' && !Array.isArray(value) && value['@type'] === 'Person';
+    }
+
+    /**
      * Schritt 3: Validiert bekannte Properties gegen das aktive Schema
      * (z. B. "format": "uri" für hasMap, "format": "email", etc.).
      *
@@ -1307,8 +1332,14 @@
             appendFeedbackSpan('error', '❌ ' + result.syntaxError);
         } else {
             result.unknownProperties.forEach(function (property) {
-                appendFeedbackSpan('warning', '⚠️ '
-                    + (getMessages().unknownProperty || property).replace('{PARAM1}', property));
+                var value = result.data ? result.data[property] : undefined;
+                if (isPersonSuggestionCandidate(property, value)) {
+                    appendFeedbackSpan('info', 'ℹ️ '
+                        + (getMessages().personSuggestionCandidate || property).replace('{PARAM1}', property));
+                } else {
+                    appendFeedbackSpan('warning', '⚠️ '
+                        + (getMessages().unknownProperty || property).replace('{PARAM1}', property));
+                }
             });
 
             result.formatErrors.forEach(function (error) {
@@ -1464,6 +1495,7 @@
         validateExtensionField: validateExtensionField,
         checkSyntax: checkSyntax,
         checkUnknownProperties: checkUnknownProperties,
+        isPersonSuggestionCandidate: isPersonSuggestionCandidate,
         checkFormats: checkFormats,
         validatePostalCode: validatePostalCode,
         validateTelephone: validateTelephone,

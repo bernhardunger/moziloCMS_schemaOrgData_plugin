@@ -137,6 +137,7 @@ tooltip_inherited_from = Übernommen von: {PARAM1}
 error_json_invalid = Das eingegebene JSON ist ungültig.
 error_json_syntax = JSON-Syntaxfehler in Zeile {PARAM1}, Spalte {PARAM2}
 warning_unknown_property = Unbekannte Property "{PARAM1}" wird übernommen, ist aber im Schema nicht definiert.
+hint_extension_person_candidate = Die Property "{PARAM1}" wird als Person erkannt — nach dem Speichern kann sie in die Personen-Registry übernommen werden.
 error_required_field = Pflichtfeld "{PARAM1}" fehlt.
 error_invalid_format = Feld "{PARAM1}" hat ein ungültiges Format.
 

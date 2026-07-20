@@ -137,6 +137,7 @@ tooltip_inherited_from = Inherited from: {PARAM1}
 error_json_invalid = The entered JSON is invalid.
 error_json_syntax = JSON syntax error at line {PARAM1}, column {PARAM2}
 warning_unknown_property = Unknown property "{PARAM1}" will be saved but is not defined in the schema.
+hint_extension_person_candidate = Property "{PARAM1}" is recognized as a person — after saving, it can be added to the persons registry.
 error_required_field = Required field "{PARAM1}" is missing.
 error_invalid_format = Field "{PARAM1}" has an invalid format.
 

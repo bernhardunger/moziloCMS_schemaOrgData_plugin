@@ -152,6 +152,40 @@ final class PersonSuggestionServiceTest extends TestCase {
         $this->assertStringContainsString($this->adminLang()->getLanguageHtml('button_person_suggestion_link'), $html);
     }
 
+    /***************************************************************
+    *
+    * $fromImport = true rendert zusätzlich das Marker-Hidden-Feld,
+    * das SchemaOrgData_AdminRequestHandler::handleAcceptPersonSuggestion()
+    * signalisiert, die aktive Sektion vor der Übernahme implizit zu
+    * speichern (Post-Import-Redisplay, siehe SchemaOrgData_AdminController::
+    * renderScopeSection()).
+    *
+    ***************************************************************/
+    function testRenderSuggestionNoticeMitFromImportRendertMarkerFeld(): void {
+        $suggestions = [['property' => 'employee', 'literal' => ['@type' => 'Person', 'name' => 'Julia Weber'], 'matchedSlug' => null]];
+
+        $html = $this->service()->renderSuggestionNotice($suggestions, 'LocalBusiness', $this->adminLang(), 'global_LocalBusiness', true);
+
+        $this->assertStringContainsString('name="schemaOrgData_person_suggestion_from_import"', $html);
+        $this->assertStringContainsString('value="1"', $html);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest: ohne $fromImport (Default false, wie bei allen
+    * bestehenden Aufrufen im Normalfall) erscheint das Marker-Feld
+    * NICHT - der bestehende Vorrang-Schutz bleibt dadurch unverändert
+    * bestehen.
+    *
+    ***************************************************************/
+    function testRenderSuggestionNoticeOhneFromImportRendertKeinMarkerFeld(): void {
+        $suggestions = [['property' => 'employee', 'literal' => ['@type' => 'Person', 'name' => 'Julia Weber'], 'matchedSlug' => null]];
+
+        $html = $this->service()->renderSuggestionNotice($suggestions, 'LocalBusiness', $this->adminLang(), 'global_LocalBusiness');
+
+        $this->assertStringNotContainsString('schemaOrgData_person_suggestion_from_import', $html);
+    }
+
     // -----------------------------------------------------------
     // acceptSuggestion()
     // -----------------------------------------------------------
