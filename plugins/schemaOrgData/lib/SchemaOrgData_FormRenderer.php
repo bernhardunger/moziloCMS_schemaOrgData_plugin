@@ -890,10 +890,21 @@ class SchemaOrgData_FormRenderer {
     public function renderOrgRelationsWidget(string $scope, array $orgRelations, ?string $idPrefix, Language $lang, array $availablePersons): string {
         $idPrefix = $idPrefix ?? $scope;
         $fieldNameBase = 'schemaOrgData['.$scope.'][org_relations]';
+        $markerName = 'schemaOrgData['.$scope.'][org_relations_marker]';
 
         $html = '<fieldset class="schemaOrgData-fieldset">'."\n";
         $html .= '<legend>'.$lang->getLanguageHtml('label_org_relations').'</legend>'."\n";
         $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_org_relations').'</p>'."\n";
+
+        // Marker-Feld, unabhängig von $availablePersons: signalisiert dem
+        // Server "dieses Widget wurde tatsächlich gerendert und abgeschickt",
+        // auch wenn 0 Personen verfügbar sind und daher keine
+        // org_relations[]-Zeilen existieren. Ohne diesen Marker greift der
+        // array_key_exists("org_relations", ...)-Guard in
+        // SchemaOrgData_ConfigSaveService::saveConfig() fälschlich den für
+        // Type-Wechsel gedachten "Feld fehlt komplett"-Fall, und eine zuvor
+        // gespeicherte, jetzt verwaiste Relation bleibt unbereinigt stehen.
+        $html .= '<input type="hidden" name="'.htmlspecialchars($markerName, ENT_QUOTES, CHARSET).'" value="1">'."\n";
 
         if($availablePersons === []) {
             $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_org_relations_no_persons').'</p>'."\n";

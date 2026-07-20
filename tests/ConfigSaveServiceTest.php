@@ -840,6 +840,35 @@ final class ConfigSaveServiceTest extends TestCase {
 
     /***************************************************************
     *
+    * Regressionstest für die verwaiste-Relation-Bereinigungslücke: sind
+    * 0 Personen in der Registry aktiv, rendert das Widget keine
+    * org_relations[]-Zeilen, sendet aber weiterhin den Marker
+    * "org_relations_marker" (siehe SchemaOrgData_FormRenderer::
+    * renderOrgRelationsWidget()). saveConfig() muss diesen Fall von einem
+    * komplett fehlenden Widget (Type-Wechsel, siehe Test oben) unterscheiden
+    * und eine zuvor gespeicherte, jetzt verwaiste Relation bereinigen.
+    *
+    ***************************************************************/
+    function testSaveConfigBereinigtBestehendeRelationBeiVorhandenemMarkerOhneOrgRelations(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            'AccountingService' => ['name' => 'Alte Kanzlei', 'url' => 'https://www.example.com'],
+            'org_relations' => [['person' => 'geloescht', 'role' => 'founder']],
+        ]);
+
+        $postData = $this->validFamilyTypeData('AccountingService');
+        $postData['org_relations_marker'] = '1';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame([], $settings->get('config_global')['org_relations'],
+            'Marker vorhanden, org_relations fehlt (0-Personen-Fall) - bestehende, '
+            .'jetzt verwaiste Relation muss bereinigt werden statt stehen zu bleiben');
+    }
+
+    /***************************************************************
+    *
     * Type-Wechsel-Regressionstest (analog dem bestehenden Regressionstest
     * aus adr_globale_id_fragmente.md für globale @id-Fragmente): ein
     * Wechsel des globalen Organisations-Types innerhalb der LocalBusiness-

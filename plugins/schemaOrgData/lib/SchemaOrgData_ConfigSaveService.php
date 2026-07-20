@@ -431,13 +431,21 @@ class SchemaOrgData_ConfigSaveService {
         // fehlt "org_relations" im POST komplett, wenn z. B. WebSite aktiv
         // ist - in diesem Fall bleibt der bereits oben aus $existing gesetzte
         // Wert unangetastet (Type-Wechsel-Stabilität, siehe README.md).
+        // Zusätzlich zu "org_relations" selbst wird auch das vom Widget immer
+        // mitgesendete Marker-Feld "org_relations_marker" geprüft
+        // (SchemaOrgData_FormRenderer::renderOrgRelationsWidget()): sind 0
+        // Personen in der Registry verfügbar, rendert das Widget keine
+        // org_relations[]-Zeilen, sendet aber weiterhin den Marker - ohne
+        // diese zweite Bedingung würde array_key_exists("org_relations", ...)
+        // fälschlich den "Feld fehlt komplett"-Fall (Type-Wechsel) annehmen
+        // und eine zuvor gespeicherte, jetzt verwaiste Relation nicht bereinigen.
         // array_key_exists() statt isset(), da ein Formular ohne jede
         // Relation ein leeres Array sendet (unterscheidbar vom Fehlen des
         // Feldes selbst).
         $orgRelationsResult = null;
-        if($scope === 'global' and array_key_exists('org_relations', $postData)) {
+        if($scope === 'global' and (array_key_exists('org_relations', $postData) or array_key_exists('org_relations_marker', $postData))) {
             $orgRelationsResult = $orgRelationsService->sanitizeAndValidate(
-                is_array($postData['org_relations']) ? $postData['org_relations'] : [],
+                is_array($postData['org_relations'] ?? null) ? $postData['org_relations'] : [],
                 $settings, $personsRegistryService, $lang
             );
             $errors = array_merge($errors, $orgRelationsResult['errors']);

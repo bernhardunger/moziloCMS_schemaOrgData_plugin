@@ -280,6 +280,23 @@ final class AdminControllerTest extends TestCase {
         $this->assertStringContainsString($this->adminLang()->getLanguageHtml('hint_org_relations_no_persons'), $html);
     }
 
+    /***************************************************************
+    *
+    * Regressionstest für die verwaiste-Relation-Bereinigungslücke: auch
+    * ohne aktive Registry-Personen (kein org_relations[]-Zeilen-Rendering)
+    * muss das Marker-Hidden-Feld gerendert werden, sonst kann
+    * SchemaOrgData_ConfigSaveService::saveConfig() den 0-Personen-Fall
+    * nicht vom komplett fehlenden Widget (Type-Wechsel) unterscheiden.
+    *
+    ***************************************************************/
+    function testRenderScopeSectionOrgRelationsWidgetEnthaeltMarkerOhneAktivePersonenDirekt(): void {
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', false, new \InMemorySettings());
+
+        $this->assertStringContainsString(
+            'name="schemaOrgData[global][org_relations_marker]" value="1"', $html
+        );
+    }
+
     function testRenderScopeSectionOrgRelationsWidgetListetAktivePersonUndVorausgewaehlteRelationDirekt(): void {
         $settings = new \InMemorySettings();
         $settings->set(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY, [
