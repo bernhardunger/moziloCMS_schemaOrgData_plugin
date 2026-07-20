@@ -65,6 +65,10 @@ final class AdminRequestHandlerTest extends TestCase {
         return new \SchemaOrgData_ImportService();
     }
 
+    private function personSuggestionService(): \SchemaOrgData_PersonSuggestionService {
+        return new \SchemaOrgData_PersonSuggestionService();
+    }
+
     private function dataSplitHelper(): \SchemaOrgData_DataSplitHelper {
         return new \SchemaOrgData_DataSplitHelper();
     }
@@ -111,7 +115,8 @@ final class AdminRequestHandlerTest extends TestCase {
             $settings, $this->adminLang(), $this->scopeResolver(), $this->schemaRepository(),
             $this->pluginSelfDir(), $this->validator(), $this->openingHoursHelper(), $this->adminPageRenderer(),
             $this->configSaveService(), $this->importService(), $this->dataSplitHelper(),
-            new \SchemaOrgData_PersonsRegistryService(), new \SchemaOrgData_OrgRelationsService()
+            new \SchemaOrgData_PersonsRegistryService(), new \SchemaOrgData_OrgRelationsService(),
+            $this->personSuggestionService()
         );
     }
 
@@ -347,6 +352,82 @@ final class AdminRequestHandlerTest extends TestCase {
             $this->assertSame('', $openingHours[$day]['from']);
             $this->assertSame('', $openingHours[$day]['to']);
         }
+    }
+
+    // -----------------------------------------------------------
+    // handlePostRequest() - Übernahme-Vorschlag (schemaOrgData_accept_person_suggestion)
+    // -----------------------------------------------------------
+
+    function testAcceptPersonSuggestionErstelltPersonUndSpeichertRelation(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            'LocalBusiness' => [
+                'name' => 'Muster GmbH', 'url' => 'https://www.example.com',
+                'employee' => ['@type' => 'Person', 'name' => 'Julia Weber'],
+            ],
+        ]);
+        $_POST['schemaOrgData_accept_person_suggestion'] = 'employee';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame([], $result['errors']);
+
+        $registry = $settings->get(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY);
+        $this->assertArrayHasKey('julia-weber', $registry);
+
+        $config = $settings->get('config_global');
+        $this->assertSame([['person' => 'julia-weber', 'role' => 'employee']], $config['org_relations']);
+        $this->assertArrayNotHasKey('employee', $config['LocalBusiness']);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest analog testImportAktionHatVorrangVorMitgesendetenFormulardaten():
+    * ein gleichzeitig mitgesendetes schemaOrgData-Formulardatenarray der
+    * aktiven Sektion darf bei gesetztem schemaOrgData_accept_person_suggestion
+    * NICHT über saveConfig() verarbeitet werden.
+    *
+    ***************************************************************/
+    function testAcceptPersonSuggestionHatVorrangVorMitgesendetenFormulardaten(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            'LocalBusiness' => [
+                'name' => 'Muster GmbH', 'url' => 'https://www.example.com',
+                'employee' => ['@type' => 'Person', 'name' => 'Julia Weber'],
+            ],
+        ]);
+        $_POST['schemaOrgData_accept_person_suggestion'] = 'employee';
+        $_POST['schemaOrgData'] = ['global' => $this->validLocalBusinessData('Andere Firma')];
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $config = $settings->get('config_global');
+        $this->assertSame('Muster GmbH', $config['LocalBusiness']['name'],
+            'Die mitgesendeten Formulardaten ("Andere Firma") dürfen nicht über saveConfig() gespeichert werden');
+    }
+
+    function testAcceptPersonSuggestionOhneAktivenOrganisationsTypeLiefertFehler(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['WebSite' => ['name' => 'Muster GmbH', 'url' => 'https://www.example.com']]);
+        $_POST['schemaOrgData_accept_person_suggestion'] = 'employee';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotSame([], $result['errors']);
+    }
+
+    function testAcceptPersonSuggestionMitUngueltigerPropertyLiefertFehler(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['LocalBusiness' => ['name' => 'Muster GmbH', 'url' => 'https://www.example.com']]);
+        $_POST['schemaOrgData_accept_person_suggestion'] = 'ceo';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotSame([], $result['errors']);
     }
 
     function testImportOhneOpeningHoursBleibtUnveraendert(): void {

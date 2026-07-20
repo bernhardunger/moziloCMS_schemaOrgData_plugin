@@ -270,6 +270,11 @@ Nur aktive Personen stehen in diesen Auswahllisten zur Verfügung —
 bestehende Referenzen (z. B. ein bereits veröffentlichter Artikel) bleiben
 davon unberührt, siehe [Organisations-Identität und @id-Anker](#organisations-identitaet).
 
+Neben der manuellen Anlage können Registry-Einträge auch aus einem bereits
+vorhandenen Personen-Eintrag im Erweiterungsfeld der globalen
+Organisations-Identität übernommen werden, siehe
+[Erweiterungsfeld (erweiterte Properties)](#erweiterungsfeld).
+
 > 📄 Vertiefung (Feldliste, `@id`-Konvention, Status-Semantik im Detail): [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
 
 <a id="json-ld-ausgabe-im-detail"></a>
@@ -325,6 +330,15 @@ Die Validierung erfolgt zweistufig — client-seitig live per AJV.js
 (Syntax, Property-Whitelist gegen das aktive JSON-Schema, Format-Prüfung
 bekannter Properties) und server-seitig in PHP beim Speichern
 (`json_decode()` sowie inhaltliche Prüfung bekannter Properties).
+
+Enthält das Erweiterungsfeld eines global konfigurierten
+Organisations-Types (siehe [Organisations-Identität und @id-Anker](#organisations-identitaet))
+eine der Properties `employee`, `founder` oder `member` als einzelnes
+Objekt vom Typ `Person`, bietet das Plugin eine Übernahme in die
+[Personen-Registry](#personen-registry) an — je nach Namensabgleich
+entweder als Verlinkung mit einer bereits vorhandenen Person oder als
+Neuanlage samt passender Organisations-Relation. Die übernommene Property
+wird danach aus dem Erweiterungsfeld entfernt.
 
 <a id="vorhandenes-json-ld-und-import"></a>
 ### Vorhandenes JSON-LD und Import

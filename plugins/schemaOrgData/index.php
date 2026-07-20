@@ -23,6 +23,7 @@ require_once __DIR__.'/lib/SchemaOrgData_PersonsRegistryService.php';
 require_once __DIR__.'/lib/SchemaOrgData_PersonsAdminRenderer.php';
 require_once __DIR__.'/lib/SchemaOrgData_PersonsAdminRequestHandler.php';
 require_once __DIR__.'/lib/SchemaOrgData_OrgRelationsService.php';
+require_once __DIR__.'/lib/SchemaOrgData_PersonSuggestionService.php';
 require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 
 /***************************************************************
@@ -54,7 +55,7 @@ require_once __DIR__.'/lib/SchemaOrgData_AdminRequestContext.php';
 class schemaOrgData extends Plugin {
 
     /** Plugin-Version, siehe getInfo() */
-    private const PLUGIN_VERSION = '0.10.6-beta';
+    private const PLUGIN_VERSION = '0.11.1-beta';
 
     /** Standard-Sprache, falls die CMS-/Admin-Sprache nicht unterstützt wird */
     private const DEFAULT_LANGUAGE = 'deDE';
@@ -137,6 +138,9 @@ class schemaOrgData extends Plugin {
     /** Lazy-Instanz von SchemaOrgData_OrgRelationsService (siehe orgRelationsService()) */
     private ?SchemaOrgData_OrgRelationsService $orgRelationsServiceInstance = null;
 
+    /** Lazy-Instanz von SchemaOrgData_PersonSuggestionService (siehe personSuggestionService()) */
+    private ?SchemaOrgData_PersonSuggestionService $personSuggestionServiceInstance = null;
+
     function __construct() {
         parent::__construct();
         // Komponenten werden lazy verdrahtet (siehe urlHelper(), languageService(), schemaRepository()).
@@ -162,7 +166,7 @@ class schemaOrgData extends Plugin {
                     $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(),
                     $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService(),
                     $this->importService(), $this->personsRegistryService(), $this->personsAdminRenderer(),
-                    $this->personsAdminRequestHandler(), $this->orgRelationsService()
+                    $this->personsAdminRequestHandler(), $this->orgRelationsService(), $this->personSuggestionService()
                 )
             );
         }
@@ -276,6 +280,11 @@ class schemaOrgData extends Plugin {
     /** Lazy-Accessor für SchemaOrgData_OrgRelationsService. */
     private function orgRelationsService(): SchemaOrgData_OrgRelationsService {
         return $this->orgRelationsServiceInstance ??= new SchemaOrgData_OrgRelationsService();
+    }
+
+    /** Lazy-Accessor für SchemaOrgData_PersonSuggestionService. */
+    private function personSuggestionService(): SchemaOrgData_PersonSuggestionService {
+        return $this->personSuggestionServiceInstance ??= new SchemaOrgData_PersonSuggestionService();
     }
 
     /** Lazy-Accessor für SchemaOrgData_LanguageService. */

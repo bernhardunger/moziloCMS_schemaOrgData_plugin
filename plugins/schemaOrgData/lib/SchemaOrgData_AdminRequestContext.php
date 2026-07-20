@@ -31,6 +31,10 @@ final class SchemaOrgData_AdminRequestContext {
     * @param SchemaOrgData_OrgRelationsService $orgRelationsService Organisations-
     *              Relationen (founder/employee/member, siehe README.md,
     *              Abschnitt "@id-Anker und Knotenreferenzen")
+    * @param SchemaOrgData_PersonSuggestionService $personSuggestionService Übernahme-
+    *              Vorschläge für Personen-Literale im Erweiterungsfeld eines
+    *              globalen Organisations-Identity-Types (siehe README.md,
+    *              Abschnitt "Erweiterungsfeld")
     *
     ***************************************************************/
     public function __construct(
@@ -56,7 +60,8 @@ final class SchemaOrgData_AdminRequestContext {
         public readonly SchemaOrgData_PersonsRegistryService $personsRegistryService,
         public readonly SchemaOrgData_PersonsAdminRenderer $personsAdminRenderer,
         public readonly SchemaOrgData_PersonsAdminRequestHandler $personsAdminRequestHandler,
-        public readonly SchemaOrgData_OrgRelationsService $orgRelationsService
+        public readonly SchemaOrgData_OrgRelationsService $orgRelationsService,
+        public readonly SchemaOrgData_PersonSuggestionService $personSuggestionService
     ) {
     }
 }

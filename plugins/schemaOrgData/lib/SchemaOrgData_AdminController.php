@@ -57,6 +57,12 @@ class SchemaOrgData_AdminController {
      *        fehlgeschlagenem Speichern true, sondern auch nach einem
      *        (erfolgreichen oder fehlgeschlagenen) Import (siehe
      *        renderAdminPage(), $usePostData)
+     * @param bool $importApplied unabhängig von $saveFailed - true nur
+     *        nach einem erfolgreichen Import (siehe renderAdminPage()),
+     *        ausschließlich für die Person-Übernahme-Erkennung
+     *        (SchemaOrgData_PersonSuggestionService) verwendet, damit
+     *        ein Vorschlag direkt im Post-Import-Redisplay erscheinen
+     *        kann statt erst nach einem zusätzlichen Speichern
      * @param SchemaOrgData_AdminRequestContext $context Laufzeit-Kollaboratoren (siehe dort)
      * @return string HTML-Snippet
      *
@@ -68,6 +74,7 @@ class SchemaOrgData_AdminController {
         bool $active,
         ?string $idPrefix,
         bool $saveFailed,
+        bool $importApplied,
         SchemaOrgData_AdminRequestContext $context
     ): string {
         $lang = $context->lang;
@@ -87,6 +94,7 @@ class SchemaOrgData_AdminController {
         $adminPageRenderer = $context->adminPageRenderer;
         $configSaveService = $context->configSaveService;
         $personsRegistryService = $context->personsRegistryService;
+        $personSuggestionService = $context->personSuggestionService;
 
         $idPrefix = $idPrefix ?? $scope;
         $config = $scopeResolver->loadScopeConfig($settings, $scope, $cat, $page);
@@ -271,6 +279,36 @@ class SchemaOrgData_AdminController {
                 }
 
                 $html .= $formRenderer->renderOrgRelationsWidget($scope, $orgRelationsRaw, $typeIdPrefix, $lang, $availablePersons);
+
+                // Übernahme-Vorschläge für Personen-Literale im Erweiterungsfeld
+                // (siehe SchemaOrgData_PersonSuggestionService): Erkennungsbasis ist
+                // im Normalfall die persistierte Konfiguration. Direkt nach einem
+                // erfolgreichen Import ($importApplied) liegt "employee"/"founder"/
+                // "member" jedoch noch als Teil der rohen Erweiterungsfeld-JSON-
+                // Zeichenkette im POST-Redisplay vor, nicht als bereits gespeichertes
+                // Array (siehe SchemaOrgData_AdminRequestHandler::handleImportAction())
+                // - diese Rohdaten werden hier zusätzlich dekodiert, damit der
+                // Vorschlag nicht erst ein zusätzliches Speichern erfordert. Bei
+                // fehlgeschlagenem Speichern ohne Import bleibt es bei keinem
+                // Vorschlag, damit unvalidierte POST-Rohdaten keinen Vorschlag
+                // auslösen.
+                $suggestionTypeConfig = null;
+                if($postScope === null) {
+                    $suggestionTypeConfig = is_array($config[$type] ?? null) ? $config[$type] : [];
+                } elseif($importApplied and $type === $selectedType) {
+                    $extensionRaw = (string) ($postScope['extension'][$type] ?? '');
+                    $decoded = ($extensionRaw !== '') ? json_decode($extensionRaw, true) : null;
+                    $suggestionTypeConfig = is_array($decoded) ? $decoded : [];
+                }
+
+                if($suggestionTypeConfig !== null) {
+                    $suggestions = $personSuggestionService->detectSuggestions(
+                        $suggestionTypeConfig,
+                        $personsRegistryService,
+                        $settings
+                    );
+                    $html .= $personSuggestionService->renderSuggestionNotice($suggestions, $type, $lang, $typeIdPrefix);
+                }
             }
 
             $html .= '</div>' . "\n";
@@ -389,7 +427,8 @@ class SchemaOrgData_AdminController {
             $importService,
             $dataSplitHelper,
             $context->personsRegistryService,
-            $context->orgRelationsService
+            $context->orgRelationsService,
+            $context->personSuggestionService
         ) : null;
 
         // Bei fehlgeschlagenem Speichern wird die aktive Sektion in
@@ -533,6 +572,7 @@ class SchemaOrgData_AdminController {
             active: $selectedCat === null,
             idPrefix: 'global',
             saveFailed: $usePostData,
+            importApplied: $importApplied,
             context: $context
         );
 
@@ -559,6 +599,7 @@ class SchemaOrgData_AdminController {
                 active: $catActive,
                 idPrefix: 'cat_' . $safeCat,
                 saveFailed: $usePostData,
+                importApplied: $importApplied,
                 context: $context
             );
 
@@ -578,6 +619,7 @@ class SchemaOrgData_AdminController {
                         active: $pageActive,
                         idPrefix: 'page_' . $safeCat . '_' . $safePage,
                         saveFailed: $usePostData,
+                        importApplied: $importApplied,
                         context: $context
                     );
                 }

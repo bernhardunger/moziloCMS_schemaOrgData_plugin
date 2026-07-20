@@ -197,12 +197,16 @@ final class AdminControllerTest extends TestCase {
             $this->validator(), $this->openingHoursHelper(), $this->collisionDetector(),
             $this->adminPageRenderer(), $this->adminRequestHandler(), $this->configSaveService(),
             $this->importService(), $this->personsRegistryService(), $this->personsAdminRenderer(),
-            $this->personsAdminRequestHandler(), $this->orgRelationsService()
+            $this->personsAdminRequestHandler(), $this->orgRelationsService(), $this->personSuggestionService()
         );
     }
 
     private function orgRelationsService(): \SchemaOrgData_OrgRelationsService {
         return new \SchemaOrgData_OrgRelationsService();
+    }
+
+    private function personSuggestionService(): \SchemaOrgData_PersonSuggestionService {
+        return new \SchemaOrgData_PersonSuggestionService();
     }
 
     private function personsRegistryService(): \SchemaOrgData_PersonsRegistryService {
@@ -218,10 +222,11 @@ final class AdminControllerTest extends TestCase {
     }
 
     private function callRenderScopeSection(
-        string $scope, ?string $cat, ?string $page, bool $active, ?string $idPrefix, bool $saveFailed, $settings
+        string $scope, ?string $cat, ?string $page, bool $active, ?string $idPrefix, bool $saveFailed, $settings,
+        bool $importApplied = false
     ): string {
         return $this->controller()->renderScopeSection(
-            $scope, $cat, $page, $active, $idPrefix, $saveFailed,
+            $scope, $cat, $page, $active, $idPrefix, $saveFailed, $importApplied,
             $this->buildAdminRequestContext($settings)
         );
     }
@@ -311,6 +316,99 @@ final class AdminControllerTest extends TestCase {
 
         $this->assertStringContainsString('value="max-mustermann" selected="selected"', $html);
         $this->assertStringContainsString('value="founder" selected="selected"', $html);
+    }
+
+    /***************************************************************
+    *
+    * Übernahme-Vorschlag für Personen-Literale im Erweiterungsfeld
+    * (siehe SchemaOrgData_PersonSuggestionService): erscheint innerhalb
+    * der Type-Sektion eines global aktiven Organisations-Identity-Types,
+    * sobald "employee"/"founder"/"member" als einzelnes Objekt mit
+    * "@type": "Person" in der persistierten Konfiguration steht.
+    *
+    ***************************************************************/
+    function testRenderScopeSectionZeigtPersonSuggestionNoticeBeiPersonLiteralImErweiterungsfeldDirekt(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            'LocalBusiness' => [
+                'name' => 'Muster GmbH', 'url' => 'https://www.example.com',
+                'employee' => ['@type' => 'Person', 'name' => 'Julia Weber'],
+            ],
+        ]);
+
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', false, $settings);
+
+        $this->assertStringContainsString('name="schemaOrgData_accept_person_suggestion"', $html);
+        $this->assertStringContainsString('value="employee"', $html);
+        $this->assertStringContainsString('Julia Weber', $html);
+    }
+
+    function testRenderScopeSectionZeigtKeinePersonSuggestionNoticeBeiRedisplayNachFehlgeschlagenemSpeichernDirekt(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            'LocalBusiness' => ['employee' => ['@type' => 'Person', 'name' => 'Julia Weber']],
+        ]);
+        $_POST['schemaOrgData'] = ['global' => $this->validLocalBusinessData()];
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', true, $settings);
+
+        $this->assertStringNotContainsString('name="schemaOrgData_accept_person_suggestion"', $html);
+    }
+
+    /***************************************************************
+    *
+    * Import-Timing-Fix: direkt nach einem erfolgreichen Import
+    * (SchemaOrgData_AdminRequestHandler::handleImportAction()) liegt
+    * "employee"/"founder"/"member" noch als Teil der rohen
+    * Erweiterungsfeld-JSON-Zeichenkette im POST-Redisplay vor
+    * ($postScope['extension'][$type]), nicht als bereits gespeichertes
+    * Array - der Vorschlag muss trotzdem direkt erscheinen, ohne dass
+    * zuvor gespeichert wurde (config_global bleibt hier bewusst leer).
+    *
+    ***************************************************************/
+    function testRenderScopeSectionZeigtPersonSuggestionNoticeDirektNachImportOhneZwischenspeichernDirekt(): void {
+        $settings = new \InMemorySettings();
+        $extensionJson = json_encode(['employee' => ['@type' => 'Person', 'name' => 'Julia Weber']]);
+        $_POST['schemaOrgData']['global'] = array_merge($this->validLocalBusinessData(), [
+            'extension' => ['LocalBusiness' => $extensionJson],
+        ]);
+        $_POST['schemaOrgData_cat'] = '';
+        $_POST['schemaOrgData_page'] = '';
+
+        $html = $this->callRenderScopeSection(
+            'global', null, null, true, 'global', true, $settings, importApplied: true
+        );
+
+        $this->assertStringContainsString('name="schemaOrgData_accept_person_suggestion"', $html);
+        $this->assertStringContainsString('value="employee"', $html);
+        $this->assertStringContainsString('Julia Weber', $html);
+    }
+
+    function testRenderScopeSectionZeigtKeinePersonSuggestionNoticeBeiNichtGlobalemScopeDirekt(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_cat_ueber-uns', [
+            'LocalBusiness' => ['employee' => ['@type' => 'Person', 'name' => 'Julia Weber']],
+        ]);
+
+        $html = $this->callRenderScopeSection('category', 'ueber-uns', null, true, 'category', false, $settings);
+
+        $this->assertStringNotContainsString('name="schemaOrgData_accept_person_suggestion"', $html);
+    }
+
+    function testRenderScopeSectionZeigtKeinePersonSuggestionNoticeBeiNichtOrganisationsTypeDirekt(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            'WebSite' => [
+                'name' => 'Muster GmbH', 'url' => 'https://www.example.com',
+                'employee' => ['@type' => 'Person', 'name' => 'Julia Weber'],
+            ],
+        ]);
+
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', false, $settings);
+
+        $this->assertStringNotContainsString('name="schemaOrgData_accept_person_suggestion"', $html);
     }
 
     /***************************************************************

@@ -42,6 +42,7 @@ class SchemaOrgData_AdminRequestHandler {
     * @param SchemaOrgData_DataSplitHelper $dataSplitHelper für handleImportAction() (importJsonLd())
     * @param SchemaOrgData_PersonsRegistryService $personsRegistryService wird an saveConfig() durchgereicht
     * @param SchemaOrgData_OrgRelationsService $orgRelationsService wird an saveConfig() durchgereicht
+    * @param SchemaOrgData_PersonSuggestionService $personSuggestionService für handleAcceptPersonSuggestion()
     * @return ?array{success: bool, errors: string[], import?: bool}
     *
     ***************************************************************/
@@ -58,13 +59,22 @@ class SchemaOrgData_AdminRequestHandler {
         SchemaOrgData_ImportService $importService,
         SchemaOrgData_DataSplitHelper $dataSplitHelper,
         SchemaOrgData_PersonsRegistryService $personsRegistryService,
-        SchemaOrgData_OrgRelationsService $orgRelationsService
+        SchemaOrgData_OrgRelationsService $orgRelationsService,
+        SchemaOrgData_PersonSuggestionService $personSuggestionService
     ): ?array {
         if(isset($_POST['schemaOrgData_import_action'])) {
             return $this->handleImportAction(
                 (string) $_POST['schemaOrgData_import_action'],
                 $settings, $scopeResolver,
                 $schemaRepository, $pluginSelfDir, $lang, $importService, $dataSplitHelper, $openingHoursHelper
+            );
+        }
+
+        if(isset($_POST['schemaOrgData_accept_person_suggestion'])) {
+            return $this->handleAcceptPersonSuggestion(
+                (string) $_POST['schemaOrgData_accept_person_suggestion'],
+                $settings, $scopeResolver, $schemaRepository, $pluginSelfDir, $lang,
+                $personSuggestionService, $personsRegistryService, $orgRelationsService, $validator
             );
         }
 
@@ -241,5 +251,46 @@ class SchemaOrgData_AdminRequestHandler {
         ];
 
         return ['success' => true, 'errors' => [], 'import' => true];
+    }
+
+    /***************************************************************
+    *
+    * Verarbeitet den Submit-Button "schemaOrgData_accept_person_suggestion"
+    * (siehe SchemaOrgData_PersonSuggestionService::renderSuggestionNotice()):
+    * der Button-Value trägt ausschließlich den Property-Namen
+    * ("employee"/"founder"/"member") - der betroffene Type wird hier aus
+    * dem aktuell aktiven globalen Organisations-Identity-Type ermittelt
+    * (der Vorschlag erscheint ausschließlich innerhalb dessen Formular-
+    * Sektion, siehe SchemaOrgData_AdminController::renderScopeSection()).
+    * Kein saveConfig() in diesem Request, auch wenn das Formular
+    * zusätzlich Felddaten der aktiven Sektion mitsendet (analog zum
+    * Import-Dispatch).
+    *
+    * @return array{success: bool, errors: string[]}
+    *
+    ***************************************************************/
+    private function handleAcceptPersonSuggestion(
+        string $property,
+        $settings,
+        SchemaOrgData_ScopeResolver $scopeResolver,
+        SchemaOrgData_SchemaRepository $schemaRepository,
+        string $pluginSelfDir,
+        Language $lang,
+        SchemaOrgData_PersonSuggestionService $personSuggestionService,
+        SchemaOrgData_PersonsRegistryService $personsRegistryService,
+        SchemaOrgData_OrgRelationsService $orgRelationsService,
+        SchemaOrgData_Validator $validator
+    ): array {
+        $config = $scopeResolver->loadScopeConfig($settings, 'global');
+        $type = $schemaRepository->resolveActiveType($config, $pluginSelfDir);
+        $schema = ($type !== null) ? $schemaRepository->loadSchema($pluginSelfDir, $type) : null;
+
+        if($schema === null or ($schema['ui:idFragment'] ?? '') !== 'organization') {
+            return ['success' => false, 'errors' => [$lang->getLanguageValue('error_person_suggestion_outdated')]];
+        }
+
+        return $personSuggestionService->acceptSuggestion(
+            $property, $config, $type, $settings, $personsRegistryService, $orgRelationsService, $lang, $validator
+        );
     }
 }

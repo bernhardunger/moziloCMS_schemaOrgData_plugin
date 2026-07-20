@@ -86,6 +86,12 @@ label_role_member = Member
 error_org_relation_invalid_role = Invalid role "{PARAM1}" for an organization relation.
 error_org_relation_unknown_person = The referenced person "{PARAM1}" no longer exists in the persons registry.
 
+hint_person_suggestion_found = A person was found under "{PARAM1}" in the extension field: {PARAM2}
+button_person_suggestion_link = Link to existing person
+button_person_suggestion_create = Create as new person and link
+error_person_suggestion_invalid_property = Invalid property for the person takeover from the extension field.
+error_person_suggestion_outdated = This takeover suggestion is no longer current - the configuration was likely changed in the meantime. Please reload the admin page.
+
 label_location = Event Location
 label_start_date = Start (Date/Time)
 label_end_date = End (Date/Time)

@@ -86,6 +86,12 @@ label_role_member = Mitglied (member)
 error_org_relation_invalid_role = Ungültige Rolle "{PARAM1}" für eine Organisations-Relation.
 error_org_relation_unknown_person = Die referenzierte Person "{PARAM1}" existiert nicht (mehr) in der Personen-Registry.
 
+hint_person_suggestion_found = Im Erweiterungsfeld wurde unter „{PARAM1}" eine Person gefunden: {PARAM2}
+button_person_suggestion_link = Mit bestehender Person verlinken
+button_person_suggestion_create = Als neue Person anlegen und verlinken
+error_person_suggestion_invalid_property = Ungültige Property für die Personen-Übernahme aus dem Erweiterungsfeld.
+error_person_suggestion_outdated = Der Übernahme-Vorschlag ist nicht mehr aktuell - vermutlich wurde die Konfiguration zwischenzeitlich geändert. Bitte die Admin-Seite neu laden.
+
 label_location = Veranstaltungsort
 label_start_date = Beginn (Datum/Zeit)
 label_end_date = Ende (Datum/Zeit)
