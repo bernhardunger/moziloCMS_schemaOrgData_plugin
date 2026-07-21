@@ -134,6 +134,13 @@
         var schemaForExtensionField = Object.assign({}, schema);
         delete schemaForExtensionField.required;
 
+        // schemaForExtensionField trägt dieselbe "$id" wie das Original-Schema
+        // (alle schemas/*.json: "$id": "https://schema.org/<Type>") - ein
+        // erneuter compile()-Aufruf für dieselbe $id (z. B. beim zweiten Blur
+        // desselben Erweiterungsfelds) würde AJVs interne Kollisionsprüfung
+        // auslösen ("schema with key or id ... already exists"). removeSchema()
+        // ist bei einer noch nicht registrierten $id ein No-op.
+        ajv.removeSchema(schemaForExtensionField.$id);
         var validate = ajv.compile(schemaForExtensionField);
 
         return validate(data) ? [] : (validate.errors || []);
