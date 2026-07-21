@@ -286,6 +286,48 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
 
     /***************************************************************
     *
+    * Regressionstest: checkFormats() ruft bei jedem Aufruf ajv.compile()
+    * auf derselben, modul-weit wiederverwendeten AJV-Instanz auf. Trägt
+    * das Schema eine "$id" (wie jede reale schemas/*.json-Datei), warf
+    * ein zweiter compile()-Aufruf für dieselbe $id bislang AJVs interne
+    * Kollisionsausnahme ("schema with key or id ... already exists") -
+    * ausgelöst durch jedes weitere blur-Event auf einem bereits einmal
+    * validierten Erweiterungsfeld-Textarea.
+    *
+    ***************************************************************/
+    describe('checkFormats() - wiederholte Aufrufe für ein Schema mit "$id"', function () {
+        var MINI_SCHEMA_WITH_ID = Object.assign({ '$id': 'https://schema.org/MiniTestSchema' }, MINI_SCHEMA);
+
+        test('zweiter Aufruf für dasselbe Schema wirft nicht und liefert weiterhin ein korrektes Ergebnis', function () {
+            expect(validator.checkFormats({ hasMap: 'https://example.com' }, MINI_SCHEMA_WITH_ID)).toEqual([]);
+
+            expect(function () {
+                var errors = validator.checkFormats({ count: 'keine-zahl' }, MINI_SCHEMA_WITH_ID);
+                expect(errors.length).toBeGreaterThan(0);
+            }).not.toThrow();
+        });
+
+        test('dritter und vierter Aufruf werfen ebenfalls nicht', function () {
+            expect(function () {
+                validator.checkFormats({ hasMap: 'https://example.com' }, MINI_SCHEMA_WITH_ID);
+                validator.checkFormats({ count: 'keine-zahl' }, MINI_SCHEMA_WITH_ID);
+                validator.checkFormats({ hasMap: 'https://example.com' }, MINI_SCHEMA_WITH_ID);
+                validator.checkFormats({ count: 'keine-zahl' }, MINI_SCHEMA_WITH_ID);
+            }).not.toThrow();
+        });
+
+        test('validateExtensionField(): zweiter Aufruf für dasselbe Schema wirft nicht (Zwei-Blur-Szenario)', function () {
+            expect(function () {
+                validator.validateExtensionField('{"hasMap": "https://example.com"}', MINI_SCHEMA_WITH_ID);
+                var result = validator.validateExtensionField('{"count": "keine-zahl"}', MINI_SCHEMA_WITH_ID);
+                expect(result.valid).toBe(false);
+                expect(result.formatErrors.length).toBeGreaterThan(0);
+            }).not.toThrow();
+        });
+    });
+
+    /***************************************************************
+    *
     * Regressionstest für den in doc/TODO.md dokumentierten Bug:
     * checkFormats() kompilierte bislang das volle Type-Schema inkl.
     * required-Keyword und meldete dadurch Pflichtfeld-Fehler des
