@@ -606,6 +606,43 @@ final class PersonFragmentEmissionTest extends TestCase {
         $this->assertSame('https://www.example.org/#person-max-mustermann', $byTypeReactivated['LocalBusiness']['employee'][0]['@id']);
     }
 
+    /***************************************************************
+    *
+    * Dritter Kontrast-Fall (F6, PP4): ProfilePage.mainEntity ist -
+    * anders als org_relations, aber wie Event.organizer - status-
+    * unabhaengig. Eine als "inactive" gesetzte Person aendert die
+    * ProfilePage-Ausgabe nicht: applyDanglingReferenceGuard() liefert
+    * denselben $activePersonSlugs-Eintrag wie im aktiven Fall, und der
+    * ProfilePage-Knoten selbst bleibt unangetastet (nur F5, eine
+    * geloeschte Person, loest die Vollunterdrueckung aus - der Status
+    * allein tut das nicht). getContent() scheidet als Test-Weg aus, da
+    * ProfilePage ein Seiten-Scope-Type ist und CAT_REQUEST/PAGE_REQUEST
+    * in tests/bootstrap.php fest auf "false" stehen (siehe Hinweis oben) -
+    * der Guard wird daher direkt aufgerufen, analog
+    * testGuardIncludesInactivePersonSlugAsActive() oben.
+    *
+    ***************************************************************/
+    function testInactivePersonProfilePageMainEntityRemainsVisible(): void {
+        $plugin = $this->createPlugin();
+        $this->setActivePerson('anna-muster', ['status' => \SchemaOrgData_PersonsRegistryService::STATUS_INACTIVE]);
+
+        $scopeConfigs = [
+            'page' => ['ProfilePage' => [
+                'mainEntity' => ['_mode' => 'reference', '_fragment' => 'person-anna-muster'],
+            ]],
+        ];
+
+        [$result, $suppressed, $activePersonSlugs] = (new \SchemaOrgData_IdReferenceService())->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(), $this->settings,
+            $plugin->PLUGIN_SELF_DIR, $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
+        );
+
+        $this->assertSame([], $suppressed, 'Status ist fuer die Dangling-Pruefung irrelevant - nur die Slug-Existenz zaehlt');
+        $this->assertSame(['anna-muster'], $activePersonSlugs);
+        $this->assertSame($scopeConfigs, $result,
+            'ProfilePage-Knoten bleibt bei inaktiver Person vollstaendig erhalten (F6) - nur eine geloeschte Person loest F5 aus');
+    }
+
     function testTwoOrgRelationsToSameSlugEmitOnlyOnePersonNode(): void {
         $_SERVER['HTTPS'] = 'on';
         $_SERVER['HTTP_HOST'] = 'www.example.org';

@@ -325,4 +325,126 @@ final class ProfilePageTest extends TestCase {
         $this->assertSame('2026-06-15', $decoded['dateModified']);
         $this->assertArrayNotHasKey('@id', $decoded, 'ProfilePage traegt selbst kein @id-Fragment (F9)');
     }
+
+    // -----------------------------------------------------------
+    // applyDanglingReferenceGuard(): F3 (Referenz-Emission), F5
+    // (Vollunterdrueckung bei geloeschter Person)
+    // -----------------------------------------------------------
+
+    private function idReferenceService(): \SchemaOrgData_IdReferenceService {
+        return new \SchemaOrgData_IdReferenceService();
+    }
+
+    function testGuardAddsReferencedPersonToActivePersonSlugsWithoutTouchingProfilePage(): void {
+        $settings = new \InMemorySettings();
+        $this->setActivePerson($settings, 'anna-muster');
+
+        $scopeConfigs = [
+            'page' => ['ProfilePage' => [
+                'mainEntity' => ['_mode' => 'reference', '_fragment' => 'person-anna-muster'],
+            ]],
+        ];
+
+        [$result, $suppressed, $activePersonSlugs] = $this->idReferenceService()->applyDanglingReferenceGuard(
+            $this->scopeResolver(), $this->schemaRepository(), $settings, $this->pluginSelfDir(),
+            $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
+        );
+
+        $this->assertSame([], $suppressed);
+        $this->assertSame(['anna-muster'], $activePersonSlugs);
+        $this->assertSame($scopeConfigs, $result, 'F3: bei existierender Person bleibt der ProfilePage-Knoten unveraendert');
+    }
+
+    function testDeletedPersonSuppressesEntireProfilePageBlock(): void {
+        $settings = new \InMemorySettings();
+        // Keine Registry-Person - Slug existiert nicht (mehr).
+
+        $scopeConfigs = [
+            'global' => ['Organization' => ['name' => 'Muster GmbH', 'url' => 'https://www.example.org']],
+            'page'   => ['ProfilePage' => [
+                'mainEntity' => ['_mode' => 'reference', '_fragment' => 'person-geloescht'],
+            ]],
+        ];
+
+        [$result, $suppressed, $activePersonSlugs] = $this->idReferenceService()->applyDanglingReferenceGuard(
+            $this->scopeResolver(), $this->schemaRepository(), $settings, $this->pluginSelfDir(),
+            $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
+        );
+
+        $this->assertSame(['person-geloescht'], $suppressed);
+        $this->assertSame([], $activePersonSlugs);
+        $this->assertArrayNotHasKey('ProfilePage', $result['page'],
+            'F5: eine ProfilePage ohne mainEntity waere ein ungueltiger Torso - der gesamte Knoten muss entfallen, nicht nur die Property');
+        $this->assertArrayHasKey('Organization', $result['global'],
+            'F5 darf ausschliesslich den betroffenen Knoten entfernen - die uebrige Ausgabe bleibt vollstaendig');
+    }
+
+    // -----------------------------------------------------------
+    // Gesamtszenario: globale Organisations-Identitaet + ProfilePage +
+    // referenzierte Person -> drei Bloecke (Akzeptanzkriterium 1)
+    // -----------------------------------------------------------
+
+    function testFullScenarioEmitsThreeBlocksWithMainEntityReferenceAndUnchangedDedup(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $settings = new \InMemorySettings();
+        $this->setActivePerson($settings, 'anna-muster', ['name' => 'Anna Muster']);
+
+        $scopeConfigs = [
+            'global' => ['Organization' => ['name' => 'Muster GmbH', 'url' => 'https://www.example.org']],
+            'page'   => ['ProfilePage' => [
+                'mainEntity' => ['_mode' => 'reference', '_fragment' => 'person-anna-muster'],
+            ]],
+        ];
+
+        [$scopeConfigs, $suppressed, $activePersonSlugs] = $this->idReferenceService()->applyDanglingReferenceGuard(
+            $this->scopeResolver(), $this->schemaRepository(), $settings, $this->pluginSelfDir(),
+            $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
+        );
+
+        $this->assertSame([], $suppressed);
+        $this->assertSame(['anna-muster'], $activePersonSlugs);
+
+        // Nachbau der Ausgabeschleife aus SchemaOrgData_FrontendRenderer::renderFrontend()
+        // (getContent() ist fuer Seiten-Scope-Types wegen CAT_REQUEST/PAGE_REQUEST=false
+        // in tests/bootstrap.php nicht End-zu-Ende testbar, siehe DonateActionTest/EventTest).
+        $urlHelper = new \SchemaOrgData_UrlHelper();
+        $jsonLdBuilder = new \SchemaOrgData_JsonLdBuilder();
+        $assignedFragments = [];
+        $blocks = [];
+
+        foreach($scopeConfigs as $config) {
+            foreach($config as $type => $data) {
+                $nodeId = $jsonLdBuilder->resolveNodeId($this->schemaRepository(), $urlHelper, $this->pluginSelfDir(), $type, $assignedFragments);
+                $script = $jsonLdBuilder->buildJsonLdScript($this->schemaRepository(), $urlHelper, $this->pluginSelfDir(), $type, $data, $nodeId, $suppressed);
+                preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
+                $blocks[] = json_decode($matches[1], true);
+            }
+        }
+
+        foreach($activePersonSlugs as $slug) {
+            $person = (new \SchemaOrgData_PersonsRegistryService())->getPerson($settings, $slug);
+            $nodeId = $jsonLdBuilder->resolvePersonNodeId($urlHelper, $slug, $assignedFragments);
+            $script = $jsonLdBuilder->buildJsonLdScript(
+                $this->schemaRepository(), $urlHelper, $this->pluginSelfDir(), 'Person', ['name' => $person['name'] ?? ''], $nodeId, $suppressed
+            );
+            preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
+            $blocks[] = json_decode($matches[1], true);
+        }
+
+        $this->assertCount(3, $blocks, 'globale Organization + ProfilePage + Person = drei Bloecke');
+        $byType = [];
+        foreach($blocks as $block) {
+            $byType[$block['@type']] = $block;
+        }
+
+        $this->assertSame('https://www.example.org/#organization', $byType['Organization']['@id']);
+        $this->assertArrayNotHasKey('@id', $byType['ProfilePage'], 'ProfilePage traegt kein eigenes @id-Fragment (F9)');
+        $this->assertSame('https://www.example.org/#person-anna-muster', $byType['ProfilePage']['mainEntity']['@id']);
+        $this->assertSame('https://www.example.org/#person-anna-muster', $byType['Person']['@id']);
+        $this->assertSame(['organization', 'person-anna-muster'], $assignedFragments,
+            'De-Dup-Guard bleibt unveraendert - jedes Fragment wird trotz ProfilePage in der Ausgabeschleife nur einmal vergeben');
+    }
 }

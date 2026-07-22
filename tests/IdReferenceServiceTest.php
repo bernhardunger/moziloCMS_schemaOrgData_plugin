@@ -282,4 +282,78 @@ final class IdReferenceServiceTest extends TestCase {
         $this->assertSame(['max-mustermann'], $activePersonSlugs,
             'org_relations und id_reference_or_literal dürfen für denselben Slug nur einen Eintrag ergeben');
     }
+
+    // -----------------------------------------------------------
+    // applyDanglingReferenceGuard() - Vollunterdrueckung bei
+    // ui:required-Referenzfeldern (F5, PP4)
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Nebenwirkung von F5, keine ProfilePage-Sonderbehandlung: die
+    * Vollunterdrueckung ist generisch an "ui:required" + Fragment-
+    * Praefix "person-" gebunden, nicht an einen Type-Namen. JobPosting.
+    * hiringOrganization ist ebenfalls ui:required und setzt kein
+    * ui:referenceTargets, kann also (theoretisch, ueber die
+    * Admin-Auswahlliste) ebenso auf eine Registry-Person zeigen -
+    * verschwindet diese, greift dieselbe Regel wie bei ProfilePage.
+    * Bewusst als Regressionstest festgehalten, damit diese Ausweitung
+    * nicht unbemerkt bleibt, statt sie nur beilaeufig hinzunehmen.
+    *
+    ***************************************************************/
+    function testRequiredHiringOrganizationSuppressesEntireJobPostingWhenPersonDeleted(): void {
+        $service = new \SchemaOrgData_IdReferenceService();
+        $settings = new \InMemorySettings();
+
+        $scopeConfigs = [
+            'page' => ['JobPosting' => [
+                'title'              => 'Steuerfachangestellte(r)',
+                'hiringOrganization' => ['_mode' => 'reference', '_fragment' => 'person-geloescht'],
+            ]],
+        ];
+
+        [$result, $suppressed] = $service->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
+            $settings, $this->pluginSelfDir(), $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
+        );
+
+        $this->assertContains('person-geloescht', $suppressed);
+        $this->assertArrayNotHasKey('JobPosting', $result['page']);
+    }
+
+    /***************************************************************
+    *
+    * Abgrenzung: die Vollunterdrueckung darf NICHT auf schema-statische
+    * Fragmente (z. B. "organization") anschlagen, obwohl auch diese bei
+    * keep-Modus in $suppressedIdTargets landen koennen - dort bedeutet
+    * die Unterdrueckung eine bewusste Nutzerentscheidung (vorhandenes
+    * JSON-LD beibehalten), keine Nichtexistenz des Zielknotens. Ohne
+    * diese Abgrenzung wuerde jedes keep-Modus-Szenario mit einer
+    * ui:required-id_reference(_or_literal)-Property auf "organization"
+    * (z. B. DonateAction.recipient, JobPosting.hiringOrganization) den
+    * gesamten Knoten verwerfen statt nur die Property - siehe auch
+    * DonateActionTest::testKeepModusUnterdrueckStattStubZuErzeugen()-
+    * Analogon in IdReferenceServiceTest (testKeepModusUnterdrueckt...).
+    *
+    ***************************************************************/
+    function testRequiredReferenceToOrganizationFragmentDoesNotTriggerFullSuppressionInKeepMode(): void {
+        $service = new \SchemaOrgData_IdReferenceService();
+        $settings = new \InMemorySettings();
+
+        $scopeConfigs = [
+            'page' => ['JobPosting' => [
+                'title'              => 'Steuerfachangestellte(r)',
+                'hiringOrganization' => ['_mode' => 'reference', '_fragment' => 'organization'],
+            ]],
+        ];
+
+        [$result, $suppressed] = $service->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
+            $settings, $this->pluginSelfDir(), $scopeConfigs, true, new \SchemaOrgData_PersonsRegistryService()
+        );
+
+        $this->assertContains('organization', $suppressed);
+        $this->assertArrayHasKey('JobPosting', $result['page'],
+            'organization-Fragmente loesen die Vollunterdrueckung nicht aus - keep-Modus bedeutet keine Nichtexistenz des Zielknotens');
+    }
 }
