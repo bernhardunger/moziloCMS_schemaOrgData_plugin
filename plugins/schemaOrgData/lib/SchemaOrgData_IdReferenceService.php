@@ -200,6 +200,24 @@ class SchemaOrgData_IdReferenceService {
     * ausgegeben, anders als bei id_reference_or_literal) erfolgt separat
     * in SchemaOrgData_OrgRelationsService::buildOutputGroups().
     *
+    * Vollunterdrückung des gesamten Knotens bei gelöschter Pflicht-
+    * referenz: Trägt ein id_reference-/id_reference_or_literal-Feld
+    * "ui:required: true" und zeigt sein Referenz-Modus-Ziel auf eine
+    * gelöschte Registry-Person (Fragment-Präfix "person-", Ziel in
+    * $suppressedIdTargets), wird nicht nur die Property, sondern der
+    * gesamte Type-Knoten dieser Ebene aus $scopeConfigs entfernt - ein
+    * Knoten ohne seine als Pflicht deklarierte Referenz wäre ein
+    * unvollständiger, irreführender Torso (Beispiel: ProfilePage ohne
+    * mainEntity verfehlt die von Google für diesen Type geforderte
+    * Pflichtangabe). Bewusst auf das Fragment-Präfix "person-"
+    * eingeschränkt: Bei schema-statischen Fragmenten (z. B.
+    * "organization") landet ein Ziel auch durch die gewollte
+    * keep-Modus-Unterdrückung in $suppressedIdTargets, ohne dass der
+    * Zielknoten deswegen nicht existiert - eine Vollunterdrückung wäre
+    * dort fachlich falsch (siehe DonateActionTest, keep-Modus-Fall).
+    * Nicht als Pflicht deklarierte Referenzen (z. B. Event.organizer)
+    * bleiben unverändert: nur die Property entfällt, der Knoten bleibt.
+    *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param array<string, array<string, mixed>> $scopeConfigs finale Scope-Konfiguration (nach resolveTypeInheritance)
@@ -222,8 +240,12 @@ class SchemaOrgData_IdReferenceService {
         $activePersonSlugs = [];
 
         // Alle id_reference- und id_reference_or_literal-Targets sammeln.
+        // $requiredReferenceBindings merkt sich zusätzlich Scope/Type je
+        // als "ui:required" deklariertem Referenzfeld, als Grundlage für
+        // die Vollunterdrückungs-Prüfung weiter unten.
         $activeTargets = [];
-        foreach($scopeConfigs as $config) {
+        $requiredReferenceBindings = [];
+        foreach($scopeConfigs as $scope => $config) {
             foreach($config as $type => $typeData) {
                 $schema = $schemaRepo->loadSchema($pluginSelfDir, $type);
                 if(!is_array($schema)) {
@@ -232,10 +254,14 @@ class SchemaOrgData_IdReferenceService {
                 foreach($schema['properties'] ?? [] as $propName => $propSchema) {
                     $propSchema = $schemaRepo->resolveSchemaRef($propSchema, $schema);
                     $widget = $propSchema['ui:widget'] ?? '';
+                    $required = ($propSchema['ui:required'] ?? false) === true;
                     if($widget === 'id_reference') {
                         $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
                         if($target !== '') {
                             $activeTargets[] = $target;
+                            if($required) {
+                                $requiredReferenceBindings[] = ['scope' => $scope, 'type' => $type, 'target' => $target];
+                            }
                         }
                     } elseif($widget === 'id_reference_or_literal') {
                         // Nur Referenz-Modus erzeugt eine @id-Abhängigkeit.
@@ -244,6 +270,9 @@ class SchemaOrgData_IdReferenceService {
                             $fragment = trim((string) ($stored['_fragment'] ?? ''));
                             if($fragment !== '') {
                                 $activeTargets[] = $fragment;
+                                if($required) {
+                                    $requiredReferenceBindings[] = ['scope' => $scope, 'type' => $type, 'target' => $fragment];
+                                }
                             }
                         }
                     }
@@ -332,6 +361,16 @@ class SchemaOrgData_IdReferenceService {
                 }
                 $scopeConfigs['global'][$globalType] = $stub;
                 break;
+            }
+        }
+
+        // Vollunterdrückung des gesamten Knotens (siehe Docblock oben):
+        // nur bei "person-"-Fragmenten, da dort ein Suppressed-Eintrag
+        // stets echte Nichtexistenz bedeutet (gelöschte Registry-Person),
+        // nie eine keep-Modus-Entscheidung.
+        foreach($requiredReferenceBindings as $binding) {
+            if(str_starts_with($binding['target'], 'person-') and in_array($binding['target'], $suppressedIdTargets, true)) {
+                unset($scopeConfigs[$binding['scope']][$binding['type']]);
             }
         }
 

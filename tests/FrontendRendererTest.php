@@ -426,6 +426,30 @@ final class FrontendRendererTest extends TestCase {
         $this->assertSame('WebSite', $payload['blocks'][1]['type']);
     }
 
+    /***************************************************************
+    *
+    * PP4: die ProfilePage + zugehöriger Person-Knoten sind über den
+    * generischen Mechanismus oben (beliebige Blöcke landen als eigene
+    * Vorschau-Einträge) bereits abgedeckt - dieser Test hält die konkrete
+    * Type-Paarung trotzdem explizit fest, damit sie nicht nur beiläufig
+    * über den generischen Fall mitläuft.
+    *
+    ***************************************************************/
+    function testBuildDebugWidgetZeigtProfilePageUndZugehoerigenPersonBlock(): void {
+        $payload = $this->extractDebugPayload($this->buildDebugWidget(
+            [
+                $this->debugBlock('page_ueber-uns_anna-muster', 'ProfilePage', [
+                    'mainEntity' => ['_mode' => 'reference', '_fragment' => 'person-anna-muster'],
+                ]),
+                $this->debugBlock('person_anna-muster', 'Person', ['name' => 'Anna Muster']),
+            ]
+        ));
+
+        $this->assertSame('2 JSON-LD-Blöcke', $payload['label']);
+        $this->assertSame('ProfilePage', $payload['blocks'][0]['type']);
+        $this->assertSame('Person', $payload['blocks'][1]['type']);
+    }
+
     function testBuildDebugWidgetJsonInhaltEntsprichtBuildJsonLdScriptTransformation(): void {
         $payload = $this->extractDebugPayload($this->buildDebugWidget(
             [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Müller &amp; Partner', 'description' => ''])]
