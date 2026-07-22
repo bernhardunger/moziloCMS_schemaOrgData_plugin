@@ -254,7 +254,8 @@ Neben den drei Geltungsbereichen gibt es einen vierten, eigenständigen
 Admin-Bereich: die **Personen-Registry**. Hier werden Personen (z. B.
 Mitarbeitende, Kanzlei-/Praxis-Inhaber, Vereinsvorstand) unabhängig von
 Global/Kategorie/Seite zentral gepflegt — Name, Titel, Position,
-Beschreibung, Profil-URL, Bild und Status (aktiv/inaktiv).
+Beschreibung, Profil-URL, Themengebiete (optional, mehrzeilig), Bild und
+Status (aktiv/inaktiv).
 
 Registrierte Personen sind an mehreren Stellen im Plugin referenzierbar,
 ohne die Daten dort erneut einzugeben:

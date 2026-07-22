@@ -85,10 +85,16 @@ emittiert:
   "@type": "Person",
   "@id": "https://www.example.org/#person-maria-beispiel",
   "name": "Dr. Maria Beispiel",
-  "jobTitle": "Geschäftsführerin"
+  "jobTitle": "Geschäftsführerin",
+  "knowsAbout": ["Steuerrecht", "Unternehmensberatung"]
 }
 </script>
 ```
+
+`knowsAbout` ist ein optionales, mehrzeiliges Freitextfeld (ein
+Themengebiet je Zeile) und wird bei jeder Personen-Emission mit
+ausgegeben, unabhängig davon, über welchen der drei Referenz-Mechanismen
+die Person referenziert wurde.
 
 Referenzierbar sind Registry-Personen über drei Mechanismen: die
 Autoren-Auswahl von `Article.author` (neben Organisation-Referenz und

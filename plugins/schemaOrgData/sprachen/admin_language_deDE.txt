@@ -211,6 +211,7 @@ label_job_title = Position / Berufsbezeichnung
 label_person_description = Beschreibung
 label_person_url = Profil-URL
 label_person_same_as = Weitere Profile (je Zeile eine URL, z. B. LinkedIn, Xing)
+label_person_knows_about = Themengebiete (je Zeile ein Thema)
 label_person_image = Bild (relativer Medienpfad oder absolute URL)
 label_person_status = Status
 label_person_status_active = Aktiv

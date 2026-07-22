@@ -230,6 +230,25 @@ final class PersonSuggestionServiceTest extends TestCase {
         );
     }
 
+    function testAcceptSuggestionMapsKnowsAboutArrayToRegistryEntry(): void {
+        $settings = new \InMemorySettings();
+        $config = ['LocalBusiness' => ['founder' => [
+            '@type' => 'Person', 'name' => 'Julia Weber',
+            'knowsAbout' => ['Steuerrecht', 'Familienrecht'],
+        ]]];
+
+        $this->service()->acceptSuggestion(
+            'founder', $config, 'LocalBusiness', $settings,
+            $this->personsRegistryService(), $this->orgRelationsService(), $this->adminLang(), $this->validator()
+        );
+
+        $registry = $settings->get(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY);
+        $this->assertSame(
+            ['Steuerrecht', 'Familienrecht'],
+            $registry['julia-weber']['knowsAbout']
+        );
+    }
+
     function testAcceptSuggestionLinksExistingPersonWithoutCreatingDuplicate(): void {
         $settings = new \InMemorySettings();
         $this->setActivePerson($settings, 'julia-weber', ['name' => 'Julia Weber']);

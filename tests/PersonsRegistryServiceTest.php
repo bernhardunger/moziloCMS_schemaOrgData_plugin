@@ -95,6 +95,22 @@ final class PersonsRegistryServiceTest extends TestCase {
         );
     }
 
+    function testSanitizePersonDataTeiltKnowsAboutZeilenweiseUndTilgtLeerzeilen(): void {
+        $service = $this->service();
+
+        $result = $service->sanitizePersonData([
+            'knowsAbout' => "Steuerrecht\n\n  \nUnternehmensberatung",
+        ]);
+
+        $this->assertSame(['Steuerrecht', 'Unternehmensberatung'], $result['knowsAbout']);
+    }
+
+    function testSanitizePersonDataKnowsAboutFehltErgibtLeeresArray(): void {
+        $service = $this->service();
+
+        $this->assertSame([], $service->sanitizePersonData([])['knowsAbout']);
+    }
+
     function testSanitizePersonDataStatusDefaultUndWhitelist(): void {
         $service = $this->service();
 
@@ -145,6 +161,18 @@ final class PersonsRegistryServiceTest extends TestCase {
             'url' => 'https://www.example.com',
             'sameAs' => "https://www.linkedin.com/in/max",
             'image' => 'https://example.com/x.jpg',
+        ]);
+
+        $this->assertSame([], $service->validatePersonData($sanitized, $lang, $this->validator()));
+    }
+
+    function testValidatePersonDataKnowsAboutOhneUrlformatBleibtFehlerfrei(): void {
+        $service = $this->service();
+        $lang = $this->adminLang();
+
+        $sanitized = $service->sanitizePersonData([
+            'name' => 'Max Mustermann',
+            'knowsAbout' => "Steuerrecht\nkein-url-format",
         ]);
 
         $this->assertSame([], $service->validatePersonData($sanitized, $lang, $this->validator()));

@@ -136,6 +136,7 @@ final class PersonFragmentEmissionTest extends TestCase {
             'description'     => '',
             'url'             => '',
             'sameAs'          => [],
+            'knowsAbout'      => [],
             'image'           => '',
             'status'          => \SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE,
             'sortOrder'       => 100,
@@ -467,6 +468,51 @@ final class PersonFragmentEmissionTest extends TestCase {
         $this->assertSame('Geschäftsführer', $byType['Person']['jobTitle']);
         $this->assertSame('https://www.example.org/dateien/personen/max.jpg', $byType['Person']['image']);
         $this->assertSame('https://www.example.org/#person-max-mustermann', $byType['LocalBusiness']['employee'][0]['@id']);
+    }
+
+    function testGlobalOrgRelationReferenceEmitsPersonKnowsAbout(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $plugin = $this->createPlugin();
+        $this->setActivePerson('max-mustermann', [
+            'name' => 'Max Mustermann',
+            'knowsAbout' => ['Steuerrecht', 'Familienrecht'],
+        ]);
+        $this->settings->set('config_global', [
+            'LocalBusiness' => $this->validLocalBusinessConfig(),
+            'org_relations' => [['person' => 'max-mustermann', 'role' => 'employee']],
+        ]);
+
+        $blocks = $this->getJsonLdBlocks($plugin);
+        $byType = [];
+        foreach($blocks as $block) {
+            $byType[$block['@type']] = $block;
+        }
+
+        $this->assertSame(['Steuerrecht', 'Familienrecht'], $byType['Person']['knowsAbout']);
+    }
+
+    function testGlobalOrgRelationReferenceOmitsEmptyKnowsAbout(): void {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['HTTP_HOST'] = 'www.example.org';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+
+        $plugin = $this->createPlugin();
+        $this->setActivePerson('max-mustermann', ['name' => 'Max Mustermann']);
+        $this->settings->set('config_global', [
+            'LocalBusiness' => $this->validLocalBusinessConfig(),
+            'org_relations' => [['person' => 'max-mustermann', 'role' => 'employee']],
+        ]);
+
+        $blocks = $this->getJsonLdBlocks($plugin);
+        $byType = [];
+        foreach($blocks as $block) {
+            $byType[$block['@type']] = $block;
+        }
+
+        $this->assertArrayNotHasKey('knowsAbout', $byType['Person']);
     }
 
     function testNoPersonNodeWithoutReference(): void {

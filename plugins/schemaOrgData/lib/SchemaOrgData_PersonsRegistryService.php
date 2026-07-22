@@ -148,8 +148,9 @@ class SchemaOrgData_PersonsRegistryService {
     *
     * Bereinigt die POST-Rohdaten eines Personen-Formulars (Trim/
     * strip_tags analog SchemaOrgData_ConfigSaveService::sanitizePostData()):
-    * sameAs wird zeilenweise aufgeteilt, Leerzeilen getilgt; ein
-    * relativer image-Pfad wird über sanitizeRelativeMediaPath()
+    * sameAs und knowsAbout werden je zeilenweise aufgeteilt, Leerzeilen
+    * getilgt (knowsAbout ohne URL-Validierung - reine Freitext-Themen);
+    * ein relativer image-Pfad wird über sanitizeRelativeMediaPath()
     * bereinigt (absolute URLs bleiben unverändert); status wird gegen
     * die Whitelist geprüft (Default STATUS_ACTIVE); sortOrder wird als
     * Integer interpretiert (Default 100 bei leerem/ungültigem Wert).
@@ -180,6 +181,15 @@ class SchemaOrgData_PersonsRegistryService {
             }
         }
         $result['sameAs'] = $sameAs;
+
+        $knowsAbout = [];
+        foreach(preg_split('/\r\n|\r|\n/', (string) ($raw['knowsAbout'] ?? '')) as $line) {
+            $line = trim(strip_tags($line));
+            if($line !== '') {
+                $knowsAbout[] = $line;
+            }
+        }
+        $result['knowsAbout'] = $knowsAbout;
 
         $status = (string) ($raw['status'] ?? self::STATUS_ACTIVE);
         $result['status'] = in_array($status, self::STATUSES, true) ? $status : self::STATUS_ACTIVE;
