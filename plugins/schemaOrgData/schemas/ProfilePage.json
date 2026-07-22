@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.org/ProfilePage",
+  "title": "ProfilePage",
+  "type": "object",
+  "ui:typeLabel": "schema_type_profilepage",
+  "ui:scopes": ["page"],
+  "required": ["mainEntity"],
+  "properties": {
+    "mainEntity": {
+      "type": "object",
+      "ui:widget": "id_reference_or_literal",
+      "ui:label": "label_main_entity",
+      "ui:required": true,
+      "ui:referenceTargets": ["persons"],
+      "ui:allowLiteral": false
+    },
+    "dateCreated": {
+      "type": "string",
+      "format": "date-time",
+      "ui:widget": "text",
+      "ui:label": "label_date_created",
+      "ui:placeholder": "TT.MM.YYYY",
+      "ui:required": false
+    },
+    "dateModified": {
+      "type": "string",
+      "format": "date-time",
+      "ui:widget": "text",
+      "ui:label": "label_date_modified",
+      "ui:placeholder": "TT.MM.YYYY",
+      "ui:required": false
+    }
+  }
+}
