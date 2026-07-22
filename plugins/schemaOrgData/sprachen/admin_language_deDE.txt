@@ -140,6 +140,7 @@ warning_unknown_property = Unbekannte Property "{PARAM1}" wird übernommen, ist 
 hint_extension_person_candidate = Die Property "{PARAM1}" wird als Person erkannt — nach dem Speichern kann sie in die Personen-Registry übernommen werden.
 error_required_field = Pflichtfeld "{PARAM1}" fehlt.
 error_invalid_format = Feld "{PARAM1}" hat ein ungültiges Format.
+error_id_reflit_restricted = Für Feld "{PARAM1}" ist der gewählte Modus oder das Referenzziel nicht zulässig.
 
 error_postal_code_format = Die Postleitzahl muss aus 5 Ziffern bestehen.
 error_telephone_format = Die Telefonnummer entspricht nicht dem erwarteten Format (z. B. +49 89 12345678).

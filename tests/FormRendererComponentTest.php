@@ -731,6 +731,58 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertStringContainsString('Organization — Muster GmbH', $html);
     }
 
+    function testRenderFieldIdReferenceOrLiteralOhneEinschraenkungZeigtBeideModi(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $fieldSchema = [
+            'ui:widget' => 'id_reference_or_literal',
+            'ui:literalFields' => ['name'],
+            'ui:literalFieldLabels' => ['name' => 'label_name'],
+        ];
+        $availableFragments = [
+            'organization' => 'Organization — Muster GmbH',
+            'person-jane-doe' => 'Jane Doe',
+        ];
+
+        $html = $renderer->renderField(
+            'page', 'organizer', $fieldSchema, [], ['properties' => ['organizer' => $fieldSchema]], [], null, null, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), $availableFragments,
+        );
+
+        $this->assertStringContainsString('Organization — Muster GmbH', $html);
+        $this->assertStringContainsString('Jane Doe', $html);
+        $this->assertStringContainsString('Manuell eintragen', $html);
+        $this->assertStringContainsString('schemaOrgData-idrl-radio', $html);
+    }
+
+    function testRenderFieldIdReferenceOrLiteralMitReferenceTargetsUndOhneLiteral(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $fieldSchema = [
+            'ui:widget' => 'id_reference_or_literal',
+            'ui:literalFields' => ['name'],
+            'ui:literalFieldLabels' => ['name' => 'label_name'],
+            'ui:referenceTargets' => ['persons'],
+            'ui:allowLiteral' => false,
+        ];
+        $availableFragments = [
+            'organization' => 'Organization — Muster GmbH',
+            'person-jane-doe' => 'Jane Doe',
+        ];
+
+        $html = $renderer->renderField(
+            'page', 'mainEntity', $fieldSchema, [], ['properties' => ['mainEntity' => $fieldSchema]], [], null, null, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), $availableFragments,
+        );
+
+        $this->assertStringContainsString('Jane Doe', $html);
+        $this->assertStringNotContainsString('Organization — Muster GmbH', $html);
+        $this->assertStringNotContainsString('Manuell eintragen', $html);
+        $this->assertStringNotContainsString('schemaOrgData-idrl-radio', $html);
+        // Kein Umschalter -> kein Literal-Feldname im POST-Namensraum.
+        $this->assertStringNotContainsString('[mainEntity][name]', $html);
+    }
+
     // -----------------------------------------------------------
     // renderPlaceWidget() / renderField() - place (Event.location)
     // -----------------------------------------------------------

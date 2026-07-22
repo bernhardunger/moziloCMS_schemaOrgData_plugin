@@ -182,9 +182,27 @@ class SchemaOrgData_Validator {
             }
 
             if($widget === 'id_reference_or_literal') {
+                $stored = is_array($value) ? $value : [];
+                $mode = (string) ($stored['_mode'] ?? 'reference');
+
+                // Modus-/Zieleinschränkung (ui:allowLiteral/ui:referenceTargets,
+                // siehe SchemaOrgData_IdReferenceService): ein POST-Wert
+                // außerhalb der Feldkonfiguration wird abgelehnt statt
+                // stillschweigend auf den erlaubten Zustand umgedeutet - unabhängig
+                // von $required, da sonst ein optionales Feld die Einschränkung
+                // umgehen könnte.
+                if($mode === 'literal' and !($fieldSchema['ui:allowLiteral'] ?? true)) {
+                    $errors[] = $lang->getLanguageValue('error_id_reflit_restricted', $label);
+                } elseif($mode === 'reference') {
+                    $fragment = trim((string) ($stored['_fragment'] ?? ''));
+                    $referenceTargets = $fieldSchema['ui:referenceTargets'] ?? null;
+                    if($fragment !== '' and is_array($referenceTargets)
+                        and !SchemaOrgData_IdReferenceService::isFragmentAllowedForReferenceTargets($fragment, $referenceTargets)) {
+                        $errors[] = $lang->getLanguageValue('error_id_reflit_restricted', $label);
+                    }
+                }
+
                 if($required) {
-                    $stored = is_array($value) ? $value : [];
-                    $mode = (string) ($stored['_mode'] ?? 'reference');
                     if($mode === 'reference') {
                         $fragment = trim((string) ($stored['_fragment'] ?? ''));
                         if($fragment === '') {
