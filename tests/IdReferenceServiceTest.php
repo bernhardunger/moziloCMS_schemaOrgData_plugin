@@ -72,6 +72,39 @@ final class IdReferenceServiceTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // isFragmentAllowedForReferenceTargets() / filterFragmentsByReferenceTargets()
+    // -----------------------------------------------------------
+
+    function testIsFragmentAllowedOhneReferenceTargetsIstImmerErlaubt(): void {
+        $this->assertTrue(\SchemaOrgData_IdReferenceService::isFragmentAllowedForReferenceTargets('organization', null));
+        $this->assertTrue(\SchemaOrgData_IdReferenceService::isFragmentAllowedForReferenceTargets('person-jane-doe', null));
+    }
+
+    function testIsFragmentAllowedPrueftOrganizationUndPersonsGetrennt(): void {
+        $this->assertTrue(\SchemaOrgData_IdReferenceService::isFragmentAllowedForReferenceTargets('organization', ['organization']));
+        $this->assertFalse(\SchemaOrgData_IdReferenceService::isFragmentAllowedForReferenceTargets('organization', ['persons']));
+        $this->assertTrue(\SchemaOrgData_IdReferenceService::isFragmentAllowedForReferenceTargets('person-jane-doe', ['persons']));
+        $this->assertFalse(\SchemaOrgData_IdReferenceService::isFragmentAllowedForReferenceTargets('person-jane-doe', ['organization']));
+    }
+
+    function testFilterFragmentsByReferenceTargetsOhnePropertyLiefertUnveraendert(): void {
+        $availableFragments = ['organization' => 'Organization', 'person-jane-doe' => 'Jane Doe'];
+
+        $filtered = \SchemaOrgData_IdReferenceService::filterFragmentsByReferenceTargets($availableFragments, []);
+
+        $this->assertSame($availableFragments, $filtered);
+    }
+
+    function testFilterFragmentsByReferenceTargetsSchraenktAufPersonsEin(): void {
+        $availableFragments = ['organization' => 'Organization', 'person-jane-doe' => 'Jane Doe'];
+        $fieldSchema = ['ui:referenceTargets' => ['persons']];
+
+        $filtered = \SchemaOrgData_IdReferenceService::filterFragmentsByReferenceTargets($availableFragments, $fieldSchema);
+
+        $this->assertSame(['person-jane-doe' => 'Jane Doe'], $filtered);
+    }
+
+    // -----------------------------------------------------------
     // applyDanglingReferenceGuard()
     // -----------------------------------------------------------
 

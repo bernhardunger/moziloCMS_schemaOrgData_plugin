@@ -915,6 +915,68 @@ final class ValidatorTest extends TestCase {
 
     /***************************************************************
     *
+    * ui:allowLiteral/ui:referenceTargets (id_reference_or_literal):
+    * ein gesendeter Modus bzw. ein Referenzziel außerhalb der
+    * Feldkonfiguration ist ein Validierungsfehler, unabhängig davon,
+    * ob das Feld selbst ui:required ist.
+    *
+    ***************************************************************/
+    function testValidateFormDataLehntLiteralModusBeiAllowLiteralFalseAb(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $schema = [
+            'properties' => [
+                'mainEntity' => [
+                    'type' => 'object', 'ui:widget' => 'id_reference_or_literal', 'ui:label' => 'label_name',
+                    'ui:literalFields' => ['name'], 'ui:allowLiteral' => false,
+                ],
+            ],
+        ];
+        $formData = ['mainEntity' => ['_mode' => 'literal', 'name' => 'Gast-Person']];
+        $errors = $validator->validateFormData($formData, $schema, [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertContains(
+            $this->adminLang()->getLanguageValue('error_id_reflit_restricted', $this->adminLang()->getLanguageValue('label_name')),
+            $errors
+        );
+    }
+
+    function testValidateFormDataLehntReferenzZielAusserhalbReferenceTargetsAb(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $schema = [
+            'properties' => [
+                'mainEntity' => [
+                    'type' => 'object', 'ui:widget' => 'id_reference_or_literal', 'ui:label' => 'label_name',
+                    'ui:referenceTargets' => ['persons'],
+                ],
+            ],
+        ];
+        $formData = ['mainEntity' => ['_mode' => 'reference', '_fragment' => 'organization']];
+        $errors = $validator->validateFormData($formData, $schema, [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertContains(
+            $this->adminLang()->getLanguageValue('error_id_reflit_restricted', $this->adminLang()->getLanguageValue('label_name')),
+            $errors
+        );
+    }
+
+    function testValidateFormDataAkzeptiertErlaubtesReferenzZielInnerhalbReferenceTargets(): void {
+        $validator = new \SchemaOrgData_Validator();
+        $schema = [
+            'properties' => [
+                'mainEntity' => [
+                    'type' => 'object', 'ui:widget' => 'id_reference_or_literal', 'ui:label' => 'label_name',
+                    'ui:referenceTargets' => ['persons'],
+                ],
+            ],
+        ];
+        $formData = ['mainEntity' => ['_mode' => 'reference', '_fragment' => 'person-jane-doe']];
+        $errors = $validator->validateFormData($formData, $schema, [], $this->adminLang(), $this->schemaRepository());
+
+        $this->assertSame([], $errors);
+    }
+
+    /***************************************************************
+    *
     * datePosted ist ui:required (Google-Richtlinie
     * für JobPosting-Rich-Results) - fehlt der Wert vollständig, muss
     * validateFormData() einen Pflichtfeld-Fehler melden.

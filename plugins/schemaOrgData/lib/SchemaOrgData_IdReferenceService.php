@@ -96,6 +96,64 @@ class SchemaOrgData_IdReferenceService {
 
     /***************************************************************
     *
+    * Prüft, ob ein einzelnes @id-Fragment für ein Feld mit der
+    * deklarativen Zieleinschränkung ui:referenceTargets erlaubt ist.
+    * "organization" steht für das schema-statische Fragment
+    * gleichen Namens (siehe README.md, "@id-Anker und Knotenreferenzen"),
+    * "persons" für jedes Registry-Personen-Fragment ("person-{slug}"-
+    * Präfix). $referenceTargets === null bedeutet "keine Einschränkung
+    * konfiguriert" - vollständige Rückwärtskompatibilität für Felder,
+    * die ui:referenceTargets nicht setzen. Ein Fragment, das keiner der
+    * beiden bekannten Zielarten entspricht, bleibt bewusst erlaubt (kein
+    * Blockieren künftiger, hier noch unbekannter Fragmentarten).
+    *
+    * @param string $fragment zu prüfendes @id-Fragment
+    * @param array<int,string>|null $referenceTargets ui:referenceTargets-Wert des Feld-Schemas
+    *
+    ***************************************************************/
+    public static function isFragmentAllowedForReferenceTargets(string $fragment, ?array $referenceTargets): bool {
+        if($referenceTargets === null) {
+            return true;
+        }
+        if($fragment === 'organization') {
+            return in_array('organization', $referenceTargets, true);
+        }
+        if(str_starts_with($fragment, 'person-')) {
+            return in_array('persons', $referenceTargets, true);
+        }
+        return true;
+    }
+
+    /***************************************************************
+    *
+    * Filtert eine Fragment→Label-Map (siehe resolveAvailableGlobalFragments())
+    * anhand der ui:referenceTargets-Property eines konkreten
+    * id_reference_or_literal-Feld-Schemas. Fehlt die Property, bleibt die
+    * komplette Liste erhalten - rein additive Einschränkung, kein
+    * bestehendes Schema muss sie setzen. Filtert nur nachträglich anhand
+    * bereits berechneter Fragmente (isFragmentAllowedForReferenceTargets()),
+    * dupliziert resolveAvailableGlobalFragments() selbst also nicht.
+    *
+    * @param array<string,string> $availableFragments Ergebnis von resolveAvailableGlobalFragments()
+    * @param array<string,mixed> $fieldSchema Schema-Definition der id_reference_or_literal-Property
+    * @return array<string,string>
+    *
+    ***************************************************************/
+    public static function filterFragmentsByReferenceTargets(array $availableFragments, array $fieldSchema): array {
+        $referenceTargets = $fieldSchema['ui:referenceTargets'] ?? null;
+        if(!is_array($referenceTargets)) {
+            return $availableFragments;
+        }
+
+        return array_filter(
+            $availableFragments,
+            fn(string $fragment): bool => self::isFragmentAllowedForReferenceTargets($fragment, $referenceTargets),
+            ARRAY_FILTER_USE_KEY
+        );
+    }
+
+    /***************************************************************
+    *
     * Dangling-Reference-Guard für id_reference-Properties.
     *
     * Wird in getContent() nach resolveTypeInheritance() und vor der

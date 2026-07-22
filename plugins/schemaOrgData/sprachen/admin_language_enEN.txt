@@ -140,6 +140,7 @@ warning_unknown_property = Unknown property "{PARAM1}" will be saved but is not 
 hint_extension_person_candidate = Property "{PARAM1}" is recognized as a person — after saving, it can be added to the persons registry.
 error_required_field = Required field "{PARAM1}" is missing.
 error_invalid_format = Field "{PARAM1}" has an invalid format.
+error_id_reflit_restricted = The selected mode or reference target is not allowed for field "{PARAM1}".
 
 error_postal_code_format = The postal code must consist of 5 digits.
 error_telephone_format = The phone number does not match the expected format (e.g. +49 89 12345678).

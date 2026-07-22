@@ -191,13 +191,20 @@ class SchemaOrgData_FormRenderer {
     *
     * @param string $scope  Geltungsbereich (global/category/page)
     * @param string $name   Property-Name im Schema
-    * @param array<string, mixed> $fieldSchema Schema-Definition der Property
+    * @param array<string, mixed> $fieldSchema Schema-Definition der Property -
+    *        die optionalen Properties ui:referenceTargets (Array aus
+    *        "organization"/"persons", schränkt die Dropdown-Optionen ein)
+    *        und ui:allowLiteral (bool, Default true, blendet bei false den
+    *        Literal-Modus inkl. Umschalter vollständig aus) steuern die
+    *        Einschränkbarkeit dieses Widgets, siehe README.md
     * @param array<string, mixed> $value   Gespeicherter Wert ['_mode' => ..., ...]
     * @param string $idPrefix Präfix für HTML-IDs
     * @param Language $lang für die Widget-Labels
     * @param array<string,string> $availableFragments Fragment => Label-Map
     *        (siehe IdReferenceService::resolveAvailableGlobalFragments()),
-    *        von der Fassade einmal je renderTypeFields()-Aufruf berechnet
+    *        von der Fassade einmal je renderTypeFields()-Aufruf berechnet -
+    *        wird hier zusätzlich je Feldkonfiguration über
+    *        IdReferenceService::filterFragmentsByReferenceTargets() gefiltert
     * @return string HTML des Widgets - die beiden Modus-Radios tragen einen
     *         je Instanz eindeutigen (nicht submittierten) Namen, der
     *         tatsächlich gespeicherte _mode-Wert läuft über ein per JS
@@ -205,7 +212,15 @@ class SchemaOrgData_FormRenderer {
     *
     ***************************************************************/
     public function renderIdReferenceOrLiteralWidget(string $scope, string $name, array $fieldSchema, array $value, string $idPrefix, Language $lang, array $availableFragments): string {
-        $storedMode = (string) ($value['_mode'] ?? 'reference');
+        $availableFragments = SchemaOrgData_IdReferenceService::filterFragmentsByReferenceTargets($availableFragments, $fieldSchema);
+
+        // ui:allowLiteral = false reduziert das Widget auf einen einzigen
+        // Modus (Referenz) - ein gespeicherter Literal-Altwert wird dann
+        // nicht mehr redisplayt, da diese Feldkonfiguration den Modus gar
+        // nicht mehr anbietet (Umschalter/Literal-Felder/POST-Feld entfallen
+        // komplett statt nur versteckt zu werden).
+        $allowLiteral = (bool) ($fieldSchema['ui:allowLiteral'] ?? true);
+        $storedMode = $allowLiteral ? (string) ($value['_mode'] ?? 'reference') : 'reference';
         $storedFragment = (string) ($value['_fragment'] ?? '');
         $refChecked = $storedMode !== 'literal' ? ' checked="checked"' : '';
         $litChecked = $storedMode === 'literal'  ? ' checked="checked"' : '';
@@ -237,13 +252,17 @@ class SchemaOrgData_FormRenderer {
             .' name="'.htmlspecialchars($modeField, ENT_QUOTES, CHARSET).'"'
             .' value="'.($storedMode === 'literal' ? 'literal' : 'reference').'" />'."\n";
 
-        // Radio: Referenz-Modus
-        $html .= '<label class="schemaOrgData-idrl-radio-label">'
-            .'<input type="radio" class="schemaOrgData-idrl-radio"'
-            .' name="'.htmlspecialchars($radioGroupName, ENT_QUOTES, CHARSET).'" value="reference"'
-            .$refChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
-            .' '.$lang->getLanguageHtml('label_id_reflit_reference')
-            .'</label>'."\n";
+        // Radio: Referenz-Modus - nur bei zwei verbleibenden Modi ein
+        // Umschalter nötig; bei ui:allowLiteral === false ist Referenz der
+        // einzige Modus, ein Umschalter wäre hier bedeutungslos.
+        if($allowLiteral) {
+            $html .= '<label class="schemaOrgData-idrl-radio-label">'
+                .'<input type="radio" class="schemaOrgData-idrl-radio"'
+                .' name="'.htmlspecialchars($radioGroupName, ENT_QUOTES, CHARSET).'" value="reference"'
+                .$refChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
+                .' '.$lang->getLanguageHtml('label_id_reflit_reference')
+                .'</label>'."\n";
+        }
 
         // Referenz-Dropdown
         $html .= '<div class="schemaOrgData-idrl-section schemaOrgData-idrl-reference"'.$refHidden.'>'."\n";
@@ -261,51 +280,56 @@ class SchemaOrgData_FormRenderer {
         }
         $html .= '</div>'."\n";
 
-        // Radio: Literal-Modus
-        $html .= '<label class="schemaOrgData-idrl-radio-label">'
-            .'<input type="radio" class="schemaOrgData-idrl-radio"'
-            .' name="'.htmlspecialchars($radioGroupName, ENT_QUOTES, CHARSET).'" value="literal"'
-            .$litChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
-            .' '.$lang->getLanguageHtml('label_id_reflit_literal')
-            .'</label>'."\n";
+        // Radio: Literal-Modus + Literal-Felder - bei ui:allowLiteral === false
+        // vollständig ausgeblendet: kein Umschalter, keine Eingabefelder, kein
+        // zugehöriges POST-Feld.
+        if($allowLiteral) {
+            $html .= '<label class="schemaOrgData-idrl-radio-label">'
+                .'<input type="radio" class="schemaOrgData-idrl-radio"'
+                .' name="'.htmlspecialchars($radioGroupName, ENT_QUOTES, CHARSET).'" value="literal"'
+                .$litChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
+                .' '.$lang->getLanguageHtml('label_id_reflit_literal')
+                .'</label>'."\n";
 
-        // Literal-Felder
-        $html .= '<div class="schemaOrgData-idrl-section schemaOrgData-idrl-literal"'.$litHidden.'>'."\n";
-        $literalFields       = $fieldSchema['ui:literalFields']       ?? [];
-        $literalFieldLabels  = $fieldSchema['ui:literalFieldLabels']  ?? [];
-        $literalFieldPlaceholders = $fieldSchema['ui:literalFieldPlaceholders'] ?? [];
-        foreach($literalFields as $lf) {
-            $lfId    = 'schemaOrgData_'.$idPrefix.'_'.$name.'_lf_'.$lf;
-            $lfName  = $fieldNameBase.'['.$lf.']';
-            $lfValue = (string) ($value[(string) $lf] ?? '');
-            $lfLabelKey = $literalFieldLabels[(string) $lf] ?? 'label_'.$lf;
-            $lfLabel = $lang->getLanguageHtml($lfLabelKey);
-            $lfPlaceholderKey = $literalFieldPlaceholders[(string) $lf] ?? null;
-            $lfPlaceholder = $lfPlaceholderKey !== null ? $lang->getLanguageValue($lfPlaceholderKey) : '';
-            $html .= '<div class="c-content schemaOrgData-field-row">'."\n"
-                .'<div class="mo-in-li-l"><label for="'.htmlspecialchars($lfId, ENT_QUOTES, CHARSET).'">'.$lfLabel.'</label></div>'."\n"
-                .'<div class="mo-in-li-r"><input type="text" id="'.htmlspecialchars($lfId, ENT_QUOTES, CHARSET).'"'
-                .' name="'.htmlspecialchars($lfName, ENT_QUOTES, CHARSET).'"'
-                .' value="'.htmlspecialchars($lfValue, ENT_QUOTES, CHARSET).'"'
-                .' placeholder="'.htmlspecialchars($lfPlaceholder, ENT_QUOTES, CHARSET).'"'
-                .' class="mo-input-text flex-100" /></div>'."\n"
-                .'</div>'."\n";
+            $html .= '<div class="schemaOrgData-idrl-section schemaOrgData-idrl-literal"'.$litHidden.'>'."\n";
+            $literalFields       = $fieldSchema['ui:literalFields']       ?? [];
+            $literalFieldLabels  = $fieldSchema['ui:literalFieldLabels']  ?? [];
+            $literalFieldPlaceholders = $fieldSchema['ui:literalFieldPlaceholders'] ?? [];
+            foreach($literalFields as $lf) {
+                $lfId    = 'schemaOrgData_'.$idPrefix.'_'.$name.'_lf_'.$lf;
+                $lfName  = $fieldNameBase.'['.$lf.']';
+                $lfValue = (string) ($value[(string) $lf] ?? '');
+                $lfLabelKey = $literalFieldLabels[(string) $lf] ?? 'label_'.$lf;
+                $lfLabel = $lang->getLanguageHtml($lfLabelKey);
+                $lfPlaceholderKey = $literalFieldPlaceholders[(string) $lf] ?? null;
+                $lfPlaceholder = $lfPlaceholderKey !== null ? $lang->getLanguageValue($lfPlaceholderKey) : '';
+                $html .= '<div class="c-content schemaOrgData-field-row">'."\n"
+                    .'<div class="mo-in-li-l"><label for="'.htmlspecialchars($lfId, ENT_QUOTES, CHARSET).'">'.$lfLabel.'</label></div>'."\n"
+                    .'<div class="mo-in-li-r"><input type="text" id="'.htmlspecialchars($lfId, ENT_QUOTES, CHARSET).'"'
+                    .' name="'.htmlspecialchars($lfName, ENT_QUOTES, CHARSET).'"'
+                    .' value="'.htmlspecialchars($lfValue, ENT_QUOTES, CHARSET).'"'
+                    .' placeholder="'.htmlspecialchars($lfPlaceholder, ENT_QUOTES, CHARSET).'"'
+                    .' class="mo-input-text flex-100" /></div>'."\n"
+                    .'</div>'."\n";
+            }
+            $html .= '</div>'."\n";
         }
         $html .= '</div>'."\n";
-        $html .= '</div>'."\n";
 
-        // Einmalig definierte Toggle-Funktion (idempotent via window-Guard).
-        // Pflegt zusätzlich das versteckte Feld schemaOrgData-idrl-mode-field
-        // nach, das - anders als die (je Instanz eindeutig benannten) Radios -
-        // unter dem tatsächlichen Formularfeldnamen ($modeField) übermittelt wird.
-        $html .= '<script>if(!window.schemaOrgDataIdRlToggle){'
-            .'window.schemaOrgDataIdRlToggle=function(r){'
-            .'var c=r.closest(".schemaOrgData-idrl-container");'
-            .'c.querySelectorAll(".schemaOrgData-idrl-section").forEach(function(s){s.style.display="none";});'
-            .'c.querySelector(".schemaOrgData-idrl-"+r.value).style.display="";'
-            .'var h=c.querySelector(".schemaOrgData-idrl-mode-field");'
-            .'if(h){h.value=r.value;}'
-            .'};}</script>'."\n";
+        if($allowLiteral) {
+            // Einmalig definierte Toggle-Funktion (idempotent via window-Guard).
+            // Pflegt zusätzlich das versteckte Feld schemaOrgData-idrl-mode-field
+            // nach, das - anders als die (je Instanz eindeutig benannten) Radios -
+            // unter dem tatsächlichen Formularfeldnamen ($modeField) übermittelt wird.
+            $html .= '<script>if(!window.schemaOrgDataIdRlToggle){'
+                .'window.schemaOrgDataIdRlToggle=function(r){'
+                .'var c=r.closest(".schemaOrgData-idrl-container");'
+                .'c.querySelectorAll(".schemaOrgData-idrl-section").forEach(function(s){s.style.display="none";});'
+                .'c.querySelector(".schemaOrgData-idrl-"+r.value).style.display="";'
+                .'var h=c.querySelector(".schemaOrgData-idrl-mode-field");'
+                .'if(h){h.value=r.value;}'
+                .'};}</script>'."\n";
+        }
 
         return $html;
     }
