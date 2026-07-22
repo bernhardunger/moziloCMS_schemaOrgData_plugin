@@ -1,6 +1,6 @@
 # schemaOrgData — moziloCMS Plugin
 
-![Version](https://img.shields.io/badge/version-0.10.4--beta-blue)
+![Version](https://img.shields.io/badge/version-0.11.3--beta-blue)
 ![PHP](https://img.shields.io/badge/PHP-8.1%2B-777bb4)
 ![moziloCMS](https://img.shields.io/badge/moziloCMS-3.0.4%2B-orange)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green)](https://www.gnu.org/licenses/gpl-3.0)
@@ -74,13 +74,12 @@ Voraussetzungen in Kurzform: moziloCMS 3.0.4+, PHP 8.1+ — Details unter
    [JSON-LD-Ausgabe im Detail](#json-ld-ausgabe-im-detail)).
 
 > ⚠️ **`plugin.conf.php` ist zugleich Metadaten-Datei und alleiniger
-> Speicherort der kompletten Live-Konfiguration.** Ein Deploy dieser Datei per
-> FTP auf einen Server mit bestehender Konfiguration **überschreibt diese
-> vollständig, ohne Rückfrage**. Ein Update über die moziloCMS-Admin-Oberfläche
-> (ZIP-Upload) ist davon nicht betroffen — der Core-Installer überspringt
-> `plugin.conf.php` beim Entpacken, falls die Datei bereits existiert. Wer
-> manuell per FTP aktualisiert, sollte `plugin.conf.php` gezielt von der
-> Übertragung ausnehmen.
+> Speicherort der kompletten Live-Konfiguration.** Ein manueller
+> FTP-Upload überschreibt eine bestehende Konfiguration vollständig und
+> ohne Rückfrage — die Datei bei FTP-Updates gezielt von der Übertragung
+> ausnehmen. Ein Update per ZIP-Upload über die Admin-Oberfläche ist
+> davon nicht betroffen. Hintergrund:
+> [docs/configuration.md](docs/configuration.md#zip-install-vs-ftp-update)
 
 <a id="erste-konfiguration"></a>
 ### Erste Konfiguration
@@ -176,11 +175,11 @@ Stelle des Platzhalters:
 | `Organization` | Organisation / Firma, mit `@id`-Anker `#organization` | Global |
 | `NGO` | Gemeinnützige Organisation (Verein, Stiftung u. a.), mit `@id`-Anker `#organization` | Global |
 | `WebSite` | Website-Metadaten | Global |
-| `FAQPage` | Häufig gestellte Fragen ([Google-Richtlinien beachten](https://developers.google.com/search/docs/appearance/structured-data/faqpage) — Rich Results seit 2023 auf wenige autoritative Quellen beschränkt) | Kategorie / Seite |
-| `Article` | Artikel / Blogbeitrag (`author` wahlweise als Organisation-Referenz, Referenz auf eine Registry-Person oder Gast-Autor als Direkteingabe; `publisher` als Organisation-Referenz) | Kategorie / Seite |
+| `FAQPage` | Häufig gestellte Fragen ([Google-Richtlinien beachten](https://developers.google.com/search/docs/appearance/structured-data/faqpage)) | Kategorie / Seite |
+| `Article` | Artikel / Blogbeitrag (Autor wahlweise als Referenz oder Direkteingabe) | Kategorie / Seite |
 | `JobPosting` | Stellenanzeige | Seite |
 | `DonateAction` | Spendenaufruf (verknüpft per `@id` mit dem globalen Org-Knoten) | Seite |
-| `Event` | Veranstaltung / Termin (`location` als `Place` mit Adresse, `organizer` wahlweise als Referenz oder Direkteingabe) | Seite |
+| `Event` | Veranstaltung / Termin | Seite |
 
 </details>
 
@@ -321,24 +320,21 @@ gespeichert (Beispiel siehe [Erste Konfiguration](#erste-konfiguration)). Es wir
 <a id="erweiterungsfeld"></a>
 ### Erweiterungsfeld (erweiterte Properties)
 
-Jede Konfiguration enthält optional ein JSON-Textarea-Feld für Properties,
-die das Formular nicht abbildet. Die Inhalte werden beim Speichern mit den
-Formularfeldern zusammengeführt (merge). Das Formular hat Vorrang bei
-gleichnamigen Properties.
-
-Die Validierung erfolgt zweistufig — client-seitig live per AJV.js
-(Syntax, Property-Whitelist gegen das aktive JSON-Schema, Format-Prüfung
-bekannter Properties) und server-seitig in PHP beim Speichern
-(`json_decode()` sowie inhaltliche Prüfung bekannter Properties).
+Jede Konfiguration enthält optional ein JSON-Textarea-Feld für
+Properties, die das Formular nicht abbildet. Die Inhalte werden beim
+Speichern mit den Formularfeldern zusammengeführt (merge); das Formular
+hat Vorrang bei gleichnamigen Properties. Die Eingabe wird zweistufig
+validiert — client-seitig live per AJV.js, server-seitig in PHP beim
+Speichern.
 
 Enthält das Erweiterungsfeld eines global konfigurierten
 Organisations-Types (siehe [Organisations-Identität und @id-Anker](#organisations-identitaet))
 eine der Properties `employee`, `founder` oder `member` als einzelnes
 Objekt vom Typ `Person`, bietet das Plugin eine Übernahme in die
-[Personen-Registry](#personen-registry) an — je nach Namensabgleich
-entweder als Verlinkung mit einer bereits vorhandenen Person oder als
-Neuanlage samt passender Organisations-Relation. Die übernommene Property
-wird danach aus dem Erweiterungsfeld entfernt.
+[Personen-Registry](#personen-registry) an — als Verlinkung mit einer
+vorhandenen Person oder als Neuanlage samt Organisations-Relation.
+
+> 📄 Vertiefung (Validierungsstufen und Property-Whitelist / Übernahme-Mechanik): [docs/validation.md](docs/validation.md#erweiterungsfeld-json-textarea) · [docs/use-cases/organization-identity.md](docs/use-cases/organization-identity.md)
 
 <a id="vorhandenes-json-ld-und-import"></a>
 ### Vorhandenes JSON-LD und Import
@@ -442,16 +438,14 @@ Organisations-Identität, Seiten-Types nur dort, wo der Inhalt es hergibt,
 und nach jeder Änderung mit [validator.schema.org](https://validator.schema.org)
 gegenprüfen.
 
-> 📄 Vertiefung (vollständige Empfehlungsliste, Google-Richtlinien, schema.org-Vokabular): [docs/best-practices.md](docs/best-practices.md)
-
 <a id="typische-fehler"></a>
-### Typische Fehler — so bitte nicht
+Typische Fehler — so bitte nicht:
 
 - ❌ `FAQPage` ohne wortgleich sichtbare Fragen/Antworten auf der Seite
 - ❌ Mehrere Organisations-Identitäten (**Organization**, **NGO**, **LocalBusiness**) gleichzeitig global konfigurieren
 - ❌ Felder befüllen, „weil sie da sind" — geschätzte/erfundene Werte schaden mehr als leere Felder
 
-> 📄 Vertiefung (alle Beispiele inkl. Begründung): [docs/best-practices.md](docs/best-practices.md)
+> 📄 Vertiefung (vollständige Empfehlungsliste inkl. Begründungen, Google-Richtlinien, schema.org-Vokabular): [docs/best-practices.md](docs/best-practices.md)
 
 ---
 
@@ -514,14 +508,13 @@ composer install
 ./vendor/bin/phpunit
 ```
 
-Das Plugin ist umfassend automatisiert getestet (PHPUnit + Jest), inkl.
-einiger dokumentierter Skips für strukturell im Unit-Test nicht
-erreichbare Fälle. Ergänzend wird das Plugin per Browser-Regressionstests
-(Playwright) gegen eine reale moziloCMS-Installation verifiziert.
+Das Plugin ist umfassend automatisiert getestet (PHPUnit + Jest) und
+wird ergänzend per Browser-Regressionstests (Playwright) gegen eine
+reale moziloCMS-Installation verifiziert.
 
-> `vendor/` ist in `.gitignore` — PHPUnit wird nicht ins Repository
-> eingecheckt. Die Tests liegen im Entwicklungs-Repository eine Ebene über
-> dem Plugin-Ordner und sind nicht Teil des Deployment-Pakets.
+> `vendor/` ist in `.gitignore`; die Tests liegen im
+> Entwicklungs-Repository eine Ebene über dem Plugin-Ordner und sind
+> nicht Teil des Deployment-Pakets.
 
 > 📄 Vertiefung: [docs/tests.md](docs/tests.md)
 

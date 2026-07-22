@@ -8,6 +8,9 @@
 > reiner „SEO-Trick" auf einer normalen Inhaltsseite verstößt gegen die
 > Google-Richtlinien und kann zum Ausschluss von Rich Results führen —
 > siehe [Best Practices](../best-practices.md#faqpage-ohne-sichtbare-inhalte).
+> Zudem hat Google die Rich-Results-Darstellung für `FAQPage` seit 2023 auf
+> wenige autoritative Quellen beschränkt — auf den meisten Websites hat das
+> Markup daher primär strukturellen, keinen Rich-Results-Wert mehr.
 
 ## Felder im Überblick
 

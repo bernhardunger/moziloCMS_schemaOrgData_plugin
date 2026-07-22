@@ -101,6 +101,30 @@ inzwischen inaktive Person bleibt bei Artikel-Autor und
 Organisations-Relationen aus der Ausgabe gefiltert (Details:
 `CLAUDE.md`, Abschnitt „Personen-Registry").
 
+Ergänzend referenziert `Article.publisher` per `id_reference` auf
+`organization` — anders als `author` ohne Auswahlmodus, ausschließlich als
+Organisationsverweis (siehe [widgets.md](../widgets.md)).
+
+## Übernahme aus dem Erweiterungsfeld (`employee`/`founder`/`member`)
+
+Enthält das Erweiterungsfeld eines global konfigurierten
+Organisations-Identity-Types (Fragment `organization`) einen der drei
+Top-Level-Keys `employee`, `founder` oder `member` als **einzelnes**
+Objekt vom Typ `Person` (typischer Fall: Import eines bestehenden
+JSON-LD-Blocks, der eine Person enthält, die keinem Schema-Feld des Types
+entspricht), bietet das Plugin eine Übernahme in die Personen-Registry an,
+statt die Rohdaten dauerhaft im Erweiterungsfeld zu belassen.
+
+Der Namensabgleich (`name`-Wert, Trim-String-Gleichheit gegen alle
+Registry-Personen unabhängig vom Status) entscheidet über den
+Übernahme-Weg: bei Treffer wird die bestehende Person für eine neue
+Organisations-Relation verwendet (kein Duplikat, falls dieselbe
+Person/Rolle-Kombination bereits verlinkt ist), ohne Treffer legt das
+Plugin eine neue Registry-Person mit den Feldern aus dem Literal an
+(`name`, `honorificPrefix`, `jobTitle`, `description`, `url`, `image`,
+`sameAs`) samt passender Organisations-Relation. In beiden Fällen wird die
+übernommene Property danach aus dem Erweiterungsfeld entfernt.
+
 ## Basis-URL
 
 Die absolute Basis-URL wird zur Ausgabezeit aus dem aktuellen Request
