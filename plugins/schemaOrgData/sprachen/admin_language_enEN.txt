@@ -45,6 +45,7 @@ schema_type_article = 📰 Article / Blog Post (Article)
 schema_type_jobposting = 💼 Job Posting (JobPosting)
 schema_type_donateaction = 💝 Donation / Donate Action (DonateAction)
 schema_type_event = 📅 Event / Appointment (Event)
+schema_type_profilepage = 🪪 Profile Page (ProfilePage)
 
 label_recipient = Recipient (Organisation)
 label_organizer = Organizer
@@ -97,6 +98,9 @@ label_start_date = Start (Date/Time)
 label_end_date = End (Date/Time)
 label_event_attendance_mode = Attendance Mode
 label_event_status = Status
+
+label_main_entity = Person (page main content)
+label_date_created = Date Created
 
 label_address = Address
 label_street_address = Street Address
