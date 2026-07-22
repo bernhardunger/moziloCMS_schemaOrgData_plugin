@@ -210,6 +210,7 @@ class SchemaOrgData_FrontendRenderer {
                 'description'     => $person['description'] ?? '',
                 'url'             => $person['url'] ?? '',
                 'sameAs'          => $person['sameAs'] ?? [],
+                'knowsAbout'      => $person['knowsAbout'] ?? [],
                 'image'           => $context->personsRegistryService->resolveAbsoluteImageUrl(
                     (string) ($person['image'] ?? ''), $context->urlHelper
                 ),

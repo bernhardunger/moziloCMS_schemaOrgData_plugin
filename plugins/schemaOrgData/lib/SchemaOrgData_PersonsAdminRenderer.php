@@ -247,6 +247,9 @@ class SchemaOrgData_PersonsAdminRenderer {
         $sameAsValue = is_array($data['sameAs'] ?? null) ? implode("\n", $data['sameAs']) : (string) ($data['sameAs'] ?? '');
         $html .= $this->renderTextareaRow($idPrefix, 'sameAs', 'label_person_same_as', $sameAsValue, $lang, $formRenderer);
 
+        $knowsAboutValue = is_array($data['knowsAbout'] ?? null) ? implode("\n", $data['knowsAbout']) : (string) ($data['knowsAbout'] ?? '');
+        $html .= $this->renderTextareaRow($idPrefix, 'knowsAbout', 'label_person_knows_about', $knowsAboutValue, $lang, $formRenderer);
+
         $imageValue = (string) ($data['image'] ?? '');
         $html .= $this->renderImageRow($idPrefix, $imageValue, $lang, $formRenderer, $registryService, $validator, $urlHelper);
 

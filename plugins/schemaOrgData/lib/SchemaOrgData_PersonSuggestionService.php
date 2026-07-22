@@ -169,6 +169,7 @@ class SchemaOrgData_PersonSuggestionService {
 
         if($slug === null) {
             $sameAs = $literal['sameAs'] ?? null;
+            $knowsAbout = $literal['knowsAbout'] ?? null;
             $rawData = [
                 'name'            => $name,
                 'honorificPrefix' => (string) ($literal['honorificPrefix'] ?? ''),
@@ -176,11 +177,13 @@ class SchemaOrgData_PersonSuggestionService {
                 'description'     => (string) ($literal['description'] ?? ''),
                 'url'             => (string) ($literal['url'] ?? ''),
                 'image'           => (string) ($literal['image'] ?? ''),
-                // sanitizePersonData() zerlegt "sameAs" zeilenweise (Textarea-
-                // Format) - ein Array wird hier zu genau dieser Zeilenform
-                // zusammengesetzt, damit createPerson() unverändert wiederverwendet
-                // werden kann, statt die Bereinigungslogik zu duplizieren.
+                // sanitizePersonData() zerlegt "sameAs"/"knowsAbout" zeilenweise
+                // (Textarea-Format) - ein Array wird hier zu genau dieser
+                // Zeilenform zusammengesetzt, damit createPerson() unverändert
+                // wiederverwendet werden kann, statt die Bereinigungslogik zu
+                // duplizieren.
                 'sameAs'          => is_array($sameAs) ? implode("\n", array_map('strval', $sameAs)) : (string) $sameAs,
+                'knowsAbout'      => is_array($knowsAbout) ? implode("\n", array_map('strval', $knowsAbout)) : (string) $knowsAbout,
             ];
 
             $result = $personsRegistryService->createPerson($settings, $rawData, $lang, $validator);
