@@ -1,6 +1,6 @@
 # schemaOrgData — moziloCMS Plugin
 
-![Version](https://img.shields.io/badge/version-0.11.3--beta-blue)
+![Version](https://img.shields.io/badge/version-0.11.7--beta-blue)
 ![PHP](https://img.shields.io/badge/PHP-8.1%2B-777bb4)
 ![moziloCMS](https://img.shields.io/badge/moziloCMS-3.0.4%2B-orange)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green)](https://www.gnu.org/licenses/gpl-3.0)
@@ -138,7 +138,7 @@ Stelle des Platzhalters:
 
 **Architektur**
 - JSON-LD-Ausgabe im `<head>` der Seite, nicht im Seiteninhalt
-- **13 unterstützte Schema-Types** (LocalBusiness, Organization, Event, JobPosting, FAQPage u. a. — [vollständige Liste](#unterstuetzte-schema-types))
+- **14 unterstützte Schema-Types** (LocalBusiness, Organization, Event, JobPosting, FAQPage u. a. — [vollständige Liste](#unterstuetzte-schema-types))
 - Drei Geltungsbereiche: **Global**, **Kategorie**, **Seite**, mit feldweiser Vererbung (Global → Kategorie → Seite, siehe [Geltungsbereiche und Vererbung](#geltungsbereiche-und-vererbung))
 
 **Redaktion & Bedienung**
@@ -180,6 +180,7 @@ Stelle des Platzhalters:
 | `JobPosting` | Stellenanzeige | Seite |
 | `DonateAction` | Spendenaufruf (verknüpft per `@id` mit dem globalen Org-Knoten) | Seite |
 | `Event` | Veranstaltung / Termin | Seite |
+| `ProfilePage` | Profilseite (Über-mich-/Autorenseite; Hauptinhalt ist eine Registry-Person) | Seite |
 
 </details>
 
@@ -406,6 +407,7 @@ Direkteingabe.
 - [FAQPage](docs/use-cases/faq.md)
 - [JobPosting](docs/use-cases/job-posting.md)
 - [DonateAction](docs/use-cases/donate-action.md)
+- [Profilseite](docs/use-cases/profilseite.md)
 
 ---
 
