@@ -1276,4 +1276,56 @@ final class AdminControllerTest extends TestCase {
         $this->assertFalse($settings->keyExists('config_global'));
         $this->assertTrue((new \SchemaOrgData_PersonsRegistryService())->slugExists($settings, 'max'));
     }
+
+    /***************************************************************
+    *
+    * Das Umschalter-Button-Paar (Scope- <-> Personen-Container) lebt
+    * seit dem Heimat-Container-Fix je in seinem eigenen Ziel-Container
+    * statt gemeinsam davor: "Personen verwalten" ausschließlich im
+    * Scope-Container, "Zurück zu Global/Kategorie/Seite" ausschließlich
+    * im Personen-Container - vorher waren beide Buttons immer sichtbar,
+    * unabhängig davon, welcher Container gerade aktiv war, wodurch der
+    * jeweils falsche Button wirkungslos war bzw. an einer Stelle
+    * erschien, an der er keinen Sinn ergab.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageUmschalterButtonsLebenInIhremHeimatContainer(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $html = $this->callRenderAdminPage(new \InMemorySettings());
+
+        $scopeContainerPos = strpos($html, 'id="schemaOrgData_scope_container"');
+        $personsContainerPos = strpos($html, 'id="schemaOrgData_persons_container"');
+        $this->assertIsInt($scopeContainerPos);
+        $this->assertIsInt($personsContainerPos);
+        $this->assertLessThan($personsContainerPos, $scopeContainerPos);
+
+        $scopeContainerHtml = substr($html, $scopeContainerPos, $personsContainerPos - $scopeContainerPos);
+        $personsContainerHtml = substr($html, $personsContainerPos);
+
+        $this->assertStringContainsString('schemaOrgData_persons_toggle_btn', $scopeContainerHtml);
+        $this->assertStringNotContainsString('schemaOrgData_persons_back_btn', $scopeContainerHtml);
+
+        $this->assertStringContainsString('schemaOrgData_persons_back_btn', $personsContainerHtml);
+        $this->assertStringNotContainsString('schemaOrgData_persons_toggle_btn', $personsContainerHtml);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest gegen den ursprünglichen UX-Backlog-Befund: das
+    * Rendering der globalen Scope-Sektion selbst (SchemaOrgData_AdminController::
+    * renderScopeSection()) enthält keinen "Zurück zu Global/Kategorie/
+    * Seite"-Button - der lebt ausschließlich im Personen-Container.
+    *
+    ***************************************************************/
+    function testRenderScopeSectionGlobalEnthaeltKeinenZurueckZuScopesButtonDirekt(): void {
+        $html = $this->callRenderScopeSection('global', null, null, true, 'global', false, new \InMemorySettings());
+
+        $this->assertStringNotContainsString('schemaOrgData_persons_back_btn', $html);
+        $this->assertStringNotContainsString($this->adminLang()->getLanguageHtml('button_back_to_scopes'), $html);
+    }
 }

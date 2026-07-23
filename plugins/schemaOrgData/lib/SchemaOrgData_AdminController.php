@@ -499,22 +499,21 @@ class SchemaOrgData_AdminController {
             $html .= $adminPageRenderer->renderSaveResultNotice($personsSaveResult, $lang, $personsSuccessKey);
         }
 
-        // Personen-Registry-Umschalter: blendet den Scope-Bereich (Global/
-        // Kategorie/Seite) aus und den Personen-Bereich ein bzw. umgekehrt -
-        // vollständig entkoppelt von initScopeSelector() (siehe
-        // SchemaOrgData_PersonsAdminRenderer, Docblock).
+        $html .= '<div id="schemaOrgData_scope_container"' . ($isPersonsAction ? ' style="display:none"' : '') . '>' . "\n";
+
+        // Personen-Registry-Umschalter: blendet den Scope-Bereich aus und
+        // den Personen-Bereich ein - vollständig entkoppelt von
+        // initScopeSelector() (siehe SchemaOrgData_PersonsAdminRenderer,
+        // Docblock). Lebt im Scope-Container, nicht davor, damit der Button
+        // ausschließlich dort erscheint, wo er tatsächlich navigierbar ist -
+        // das Gegenstück (Zurück-Button) rendert SchemaOrgData_PersonsAdminRenderer
+        // entsprechend innerhalb des Personen-Containers.
         $html .= '<div class="schemaOrgData-persons-toggle">' . "\n";
         $html .= '<button type="button" id="schemaOrgData_persons_toggle_btn" class="mo-btn" '
             . 'onclick="document.getElementById(\'schemaOrgData_scope_container\').style.display=\'none\';'
             . 'document.getElementById(\'schemaOrgData_persons_container\').style.display=\'\';">'
             . $lang->getLanguageHtml('button_manage_persons') . '</button>' . "\n";
-        $html .= '<button type="button" id="schemaOrgData_persons_back_btn" class="mo-btn" '
-            . 'onclick="document.getElementById(\'schemaOrgData_persons_container\').style.display=\'none\';'
-            . 'document.getElementById(\'schemaOrgData_scope_container\').style.display=\'\';">'
-            . $lang->getLanguageHtml('button_back_to_scopes') . '</button>' . "\n";
         $html .= '</div>' . "\n";
-
-        $html .= '<div id="schemaOrgData_scope_container"' . ($isPersonsAction ? ' style="display:none"' : '') . '>' . "\n";
 
         // Zusätzlicher Speichern-Button am Formularanfang (oben rechts) -
         // derselbe Submit wie der Button am Formularende, damit lange

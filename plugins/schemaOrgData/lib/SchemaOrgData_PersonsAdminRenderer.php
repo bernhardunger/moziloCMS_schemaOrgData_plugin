@@ -73,6 +73,19 @@ class SchemaOrgData_PersonsAdminRenderer {
 
         $displayAttr = $visibleInitially ? '' : ' style="display:none"';
         $html = '<div id="schemaOrgData_persons_container" class="schemaOrgData-persons-container"'.$displayAttr.'>'."\n";
+
+        // Gegenstück zum Umschalter-Button in SchemaOrgData_AdminController::
+        // renderAdminPage() - lebt hier im Personen-Container statt davor,
+        // damit er unabhängig von der aktiven Unteransicht (Liste/Anlegen/
+        // Bearbeiten) immer erreichbar ist, aber nie im Scope-Container
+        // erscheint, wo er ins Leere liefe.
+        $html .= '<div class="schemaOrgData-persons-toggle">'."\n";
+        $html .= '<button type="button" id="schemaOrgData_persons_back_btn" class="mo-btn" onclick="'
+            .'document.getElementById(\'schemaOrgData_persons_container\').style.display=\'none\';'
+            .'document.getElementById(\'schemaOrgData_scope_container\').style.display=\'\';">'
+            .$lang->getLanguageHtml('button_back_to_scopes').'</button>'."\n";
+        $html .= '</div>'."\n";
+
         $html .= '<h3>'.$lang->getLanguageHtml('label_persons_registry_title').'</h3>'."\n";
         $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_persons_registry').'</p>'."\n";
 
