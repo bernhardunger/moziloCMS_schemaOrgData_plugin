@@ -272,6 +272,30 @@
     }
 
     /**
+     * Validiert das Sortierung-Feld der Personen-Registry (sortOrder).
+     * Rein informativ - eine ungültige Eingabe blockiert das Speichern
+     * nicht, sie wird serverseitig auf den Standardwert 100
+     * zurückgesetzt (siehe SchemaOrgData_PersonsRegistryService::
+     * sanitizePersonData()). Das Regex-Muster muss exakt dessen
+     * PHP-Gegenstück spiegeln, damit die Live-Warnung nie einen Wert
+     * ablehnt, den der Server als gültig übernimmt.
+     *
+     * @param {string} value
+     * @returns {{status: string|null, message: string|null}}
+     */
+    function validateSortOrder(value) {
+        if (value.trim() === '') {
+            return { status: null, message: null };
+        }
+
+        if (/^-?[0-9]+$/.test(value.trim())) {
+            return { status: 'ok', message: null };
+        }
+
+        return { status: 'warning', message: getMessages().sortOrderInvalid || null };
+    }
+
+    /**
      * Validiert eine E-Mail-Adresse (siehe index.php, validateEmail()).
      *
      * @param {string} value
@@ -888,6 +912,9 @@
                 break;
             case 'telephone':
                 result = validateTelephone(input.value, getCountryCode(input));
+                break;
+            case 'sort_order':
+                result = validateSortOrder(input.value);
                 break;
             case 'required':
                 result = validateRequiredField(input.value, input.getAttribute('data-required-message'));
@@ -1507,6 +1534,7 @@
         validatePostalCode: validatePostalCode,
         validateTelephone: validateTelephone,
         validateUrl: validateUrl,
+        validateSortOrder: validateSortOrder,
         validateEmail: validateEmail,
         validateRequiredField: validateRequiredField,
         checkAddressRequiredField: checkAddressRequiredField,

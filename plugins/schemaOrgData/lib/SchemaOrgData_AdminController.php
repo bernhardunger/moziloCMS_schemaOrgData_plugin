@@ -678,6 +678,7 @@ class SchemaOrgData_AdminController {
             'dateInvalid'        => $lang->getLanguageValue('error_date_invalid'),
             'dateRangeInvalid'   => $lang->getLanguageValue('error_date_range_invalid'),
             'dateInPast'         => $lang->getLanguageValue('warning_date_in_past'),
+            'sortOrderInvalid'   => $lang->getLanguageValue('warning_sort_order_invalid'),
             // '{PARAM1}' wird hier als Wert übergeben, damit
             // getLanguageValue() den Platzhalter NICHT durch ""
             // ersetzt (Default von $param1) - die Ersetzung mit dem

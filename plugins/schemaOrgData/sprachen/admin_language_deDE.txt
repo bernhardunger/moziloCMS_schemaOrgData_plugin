@@ -222,6 +222,7 @@ label_person_status = Status
 label_person_status_active = Aktiv
 label_person_status_inactive = Inaktiv
 label_sort_order = Sortierung
+hint_sort_order = Steuert nur die Anzeigereihenfolge in Auswahllisten (z. B. Artikel-Autor-Dropdown), niedrigere Werte zuerst. Keine Auswirkung auf die JSON-LD-Ausgabe. Ungültige Eingaben werden beim Speichern auf den Standardwert 100 zurückgesetzt.
 label_person_slug = Kennung (Slug)
 hint_person_slug = Wird aus dem Namen abgeleitet, ist danach nicht mehr änderbar. Nur Kleinbuchstaben, Ziffern, Bindestrich und Unterstrich.
 
@@ -245,3 +246,4 @@ error_person_slug_exists = Die Kennung ist bereits vergeben (vorhandene Person: 
 error_person_not_found = Die Person wurde nicht gefunden - möglicherweise wurde sie zwischenzeitlich gelöscht.
 error_person_invalid_action = Ungültige Aktion für die Personen-Registry.
 warning_person_image_not_found = Unter diesem Pfad wurde keine Datei im Medienverzeichnis gefunden. Die Datei kann nachträglich hochgeladen werden.
+warning_sort_order_invalid = Ungültige Eingabe - wird beim Speichern auf den Standardwert 100 zurückgesetzt.

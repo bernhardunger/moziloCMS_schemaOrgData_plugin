@@ -110,6 +110,28 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
         });
     });
 
+    describe('validateSortOrder()', function () {
+        test('leerer Wert wird nicht geprüft', function () {
+            expect(validator.validateSortOrder('').status).toBeNull();
+        });
+
+        test('positive Ganzzahl ist ok', function () {
+            expect(validator.validateSortOrder('50').status).toBe('ok');
+        });
+
+        test('negative Ganzzahl ist ok', function () {
+            expect(validator.validateSortOrder('-1').status).toBe('ok');
+        });
+
+        test('nicht-numerische Eingabe ist eine Warnung, kein Fehler', function () {
+            expect(validator.validateSortOrder('abc').status).toBe('warning');
+        });
+
+        test('Dezimalzahl ist eine Warnung', function () {
+            expect(validator.validateSortOrder('1.5').status).toBe('warning');
+        });
+    });
+
     describe('validateEmail()', function () {
         test('gültige E-Mail-Adresse', function () {
             expect(validator.validateEmail('info@example.com').status).toBe('ok');
