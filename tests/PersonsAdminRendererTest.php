@@ -217,4 +217,43 @@ final class PersonsAdminRendererTest extends TestCase {
 
         $this->assertStringContainsString('schemaOrgData-feedback--warning', $html);
     }
+
+    /***************************************************************
+    *
+    * Das sortOrder-Feld erklärt seinen Zweck (Anzeigereihenfolge, keine
+    * Auswirkung auf JSON-LD) über einen Hilfetext und trägt das
+    * data-validate-Attribut für die nicht-blockierende Live-Warnung bei
+    * ungültiger Eingabe (js/validator.js, validateSortOrder()).
+    *
+    ***************************************************************/
+    function testSortOrderFeldZeigtHilfetextUndTraegtDataValidateAttribut(): void {
+        $html = $this->render(new \InMemorySettings(), true, $this->renderer()->newViewId());
+
+        $this->assertStringContainsString($this->adminLang()->getLanguageHtml('hint_sort_order'), $html);
+        $this->assertMatchesRegularExpression(
+            '/name="schemaOrgData_persons_data\[sortOrder\]"[^>]*data-validate="sort_order"/',
+            $html
+        );
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest gegen den neuen optionalen $extraAttrs-Parameter
+    * von renderTextRow(): bestehende Textfelder (name, url) dürfen kein
+    * data-validate-Attribut erhalten, da der Default-Parameter dort
+    * nicht greifen soll.
+    *
+    ***************************************************************/
+    function testUebrigeTextfelderTragenKeinDataValidateAttribut(): void {
+        $html = $this->render(new \InMemorySettings(), true, $this->renderer()->newViewId());
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/name="schemaOrgData_persons_data\[name\]"[^>]*data-validate/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/name="schemaOrgData_persons_data\[url\]"[^>]*data-validate/',
+            $html
+        );
+    }
 }

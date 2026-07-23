@@ -267,7 +267,8 @@ class SchemaOrgData_PersonsAdminRenderer {
         $html .= $this->renderImageRow($idPrefix, $imageValue, $lang, $formRenderer, $registryService, $validator, $urlHelper);
 
         $html .= $this->renderStatusRow($idPrefix, (string) ($data['status'] ?? SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE), $lang, $formRenderer);
-        $html .= $this->renderTextRow($idPrefix, 'sortOrder', 'label_sort_order', (string) ($data['sortOrder'] ?? '100'), false, $lang, $formRenderer);
+        $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_sort_order').'</p>'."\n";
+        $html .= $this->renderTextRow($idPrefix, 'sortOrder', 'label_sort_order', (string) ($data['sortOrder'] ?? '100'), false, $lang, $formRenderer, ['data-validate' => 'sort_order']);
 
         $submitValue = $isEdit ? 'update:'.htmlspecialchars((string) $slug, ENT_QUOTES, CHARSET) : 'create';
         $html .= '<div class="schemaOrgData-persons-form-actions">'."\n";
@@ -286,15 +287,19 @@ class SchemaOrgData_PersonsAdminRenderer {
         return $html;
     }
 
-    /** Rendert eine einzelne Textfeld-Zeile (Label links, Eingabefeld rechts). */
-    private function renderTextRow(string $idPrefix, string $field, string $labelKey, string $value, bool $required, Language $lang, SchemaOrgData_FormRenderer $formRenderer): string {
+    /**
+     * Rendert eine einzelne Textfeld-Zeile (Label links, Eingabefeld rechts).
+     *
+     * @param array<string,string> $extraAttrs zusätzliche HTML-Attribute für das Eingabefeld (z. B. data-validate)
+     */
+    private function renderTextRow(string $idPrefix, string $field, string $labelKey, string $value, bool $required, Language $lang, SchemaOrgData_FormRenderer $formRenderer, array $extraAttrs = []): string {
         $fieldId = 'schemaOrgData_persons_'.$idPrefix.'_'.$field;
         $fieldName = 'schemaOrgData_persons_data['.$field.']';
         $badge = $formRenderer->renderRequiredBadge($required, $lang);
 
         return '<div class="c-content schemaOrgData-field-row">'
             .'<div class="mo-in-li-l"><label for="'.$fieldId.'">'.$lang->getLanguageHtml($labelKey).'</label>'.$badge.'</div>'
-            .'<div class="mo-in-li-r">'.$formRenderer->renderTextWidget($fieldId, $fieldName, [], $value, []).'</div>'
+            .'<div class="mo-in-li-r">'.$formRenderer->renderTextWidget($fieldId, $fieldName, [], $value, $extraAttrs).'</div>'
             .'</div>'."\n";
     }
 
