@@ -85,6 +85,45 @@ final class PersonsAdminRendererTest extends TestCase {
         );
     }
 
+    /***************************************************************
+    *
+    * Der "Zurück zu Global/Kategorie/Seite"-Button lebt im Personen-
+    * Container, nicht im Scope-Container (siehe SchemaOrgData_AdminController::
+    * renderAdminPage()) - er muss deshalb unabhängig von der jeweils
+    * aktiven Unteransicht (Liste/Anlegen/Bearbeiten) immer vorhanden
+    * sein, damit er aus jeder Unteransicht heraus erreichbar ist.
+    *
+    ***************************************************************/
+    function testZurueckButtonIstInJederUnteransichtVorhanden(): void {
+        $listHtml = $this->render(new \InMemorySettings());
+        $this->assertStringContainsString('schemaOrgData_persons_back_btn', $listHtml);
+
+        $newHtml = $this->render(new \InMemorySettings(), true, $this->renderer()->newViewId());
+        $this->assertStringContainsString('schemaOrgData_persons_back_btn', $newHtml);
+
+        $settings = new \InMemorySettings();
+        $this->registryService()->createPerson($settings, [
+            'name' => 'Max Mustermann', 'slug' => 'max',
+        ], $this->adminLang(), $this->validator());
+        $editHtml = $this->render($settings, true, $this->renderer()->buildEditViewId('max'));
+        $this->assertStringContainsString('schemaOrgData_persons_back_btn', $editHtml);
+    }
+
+    /***************************************************************
+    *
+    * Der "Personen verwalten"-Button gehört in den Scope-Container
+    * (SchemaOrgData_AdminController::renderAdminPage()) - im Personen-
+    * Container selbst darf er nicht erneut auftauchen, sonst würde ein
+    * Klick darauf ins Leere laufen (beide Container wären bereits im
+    * Zielzustand).
+    *
+    ***************************************************************/
+    function testManagePersonsButtonErscheintNichtImPersonenContainer(): void {
+        $html = $this->render(new \InMemorySettings());
+
+        $this->assertStringNotContainsString('schemaOrgData_persons_toggle_btn', $html);
+    }
+
     function testPersonenlisteZeigtNameJobTitleStatusUndSortOrder(): void {
         $settings = new \InMemorySettings();
         $this->registryService()->createPerson($settings, [
