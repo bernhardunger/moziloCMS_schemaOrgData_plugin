@@ -404,10 +404,15 @@ class SchemaOrgData_FrontendRenderer {
         $html .= '  function fallbackCopy(text){'."\n";
         $html .= '    var ta = document.createElement("textarea");'."\n";
         $html .= '    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";'."\n";
-        $html .= '    document.body.appendChild(ta); ta.focus(); ta.select();'."\n";
+        // dialog.showModal() macht alles außerhalb des Dialogs inert - eine an
+        // document.body gehängte Hilfs-Textarea liegt dann im inerten Teilbaum,
+        // ta.focus() schlägt still fehl und die Selection bleibt leer, während
+        // execCommand("copy") trotzdem true zurückliefert (kopiert die leere
+        // Selection statt text). Innerhalb von dialog ist nichts inert.
+        $html .= '    dialog.appendChild(ta); ta.focus(); ta.select();'."\n";
         $html .= '    var success = false;'."\n";
         $html .= '    try{ success = document.execCommand("copy"); }catch(e){ success = false; }'."\n";
-        $html .= '    document.body.removeChild(ta);'."\n";
+        $html .= '    dialog.removeChild(ta);'."\n";
         $html .= '    return success;'."\n";
         $html .= '  }'."\n";
 
