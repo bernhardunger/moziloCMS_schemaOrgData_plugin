@@ -491,6 +491,29 @@ final class FrontendRendererTest extends TestCase {
         );
     }
 
+    /***************************************************************
+    *
+    * Regressionstest gegen einen zweiten, unabhängigen False-Success beim
+    * "JSON kopieren"-Button: dialog.showModal() macht den restlichen DOM
+    * inert, eine an document.body gehängte Hilfs-Textarea läge damit im
+    * inerten Teilbaum - focus()/select() liefen dort ins Leere, während
+    * execCommand("copy") trotzdem true zurückgibt (kopiert die leere
+    * Selection). fallbackCopy() muss die Textarea daher innerhalb des
+    * Dialogs selbst einhängen. Reine String-Prüfung des Einhängepunkts -
+    * die Inert-Semantik von showModal() bildet auch dieser Test nicht ab.
+    *
+    ***************************************************************/
+    function testBuildDebugWidgetFallbackCopyHaengtTextareaInDialogEin(): void {
+        $html = $this->buildDebugWidget(
+            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
+        );
+
+        $this->assertStringContainsString('dialog.appendChild(ta)', $html);
+        $this->assertStringContainsString('dialog.removeChild(ta)', $html);
+        $this->assertStringNotContainsString('document.body.appendChild(ta)', $html);
+        $this->assertStringNotContainsString('document.body.removeChild(ta)', $html);
+    }
+
     function testBuildDebugWidgetJsonHexTagBleibtByteIdentischZuBuildJsonLdScript(): void {
         $payload = '</script><script>alert(1)</script>';
         $data = ['name' => $payload];
