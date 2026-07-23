@@ -18,7 +18,7 @@
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_Validator,
 * $settings) werden je Aufruf als Parameter übergeben, nicht im
-* Konstruktor eingefroren (siehe README.md, Abschnitt "Architektur").
+* Konstruktor eingefroren (siehe README.md, Abschnitt "Entwicklerdokumentation").
 *
 ***************************************************************/
 class SchemaOrgData_PersonsRegistryService {
@@ -367,7 +367,7 @@ class SchemaOrgData_PersonsRegistryService {
     /***************************************************************
     *
     * Baut das @id-Fragment einer Registry-Person aus ihrem Slug
-    * (siehe README.md, Abschnitt "@id-Anker und Knotenreferenzen").
+    * (siehe README.md, Abschnitt "Organisations-Identität und @id-Anker").
     * Rein slug-basiert - keine Type-Namen-Kopplung im PHP.
     *
     ***************************************************************/

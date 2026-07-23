@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 *
 * Direkt-Tests der Komponente SchemaOrgData_OrgRelationsService
 * (Organisations-Relationen founder/employee/member, siehe README.md,
-* Abschnitt "@id-Anker und Knotenreferenzen"): roles(), sanitizeAndValidate()
+* Abschnitt "Organisations-Identität und @id-Anker"): roles(), sanitizeAndValidate()
 * (Rollen-Whitelist, Slug-Existenzprüfung, Verwurf der leeren Anlege-Zeile)
 * und buildOutputGroups() (Gruppierung nach Rolle, Dangling-/Status-Filter).
 *

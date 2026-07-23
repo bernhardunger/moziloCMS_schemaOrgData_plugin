@@ -8,8 +8,8 @@ use PHPUnit\Framework\TestCase;
 *
 * Tests für die @id-Fragmente von Registry-Personen (Fragment
 * "person-{slug}") und deren Emission als eigenständige JSON-LD-
-* Knoten (siehe README.md, Abschnitt "@id-Anker und
-* Knotenreferenzen").
+* Knoten (siehe README.md, Abschnitt "Organisations-Identität
+* und @id-Anker").
 *
 * Abgedeckte Bereiche:
 *   - SchemaOrgData_PersonsRegistryService::buildFragment()/

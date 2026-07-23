@@ -11,7 +11,7 @@
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
 * $settings) werden je Aufruf als Parameter übergeben, nicht im
-* Konstruktor eingefroren (siehe README.md, Abschnitt "Architektur").
+* Konstruktor eingefroren (siehe README.md, Abschnitt "Entwicklerdokumentation").
 *
 ***************************************************************/
 class SchemaOrgData_AdminPageRenderer {
@@ -301,7 +301,7 @@ class SchemaOrgData_AdminPageRenderer {
 
         // Im Global-Scope stammt ein erkannter Block aus dem Layout-Template,
         // nicht "von dieser Seite" - eigener Titel-Schlüssel analog zu
-        // renderInfoBlock() (siehe README.md, "Verhalten bei vorhandenem JSON-LD").
+        // renderInfoBlock() (siehe README.md, "Vorhandenes JSON-LD und Import").
         $titleKey = ($scope === 'global') ? 'notice_existing_jsonld_title_global' : 'notice_existing_jsonld_title';
 
         $html  = '<div class="schemaOrgData-jsonld-notice">'."\n";
@@ -450,7 +450,7 @@ class SchemaOrgData_AdminPageRenderer {
     * Rendert die Ausschlussliste für die globale Ausgabe (nur
     * Geltungsbereich "global"): eine Checkbox je vorhandener
     * Kategorie. Angehakte Kategorien erhalten keine globale
-    * JSON-LD-Ausgabe (siehe README.md, Abschnitt "Ausschlussliste").
+    * JSON-LD-Ausgabe (siehe README.md, Abschnitt "Geltungsbereiche und Vererbung").
     * Zusätzlich wird die Debug-Modus-Checkbox gerendert.
     *
     * @param string[] $excludedCats aktuell ausgeschlossene Kategorien

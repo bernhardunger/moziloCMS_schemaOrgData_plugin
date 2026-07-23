@@ -7,8 +7,7 @@
 * Rendert das schema-getriebene Admin-Formular (Widgets je
 * "ui:widget", zusammengesetzte Widgets wie postal_address/
 * opening_hours/faq_list, Validierungs-Feedback und Badges) für
-* das Plugin schemaOrgData (siehe README.md, Abschnitt
-* "Schema-getriebenes Formular").
+* das Plugin schemaOrgData.
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_SchemaRepository,
 * SchemaOrgData_UrlHelper, SchemaOrgData_OpeningHoursHelper,
@@ -493,7 +492,7 @@ class SchemaOrgData_FormRenderer {
                 // (data-validate="address_required", siehe js/validator.js) -
                 // eine komplett leere, nicht als Ganzes ui:required markierte
                 // Adresse (bzw. ein leeres place-Widget) bleibt sonst
-                // fälschlich als "Ort fehlt" markiert (Regressionsfall 8.12).
+                // fälschlich als "Ort fehlt" markiert.
                 $extraAttrs['data-validate'] = $forceRequired ? 'required' : 'address_required';
                 $extraAttrs['data-required-message'] = $lang->getLanguageValue('error_required_field', $lang->getLanguageValue($subSchema['ui:label'] ?? $subName));
             }
@@ -896,7 +895,7 @@ class SchemaOrgData_FormRenderer {
     * Rendert das Widget der Organisations-Relationen (founder/employee/
     * member zwischen der globalen Organisations-Identität und
     * Registry-Personen, siehe SchemaOrgData_OrgRelationsService und
-    * README.md, Abschnitt "@id-Anker und Knotenreferenzen"): je Relation
+    * README.md, Abschnitt "Organisations-Identität und @id-Anker"): je Relation
     * ein Personen-Dropdown und ein Rollen-Dropdown, plus eine
     * zusätzliche leere Zeile zum Anlegen einer neuen Relation (analog
     * renderFaqListWidget()). Erscheint im Formular ausschließlich für

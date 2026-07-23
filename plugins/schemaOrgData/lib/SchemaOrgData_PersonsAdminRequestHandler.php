@@ -16,7 +16,7 @@
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_Validator,
 * SchemaOrgData_PersonsRegistryService, $this->settings) werden je
 * Aufruf als Parameter übergeben, nicht im Konstruktor eingefroren
-* (siehe README.md, Abschnitt "Architektur").
+* (siehe README.md, Abschnitt "Entwicklerdokumentation").
 *
 ***************************************************************/
 class SchemaOrgData_PersonsAdminRequestHandler {

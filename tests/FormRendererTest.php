@@ -158,7 +158,7 @@ final class FormRendererTest extends TestCase {
     * diesem Test trug das Feld unconditional data-validate="required" -
     * das führte zu einer fälschlichen Live-Meldung bei einer komplett
     * leeren, nicht als Ganzes ui:required markierten Adresse
-    * (Regressionsfall 8.12, siehe testAddressLocalityFieldTraegtAdressgruppenId()).
+    * (siehe testAddressLocalityFieldTraegtAdressgruppenId()).
     *
     ***************************************************************/
     function testAddressLocalityFieldHasRequiredValidationAttributes(): void {

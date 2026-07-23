@@ -30,7 +30,7 @@ final class SchemaOrgData_AdminRequestContext {
     *              POST-Dispatch der Personen-Registry
     * @param SchemaOrgData_OrgRelationsService $orgRelationsService Organisations-
     *              Relationen (founder/employee/member, siehe README.md,
-    *              Abschnitt "@id-Anker und Knotenreferenzen")
+    *              Abschnitt "Organisations-Identität und @id-Anker")
     * @param SchemaOrgData_PersonSuggestionService $personSuggestionService Übernahme-
     *              Vorschläge für Personen-Literale im Erweiterungsfeld eines
     *              globalen Organisations-Identity-Types (siehe README.md,

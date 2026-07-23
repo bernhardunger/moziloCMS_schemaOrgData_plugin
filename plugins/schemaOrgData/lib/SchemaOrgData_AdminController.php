@@ -23,7 +23,7 @@
  * SchemaOrgData_AdminPageRenderer, SchemaOrgData_ConfigSaveService,
  * $this->settings, PLUGIN_SELF_DIR/PLUGIN_SELF_URL) werden je Aufruf
  * als Parameter übergeben, nicht im Konstruktor eingefroren (siehe
- * README.md, Abschnitt "Architektur").
+ * README.md, Abschnitt "Entwicklerdokumentation").
  *
  ***************************************************************/
 class SchemaOrgData_AdminController {
@@ -222,7 +222,7 @@ class SchemaOrgData_AdminController {
                 // sind (Paar-Pflicht); wird das Speichern durch genau diese
                 // Paar-Pflicht blockiert (nur eines der beiden Felder gefüllt),
                 // ginge ohne diesen Override auch der bereits gültige Wert des
-                // angefassten Feldes beim Re-Display verloren (Regressionsfall 1.15).
+                // angefassten Feldes beim Re-Display verloren.
                 foreach ($schema['properties'] ?? [] as $propName => $propSchema) {
                     $propSchema = $schemaRepository->resolveSchemaRef($propSchema, $schema);
                     $rawWidget = $propSchema['ui:widget'] ?? '';
@@ -262,7 +262,7 @@ class SchemaOrgData_AdminController {
             // SchemaOrgData_OrgRelationsService): erscheinen ausschließlich
             // global und ausschließlich für Types mit der globalen
             // Organisations-Identität ("ui:idFragment": "organization",
-            // siehe README.md, "@id-Anker und Knotenreferenzen"). Liegt
+            // siehe README.md, "Organisations-Identität und @id-Anker"). Liegt
             // innerhalb des .schemaOrgData-type-fields-Wrappers, damit
             // applyTypeFieldsState() (validator.js) die Felder bei
             // Typ-Wechsel korrekt (de)aktiviert (last-value-wins-Schutz).

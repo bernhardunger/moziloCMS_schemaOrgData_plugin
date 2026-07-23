@@ -17,7 +17,7 @@
 * Zustandslos: Kollaboratoren ($settings, SchemaOrgData_PersonsRegistryService,
 * SchemaOrgData_OrgRelationsService, Language, SchemaOrgData_Validator)
 * werden je Aufruf als Parameter übergeben, nicht im Konstruktor
-* eingefroren (siehe README.md, Abschnitt "Architektur").
+* eingefroren (siehe README.md, Abschnitt "Entwicklerdokumentation").
 *
 ***************************************************************/
 class SchemaOrgData_PersonSuggestionService {

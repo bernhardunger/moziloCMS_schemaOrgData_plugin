@@ -27,7 +27,7 @@
 * SchemaOrgData_PersonsRegistryService, SchemaOrgData_Validator,
 * SchemaOrgData_UrlHelper, $settings) werden je Aufruf als Parameter
 * übergeben, nicht im Konstruktor eingefroren (siehe README.md,
-* Abschnitt "Architektur").
+* Abschnitt "Entwicklerdokumentation").
 *
 ***************************************************************/
 class SchemaOrgData_PersonsAdminRenderer {

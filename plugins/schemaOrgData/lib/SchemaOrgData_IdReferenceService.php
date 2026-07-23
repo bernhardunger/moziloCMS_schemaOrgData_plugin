@@ -5,7 +5,7 @@
 * SchemaOrgData_IdReferenceService
 *
 * Kapselt die @id-Referenz-Naht (siehe README.md, Abschnitt
-* "@id-Anker und Knotenreferenzen"): Ermittlung der global
+* "Organisations-Identität und @id-Anker"): Ermittlung der global
 * verfügbaren @id-Fragmente für das id_reference_or_literal-Widget
 * sowie der Dangling-Reference-Guard, der hängende id_reference-
 * Verweise auf fehlende Zielknoten abfängt. Erhält ScopeResolver
@@ -31,8 +31,8 @@ class SchemaOrgData_IdReferenceService {
     * Types ohne ui:idFragment werden übersprungen.
     *
     * Zusätzlich werden alle aktiven (status === "active") Registry-
-    * Personen als Referenzziele aufgenommen (siehe README.md, "@id-Anker
-    * und Knotenreferenzen"): Fragment "person-{slug}", Label "name"
+    * Personen als Referenzziele aufgenommen (siehe README.md,
+    * "Organisations-Identität und @id-Anker"): Fragment "person-{slug}", Label "name"
     * bzw. "name – jobTitle" bei gefülltem jobTitle, sortiert nach
     * sortOrder aufsteigend (bei Gleichstand nach Name). Inaktive
     * Personen bleiben hier ausgeblendet - eine bereits gespeicherte
@@ -99,7 +99,7 @@ class SchemaOrgData_IdReferenceService {
     * Prüft, ob ein einzelnes @id-Fragment für ein Feld mit der
     * deklarativen Zieleinschränkung ui:referenceTargets erlaubt ist.
     * "organization" steht für das schema-statische Fragment
-    * gleichen Namens (siehe README.md, "@id-Anker und Knotenreferenzen"),
+    * gleichen Namens (siehe README.md, "Organisations-Identität und @id-Anker"),
     * "persons" für jedes Registry-Personen-Fragment ("person-{slug}"-
     * Präfix). $referenceTargets === null bedeutet "keine Einschränkung
     * konfiguriert" - vollständige Rückwärtskompatibilität für Felder,
@@ -172,7 +172,7 @@ class SchemaOrgData_IdReferenceService {
     *   resolveNodeId()-Mechanismus wie reguläre Knoten.
     *
     * Ziele mit dem Fragment-Präfix "person-" (Registry-Personen, siehe
-    * README.md, "@id-Anker und Knotenreferenzen") werden eigens
+    * README.md, "Organisations-Identität und @id-Anker") werden eigens
     * behandelt, da sie nicht Teil von $scopeConfigs sind, sondern separat
     * aus der Personen-Registry emittiert werden (siehe
     * SchemaOrgData_FrontendRenderer::renderFrontend()): existiert der

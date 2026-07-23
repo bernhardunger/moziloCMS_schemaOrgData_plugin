@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 * /^(\+|00)[1-9][0-9]{6,14}$/ geprüft. E.164 ist ein
 * internationaler Standard - die Prüfung gilt unabhängig vom
 * hinterlegten addressCountry für alle Länder (siehe README.md,
-* Abschnitt "Telefon").
+* Abschnitt "Formularvalidierung").
 *
 ***************************************************************/
 final class TelephoneValidatorTest extends TestCase {
