@@ -5,8 +5,8 @@
 * SchemaOrgData_CollisionDetector
 *
 * Kapselt die Erkennung fremder <script type="application/
-* ld+json">-Blöcke (siehe README.md, Abschnitt "Verhalten bei
-* vorhandenem JSON-LD"). Nicht Teil dieser Komponente:
+* ld+json">-Blöcke (siehe README.md, Abschnitt "Vorhandenes
+* JSON-LD und Import"). Nicht Teil dieser Komponente:
 * detectTypeCollision() (derselbe Schema-Type auf mehreren
 * Scopes) - das bleibt im SchemaOrgData_ScopeResolver (Schritt 4).
 *

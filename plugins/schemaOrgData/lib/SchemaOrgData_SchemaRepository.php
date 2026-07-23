@@ -5,12 +5,10 @@
 * SchemaOrgData_SchemaRepository
 *
 * Lädt und löst JSON-Schema-Dateien aus schemas/ auf. Wird von
-* der Fassade schemaOrgData über einen Lazy-Accessor verdrahtet
-* (siehe README.md, Abschnitt "Schema-getriebenes Formular").
+* der Fassade schemaOrgData über einen Lazy-Accessor verdrahtet.
 *
 * Zustandslos gegenüber der Fassade; cacht Schema-Lesevorgänge für
-* die Lebensdauer der Instanz (siehe README.md, Abschnitt
-* "Schema-getriebenes Formular").
+* die Lebensdauer der Instanz.
 *
 ***************************************************************/
 class SchemaOrgData_SchemaRepository {

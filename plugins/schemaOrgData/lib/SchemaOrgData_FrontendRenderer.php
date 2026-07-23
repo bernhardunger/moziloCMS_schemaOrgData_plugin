@@ -14,7 +14,7 @@
 *
 * Zustandslos: keine Konstruktor-Injection, alle Kollaboratoren
 * werden je Aufruf als Parameter durchgereicht (siehe README.md,
-* Abschnitt "Architektur").
+* Abschnitt "Entwicklerdokumentation").
 *
 ***************************************************************/
 class SchemaOrgData_FrontendRenderer {
@@ -69,7 +69,7 @@ class SchemaOrgData_FrontendRenderer {
 
         // Ausschlussliste prüfen (nur global): die globale Ausgabe wird
         // unterdrückt, wenn die aktive Kategorie in excluded_cats steht
-        // (siehe README.md, Abschnitt "Ausschlussliste").
+        // (siehe README.md, Abschnitt "Geltungsbereiche und Vererbung").
         $excludedCats = !empty($scopeConfigs['global']['excluded_cats'])
             ? explode(',', (string) $scopeConfigs['global']['excluded_cats'])
             : [];
@@ -100,7 +100,7 @@ class SchemaOrgData_FrontendRenderer {
         // solange der Admin keine Wahl getroffen hat), wird die eigene
         // Ausgabe komplett unterdrückt (siehe loadScopeMeta/
         // renderExistingJsonLdNotice sowie README.md, Abschnitt
-        // "Verhalten bei vorhandenem JSON-LD").
+        // "Vorhandenes JSON-LD und Import").
         // $globalSuppressedByKeep wird für den Dangling-Reference-Guard
         // unten benötigt: keep hat Vorrang vor einem erzwungenen Stub.
         $globalSuppressedByKeep = false;
@@ -192,8 +192,8 @@ class SchemaOrgData_FrontendRenderer {
             }
         }
 
-        // Registry-Personen-Knoten (siehe README.md, "@id-Anker und
-        // Knotenreferenzen"): $activePersonSlugs enthält nur Slugs, die
+        // Registry-Personen-Knoten (siehe README.md, "Organisations-
+        // Identität und @id-Anker"): $activePersonSlugs enthält nur Slugs, die
         // tatsächlich referenziert UND in der Registry vorhanden sind
         // (Dangling-Vermeidung bereits durch applyDanglingReferenceGuard()
         // erledigt) - Status der Person ist hier bewusst irrelevant.

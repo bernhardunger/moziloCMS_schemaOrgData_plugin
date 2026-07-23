@@ -14,7 +14,7 @@
 * SchemaOrgData_OpeningHoursHelper, SchemaOrgData_AdminPageRenderer,
 * SchemaOrgData_ConfigSaveService, $this->settings, PLUGIN_SELF_DIR)
 * werden je Aufruf als Parameter übergeben, nicht im Konstruktor
-* eingefroren (siehe README.md, Abschnitt "Architektur").
+* eingefroren (siehe README.md, Abschnitt "Entwicklerdokumentation").
 *
 ***************************************************************/
 class SchemaOrgData_AdminRequestHandler {

@@ -6,8 +6,7 @@
 *
 * Ordnet einen CMS-Sprachcode (z. B. 'de', 'deDE') dem
 * Plugin-internen Locale-Code zu. Wird von der Fassade
-* schemaOrgData über einen Lazy-Accessor verdrahtet (siehe
-* README.md, Abschnitt "Sprachunterstützung").
+* schemaOrgData über einen Lazy-Accessor verdrahtet.
 *
 ***************************************************************/
 class SchemaOrgData_LanguageService {
@@ -49,8 +48,7 @@ class SchemaOrgData_LanguageService {
     *
     * Instanziiert das Sprachobjekt für die Admin-UI
     * (sprachen/admin_language_{locale}.txt). Zustandslos - Caching
-    * und $pluginLang-Seiteneffekt bleiben auf der Fassade
-    * (siehe README.md, Abschnitt "Sprachunterstützung").
+    * und $pluginLang-Seiteneffekt bleiben auf der Fassade.
     *
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param string $locale        Locale-Code ('deDE' oder 'enEN')

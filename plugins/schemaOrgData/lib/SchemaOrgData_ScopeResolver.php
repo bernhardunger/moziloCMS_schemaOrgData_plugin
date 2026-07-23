@@ -130,7 +130,7 @@ class SchemaOrgData_ScopeResolver {
     *
     * Löst Type-Kollisionen zwischen den Geltungsebenen feldweise auf
     * (Vererbung Global -> Kategorie -> Seite, siehe README.md
-    * Abschnitt "Type-Kollision"): ist derselbe Schema-Type auf
+    * Abschnitt "Geltungsbereiche und Vererbung"): ist derselbe Schema-Type auf
     * mehreren Ebenen konfiguriert, werden die Felder über
     * mergeConfigs() zusammengeführt - leere/fehlende Felder der
     * spezifischeren Ebene erben den Wert der übergeordneten Ebene,
@@ -203,8 +203,8 @@ class SchemaOrgData_ScopeResolver {
     * Lädt die Kollisions-Metadaten einer Geltungsebene
     * (existing_jsonld-Flag, gewählter jsonld_mode sowie die erkannten
     * JSON-LD-Blöcke als Einzelblock-Array für den serverseitigen
-    * Pro-Block-Import, siehe README.md, Abschnitt "Verhalten bei
-    * vorhandenem JSON-LD").
+    * Pro-Block-Import, siehe README.md, Abschnitt "Vorhandenes
+    * JSON-LD und Import").
     *
     * Legacy-Normalisierung: Meta aus Versionen vor
     * existing_jsonld_blocks enthält nur den content-String. Ist er
@@ -326,7 +326,7 @@ class SchemaOrgData_ScopeResolver {
     * existiert. Ist dies der Fall, erbt diese Ebene leere Felder von
     * der allgemeineren Ebene; gefüllte Felder überschreiben deren
     * Ausgabe für diesen Type (siehe README.md, Abschnitt
-    * "Type-Kollision" und resolveTypeInheritance()).
+    * "Geltungsbereiche und Vererbung" sowie resolveTypeInheritance()).
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $scope 'category' | 'page' (für 'global' immer [])

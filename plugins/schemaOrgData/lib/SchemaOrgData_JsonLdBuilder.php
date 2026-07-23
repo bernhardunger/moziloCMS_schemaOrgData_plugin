@@ -7,7 +7,7 @@
 * Baut aus zusammengeführten Formulardaten den fertigen
 * <script type="application/ld+json">-Block, inklusive @id-Anker-
 * Vergabe und Leerfeld-Bereinigung (siehe README.md, Abschnitte
-* "JSON-LD-Ausgabe" und "@id-Anker und Knotenreferenzen"). Wird
+* "JSON-LD-Ausgabe" und "Organisations-Identität und @id-Anker"). Wird
 * von der Fassade schemaOrgData über einen Lazy-Accessor
 * verdrahtet.
 *
@@ -117,7 +117,7 @@ class SchemaOrgData_JsonLdBuilder {
     /***************************************************************
     *
     * Wie resolveNodeId(), aber für Registry-Personen (siehe README.md,
-    * "@id-Anker und Knotenreferenzen"): das Fragment wird ausschließlich
+    * "Organisations-Identität und @id-Anker"): das Fragment wird ausschließlich
     * aus dem Slug gebildet (SchemaOrgData_PersonsRegistryService::buildFragment()),
     * kein Schema-Lookup - Registry-Personen haben kein eigenes
     * Schema-Type-File mehr. Nutzt denselben $assignedFragments-De-Dup-

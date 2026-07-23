@@ -23,7 +23,7 @@ final class SchemaOrgData_FrontendRequestContext {
     * @param string $pluginSelfDir Plugin-Verzeichnis (PLUGIN_SELF_DIR)
     * @param SchemaOrgData_OrgRelationsService $orgRelationsService Organisations-
     *              Relationen (founder/employee/member, siehe README.md,
-    *              Abschnitt "@id-Anker und Knotenreferenzen")
+    *              Abschnitt "Organisations-Identität und @id-Anker")
     *
     ***************************************************************/
     public function __construct(

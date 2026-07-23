@@ -7,7 +7,7 @@
 * Zustandsloser Helfer zur Ableitung der absoluten Basis-URL
 * der Installation. Wird von der Fassade schemaOrgData über
 * einen Lazy-Accessor verdrahtet (siehe README.md, Abschnitt
-* "@id-Anker (stabile Knoten-Identität)").
+* "Organisations-Identität und @id-Anker").
 *
 ***************************************************************/
 class SchemaOrgData_UrlHelper {

@@ -7,7 +7,7 @@
 * Organisations-Relationen (founder/employee/member) zwischen der
 * globalen Organisations-Identität (jeder Type mit
 * "ui:idFragment": "organization", siehe README.md, Abschnitt
-* "@id-Anker und Knotenreferenzen") und Registry-Personen. Gespeichert
+* "Organisations-Identität und @id-Anker") und Registry-Personen. Gespeichert
 * als eigenständige Liste (Settings-Key "config_global", Property
 * "org_relations") unabhängig vom aktiven globalen Schema-Type, damit
 * ein Type-Wechsel innerhalb der LocalBusiness-Familie bzw. zwischen
@@ -15,7 +15,7 @@
 *
 * Zustandslos: Kollaboratoren ($settings, SchemaOrgData_PersonsRegistryService,
 * SchemaOrgData_UrlHelper) werden je Aufruf als Parameter übergeben, nicht im
-* Konstruktor eingefroren (siehe README.md, Abschnitt "Architektur").
+* Konstruktor eingefroren (siehe README.md, Abschnitt "Entwicklerdokumentation").
 *
 ***************************************************************/
 class SchemaOrgData_OrgRelationsService {
@@ -94,8 +94,8 @@ class SchemaOrgData_OrgRelationsService {
     /***************************************************************
     *
     * Baut die nach Rolle gruppierten @id-Referenzen für die JSON-LD-
-    * Ausgabe des Organisations-Knotens (siehe README.md, "@id-Anker
-    * und Knotenreferenzen"): je Rolle ein Array von {"@id": "..."}-
+    * Ausgabe des Organisations-Knotens (siehe README.md,
+    * "Organisations-Identität und @id-Anker"): je Rolle ein Array von {"@id": "..."}-
     * Objekten, bereit zum direkten Merge in die Properties des Knotens.
     *
     * Zwei Filter greifen unabhängig voneinander:
