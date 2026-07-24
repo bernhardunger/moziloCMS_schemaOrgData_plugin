@@ -296,6 +296,98 @@
     }
 
     /**
+     * Bereinigt einen vom Nutzer eingegebenen Personen-Registry-Slug auf
+     * die zulässige Zeichenmenge - client-seitige Entsprechung von
+     * SchemaOrgData_PersonsRegistryService::sanitizeSlugCandidate(),
+     * siehe README.md, Abschnitt "Personen-Registry".
+     *
+     * @param {string} value
+     * @returns {string}
+     */
+    function sanitizeSlugCandidateJs(value) {
+        var result = String(value || '').trim().toLowerCase();
+        result = result.replace(/\s+/g, '-');
+        return result.replace(/[^a-z0-9_\-]/g, '');
+    }
+
+    /**
+     * Leitet aus einem Personennamen einen Slug-Vorschlag ab (Umlaut-
+     * Transliteration, Kleinschreibung) - client-seitige Entsprechung
+     * von SchemaOrgData_PersonsRegistryService::generateSlugSuggestion(),
+     * siehe README.md, Abschnitt "Personen-Registry".
+     *
+     * @param {string} name
+     * @returns {string}
+     */
+    function generateSlugSuggestionJs(name) {
+        var umlautMap = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ß': 'ss' };
+        var result = String(name || '').trim();
+        result = result.replace(/[äöüÄÖÜß]/g, function (match) { return umlautMap[match]; });
+        result = result.toLowerCase();
+        result = result.replace(/[^a-z0-9]+/g, '-');
+        return result.replace(/^-+|-+$/g, '');
+    }
+
+    /**
+     * Validiert das Slug- bzw. Namensfeld des "Neue Person"-Formulars
+     * (data-pair-Verknüpfung analog runGeoValidation()) gegen die
+     * bereits im DOM vorhandene Personenliste ([data-slug]-Zeilen, siehe
+     * SchemaOrgData_PersonsAdminRenderer::renderListView()) - rein
+     * client-seitiger Vorab-Hinweis, ersetzt nicht die serverseitige
+     * Prüfung in SchemaOrgData_PersonsRegistryService::createPerson().
+     * Ist das Slug-Feld leer, wird der aus dem Namensfeld abgeleitete
+     * Vorschlag geprüft (SchemaOrgData_FormRenderer::renderTextWidget()
+     * zeigt diesen Vorschlag ohnehin nur als Placeholder an). Das
+     * Feedback erscheint stets am Slug-Feld, unabhängig davon, welches
+     * der beiden verknüpften Felder die Validierung ausgelöst hat.
+     *
+     * @param {HTMLElement} input das gerade geänderte Slug- oder Namensfeld
+     * @param {boolean} [onlyClearErrors] siehe showFieldFeedback()
+     */
+    function runPersonSlugValidation(input, onlyClearErrors) {
+        var isSlugField = /_slug$/.test(input.id);
+        var pairInput = document.getElementById(input.getAttribute('data-pair'));
+        var slugInput = isSlugField ? input : pairInput;
+        var nameInput = isSlugField ? pairInput : input;
+
+        if (!slugInput) {
+            return;
+        }
+
+        var slugValue = slugInput.value.trim();
+        var nameValue = nameInput ? nameInput.value.trim() : '';
+
+        var effectiveSlug = '';
+        if (slugValue !== '') {
+            effectiveSlug = sanitizeSlugCandidateJs(slugValue);
+        } else if (nameValue !== '') {
+            effectiveSlug = generateSlugSuggestionJs(nameValue);
+        }
+
+        if (effectiveSlug === '') {
+            showFieldFeedback(slugInput, slugInput.id + '_feedback', { status: null, message: null }, onlyClearErrors);
+            return;
+        }
+
+        var rows = document.querySelectorAll('[data-slug]');
+        var matchedRow = null;
+        for (var i = 0; i < rows.length; i++) {
+            if (rows[i].getAttribute('data-slug') === effectiveSlug) {
+                matchedRow = rows[i];
+                break;
+            }
+        }
+
+        if (!matchedRow) {
+            showFieldFeedback(slugInput, slugInput.id + '_feedback', { status: null, message: null }, onlyClearErrors);
+            return;
+        }
+
+        var message = (getMessages().personSlugCollision || '').replace('{PARAM1}', matchedRow.getAttribute('data-slug-name'));
+        showFieldFeedback(slugInput, slugInput.id + '_feedback', { status: 'error', message: message }, onlyClearErrors);
+    }
+
+    /**
      * Validiert eine E-Mail-Adresse (siehe index.php, validateEmail()).
      *
      * @param {string} value
@@ -925,6 +1017,9 @@
             case 'geo':
                 runGeoValidation(input, onlyClearErrors);
                 return;
+            case 'person_slug':
+                runPersonSlugValidation(input, onlyClearErrors);
+                return;
             case 'date-time':
                 runEventDateValidation(input, onlyClearErrors);
                 return;
@@ -1535,6 +1630,8 @@
         validateTelephone: validateTelephone,
         validateUrl: validateUrl,
         validateSortOrder: validateSortOrder,
+        sanitizeSlugCandidateJs: sanitizeSlugCandidateJs,
+        generateSlugSuggestionJs: generateSlugSuggestionJs,
         validateEmail: validateEmail,
         validateRequiredField: validateRequiredField,
         checkAddressRequiredField: checkAddressRequiredField,

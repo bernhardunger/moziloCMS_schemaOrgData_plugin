@@ -171,7 +171,7 @@ class SchemaOrgData_PersonsAdminRenderer {
                 $editViewId = htmlspecialchars($this->buildEditViewId((string) $slug), ENT_QUOTES, CHARSET);
                 $confirmText = htmlspecialchars($lang->getLanguageValue('confirm_delete_person'), ENT_QUOTES, CHARSET);
 
-                $html .= '<tr>'
+                $html .= '<tr data-slug="'.$slugAttr.'" data-slug-name="'.htmlspecialchars($displayName, ENT_QUOTES, CHARSET).'">'
                     .'<td>'.htmlspecialchars($displayName, ENT_QUOTES, CHARSET).'</td>'
                     .'<td>'.htmlspecialchars((string) ($person['jobTitle'] ?? ''), ENT_QUOTES, CHARSET).'</td>'
                     .'<td>'.$statusLabel.'</td>'
@@ -221,6 +221,9 @@ class SchemaOrgData_PersonsAdminRenderer {
         $isEdit = ($slug !== null);
         $viewId = $isEdit ? $this->buildEditViewId((string) $slug) : self::NEW_VIEW_ID;
         $displayAttr = $active ? '' : ' style="display:none"';
+        $idPrefix = $isEdit ? 'edit_'.$slug : 'new';
+        $slugFieldId = 'schemaOrgData_persons_'.$idPrefix.'_slug';
+        $nameFieldId = 'schemaOrgData_persons_'.$idPrefix.'_name';
 
         $html = '<div id="'.htmlspecialchars($viewId, ENT_QUOTES, CHARSET).'" class="schemaOrgData-persons-view" data-persons-view="1"'.$displayAttr.'>'."\n";
         $html .= '<h4>'.$lang->getLanguageHtml($isEdit ? 'label_edit_person_title' : 'label_add_person_title').'</h4>'."\n";
@@ -233,25 +236,24 @@ class SchemaOrgData_PersonsAdminRenderer {
             $html .= '</ul></div>'."\n";
         }
 
+        $nameExtraAttrs = $isEdit ? [] : ['data-validate' => 'person_slug', 'data-pair' => $slugFieldId];
+        $html .= $this->renderTextRow($idPrefix, 'name', 'label_person_name', (string) ($data['name'] ?? ''), true, $lang, $formRenderer, $nameExtraAttrs);
+
         if($isEdit) {
             $html .= '<div class="c-content schemaOrgData-field-row">'
                 .'<div class="mo-in-li-l">'.$lang->getLanguageHtml('label_person_slug').'</div>'
                 .'<div class="mo-in-li-r"><code>'.htmlspecialchars((string) $slug, ENT_QUOTES, CHARSET).'</code></div>'
                 .'</div>'."\n";
         } else {
-            $slugFieldId = 'schemaOrgData_persons_new_slug';
             $slugValue = (string) ($data['slug'] ?? '');
             $slugPlaceholder = $registryService->generateSlugSuggestion((string) ($data['name'] ?? ''));
             $html .= '<div class="c-content schemaOrgData-field-row">'
                 .'<div class="mo-in-li-l"><label for="'.$slugFieldId.'">'.$lang->getLanguageHtml('label_person_slug').'</label></div>'
-                .'<div class="mo-in-li-r">'.$formRenderer->renderTextWidget($slugFieldId, 'schemaOrgData_persons_data[slug]', ['ui:placeholder' => $slugPlaceholder], $slugValue, []).'</div>'
+                .'<div class="mo-in-li-r">'.$formRenderer->renderTextWidget($slugFieldId, 'schemaOrgData_persons_data[slug]', ['ui:placeholder' => $slugPlaceholder], $slugValue, ['data-validate' => 'person_slug', 'data-pair' => $nameFieldId]).'</div>'
                 .'</div>'."\n";
             $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_person_slug').'</p>'."\n";
         }
 
-        $idPrefix = $isEdit ? 'edit_'.$slug : 'new';
-
-        $html .= $this->renderTextRow($idPrefix, 'name', 'label_person_name', (string) ($data['name'] ?? ''), true, $lang, $formRenderer);
         $html .= $this->renderTextRow($idPrefix, 'honorificPrefix', 'label_honorific_prefix', (string) ($data['honorificPrefix'] ?? ''), false, $lang, $formRenderer);
         $html .= $this->renderTextRow($idPrefix, 'jobTitle', 'label_job_title', (string) ($data['jobTitle'] ?? ''), false, $lang, $formRenderer);
         $html .= $this->renderTextareaRow($idPrefix, 'description', 'label_person_description', (string) ($data['description'] ?? ''), $lang, $formRenderer);

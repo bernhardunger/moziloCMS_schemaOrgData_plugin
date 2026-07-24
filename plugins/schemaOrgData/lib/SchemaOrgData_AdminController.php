@@ -691,6 +691,12 @@ class SchemaOrgData_AdminController {
             // Property-Namen erfolgt erst clientseitig in
             // showExtensionFeedback() (validator.js).
             'personSuggestionCandidate' => $lang->getLanguageValue('hint_extension_person_candidate', '{PARAM1}'),
+            // '{PARAM1}' wird hier als Wert übergeben, damit
+            // getLanguageValue() den Platzhalter NICHT durch ""
+            // ersetzt - die Ersetzung mit dem Namen der kollidierenden
+            // Person erfolgt erst clientseitig in
+            // runPersonSlugValidation() (validator.js).
+            'personSlugCollision' => $lang->getLanguageValue('error_person_slug_exists', '{PARAM1}'),
             'jsonInvalid'        => $lang->getLanguageValue('error_json_invalid'),
             // '{PARAM1}' wird hier als Wert übergeben, damit
             // getLanguageValue() den Platzhalter NICHT durch ""
