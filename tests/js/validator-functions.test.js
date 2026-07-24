@@ -132,6 +132,34 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
         });
     });
 
+    // Ein-/Ausgabe-Paare 1:1 aus PersonsRegistryServiceTest.php
+    // (SchemaOrgData_PersonsRegistryService::generateSlugSuggestion()/
+    // sanitizeSlugCandidate()) - Parität ist die Grundlage der
+    // Slug-Live-Kollisionsprüfung (runPersonSlugValidation()).
+    describe('generateSlugSuggestionJs()', function () {
+        test('transliteriert Umlaute und schreibt klein', function () {
+            expect(validator.generateSlugSuggestionJs('Max Mustermann')).toBe('max-mustermann');
+            expect(validator.generateSlugSuggestionJs('Jürgen Müller-Schön')).toBe('juergen-mueller-schoen');
+            expect(validator.generateSlugSuggestionJs('Straße Weiß')).toBe('strasse-weiss');
+        });
+
+        test('entfernt führende und abschließende Bindestriche', function () {
+            expect(validator.generateSlugSuggestionJs('  !A B?  ')).toBe('a-b');
+            expect(validator.generateSlugSuggestionJs('   ')).toBe('');
+        });
+    });
+
+    describe('sanitizeSlugCandidateJs()', function () {
+        test('entfernt unzulässige Zeichen und schreibt klein', function () {
+            expect(validator.sanitizeSlugCandidateJs('Max Mustermann')).toBe('max-mustermann');
+            expect(validator.sanitizeSlugCandidateJs('A/b_c-1!')).toBe('ab_c-1');
+        });
+
+        test('wandelt Leerraum in Bindestriche statt ihn zu verkleben', function () {
+            expect(validator.sanitizeSlugCandidateJs('MM 2026!')).toBe('mm-2026');
+        });
+    });
+
     describe('validateEmail()', function () {
         test('gültige E-Mail-Adresse', function () {
             expect(validator.validateEmail('info@example.com').status).toBe('ok');

@@ -238,22 +238,121 @@ final class PersonsAdminRendererTest extends TestCase {
 
     /***************************************************************
     *
-    * Regressionstest gegen den neuen optionalen $extraAttrs-Parameter
-    * von renderTextRow(): bestehende Textfelder (name, url) dürfen kein
-    * data-validate-Attribut erhalten, da der Default-Parameter dort
-    * nicht greifen soll.
+    * Regressionstest gegen den optionalen $extraAttrs-Parameter von
+    * renderTextRow(): das url-Feld darf kein data-validate-Attribut
+    * erhalten, da der Default-Parameter dort nicht greifen soll. Das
+    * name-Feld trägt im "Neue Person"-Formular seit der Slug-Live-
+    * Kollisionsprüfung bewusst data-validate="person_slug" (siehe
+    * testNameUndSlugFeldTragenDataValidatePersonSlugImNeuFormular())
+    * und ist daher hier ausgenommen.
     *
     ***************************************************************/
     function testUebrigeTextfelderTragenKeinDataValidateAttribut(): void {
         $html = $this->render(new \InMemorySettings(), true, $this->renderer()->newViewId());
 
         $this->assertDoesNotMatchRegularExpression(
-            '/name="schemaOrgData_persons_data\[name\]"[^>]*data-validate/',
-            $html
-        );
-        $this->assertDoesNotMatchRegularExpression(
             '/name="schemaOrgData_persons_data\[url\]"[^>]*data-validate/',
             $html
         );
+    }
+
+    /***************************************************************
+    *
+    * Jede Zeile der Personenliste trägt den Slug sowie den
+    * Anzeigenamen als Datenattribute - Grundlage für die client-
+    * seitige Slug-Live-Kollisionsprüfung (js/validator.js,
+    * runPersonSlugValidation()), die die Personenliste ohne
+    * zusätzlichen Server-Request direkt aus dem DOM ausliest.
+    *
+    ***************************************************************/
+    function testListenZeileTraegtDataSlugUndDataSlugName(): void {
+        $settings = new \InMemorySettings();
+        $this->registryService()->createPerson($settings, [
+            'name' => 'Max Mustermann', 'slug' => 'max', 'honorificPrefix' => 'Dr.',
+        ], $this->adminLang(), $this->validator());
+
+        $html = $this->render($settings, true, $this->renderer()->listViewId());
+
+        $this->assertStringContainsString('data-slug="max"', $html);
+        $this->assertStringContainsString('data-slug-name="Dr. Max Mustermann"', $html);
+    }
+
+    /***************************************************************
+    *
+    * Slug- und Namensfeld des "Neue Person"-Formulars sind über
+    * data-validate="person_slug" und ein gegenseitiges data-pair
+    * miteinander verknüpft - Grundlage für runPersonSlugValidation()
+    * (js/validator.js), das je nach ausgelöstem Feld entweder den
+    * expliziten Slug oder den aus dem Namen abgeleiteten Vorschlag
+    * gegen die Personenliste prüft.
+    *
+    ***************************************************************/
+    function testNameUndSlugFeldTragenDataValidatePersonSlugImNeuFormular(): void {
+        $html = $this->render(new \InMemorySettings(), true, $this->renderer()->newViewId());
+
+        $this->assertMatchesRegularExpression(
+            '/id="schemaOrgData_persons_new_slug"[^>]*data-validate="person_slug"[^>]*data-pair="schemaOrgData_persons_new_name"/',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="schemaOrgData_persons_new_name"[^>]*data-validate="person_slug"[^>]*data-pair="schemaOrgData_persons_new_slug"/',
+            $html
+        );
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest: Das Namensfeld im Bearbeiten-Formular trägt
+    * kein data-validate-Attribut - dort ist der Slug schreibgeschützt
+    * (<code>-Anzeige statt Eingabefeld), eine Live-Kollisionsprüfung
+    * ist dort kein Anwendungsfall.
+    *
+    ***************************************************************/
+    function testNamensfeldImBearbeitenFormularTraegtKeinDataValidateAttribut(): void {
+        $settings = new \InMemorySettings();
+        $this->registryService()->createPerson($settings, [
+            'name' => 'Max Mustermann', 'slug' => 'max',
+        ], $this->adminLang(), $this->validator());
+
+        $html = $this->render($settings, true, $this->renderer()->buildEditViewId('max'));
+
+        // Alle Ansichten werden gleichzeitig vorgerendert (siehe
+        // Klassen-Docblock) - die Prüfung muss sich daher auf den
+        // Bearbeiten-Ausschnitt beschränken, sonst würde das
+        // gleichnamige name-Feld des "Neue Person"-Formulars (trägt das
+        // Attribut bewusst) den Regressionstest verfälschen.
+        $editViewHtml = substr($html, (int) strpos($html, 'id="schemaOrgData_persons_view_edit_max"'));
+        $this->assertDoesNotMatchRegularExpression(
+            '/name="schemaOrgData_persons_data\[name\]"[^>]*data-validate/',
+            $editViewHtml
+        );
+    }
+
+    /***************************************************************
+    *
+    * Das Namensfeld steht im gerenderten HTML jetzt vor dem Slug-Feld
+    * bzw. der Slug-<code>-Zeile (passender, da der Slug meist aus dem
+    * Namen abgeleitet wird) - in beiden Ansichten (Neu und
+    * Bearbeiten).
+    *
+    ***************************************************************/
+    function testNamensfeldStehtVorDemSlugFeldInBeidenAnsichten(): void {
+        $newHtml = $this->render(new \InMemorySettings(), true, $this->renderer()->newViewId());
+        $namePosNew = strpos($newHtml, 'name="schemaOrgData_persons_data[name]"');
+        $slugPosNew = strpos($newHtml, 'name="schemaOrgData_persons_data[slug]"');
+        $this->assertIsInt($namePosNew);
+        $this->assertIsInt($slugPosNew);
+        $this->assertLessThan($slugPosNew, $namePosNew);
+
+        $settings = new \InMemorySettings();
+        $this->registryService()->createPerson($settings, [
+            'name' => 'Max Mustermann', 'slug' => 'max',
+        ], $this->adminLang(), $this->validator());
+        $editHtml = $this->render($settings, true, $this->renderer()->buildEditViewId('max'));
+        $namePosEdit = strpos($editHtml, 'name="schemaOrgData_persons_data[name]"');
+        $slugPosEdit = strpos($editHtml, '<code>max</code>');
+        $this->assertIsInt($namePosEdit);
+        $this->assertIsInt($slugPosEdit);
+        $this->assertLessThan($slugPosEdit, $namePosEdit);
     }
 }
