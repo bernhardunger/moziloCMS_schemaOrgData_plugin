@@ -328,6 +328,58 @@ final class FormRendererComponentTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // renderOrgRelationsWidget()
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Sichtbarkeits-Fix: eine bereits gespeicherte Relation muss auch
+    * dann als Zeile im Formular erscheinen, wenn aktuell 0 aktive
+    * Personen in der Registry vorhanden sind (z. B. weil die
+    * referenzierte Person inzwischen inaktiv gesetzt oder gelöscht
+    * wurde) - vorher blendete das Widget in diesem Fall die komplette
+    * Entries-Liste aus, der Hinweistext erschien stattdessen als
+    * vermeintlicher Ersatz.
+    *
+    ***************************************************************/
+    function testRenderOrgRelationsWidgetZeigtGespeicherteRelationOhneAktivePersonen(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $orgRelations = [['person' => 'inaktive-person', 'role' => 'employee']];
+
+        $html = $renderer->renderOrgRelationsWidget('global', $orgRelations, null, $this->adminLang(), []);
+
+        $this->assertStringContainsString('value="inaktive-person" selected="selected"', $html);
+        $this->assertStringContainsString('value="employee" selected="selected"', $html);
+        $this->assertStringContainsString(
+            $this->adminLang()->getLanguageHtml('label_org_relation_person_unavailable', 'inaktive-person'), $html
+        );
+        // Der Hinweistext bleibt als zusätzliche Erklärung sichtbar, warum
+        // keine neue Auswahl möglich ist - er ersetzt die Entries-Liste
+        // nicht mehr.
+        $this->assertStringContainsString($this->adminLang()->getLanguageHtml('hint_org_relations_no_persons'), $html);
+    }
+
+    /***************************************************************
+    *
+    * Regressionstest für den echten Leerfall (weder gespeicherte
+    * Relationen noch aktive Personen): bleibt inhaltlich unverändert
+    * beim bisherigen Verhalten - der Hinweistext erscheint, keine
+    * Fallback-Option und keine ausgewählte Person, da die einzige
+    * verbleibende Zeile die stets angehängte leere Anlege-Zeile ist
+    * (leerer $personValue, siehe Docblock in renderOrgRelationsWidget()).
+    *
+    ***************************************************************/
+    function testRenderOrgRelationsWidgetZeigtNurHinweisBeiEchtemLeerfall(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+
+        $html = $renderer->renderOrgRelationsWidget('global', [], null, $this->adminLang(), []);
+
+        $this->assertStringContainsString($this->adminLang()->getLanguageHtml('hint_org_relations_no_persons'), $html);
+        $this->assertStringNotContainsString('selected="selected"', $html);
+        $this->assertStringNotContainsString('label_org_relation_person_unavailable', $html);
+    }
+
+    // -----------------------------------------------------------
     // renderExtensionFieldWidget()
     // -----------------------------------------------------------
 

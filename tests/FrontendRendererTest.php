@@ -197,6 +197,44 @@ final class FrontendRendererTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // org_relations: Scope-Beschränkung auf den globalen Organisations-
+    // Knoten (org_relations wird ausschließlich unter config_global
+    // gespeichert, siehe SchemaOrgData_OrgRelationsService)
+    //
+    // Beide folgenden Szenarien setzen einen aktiven Kategorie-Scope
+    // voraus (ein zweiter, von Global verschiedener Type mit
+    // "ui:idFragment": "organization" auf Kategorie-Ebene). CAT_REQUEST
+    // ist in tests/bootstrap.php fest auf "false" gesetzt, wodurch
+    // renderFrontend() $scopeConfigs['category'] nie befüllt - identische
+    // strukturelle Einschränkung wie bei den übrigen CAT_REQUEST-Skips in
+    // dieser Datei.
+    // -----------------------------------------------------------
+
+    function testRenderFrontendOrgRelationsNurAufGlobalemKnotenNichtTestbarOhneAktiveKategorie(): void {
+        $this->markTestSkipped(
+            'CAT_REQUEST ist in tests/bootstrap.php fest auf "false" gesetzt '
+            .'(keine aktive Kategorie) - ein zweiter, von Global verschiedener '
+            .'Type mit "ui:idFragment": "organization" auf Kategorie-Ebene kann '
+            .'daher nie gleichzeitig mit dem globalen Organisations-Knoten aktiv '
+            .'sein. Der Scope-Beschränkungs-Fix selbst ist über die Bedingung '
+            .'$scope === \'global\' im Merge-Loop von renderFrontend() sowie über '
+            .'den auf $scopeConfigs[\'global\'] beschränkten $orgNodePresent-Vor-Check '
+            .'abgesichert.'
+        );
+    }
+
+    function testRenderFrontendOrgRelationsAufReinemKategorieKnotenNichtTestbarOhneAktiveKategorie(): void {
+        $this->markTestSkipped(
+            'CAT_REQUEST ist in tests/bootstrap.php fest auf "false" gesetzt '
+            .'(keine aktive Kategorie) - ein reiner Kategorie-Type mit '
+            .'"ui:idFragment": "organization" ohne aktiven globalen '
+            .'Organisations-Type kann daher nicht über renderFrontend() erreicht '
+            .'werden. Identische strukturelle Einschränkung wie '
+            .'testRenderFrontendOrgRelationsNurAufGlobalemKnotenNichtTestbarOhneAktiveKategorie().'
+        );
+    }
+
+    // -----------------------------------------------------------
     // Debug-Modus
     // -----------------------------------------------------------
 

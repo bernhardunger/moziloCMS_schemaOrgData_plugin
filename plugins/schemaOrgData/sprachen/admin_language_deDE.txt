@@ -80,6 +80,7 @@ label_org_relations = Organisations-Relationen
 description_org_relations = Verknüpft die globale Organisations-Identität mit Registry-Personen (z. B. Gründer, Mitarbeiter, Mitglieder). Die Relationen bleiben auch bei einem Wechsel des Schema-Types erhalten.
 hint_org_relations_no_persons = Noch keine aktive Person in der Registry vorhanden. Bitte zuerst eine Person anlegen.
 label_org_relation_person = Person
+label_org_relation_person_unavailable = {PARAM1} (nicht mehr auswählbar - inaktiv oder gelöscht)
 label_org_relation_role = Rolle
 label_role_founder = Gründer/in (founder)
 label_role_employee = Mitarbeiter/in (employee)
