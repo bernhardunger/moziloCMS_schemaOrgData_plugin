@@ -131,15 +131,19 @@ class SchemaOrgData_FrontendRenderer {
         // Fall bei keep-Modus/excluded_cats-Unterdrückung des Global-Scopes,
         // oder wenn der aktive globale Type kein Organisations-Type ist) -
         // sonst blieben referenzierte Personen als Knoten ohne jede
-        // sichtbare Referenz im Graph zurück.
+        // sichtbare Referenz im Graph zurück. org_relations wird
+        // ausschließlich unter config_global gespeichert (siehe
+        // SchemaOrgData_OrgRelationsService) - der Vor-Check beschränkt sich
+        // deshalb bewusst auf den globalen Scope, statt einen beliebigen
+        // Scope mit passendem ui:idFragment als ausreichenden Trägerknoten
+        // zu werten (sonst würde ein Kategorie-/Seiten-Type mit demselben
+        // Fragment fälschlich als Träger akzeptiert).
         $orgNodePresent = false;
-        foreach($scopeConfigs as $config) {
-            foreach(array_keys($config) as $type) {
-                $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
-                if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === 'organization') {
-                    $orgNodePresent = true;
-                    break 2;
-                }
+        foreach(array_keys($scopeConfigs['global'] ?? []) as $type) {
+            $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
+            if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === 'organization') {
+                $orgNodePresent = true;
+                break;
             }
         }
         if(!$orgNodePresent) {
@@ -173,7 +177,14 @@ class SchemaOrgData_FrontendRenderer {
         $debugBlocks = [];
         foreach($scopeConfigs as $scope => $config) {
             foreach($config as $type => $data) {
-                if($orgRelationsGrouped !== []) {
+                // org_relations gehört ausschließlich zur globalen
+                // Organisations-Identität (config_global, siehe
+                // SchemaOrgData_OrgRelationsService) - der Merge bleibt daher
+                // auf den globalen Scope beschränkt, auch wenn ein
+                // Kategorie-/Seiten-Type zufällig dasselbe ui:idFragment
+                // deklariert (sonst bekäme dieser Knoten fälschlich dieselben
+                // Referenzen wie der globale Organisations-Knoten).
+                if($orgRelationsGrouped !== [] and $scope === 'global') {
                     $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
                     if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === 'organization') {
                         $data = array_merge($data, $orgRelationsGrouped);

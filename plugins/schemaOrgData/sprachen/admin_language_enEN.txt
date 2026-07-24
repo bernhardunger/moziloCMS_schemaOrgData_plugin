@@ -80,6 +80,7 @@ label_org_relations = Organization Relations
 description_org_relations = Links the global organization identity to registry persons (e.g. founders, employees, members). The relations are kept even when the schema type is changed.
 hint_org_relations_no_persons = No active person exists in the registry yet. Please add a person first.
 label_org_relation_person = Person
+label_org_relation_person_unavailable = {PARAM1} (no longer selectable - inactive or deleted)
 label_org_relation_role = Role
 label_role_founder = Founder
 label_role_employee = Employee

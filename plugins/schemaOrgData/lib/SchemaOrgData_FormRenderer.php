@@ -929,44 +929,63 @@ class SchemaOrgData_FormRenderer {
         // gespeicherte, jetzt verwaiste Relation bleibt unbereinigt stehen.
         $html .= '<input type="hidden" name="'.htmlspecialchars($markerName, ENT_QUOTES, CHARSET).'" value="1">'."\n";
 
+        // Der Hinweistext ist seit dem Sichtbarkeits-Fix (siehe README.md,
+        // Abschnitt "Organisations-Relationen") kein Ersatz mehr für die
+        // Entries-Liste, sondern ein zusätzlicher, erklärender Hinweis: auch
+        // ohne aktive Registry-Personen sollen bereits gespeicherte
+        // Relationen-Zeilen sichtbar bleiben, statt kommentarlos zu
+        // verschwinden.
         if($availablePersons === []) {
             $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_org_relations_no_persons').'</p>'."\n";
-        } else {
-            $entries = array_values($orgRelations);
-            $entries[] = ['person' => '', 'role' => ''];
+        }
 
-            foreach($entries as $index => $entry) {
-                $personId = 'schemaOrgData_'.$idPrefix.'_org_relations_'.$index.'_person';
-                $roleId = 'schemaOrgData_'.$idPrefix.'_org_relations_'.$index.'_role';
-                $personName = $fieldNameBase.'['.$index.'][person]';
-                $roleName = $fieldNameBase.'['.$index.'][role]';
-                $personValue = (string) ($entry['person'] ?? '');
-                $roleValue = (string) ($entry['role'] ?? '');
+        $entries = array_values($orgRelations);
+        $entries[] = ['person' => '', 'role' => ''];
 
-                $html .= '<div class="schemaOrgData-org-relation-entry">'."\n";
+        foreach($entries as $index => $entry) {
+            $personId = 'schemaOrgData_'.$idPrefix.'_org_relations_'.$index.'_person';
+            $roleId = 'schemaOrgData_'.$idPrefix.'_org_relations_'.$index.'_role';
+            $personName = $fieldNameBase.'['.$index.'][person]';
+            $roleName = $fieldNameBase.'['.$index.'][role]';
+            $personValue = (string) ($entry['person'] ?? '');
+            $roleValue = (string) ($entry['role'] ?? '');
 
-                $html .= '<div class="c-content schemaOrgData-field-row">'
-                    .'<div class="mo-in-li-l"><label for="'.$personId.'">'.$lang->getLanguageHtml('label_org_relation_person').'</label></div>'
-                    .'<div class="mo-in-li-r"><div class="mo-select-div flex"><select id="'.$personId.'" name="'.htmlspecialchars($personName, ENT_QUOTES, CHARSET).'" class="mo-select flex-100">'."\n"
-                    .'<option value="">'.$lang->getLanguageHtml('label_select_placeholder').'</option>'."\n";
-                foreach($availablePersons as $slug => $personLabel) {
-                    $selected = ((string) $slug === $personValue) ? ' selected="selected"' : '';
-                    $html .= '<option value="'.htmlspecialchars((string) $slug, ENT_QUOTES, CHARSET).'"'.$selected.'>'
-                        .htmlspecialchars($personLabel, ENT_QUOTES, CHARSET).'</option>'."\n";
-                }
-                $html .= '</select></div></div></div>'."\n";
+            $html .= '<div class="schemaOrgData-org-relation-entry">'."\n";
 
-                $html .= '<div class="c-content schemaOrgData-field-row">'
-                    .'<div class="mo-in-li-l"><label for="'.$roleId.'">'.$lang->getLanguageHtml('label_org_relation_role').'</label></div>'
-                    .'<div class="mo-in-li-r"><div class="mo-select-div flex"><select id="'.$roleId.'" name="'.htmlspecialchars($roleName, ENT_QUOTES, CHARSET).'" class="mo-select flex-100">'."\n";
-                foreach(SchemaOrgData_OrgRelationsService::roles() as $role) {
-                    $selected = ($role === $roleValue) ? ' selected="selected"' : '';
-                    $html .= '<option value="'.$role.'"'.$selected.'>'.$lang->getLanguageHtml('label_role_'.$role).'</option>'."\n";
-                }
-                $html .= '</select></div></div></div>'."\n";
-
-                $html .= '</div>'."\n";
+            $html .= '<div class="c-content schemaOrgData-field-row">'
+                .'<div class="mo-in-li-l"><label for="'.$personId.'">'.$lang->getLanguageHtml('label_org_relation_person').'</label></div>'
+                .'<div class="mo-in-li-r"><div class="mo-select-div flex"><select id="'.$personId.'" name="'.htmlspecialchars($personName, ENT_QUOTES, CHARSET).'" class="mo-select flex-100">'."\n"
+                .'<option value="">'.$lang->getLanguageHtml('label_select_placeholder').'</option>'."\n";
+            foreach($availablePersons as $slug => $personLabel) {
+                $selected = ((string) $slug === $personValue) ? ' selected="selected"' : '';
+                $html .= '<option value="'.htmlspecialchars((string) $slug, ENT_QUOTES, CHARSET).'"'.$selected.'>'
+                    .htmlspecialchars($personLabel, ENT_QUOTES, CHARSET).'</option>'."\n";
             }
+            // Ein gespeicherter Slug, der nicht (mehr) unter den aktiven
+            // Personen gelistet ist (inaktiv gesetzt oder gelöscht), erhält
+            // trotzdem eine ausgewählte <option> - ohne sie überträgt der
+            // Browser beim nächsten Speichern keinen Wert für dieses Select,
+            // und die Relation ginge dadurch ungewollt verloren statt
+            // unverändert bestehen zu bleiben, bis der Admin sie bewusst
+            // entfernt. Die stets angehängte leere Anlege-Zeile hat einen
+            // leeren $personValue und ist von dieser Fallback-Option nicht
+            // betroffen.
+            if($personValue !== '' and !array_key_exists($personValue, $availablePersons)) {
+                $html .= '<option value="'.htmlspecialchars($personValue, ENT_QUOTES, CHARSET).'" selected="selected">'
+                    .$lang->getLanguageHtml('label_org_relation_person_unavailable', $personValue).'</option>'."\n";
+            }
+            $html .= '</select></div></div></div>'."\n";
+
+            $html .= '<div class="c-content schemaOrgData-field-row">'
+                .'<div class="mo-in-li-l"><label for="'.$roleId.'">'.$lang->getLanguageHtml('label_org_relation_role').'</label></div>'
+                .'<div class="mo-in-li-r"><div class="mo-select-div flex"><select id="'.$roleId.'" name="'.htmlspecialchars($roleName, ENT_QUOTES, CHARSET).'" class="mo-select flex-100">'."\n";
+            foreach(SchemaOrgData_OrgRelationsService::roles() as $role) {
+                $selected = ($role === $roleValue) ? ' selected="selected"' : '';
+                $html .= '<option value="'.$role.'"'.$selected.'>'.$lang->getLanguageHtml('label_role_'.$role).'</option>'."\n";
+            }
+            $html .= '</select></div></div></div>'."\n";
+
+            $html .= '</div>'."\n";
         }
 
         // Wiederverwendung des bereits am Formularanfang vorhandenen
