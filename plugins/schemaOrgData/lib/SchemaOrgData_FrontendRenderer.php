@@ -191,7 +191,7 @@ class SchemaOrgData_FrontendRenderer {
                     }
                 }
                 $nodeId = $context->jsonLdBuilder->resolveNodeId($context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, $type, $assignedFragments);
-                $output .= $context->jsonLdBuilder->buildJsonLdScript($context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets);
+                $output .= $context->jsonLdBuilder->buildJsonLdScript($context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets, $context->openingHoursHelper);
                 if($debugOutput) {
                     $scopeKey = match($scope) {
                         'category' => 'cat_'.($cat ?? ''),
@@ -229,7 +229,8 @@ class SchemaOrgData_FrontendRenderer {
 
             $nodeId = $context->jsonLdBuilder->resolvePersonNodeId($context->urlHelper, $slug, $assignedFragments);
             $output .= $context->jsonLdBuilder->buildJsonLdScript(
-                $context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, 'Person', $personData, $nodeId, $suppressedIdTargets
+                $context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, 'Person', $personData, $nodeId, $suppressedIdTargets,
+                $context->openingHoursHelper
             );
             if($debugOutput) {
                 $debugBlocks[] = ['scope' => 'person_'.$slug, 'type' => 'Person', 'data' => $personData, 'id' => $nodeId];
@@ -239,7 +240,8 @@ class SchemaOrgData_FrontendRenderer {
         if($debugOutput and $debugBlocks !== []) {
             $output .= $this->buildDebugWidget(
                 $debugBlocks, $context->jsonLdBuilder, $context->schemaRepository,
-                $context->urlHelper, $context->pluginSelfDir, $suppressedIdTargets
+                $context->urlHelper, $context->pluginSelfDir, $suppressedIdTargets,
+                $context->openingHoursHelper
             );
         }
 
@@ -317,6 +319,9 @@ class SchemaOrgData_FrontendRenderer {
     * @param array<int, array{scope: string, type: string, data: array<string, mixed>, id: string}> $blocks
     *              je Block Scope ('global'|'cat_x'|'page_x_y'), Type, Properties und @id-Anker
     * @param string[] $suppressedIdTargets siehe buildJsonLdScript()
+    * @param SchemaOrgData_OpeningHoursHelper|null $openingHoursHelper wird an
+    *              buildJsonLdScript() durchgereicht, damit die Vorschau auch die
+    *              ui:emitAs-Umlenkung byte-identisch zur echten Ausgabe zeigt
     * @return string ein einzelner <script>-Block, der das Widget zur Laufzeit aufbaut
     *
     ***************************************************************/
@@ -326,7 +331,8 @@ class SchemaOrgData_FrontendRenderer {
         SchemaOrgData_SchemaRepository $schemaRepository,
         SchemaOrgData_UrlHelper $urlHelper,
         string $pluginSelfDir,
-        array $suppressedIdTargets = []
+        array $suppressedIdTargets = [],
+        ?SchemaOrgData_OpeningHoursHelper $openingHoursHelper = null
     ): string {
         $count = count($blocks);
         $plural = $count !== 1 ? 'Blöcke' : 'Block';
@@ -344,7 +350,8 @@ class SchemaOrgData_FrontendRenderer {
             // PostalAddress-Verschachtelung, id_reference(_or_literal)-
             // Auflösung) hier ein zweites Mal nachzubilden.
             $script = $jsonLdBuilder->buildJsonLdScript(
-                $schemaRepository, $urlHelper, $pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets
+                $schemaRepository, $urlHelper, $pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets,
+                $openingHoursHelper
             );
             preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $scriptMatches);
 

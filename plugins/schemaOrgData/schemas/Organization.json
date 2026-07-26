@@ -60,6 +60,31 @@
     },
     "address": {
       "$ref": "#/definitions/PostalAddress"
+    },
+    "openingHours": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "ui:widget": "opening_hours",
+      "ui:label": "label_opening_hours",
+      "ui:required": false,
+      "ui:days": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+      "ui:dayLabelKeys": {
+        "Mo": "weekday_monday",
+        "Tu": "weekday_tuesday",
+        "We": "weekday_wednesday",
+        "Th": "weekday_thursday",
+        "Fr": "weekday_friday",
+        "Sa": "weekday_saturday",
+        "Su": "weekday_sunday"
+      },
+      "ui:emitAs": {
+        "property": "location",
+        "wrapperType": "Place",
+        "as": "openingHoursSpecification",
+        "itemType": "OpeningHoursSpecification"
+      }
     }
   },
   "definitions": {

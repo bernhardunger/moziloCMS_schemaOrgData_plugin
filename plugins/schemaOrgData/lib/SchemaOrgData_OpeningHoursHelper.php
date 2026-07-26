@@ -13,6 +13,21 @@
 ***************************************************************/
 class SchemaOrgData_OpeningHoursHelper {
 
+    /**
+     * Wochentags-Kürzel des Widgets auf die kanonischen schema.org-URIs.
+     * Eigenschaft des Vokabulars, nicht Konfiguration je Type - deshalb
+     * Konstante statt ui:-Property im Schema.
+     */
+    private const DAY_OF_WEEK_URIS = [
+        'Mo' => 'https://schema.org/Monday',
+        'Tu' => 'https://schema.org/Tuesday',
+        'We' => 'https://schema.org/Wednesday',
+        'Th' => 'https://schema.org/Thursday',
+        'Fr' => 'https://schema.org/Friday',
+        'Sa' => 'https://schema.org/Saturday',
+        'Su' => 'https://schema.org/Sunday',
+    ];
+
     /***************************************************************
     *
     * Erkennt, ob ein openingHours-Wert bereits als rohe Pro-Tag-Werte
@@ -142,6 +157,76 @@ class SchemaOrgData_OpeningHoursHelper {
             $rangeTo = $to;
         }
         $flush();
+
+        return $result;
+    }
+
+    /***************************************************************
+    *
+    * Übersetzt ein openingHours-Array (schema.org-Notation) in eine
+    * Liste von OpeningHoursSpecification-Objekten mit kanonischen
+    * dayOfWeek-URIs. Gegenstück zu parseOpeningHours() für die
+    * Ausgabeseite: Ein kompakter Eintrag ergibt genau ein Objekt,
+    * dessen dayOfWeek alle Tage des Bereichs aufzählt. Anders als
+    * parseOpeningHours() ist die Abbildung damit verlustfrei -
+    * beliebig viele Zeiträume je Tag bleiben erhalten. dayOfWeek ist
+    * auch bei einem einzelnen Tag ein Array, damit Konsumenten nicht
+    * zwischen zwei Formen unterscheiden müssen.
+    *
+    * Die Reihenfolge der Eingabe bleibt erhalten; sie ist semantisch
+    * bedeutungslos und wird deshalb nicht sortiert.
+    *
+    * Die Notations-Regex ist bewusst eine Kopie aus
+    * parseOpeningHours() statt einer gemeinsamen Extraktion: jene
+    * Methode bedient den verlustbehafteten Re-Display-Pfad des
+    * Widgets und bleibt davon unberührt.
+    *
+    * @param string[] $openingHours z. B. ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
+    * @param string[] $days Wochentags-Kürzel in Reihenfolge, z. B. ["Mo",...,"Su"]
+    * @return array<int, array{@type:string,dayOfWeek:string[],opens:string,closes:string}>
+    *
+    ***************************************************************/
+    public function buildOpeningHoursSpecifications(array $openingHours, array $days): array {
+        $result = [];
+
+        foreach($openingHours as $entry) {
+            if(!is_string($entry)) {
+                continue;
+            }
+
+            if(!preg_match('/^([A-Za-z]{2})(?:-([A-Za-z]{2}))? ([0-9]{2}:[0-9]{2})-([0-9]{2}:[0-9]{2})$/', trim($entry), $matches)) {
+                continue;
+            }
+
+            [, $startDay, $endDay, $from, $to] = $matches;
+            $endDay = $endDay !== '' ? $endDay : $startDay;
+
+            $startIndex = array_search($startDay, $days, true);
+            $endIndex = array_search($endDay, $days, true);
+            if($startIndex === false or $endIndex === false) {
+                continue;
+            }
+
+            $dayOfWeek = [];
+            for($i = $startIndex; $i <= $endIndex; $i++) {
+                // Ein Kürzel ohne kanonische URI lässt den Tag entfallen,
+                // statt einen unauflösbaren Wert ins JSON-LD zu schreiben.
+                if(isset(self::DAY_OF_WEEK_URIS[$days[$i]])) {
+                    $dayOfWeek[] = self::DAY_OF_WEEK_URIS[$days[$i]];
+                }
+            }
+
+            if($dayOfWeek === []) {
+                continue;
+            }
+
+            $result[] = [
+                '@type'     => 'OpeningHoursSpecification',
+                'dayOfWeek' => $dayOfWeek,
+                'opens'     => $from,
+                'closes'    => $to,
+            ];
+        }
 
         return $result;
     }

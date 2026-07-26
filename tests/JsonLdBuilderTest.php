@@ -153,13 +153,20 @@ final class JsonLdBuilderTest extends TestCase {
      * (Muster: die beiden Bestandstests oben) und ruft buildJsonLdScript()
      * gegen ein beliebiges $pluginSelfDir direkt auf.
      */
-    private function buildViaComponent(string $pluginSelfDir, string $type, array $data, string $nodeId = '', array $suppressedIdTargets = []): array {
+    private function buildViaComponent(
+        string $pluginSelfDir,
+        string $type,
+        array $data,
+        string $nodeId = '',
+        array $suppressedIdTargets = [],
+        ?\SchemaOrgData_OpeningHoursHelper $openingHoursHelper = null
+    ): array {
         $builder = new \SchemaOrgData_JsonLdBuilder();
         $schemaRepo = new \SchemaOrgData_SchemaRepository();
         $urlHelper = new \SchemaOrgData_UrlHelper();
 
         $script = $builder->buildJsonLdScript(
-            $schemaRepo, $urlHelper, $pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets
+            $schemaRepo, $urlHelper, $pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets, $openingHoursHelper
         );
 
         preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
@@ -693,6 +700,107 @@ final class JsonLdBuilderTest extends TestCase {
 
         $this->assertSame('PostalAddress', $decoded['address']['@type']);
         $this->assertSame('Musterstadt', $decoded['address']['addressLocality']);
+    }
+
+    // -----------------------------------------------------------
+    // ui:emitAs - openingHours als location/Place
+    // -----------------------------------------------------------
+
+    /**
+     * Formulardaten eines NGO mit zwei gespeicherten Zeiträumen,
+     * wie sie sanitizePostData() ablegt.
+     */
+    private function ngoDatenMitOeffnungszeiten(): array {
+        return [
+            'name' => 'Muster e. V.',
+            'url' => 'https://www.example.org',
+            'address' => [
+                'streetAddress' => 'Musterstraße 12',
+                'postalCode' => '12345',
+                'addressLocality' => 'Musterstadt',
+                'addressCountry' => 'DE',
+            ],
+            'openingHours' => ['Mo-Fr 09:00-12:00', 'Sa 10:00-14:00'],
+        ];
+    }
+
+    function testNgoOeffnungszeitenWerdenAlsLocationPlaceAusgegeben(): void {
+        $decoded = $this->buildViaComponent(
+            $this->pluginSelfDir(), 'NGO', $this->ngoDatenMitOeffnungszeiten(),
+            '', [], new \SchemaOrgData_OpeningHoursHelper()
+        );
+
+        $this->assertArrayNotHasKey('openingHours', $decoded, 'openingHours darf nicht zusätzlich flach erscheinen');
+        $this->assertSame('Place', $decoded['location']['@type']);
+        $this->assertSame('Musterstadt', $decoded['location']['address']['addressLocality']);
+
+        $specs = $decoded['location']['openingHoursSpecification'];
+        $this->assertCount(2, $specs);
+        $this->assertSame('OpeningHoursSpecification', $specs[0]['@type']);
+        $this->assertSame('https://schema.org/Monday', $specs[0]['dayOfWeek'][0]);
+        $this->assertSame(['09:00', '12:00'], [$specs[0]['opens'], $specs[0]['closes']]);
+        $this->assertSame(['https://schema.org/Saturday'], $specs[1]['dayOfWeek']);
+    }
+
+    function testAdresseBleibtZusaetzlichAmWurzelknotenStehen(): void {
+        $decoded = $this->buildViaComponent(
+            $this->pluginSelfDir(), 'NGO', $this->ngoDatenMitOeffnungszeiten(),
+            '', [], new \SchemaOrgData_OpeningHoursHelper()
+        );
+
+        $this->assertSame('PostalAddress', $decoded['address']['@type']);
+        $this->assertSame('Musterstadt', $decoded['address']['addressLocality']);
+    }
+
+    /**
+     * Gegenprobe: Auf LocalBusiness-Familien-Types ist openingHours eine
+     * gültige schema.org-Property - deren Schema führt kein ui:emitAs,
+     * die Ausgabe bleibt deshalb flach.
+     */
+    function testAccountingServiceGibtOeffnungszeitenWeiterhinFlachAus(): void {
+        $decoded = $this->buildViaComponent(
+            $this->pluginSelfDir(), 'AccountingService',
+            ['name' => 'Muster GmbH', 'url' => 'https://example.com', 'openingHours' => ['Mo-Fr 09:00-18:00']],
+            '', [], new \SchemaOrgData_OpeningHoursHelper()
+        );
+
+        $this->assertSame(['Mo-Fr 09:00-18:00'], $decoded['openingHours']);
+        $this->assertArrayNotHasKey('location', $decoded);
+    }
+
+    function testLeereOeffnungszeitenErzeugenKeinenLocationKnoten(): void {
+        $decoded = $this->buildViaComponent(
+            $this->pluginSelfDir(), 'NGO',
+            ['name' => 'Muster e. V.', 'url' => 'https://www.example.org', 'openingHours' => []],
+            '', [], new \SchemaOrgData_OpeningHoursHelper()
+        );
+
+        $this->assertArrayNotHasKey('location', $decoded);
+        $this->assertArrayNotHasKey('openingHours', $decoded);
+    }
+
+    function testOhneHelperBleibtDieAusgabeFlachUndWirftNicht(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'NGO', $this->ngoDatenMitOeffnungszeiten());
+
+        $this->assertSame(['Mo-Fr 09:00-12:00', 'Sa 10:00-14:00'], $decoded['openingHours']);
+        $this->assertArrayNotHasKey('location', $decoded);
+    }
+
+    /**
+     * Ein aus dem Erweiterungsfeld mitgebrachter location-Knoten bleibt
+     * erhalten - ergänzt wird nur die fehlende Öffnungszeiten-Liste.
+     */
+    function testVorhandenerLocationKnotenWirdNichtUeberschrieben(): void {
+        $data = $this->ngoDatenMitOeffnungszeiten();
+        $data['location'] = ['name' => 'Vereinsheim'];
+
+        $decoded = $this->buildViaComponent(
+            $this->pluginSelfDir(), 'NGO', $data, '', [], new \SchemaOrgData_OpeningHoursHelper()
+        );
+
+        $this->assertSame('Place', $decoded['location']['@type'], 'Nested-Type-Map setzt @type bereits vor dem Zweig');
+        $this->assertSame('Vereinsheim', $decoded['location']['name']);
+        $this->assertCount(2, $decoded['location']['openingHoursSpecification']);
     }
 }
 
