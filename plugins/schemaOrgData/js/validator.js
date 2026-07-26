@@ -1068,6 +1068,73 @@
     }
 
     /**
+     * Füllt das Slug-Feld des "Neue Person"-Formulars beim Verlassen des
+     * Namensfelds mit dem abgeleiteten Vorschlag (generateSlugSuggestionJs()).
+     * Ohne diese Verdrahtung bleibt der Hilfetext hint_person_slug ohne
+     * sichtbare Wirkung: Der serverseitig gesetzte Placeholder wird aus dem
+     * beim Seitenaufbau bekannten Namen berechnet und ist im frischen
+     * Formular deshalb leer, und die serverseitige Ableitung greift erst
+     * beim Speichern.
+     *
+     * Bewusst getrennt von runPersonSlugValidation(): Die Validierungs-
+     * funktionen dieser Datei zeigen ausschließlich Feedback an und ändern
+     * keine Feldwerte.
+     *
+     * Ein automatisch gefülltes Slug-Feld trägt data-slug-autofilled und
+     * folgt weiteren Namensänderungen. Sobald der Nutzer den Slug selbst
+     * bearbeitet, verfällt die Markierung und der Wert bleibt unangetastet.
+     * Ein leerer Vorschlag (Name gelöscht oder nur Sonderzeichen) lässt das
+     * Slug-Feld unverändert, statt es zu leeren - ein Name ist ohnehin
+     * Pflichtfeld, ein verwaister Slug kann daher nicht gespeichert werden.
+     *
+     * Das Bearbeiten-Formular ist nicht betroffen: Dort trägt das
+     * Namensfeld kein data-validate und es existiert kein
+     * Slug-Eingabefeld (siehe SchemaOrgData_PersonsAdminRenderer).
+     */
+    function initPersonSlugLiveFill() {
+        var fields = document.querySelectorAll('[data-validate="person_slug"]');
+
+        for (var i = 0; i < fields.length; i++) {
+            if (/_slug$/.test(fields[i].id)) {
+                // Eine manuelle Eingabe im Slug-Feld beendet die automatische
+                // Ableitung dauerhaft. Das programmatische Setzen des Werts
+                // weiter unten löst kein input-Ereignis aus und hebt die
+                // Markierung deshalb nicht selbst wieder auf.
+                fields[i].addEventListener('input', function (event) {
+                    event.target.removeAttribute('data-slug-autofilled');
+                });
+                continue;
+            }
+
+            fields[i].addEventListener('blur', function (event) {
+                var slugInput = document.getElementById(event.target.getAttribute('data-pair'));
+
+                if (!slugInput) {
+                    return;
+                }
+                if (slugInput.value.trim() !== '' && !slugInput.hasAttribute('data-slug-autofilled')) {
+                    return;
+                }
+
+                var suggestion = generateSlugSuggestionJs(event.target.value);
+                if (suggestion === '') {
+                    return;
+                }
+
+                slugInput.value = suggestion;
+                slugInput.setAttribute('data-slug-autofilled', '1');
+
+                // Die Kollisionsprüfung lief über den zuerst registrierten
+                // blur-Listener bereits gegen den vorherigen Feldwert. Nach dem
+                // Eintragen erneut anstoßen, damit das Feedback den jetzt
+                // tatsächlich im Feld stehenden Slug bewertet und nicht den
+                // vorherigen.
+                runFieldValidation(slugInput, false);
+            });
+        }
+    }
+
+    /**
      * Liefert eine eindeutige Kennung für ein Formularfeld zur
      * Snapshot-Erstellung (siehe snapshotSectionValues()): Felder mit
      * "id" über "id:<id>", Radios/Checkboxen ohne "id" (z. B.
@@ -1607,13 +1674,14 @@
     /**
      * Initialisiert das gesamte Admin-Formular: Scope-Selektor,
      * Type-Umschaltung, Live-Validierung der Formularfelder sowie der
-     * Erweiterungsfelder. Wird von renderAdminPage() nach
-     * DOMContentLoaded aufgerufen.
+     * Erweiterungsfelder, Slug-Ableitung im "Neue Person"-Formular.
+     * Wird von renderAdminPage() nach DOMContentLoaded aufgerufen.
      */
     function initAdminForm() {
         initScopeSelector();
         initTypeSwitcher();
         initFieldValidation();
+        initPersonSlugLiveFill();
         initExtensionFieldValidation();
         initExcludedCatsSelectAll();
         initPreviewDialogs();
@@ -1643,6 +1711,7 @@
         showExtensionFeedback: showExtensionFeedback,
         initExcludedCatsSelectAll: initExcludedCatsSelectAll,
         initPreviewDialogs: initPreviewDialogs,
+        initPersonSlugLiveFill: initPersonSlugLiveFill,
         initAdminForm: initAdminForm
     };
 
