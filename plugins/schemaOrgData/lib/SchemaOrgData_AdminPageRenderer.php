@@ -91,6 +91,11 @@ class SchemaOrgData_AdminPageRenderer {
 .schemaOrgData-admin .schemaOrgData-idrl-container { margin-bottom: .25em; }
 .schemaOrgData-admin .schemaOrgData-idrl-radio-label { display: block; margin: .4em 0 .15em; cursor: pointer; }
 .schemaOrgData-admin .schemaOrgData-idrl-section { padding-left: 1.5em; margin-bottom: .25em; }
+/* Trennlinie ausschließlich zwischen zwei Einträgen: der
+   Geschwister-Kombinator kommt ohne :first-child-Reset aus und bleibt
+   dadurch unabhängig davon, was im Fieldset vor den Einträgen steht
+   (Hinweistext, Marker-Feld - beides bedingt vorhanden). */
+.schemaOrgData-admin .schemaOrgData-org-relation-entry + .schemaOrgData-org-relation-entry { border-top: 1px solid #eee; padding-top: .5em; margin-top: .5em; }
 .schemaOrgData-admin .schemaOrgData-jsonld-notice { background: #fff3e0; border: 1px solid #ffb74d; padding: .75em 1em; margin-bottom: 1em; border-radius: 4px; }
 .schemaOrgData-admin .schemaOrgData-jsonld-notice__title { margin-top: 0; }
 .schemaOrgData-admin .schemaOrgData-jsonld-notice__multiblock-hint { color: #b8860b; font-weight: bold; }
@@ -108,6 +113,13 @@ class SchemaOrgData_AdminPageRenderer {
    "align-items: center" fällt der Flex-Container auf den Default "stretch" zurück, wodurch
    der Pfeil sichtbar versetzt zum Text erscheint statt sauber davor. */
 .schemaOrgData-admin details summary { align-items: center; gap: .3em; }
+/* Personen-Umschalter und oberer Speichern-Button teilen sich eine Leiste
+   (siehe SchemaOrgData_AdminController). Trennlinie und Außenabstand wandern
+   dafür vom Speichern-Block auf die Leiste, damit die Linie unter beiden
+   Buttons durchläuft statt nur unter dem rechten. */
+.schemaOrgData-admin .schemaOrgData-admin-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1em; flex-wrap: wrap; margin: 0 0 1.25em; padding: 0 0 .75em; border-bottom: 1px solid #ddd; }
+.schemaOrgData-admin .schemaOrgData-admin-toolbar .schemaOrgData-persons-toggle { margin-bottom: 0; }
+.schemaOrgData-admin .schemaOrgData-admin-toolbar .schemaOrgData-save-bar--top { margin: 0; padding: 0; border-bottom: none; }
 .schemaOrgData-admin .schemaOrgData-persons-toggle { margin-bottom: 1.25em; }
 .schemaOrgData-admin .schemaOrgData-persons-table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
 .schemaOrgData-admin .schemaOrgData-persons-table th, .schemaOrgData-admin .schemaOrgData-persons-table td { padding: .4em .6em; text-align: left; border-bottom: 1px solid #eee; }

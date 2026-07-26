@@ -508,6 +508,14 @@ class SchemaOrgData_AdminController {
         // ausschließlich dort erscheint, wo er tatsächlich navigierbar ist -
         // das Gegenstück (Zurück-Button) rendert SchemaOrgData_PersonsAdminRenderer
         // entsprechend innerhalb des Personen-Containers.
+        // Beide Buttons am Formularanfang teilen sich eine Leiste:
+        // Personen-Umschalter links, Speichern rechts. Der gemeinsame
+        // Flex-Container ist nötig, weil die beiden Blöcke sonst
+        // untereinander und unterschiedlich ausgerichtet stehen -
+        // schemaOrgData-save-bar bringt "text-align: right" mit,
+        // schemaOrgData-persons-toggle nicht.
+        $html .= '<div class="schemaOrgData-admin-toolbar">' . "\n";
+
         $html .= '<div class="schemaOrgData-persons-toggle">' . "\n";
         $html .= '<button type="button" id="schemaOrgData_persons_toggle_btn" class="mo-btn" '
             . 'onclick="document.getElementById(\'schemaOrgData_scope_container\').style.display=\'none\';'
@@ -515,13 +523,15 @@ class SchemaOrgData_AdminController {
             . $lang->getLanguageHtml('button_manage_persons') . '</button>' . "\n";
         $html .= '</div>' . "\n";
 
-        // Zusätzlicher Speichern-Button am Formularanfang (oben rechts) -
-        // derselbe Submit wie der Button am Formularende, damit lange
-        // Formulare nicht erst bis zum Ende gescrollt werden müssen
+        // Zusätzlicher Speichern-Button am Formularanfang (rechts in der
+        // Leiste) - derselbe Submit wie der Button am Formularende, damit
+        // lange Formulare nicht erst bis zum Ende gescrollt werden müssen
         $html .= '<div class="schemaOrgData-save-bar schemaOrgData-save-bar--top">' . "\n";
         $html .= '<button type="submit" class="mo-btn mo-btn--primary">'
             . $saveButtonLabel . '</button>' . "\n";
         $html .= '</div>' . "\n";
+
+        $html .= '</div>' . "\n"; // schließt .schemaOrgData-admin-toolbar
 
         // Scope-Selektor rendern
         $html .= $adminPageRenderer->renderScopeSelector($selectedCat, $selectedPage, $lang);
