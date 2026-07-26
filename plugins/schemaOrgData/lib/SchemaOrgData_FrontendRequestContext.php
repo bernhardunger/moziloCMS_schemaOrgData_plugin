@@ -24,6 +24,9 @@ final class SchemaOrgData_FrontendRequestContext {
     * @param SchemaOrgData_OrgRelationsService $orgRelationsService Organisations-
     *              Relationen (founder/employee/member, siehe README.md,
     *              Abschnitt "Organisations-Identität und @id-Anker")
+    * @param SchemaOrgData_OpeningHoursHelper|null $openingHoursHelper wird von
+    *              buildJsonLdScript() für den ui:emitAs-Zweig benötigt; optional,
+    *              damit bestehende Konstruktionsaufrufe unverändert bleiben
     *
     ***************************************************************/
     public function __construct(
@@ -36,7 +39,8 @@ final class SchemaOrgData_FrontendRequestContext {
         public readonly SchemaOrgData_CollisionDetector $collisionDetector,
         public readonly SchemaOrgData_UrlHelper $urlHelper,
         public readonly SchemaOrgData_PersonsRegistryService $personsRegistryService,
-        public readonly SchemaOrgData_OrgRelationsService $orgRelationsService
+        public readonly SchemaOrgData_OrgRelationsService $orgRelationsService,
+        public readonly ?SchemaOrgData_OpeningHoursHelper $openingHoursHelper = null
     ) {
     }
 }

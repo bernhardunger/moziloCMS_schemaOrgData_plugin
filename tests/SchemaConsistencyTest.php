@@ -13,6 +13,9 @@ use PHPUnit\Framework\TestCase;
 *     (Länder-Enum, required, ui:*-Metadaten) — fängt Drift ab,
 *     den der add-country-Skill riskiert, wenn eine Datei beim
 *     Länder-Update vergessen wird.
+*   - openingHours-Block (properties.openingHours) muss in jeder
+*     Datei, die ihn führt, strukturell identisch sein
+*     (Widget-Metadaten, Wochentage, Label-Schlüssel).
 *   - required[] und ui:required:true müssen über alle Ebenen
 *     jeder Schema-Datei bidirektional konsistent sein.
 *
@@ -34,6 +37,20 @@ final class SchemaConsistencyTest extends TestCase {
         'Organization.json',
         'JobPosting.json',
         'Event.json',
+    ];
+
+    /**
+     * Dateien, die einen properties.openingHours-Block führen
+     * (per grep gegen "openingHours" ermittelt).
+     */
+    private const OPENING_HOURS_FILES = [
+        'AccountingService.json',
+        'LegalService.json',
+        'LocalBusiness.json',
+        'MedicalBusiness.json',
+        'ProfessionalService.json',
+        'NGO.json',
+        'Organization.json',
     ];
 
     private function schemaDir(): string {
@@ -99,6 +116,46 @@ final class SchemaConsistencyTest extends TestCase {
         }
 
         return $data;
+    }
+
+    // openingHours-Konsistenz ----------------------------------------------------
+
+    function testOpeningHoursBlockIstIdentischUeberAlleTypes(): void {
+        $referenceFile = self::OPENING_HOURS_FILES[0];
+        $reference = $this->loadOpeningHoursProperty($referenceFile);
+
+        foreach (self::OPENING_HOURS_FILES as $file) {
+            if($file === $referenceFile) {
+                continue;
+            }
+
+            $property = $this->loadOpeningHoursProperty($file);
+
+            $this->assertSame(
+                json_encode($reference, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
+                json_encode($property, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
+                "Abweichung im openingHours-Block von $file gegenüber Referenz $referenceFile"
+            );
+        }
+    }
+
+    /**
+     * Liefert den openingHours-Block ohne "ui:emitAs". Der Widget-Block
+     * selbst ist über alle Types gemeinsam, die Emissionsumlenkung
+     * dagegen typspezifisch: Auf Organization/NGO ist openingHours keine
+     * gültige schema.org-Property und wird deshalb nach
+     * location/Place/openingHoursSpecification umgelenkt, während die
+     * LocalBusiness-Familie sie flach ausgibt.
+     */
+    private function loadOpeningHoursProperty(string $file): array {
+        $schema = $this->loadSchema($file);
+        $property = $schema['properties']['openingHours'] ?? null;
+
+        $this->assertIsArray($property, "$file: properties.openingHours fehlt");
+
+        unset($property['ui:emitAs']);
+
+        return $this->recursiveKsort($property);
     }
 
     // required <-> ui:required-Konsistenz ----------------------------------------

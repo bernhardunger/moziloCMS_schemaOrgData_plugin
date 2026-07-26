@@ -153,4 +153,105 @@ final class OpeningHoursHelperTest extends TestCase {
 
         $this->assertSame(['Mo 09:00-18:00'], $result);
     }
+
+    // -----------------------------------------------------------
+    // buildOpeningHoursSpecifications()
+    // -----------------------------------------------------------
+
+    function testTagesbereichWirdZuEinemObjektMitMehrerenDayOfWeekUris(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $result = $helper->buildOpeningHoursSpecifications(['Mo-Fr 09:00-18:00'], self::DAYS);
+
+        $this->assertSame([[
+            '@type'     => 'OpeningHoursSpecification',
+            'dayOfWeek' => [
+                'https://schema.org/Monday',
+                'https://schema.org/Tuesday',
+                'https://schema.org/Wednesday',
+                'https://schema.org/Thursday',
+                'https://schema.org/Friday',
+            ],
+            'opens'  => '09:00',
+            'closes' => '18:00',
+        ]], $result);
+    }
+
+    function testEinzeltagLiefertDayOfWeekTrotzdemAlsArray(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $result = $helper->buildOpeningHoursSpecifications(['Sa 10:00-14:00'], self::DAYS);
+
+        $this->assertSame([['https://schema.org/Saturday']], array_column($result, 'dayOfWeek'));
+    }
+
+    function testZweiZeitraeumeErgebenZweiObjekteInEingabereihenfolge(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        // Gespeicherte Realform: array_merge(Hauptzeitraum, zweiter Zeitraum).
+        $result = $helper->buildOpeningHoursSpecifications(
+            ['Mo-Fr 09:00-12:00', 'Mo-Fr 14:00-18:00'],
+            self::DAYS
+        );
+
+        $this->assertCount(2, $result);
+        $this->assertSame([['09:00', '12:00'], ['14:00', '18:00']], [
+            [$result[0]['opens'], $result[0]['closes']],
+            [$result[1]['opens'], $result[1]['closes']],
+        ]);
+    }
+
+    /***************************************************************
+    *
+    * Abgrenzung zu parseOpeningHours(): jene Methode kennt je Tag nur
+    * zwei Zeiträume und verwirft den dritten. Der Serialisierer setzt
+    * am kompakten Array an und bildet deshalb jeden Eintrag ab.
+    *
+    ***************************************************************/
+    function testDreiZeitraeumeAmSelbenTagErgebenDreiObjekte(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $entries = ['Mo 08:00-10:00', 'Mo 12:00-14:00', 'Mo 18:00-20:00'];
+
+        $result = $helper->buildOpeningHoursSpecifications($entries, self::DAYS);
+
+        $this->assertCount(3, $result);
+        $this->assertSame(['08:00', '12:00', '18:00'], array_column($result, 'opens'));
+        $this->assertSame(['20:00'], [$result[2]['closes']]);
+    }
+
+    function testUngueltigeNotationWirdUebersprungen(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $result = $helper->buildOpeningHoursSpecifications(
+            ['Montag 9-18', '', 'Mo 09:00-18:00', ['Mo']],
+            self::DAYS
+        );
+
+        $this->assertCount(1, $result);
+        $this->assertSame(['https://schema.org/Monday'], $result[0]['dayOfWeek']);
+    }
+
+    function testUnbekanntesTageskuerzelWirdUebersprungen(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $result = $helper->buildOpeningHoursSpecifications(['Xx 09:00-18:00'], self::DAYS);
+
+        $this->assertSame([], $result);
+    }
+
+    /***************************************************************
+    *
+    * Ein Kürzel, das zwar in $days steht, aber keine kanonische
+    * schema.org-URI hat, lässt den Tag entfallen - hier bleibt vom
+    * Bereich kein Tag übrig, also entfällt der ganze Eintrag.
+    *
+    ***************************************************************/
+    function testTagOhneKanonischeUriEntfaelltOhneException(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $result = $helper->buildOpeningHoursSpecifications(['Zz 09:00-18:00'], ['Zz']);
+
+        $this->assertSame([], $result);
+    }
 }

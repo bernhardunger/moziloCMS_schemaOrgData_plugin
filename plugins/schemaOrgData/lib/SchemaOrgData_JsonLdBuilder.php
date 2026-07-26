@@ -159,6 +159,9 @@ class SchemaOrgData_JsonLdBuilder {
     * @param array<string, mixed> $data Properties (Formular + Erweiterungsfeld zusammengeführt)
     * @param string $nodeId optionaler @id-Anker (siehe README.md, "@id-Anker");
     *               wird - sofern nicht-leer - direkt hinter @type eingefügt
+    * @param SchemaOrgData_OpeningHoursHelper|null $openingHoursHelper wird nur für
+    *              den ui:emitAs-Zweig benötigt; ohne ihn bleibt eine so markierte
+    *              Property flach (unverändertes Verhalten für Aufrufer ohne Helper)
     * @return string fertiger <script>-Block inkl. Zeilenumbruch
     *
     ***************************************************************/
@@ -169,7 +172,8 @@ class SchemaOrgData_JsonLdBuilder {
         string $type,
         array $data,
         string $nodeId = '',
-        array $suppressedIdTargets = []
+        array $suppressedIdTargets = [],
+        ?SchemaOrgData_OpeningHoursHelper $openingHoursHelper = null
     ): string {
         // Werte wurden beim Speichern mit htmlspecialchars() gesichert -
         // vor dem JSON-Encode wieder in Klartext umwandeln.
@@ -258,6 +262,69 @@ class SchemaOrgData_JsonLdBuilder {
                                     $literal = array_merge(['@type' => $literalType], $literal);
                                 }
                                 $data[$propName] = $literal;
+                            }
+                        }
+                    }
+                } elseif($openingHoursHelper !== null and is_array($propSchema['ui:emitAs'] ?? null)) {
+                    // ui:emitAs lenkt eine flach eingegebene Property in einen
+                    // typisierten Unterknoten um. Anlass: openingHours ist laut
+                    // schema.org nur auf CivicStructure/LocalBusiness gültig,
+                    // nicht auf Organization/NGO - dort gehört die Angabe als
+                    // openingHoursSpecification an einen Place unterhalb von
+                    // location. Das Formular bleibt davon unberührt; die
+                    // Umlenkung geschieht ausschließlich hier zur Ausgabezeit
+                    // und ist vollständig schema-getrieben (keine Type-Namen
+                    // im PHP).
+                    $emitAs      = $propSchema['ui:emitAs'];
+                    $targetProp  = trim((string) ($emitAs['property'] ?? ''));
+                    $wrapperType = trim((string) ($emitAs['wrapperType'] ?? ''));
+                    $asProp      = trim((string) ($emitAs['as'] ?? ''));
+                    $itemType    = trim((string) ($emitAs['itemType'] ?? ''));
+
+                    // Unvollständige Deklaration -> flaches Verhalten belassen,
+                    // statt einen halb aufgebauten Knoten zu erzeugen.
+                    if($targetProp !== '' and $wrapperType !== '' and $asProp !== '' and $itemType !== '') {
+                        $rawValue = $data[$propName] ?? null;
+                        // Die umgelenkte Property darf nicht zusätzlich flach
+                        // am Wurzelknoten stehen bleiben.
+                        unset($data[$propName]);
+
+                        $specs = [];
+                        if(is_array($rawValue) and $rawValue !== []) {
+                            $days = $propSchema['ui:days'] ?? null;
+                            $specs = $openingHoursHelper->buildOpeningHoursSpecifications(
+                                $rawValue,
+                                is_array($days) ? $days : ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
+                            );
+                            foreach($specs as $index => $spec) {
+                                // Der Item-Type kommt aus dem Schema, nicht aus
+                                // dem Helper - derselbe Serialisierer bleibt so
+                                // für andere Zielstrukturen verwendbar.
+                                $spec['@type'] = $itemType;
+                                $specs[$index] = $spec;
+                            }
+                        }
+
+                        if($specs !== []) {
+                            if(isset($data[$targetProp]) and is_array($data[$targetProp])) {
+                                // Ein bereits vorhandener Zielknoten (z. B. aus
+                                // dem Erweiterungsfeld) gewinnt: sein @type und
+                                // seine übrigen Angaben bleiben unangetastet,
+                                // ergänzt wird höchstens die fehlende Liste.
+                                if(!isset($data[$targetProp][$asProp])) {
+                                    $data[$targetProp][$asProp] = $specs;
+                                }
+                            } else {
+                                // Die Adresse wird in den Unterknoten kopiert
+                                // statt per @id referenziert - der Place trägt
+                                // damit ohne zusätzlichen Anker eine vollständige
+                                // Ortsangabe und bleibt am Wurzelknoten erhalten.
+                                $node = ['@type' => $wrapperType];
+                                if(isset($data['address']) and is_array($data['address'])) {
+                                    $node['address'] = $data['address'];
+                                }
+                                $node[$asProp] = $specs;
+                                $data[$targetProp] = $node;
                             }
                         }
                     }
