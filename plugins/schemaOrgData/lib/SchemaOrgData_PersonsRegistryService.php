@@ -302,7 +302,13 @@ class SchemaOrgData_PersonsRegistryService {
 
         $registry = $this->loadRegistry($settings);
         $registry[$slug] = $sanitized;
-        $this->saveRegistry($settings, $registry);
+        if($this->saveRegistry($settings, $registry) === false) {
+            // slug bleibt null wie im Kollisionsfall oben: die Person
+            // existiert nicht, ein Slug wäre eine Zusage ohne Deckung.
+            return ['success' => false, 'errors' => [
+                $lang->getLanguageValue('error_config_write_failed')
+            ], 'slug' => null];
+        }
 
         return ['success' => true, 'errors' => [], 'slug' => $slug];
     }
@@ -333,7 +339,11 @@ class SchemaOrgData_PersonsRegistryService {
 
         $registry = $this->loadRegistry($settings);
         $registry[$slug] = $sanitized;
-        $this->saveRegistry($settings, $registry);
+        if($this->saveRegistry($settings, $registry) === false) {
+            return ['success' => false, 'errors' => [
+                $lang->getLanguageValue('error_config_write_failed')
+            ]];
+        }
 
         return ['success' => true, 'errors' => []];
     }
@@ -348,18 +358,30 @@ class SchemaOrgData_PersonsRegistryService {
     * u. a.) werden hier NICHT geprüft/bereinigt - siehe findReferences().
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
+    * @param ?Language $lang liefert den Meldungstext eines
+    *        fehlgeschlagenen Schreibzugriffs; ohne Sprachobjekt bleibt
+    *        der Schlüsselname als Rohtext übrig
     * @return array{success: bool, errors: string[]}
     *
     ***************************************************************/
-    public function deletePerson($settings, string $slug): array {
+    public function deletePerson($settings, string $slug, ?Language $lang = null): array {
         $registry = $this->loadRegistry($settings);
 
+        // Vorprüfung vor dem Schreiben: ein nicht (mehr) vorhandener Slug
+        // ist Erfolg, nicht Schreibfehlschlag - sonst wäre die Idempotenz
+        // dahin.
         if(!array_key_exists($slug, $registry)) {
             return ['success' => true, 'errors' => []];
         }
 
         unset($registry[$slug]);
-        $this->saveRegistry($settings, $registry);
+        if($this->saveRegistry($settings, $registry) === false) {
+            return ['success' => false, 'errors' => [
+                $lang !== null
+                    ? $lang->getLanguageValue('error_config_write_failed')
+                    : 'error_config_write_failed'
+            ]];
+        }
 
         return ['success' => true, 'errors' => []];
     }
@@ -422,13 +444,24 @@ class SchemaOrgData_PersonsRegistryService {
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param array<string, array<string, mixed>> $registry vollständige Registry
+    * @return bool false, wenn die Registry nicht geschrieben wurde - der
+    *         zuvor gespeicherte Stand gilt dann unverändert weiter
     *
     ***************************************************************/
-    private function saveRegistry($settings, array $registry): void {
+    private function saveRegistry($settings, array $registry): bool {
+        // Misserfolg signalisiert der Kern per Rückgabewert false (und
+        // rollt seinen In-Memory-Stand zurück), nicht per Exception; der
+        // catch-Zweig bleibt als Netz für unerwartete Fehler daneben stehen.
         try {
-            $settings->set(self::SETTINGS_KEY, $registry);
+            if($settings->set(self::SETTINGS_KEY, $registry) === false) {
+                error_log('schemaOrgData: Personen-Registry speichern fehlgeschlagen: Schreibzugriff abgelehnt');
+                return false;
+            }
         } catch (\Throwable $e) {
             error_log('schemaOrgData: Personen-Registry speichern fehlgeschlagen: '.$e->getMessage());
+            return false;
         }
+
+        return true;
     }
 }

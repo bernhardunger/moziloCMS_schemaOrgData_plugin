@@ -476,9 +476,18 @@ class SchemaOrgData_ConfigSaveService {
         }
 
         // 4. Speichern
-        // Konfiguration über moziloCMS-settings-API speichern
+        // Konfiguration über moziloCMS-settings-API speichern. Der Kern
+        // signalisiert einen fehlgeschlagenen Schreibzugriff (nicht
+        // schreibbare plugin.conf.php, voller Datenträger) per Rückgabewert
+        // false und rollt dabei seinen In-Memory-Stand zurück - er wirft
+        // keine Exception. Der catch-Zweig bleibt als Netz für unerwartete
+        // Fehler daneben stehen.
         try {
-            $settings->set($key, $config);
+            if($settings->set($key, $config) === false) {
+                return ['success' => false, 'errors' => [
+                    $lang->getLanguageValue('error_config_write_failed')
+                ]];
+            }
         } catch (\Throwable $e) {
             error_log('schemaOrgData: saveConfig fehlgeschlagen: ' . $e->getMessage());
             return ['success' => false, 'errors' => [

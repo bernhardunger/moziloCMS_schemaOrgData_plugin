@@ -108,7 +108,7 @@ class SchemaOrgData_AdminRequestHandler {
                 ? $scopes['global'] : [];
 
             $result = !empty($_POST['schemaOrgData_delete_global'])
-                ? $scopeResolver->deleteConfig($settings, 'global')
+                ? $scopeResolver->deleteConfig($settings, 'global', $lang)
                 : $configSaveService->saveConfig('global', $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
 
             $success = $success && $result['success'];
@@ -123,7 +123,7 @@ class SchemaOrgData_AdminRequestHandler {
             }
 
             $result = !empty($_POST['schemaOrgData_delete_'.$scope])
-                ? $scopeResolver->deleteConfig($settings, $scope)
+                ? $scopeResolver->deleteConfig($settings, $scope, $lang)
                 : $configSaveService->saveConfig($scope, $scopes[$scope], $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
 
             $success = $success && $result['success'];

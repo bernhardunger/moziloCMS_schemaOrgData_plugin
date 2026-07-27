@@ -371,6 +371,17 @@ final class ConfigSaveServiceTest extends TestCase {
         $this->assertSame('Muster GmbH', $settings->get('config_global')['LocalBusiness']['name']);
     }
 
+    function testSaveConfigMeldetFehlschlagWennSettingsNichtSchreibt(): void {
+        $settings = new \InMemorySettings();
+        $settings->failWrites();
+
+        $result = $this->callSaveConfig('global', $this->validLocalBusinessData(), $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertFalse($settings->keyExists('config_global'));
+    }
+
     /***************************************************************
     *
     * Round-Trip saveConfig() -> loadScopeConfig() mit realer

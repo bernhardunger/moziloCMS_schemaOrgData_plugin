@@ -327,6 +327,49 @@ final class PersonsRegistryServiceTest extends TestCase {
         $this->assertSame([], $result['errors']);
     }
 
+    // saveRegistry()-Fehlschlag über createPerson/updatePerson/deletePerson ---
+
+    function testCreatePersonMeldetFehlschlagWennRegistryNichtGeschriebenWird(): void {
+        $settings = new \InMemorySettings();
+        $service = $this->service();
+        $settings->failWrites();
+
+        $result = $service->createPerson($settings, ['name' => 'Max Mustermann', 'slug' => 'max'], $this->adminLang(), $this->validator());
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertNull($result['slug']);
+        $this->assertFalse($service->slugExists($settings, 'max'));
+    }
+
+    function testUpdatePersonMeldetFehlschlagWennRegistryNichtGeschriebenWird(): void {
+        $settings = new \InMemorySettings();
+        $service = $this->service();
+        $lang = $this->adminLang();
+
+        $service->createPerson($settings, ['name' => 'Max Mustermann', 'slug' => 'max'], $lang, $this->validator());
+        $settings->failWrites();
+        $result = $service->updatePerson($settings, 'max', ['name' => 'Neuer Name'], $lang, $this->validator());
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertSame('Max Mustermann', $service->getPerson($settings, 'max')['name']);
+    }
+
+    function testDeletePersonMeldetFehlschlagWennRegistryNichtGeschriebenWird(): void {
+        $settings = new \InMemorySettings();
+        $service = $this->service();
+        $lang = $this->adminLang();
+
+        $service->createPerson($settings, ['name' => 'Max Mustermann', 'slug' => 'max'], $lang, $this->validator());
+        $settings->failWrites();
+        $result = $service->deletePerson($settings, 'max', $lang);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertTrue($service->slugExists($settings, 'max'));
+    }
+
     // findReferences() ----------------------------------------------------
 
     function testFindReferencesLiefertAktuellImmerEinLeeresArray(): void {

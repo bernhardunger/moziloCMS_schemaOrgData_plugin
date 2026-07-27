@@ -70,12 +70,19 @@ class Properties {
         return array_key_exists($key, $this->data);
     }
 
-    function set(string $key, mixed $value): void {
+    // Rückgabetyp bool statt void: der Kern signalisiert einen
+    // fehlgeschlagenen Schreibzugriff (z. B. nicht schreibbare
+    // plugin.conf.php) per Rückgabewert, nicht per Exception. Ein
+    // void-Mock würde jede Auswertung dieses Werts im Plugin-Code
+    // unprüfbar machen.
+    function set(string $key, mixed $value): bool {
         $this->data[$key] = $value;
+        return true;
     }
 
-    function delete(string $key): void {
+    function delete(string $key): bool {
         unset($this->data[$key]);
+        return true;
     }
 
     function toArray(): array {
@@ -95,8 +102,38 @@ class InMemorySettings {
 
     private array $data = [];
 
-    function set(string $key, mixed $value): void {
+    private bool $failAllWrites = false;
+
+    private array $failingKeys = [];
+
+    /***************************************************************
+    *
+    * Schaltet die Schreibfehler-Simulation an: ohne Argument
+    * scheitert jeder Schreibzugriff, mit Schlüsseln nur diese.
+    * set()/delete() liefern dann false und lassen den gespeicherten
+    * Stand unverändert - der Kern rollt seinen In-Memory-Stand bei
+    * fehlgeschlagenem saveProperties() ebenfalls zurück, ein
+    * schreibender Stub würde die falsche Semantik testen.
+    *
+    ***************************************************************/
+    function failWrites(string ...$keys): void {
+        $this->failAllWrites = $keys === [];
+        $this->failingKeys = $keys;
+    }
+
+    private function writeFails(string $key): bool {
+        return $this->failAllWrites or in_array($key, $this->failingKeys, true);
+    }
+
+    // Rückgabetyp bool statt void: der Kern signalisiert einen
+    // fehlgeschlagenen Schreibzugriff per Rückgabewert, nicht per
+    // Exception - siehe Kommentar an Properties::set().
+    function set(string $key, mixed $value): bool {
+        if($this->writeFails($key)) {
+            return false;
+        }
         $this->data[$key] = $value;
+        return true;
     }
 
     function get(string $key): mixed {
@@ -107,8 +144,12 @@ class InMemorySettings {
         return array_key_exists($key, $this->data);
     }
 
-    function delete(string $key): void {
+    function delete(string $key): bool {
+        if($this->writeFails($key)) {
+            return false;
+        }
         unset($this->data[$key]);
+        return true;
     }
 }
 

@@ -25,6 +25,10 @@ final class ScopeResolverTest extends TestCase {
         return new \SchemaOrgData_ScopeResolver();
     }
 
+    private function adminLang(): \Language {
+        return new \Language(\BASE_DIR.'plugins/schemaOrgData/sprachen/admin_language_deDE.txt');
+    }
+
     // getScopeSettingsKey() ---------------------------------------------------
 
     function testGetScopeSettingsKeyGlobal(): void {
@@ -282,6 +286,22 @@ final class ScopeResolverTest extends TestCase {
         $this->assertSame('override', $result['jsonld_mode']);
     }
 
+    function testSaveScopeMetaLiefertFalseWennSettingsNichtSchreibt(): void {
+        $settings = new \InMemorySettings();
+        $settings->failWrites();
+
+        $result = $this->resolver()->saveScopeMeta($settings, 'global', ['existing_jsonld' => true]);
+
+        $this->assertFalse($result);
+        $this->assertFalse($settings->keyExists('config_global'));
+    }
+
+    function testSaveScopeMetaLiefertFalseBeiUnaufloesbaremScope(): void {
+        $settings = new \InMemorySettings();
+
+        $this->assertFalse($this->resolver()->saveScopeMeta($settings, 'category', ['existing_jsonld' => true]));
+    }
+
     function testSaveScopeMetaMergtMitBestehendenMetaOhneSchemaTypesZuVeraendern(): void {
         $settings = new \InMemorySettings();
         $settings->set('config_global', [
@@ -469,6 +489,18 @@ final class ScopeResolverTest extends TestCase {
         $result = $this->resolver()->deleteConfig($settings, 'global');
 
         $this->assertSame(['success' => true, 'errors' => []], $result);
+    }
+
+    function testDeleteConfigMeldetFehlschlagWennSettingsNichtLoescht(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['LocalBusiness' => ['name' => 'Muster GmbH']]);
+        $settings->failWrites();
+
+        $result = $this->resolver()->deleteConfig($settings, 'global', $this->adminLang());
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertTrue($settings->keyExists('config_global'));
     }
 
     function testDeleteConfigUngueltigerScopeLiefertMisserfolg(): void {
