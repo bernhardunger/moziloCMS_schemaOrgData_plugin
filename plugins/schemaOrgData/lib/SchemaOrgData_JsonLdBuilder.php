@@ -239,22 +239,39 @@ class SchemaOrgData_JsonLdBuilder {
                     }
                 } elseif($widget === 'id_reference_or_literal') {
                     // Gespeicherten Wert (Array mit _mode + _fragment oder Literal-Felder)
-                    // in das fertige JSON-LD-Objekt umwandeln. Lesekompatibilität für
-                    // Freitext-Bestandsdaten (z. B. Article.author vor der Umstellung
-                    // auf dieses Widget): ein reiner String wird als Literal-Wert im
-                    // ersten konfigurierten Literal-Feld behandelt, damit die Ausgabe
-                    // ohne erneutes Speichern erhalten bleibt.
+                    // in das fertige JSON-LD-Objekt umwandeln.
                     $rawValue = $data[$propName] ?? null;
                     unset($data[$propName]);
-                    if(is_array($rawValue)) {
+
+                    $stored = null;
+                    if(is_array($rawValue) and array_key_exists('_mode', $rawValue)) {
+                        // Maßgeblich ist die ANWESENHEIT von _mode, nicht sein Wert:
+                        // nur ein von diesem Widget gespeicherter Wert führt den
+                        // Schlüssel, und nur ein solcher darf umgedeutet werden.
                         $stored = $rawValue;
-                    } elseif(is_string($rawValue) and trim($rawValue) !== '') {
-                        $literalFields = $propSchema['ui:literalFields'] ?? [];
-                        $primaryField = (string) ($literalFields[0] ?? 'name');
-                        $stored = ['_mode' => 'literal', $primaryField => trim($rawValue)];
-                    } else {
-                        $stored = null;
+                    } elseif(is_string($rawValue)) {
+                        // Lesekompatibilität für Freitext-Bestandsdaten (z. B.
+                        // Article.author vor der Umstellung auf dieses Widget): ein
+                        // reiner String wird als Literal-Wert im ersten konfigurierten
+                        // Literal-Feld behandelt, damit die Ausgabe ohne erneutes
+                        // Speichern erhalten bleibt.
+                        if(trim($rawValue) !== '') {
+                            $literalFields = $propSchema['ui:literalFields'] ?? [];
+                            $primaryField = (string) ($literalFields[0] ?? 'name');
+                            $stored = ['_mode' => 'literal', $primaryField => trim($rawValue)];
+                        }
+                    } elseif($rawValue !== null) {
+                        // Werte, die nicht aus diesem Widget stammen - ein über das
+                        // Erweiterungsfeld gesetztes Rohobjekt (etwa
+                        // {"@type":"Person","name":"..."}) oder ein skalarer Wert -
+                        // sind bereits gültiges JSON-LD und werden unverändert
+                        // durchgereicht. Das Widget übersetzt ausschließlich sein
+                        // eigenes Speicherformat: ein Rohobjekt trägt in der Regel
+                        // schon ein eigenes @type, das ui:literalType sonst
+                        // überschreiben würde.
+                        $data[$propName] = $rawValue;
                     }
+
                     if($stored !== null) {
                         $mode = (string) ($stored['_mode'] ?? '');
                         if($mode === 'reference') {
@@ -276,6 +293,10 @@ class SchemaOrgData_JsonLdBuilder {
                                 }
                                 $data[$propName] = $literal;
                             }
+                        } else {
+                            // Unbekannter Modus: nicht emittieren. Ein Durchreichen
+                            // würde den internen Schlüssel _mode in die Ausgabe tragen.
+                            error_log('schemaOrgData: unbekannter _mode "'.$mode.'" bei Property "'.$propName.'" - Wert wird nicht ausgegeben');
                         }
                     }
                 } elseif($openingHoursHelper !== null and is_array($propSchema['ui:emitAs'] ?? null)) {

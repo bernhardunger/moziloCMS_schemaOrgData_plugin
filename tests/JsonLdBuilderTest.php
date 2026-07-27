@@ -620,6 +620,64 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // id_reference_or_literal-Emission
+    // Werte, die nicht aus dem Widget stammen
+    // -----------------------------------------------------------
+
+    function testIdRefOrLiteralRohobjektWirdUnveraendertDurchgereichtDirekt(): void {
+        $dir = $this->createTestIdRefTypeDir();
+        // Über das Erweiterungsfeld gesetztes Rohobjekt: kein _mode-Schlüssel,
+        // eigenes @type. Das Widget darf fremde Semantik nicht umdeuten -
+        // ui:literalType ("Person") ersetzt das mitgegebene @type nicht.
+        $data = ['organizer' => ['@type' => 'Organization', 'name' => 'Muster GmbH', 'url' => 'https://example.com']];
+        $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
+
+        $this->assertSame(
+            ['@type' => 'Organization', 'name' => 'Muster GmbH', 'url' => 'https://example.com'],
+            $decoded['organizer']
+        );
+    }
+
+    function testIdRefOrLiteralRohobjektOhneAtTypeBekommtKeinesErgaenztDirekt(): void {
+        $dir = $this->createTestIdRefTypeDir();
+        $data = ['organizer' => ['name' => 'Max Mustermann']];
+        $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
+
+        $this->assertSame(['name' => 'Max Mustermann'], $decoded['organizer']);
+        $this->assertArrayNotHasKey('@type', $decoded['organizer'],
+            'Ein durchgereichtes Rohobjekt darf kein @type aus ui:literalType erhalten');
+    }
+
+    function testIdRefOrLiteralUnbekannterModusEmittiertKeinePropertyDirekt(): void {
+        $dir = $this->createTestIdRefTypeDir();
+        $data = ['organizer' => ['_mode' => 'unbekannt', 'name' => 'Max Mustermann']];
+        $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
+
+        $this->assertArrayNotHasKey('organizer', $decoded,
+            'Ein unbekannter _mode darf nicht emittiert werden');
+        $this->assertStringNotContainsString('_mode', json_encode($decoded),
+            'Der interne Schlüssel _mode darf nirgends in der Ausgabe erscheinen');
+    }
+
+    function testIdRefOrLiteralSkalarerWertWirdDurchgereichtDirekt(): void {
+        $dir = $this->createTestIdRefTypeDir();
+        $data = ['organizer' => 42];
+        $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
+
+        $this->assertSame(42, $decoded['organizer']);
+    }
+
+    function testIdRefOrLiteralStringWirdWeiterhinAlsLiteralUebernommenDirekt(): void {
+        $dir = $this->createTestIdRefTypeDir();
+        // Regressionsschutz für die Lesekompatibilität mit Freitext-Bestandsdaten:
+        // ein reiner String bleibt die einzige Umdeutung des Emitters.
+        $data = ['organizer' => 'Max Mustermann'];
+        $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
+
+        $this->assertSame(['@type' => 'Person', 'name' => 'Max Mustermann'], $decoded['organizer']);
+    }
+
+    // -----------------------------------------------------------
     // Erweiterungsfeld darf reservierte Schlüssel nicht überschreiben
     // -----------------------------------------------------------
 
