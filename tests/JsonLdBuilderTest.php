@@ -306,6 +306,69 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // Leerfilter: Listen bleiben Listen, Maps behalten ihre Schlüssel
+    // -----------------------------------------------------------
+
+    function testListenPropertyMitLeeremElementInDerMitteBleibtJsonListe(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'LocalBusiness', [
+            'name' => 'Muster GmbH',
+            'openingHours' => ['Mo-Fr 09:00-18:00', '', 'Sa 10:00-14:00'],
+        ]);
+
+        // Ein lückenhaft indiziertes Array käme als JSON-Objekt
+        // ({"0":…,"2":…}) heraus und wäre nach dem Decodieren keine Liste mehr.
+        $this->assertTrue(array_is_list($decoded['openingHours']),
+            'Listen-Property muss eine JSON-Liste bleiben');
+        $this->assertSame(['Mo-Fr 09:00-18:00', 'Sa 10:00-14:00'], $decoded['openingHours']);
+    }
+
+    function testListenPropertyMitLeeremErstenElementBleibtJsonListe(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'LocalBusiness', [
+            'name' => 'Muster GmbH',
+            'openingHours' => ['', 'Mo-Fr 09:00-18:00', 'Sa 10:00-14:00'],
+        ]);
+
+        $this->assertTrue(array_is_list($decoded['openingHours']),
+            'Auch ein weggefallener Index 0 darf die Liste nicht in ein Objekt verwandeln');
+        $this->assertSame(['Mo-Fr 09:00-18:00', 'Sa 10:00-14:00'], $decoded['openingHours']);
+    }
+
+    function testAssoziativeMapBehaeltIhreSchluesselTrotzLeeremFeld(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'LocalBusiness', [
+            'name' => 'Muster GmbH',
+            'address' => [
+                'streetAddress' => '',
+                'postalCode' => '12345',
+                'addressLocality' => 'Musterstadt',
+                'addressCountry' => 'DE',
+            ],
+        ]);
+
+        // Gegenprobe zur Listen-Neuindizierung: sie darf assoziative
+        // Maps nicht erfassen, sonst gingen deren Schlüssel verloren.
+        $this->assertFalse(array_is_list($decoded['address']));
+        $this->assertArrayNotHasKey('streetAddress', $decoded['address']);
+        $this->assertSame('12345', $decoded['address']['postalCode']);
+        $this->assertSame('Musterstadt', $decoded['address']['addressLocality']);
+        $this->assertSame('DE', $decoded['address']['addressCountry']);
+    }
+
+    function testVerschachtelteListeInnerhalbEinerMapWirdNeuIndiziert(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'LocalBusiness', [
+            'name' => 'Muster GmbH',
+            'department' => [
+                'name' => 'Filiale Nord',
+                'sameAs' => ['https://a.example', '', 'https://b.example'],
+            ],
+        ]);
+
+        $this->assertFalse(array_is_list($decoded['department']));
+        $this->assertTrue(array_is_list($decoded['department']['sameAs']),
+            'Neuindizierung muss auf jeder Rekursionsebene greifen');
+        $this->assertSame(['https://a.example', 'https://b.example'], $decoded['department']['sameAs']);
+    }
+
+    // -----------------------------------------------------------
     // @id-Einbettung und resolveNodeId()-Randfälle
     // -----------------------------------------------------------
 

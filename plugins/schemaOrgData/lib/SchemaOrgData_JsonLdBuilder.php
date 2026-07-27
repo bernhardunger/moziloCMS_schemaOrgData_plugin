@@ -45,11 +45,23 @@ class SchemaOrgData_JsonLdBuilder {
     * aus einem (verschachtelten) Array, damit sie nicht im JSON-LD
     * ausgegeben werden.
     *
+    * Listen behalten dabei ihre Listen-Natur: unset() hinterlässt eine
+    * Lücke in den Indizes, und json_encode() gibt ein lückenhaft
+    * indiziertes Array als JSON-Objekt mit numerischen Schlüsseln aus
+    * ({"0":…,"2":…}) statt als Array - strukturell ungültiges
+    * schema.org für jede Listen-Property (openingHours, sameAs,
+    * knowsAbout, die Ausgabegruppen der Organisations-Relationen).
+    * Entscheidend ist die Form der EINGABE, nicht die des Ergebnisses:
+    * eine assoziative Map darf nicht neu indiziert werden, sonst gingen
+    * ihre Schlüssel verloren.
+    *
     * @param array<string, mixed> $data Properties eines Schema-Types
     * @return array<string, mixed> Properties ohne leere Werte
     *
     ***************************************************************/
     public function removeEmptyJsonLdProperties(array $data): array {
+        $wasList = array_is_list($data);
+
         foreach($data as $key => $value) {
             if(is_array($value)) {
                 $value = $this->removeEmptyJsonLdProperties($value);
@@ -60,7 +72,8 @@ class SchemaOrgData_JsonLdBuilder {
                 $data[$key] = $value;
             }
         }
-        return $data;
+
+        return $wasList ? array_values($data) : $data;
     }
 
     /***************************************************************
