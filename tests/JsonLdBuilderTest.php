@@ -306,6 +306,69 @@ final class JsonLdBuilderTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // Leerfilter: Listen bleiben Listen, Maps behalten ihre Schlüssel
+    // -----------------------------------------------------------
+
+    function testListenPropertyMitLeeremElementInDerMitteBleibtJsonListe(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'LocalBusiness', [
+            'name' => 'Muster GmbH',
+            'openingHours' => ['Mo-Fr 09:00-18:00', '', 'Sa 10:00-14:00'],
+        ]);
+
+        // Ein lückenhaft indiziertes Array käme als JSON-Objekt
+        // ({"0":…,"2":…}) heraus und wäre nach dem Decodieren keine Liste mehr.
+        $this->assertTrue(array_is_list($decoded['openingHours']),
+            'Listen-Property muss eine JSON-Liste bleiben');
+        $this->assertSame(['Mo-Fr 09:00-18:00', 'Sa 10:00-14:00'], $decoded['openingHours']);
+    }
+
+    function testListenPropertyMitLeeremErstenElementBleibtJsonListe(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'LocalBusiness', [
+            'name' => 'Muster GmbH',
+            'openingHours' => ['', 'Mo-Fr 09:00-18:00', 'Sa 10:00-14:00'],
+        ]);
+
+        $this->assertTrue(array_is_list($decoded['openingHours']),
+            'Auch ein weggefallener Index 0 darf die Liste nicht in ein Objekt verwandeln');
+        $this->assertSame(['Mo-Fr 09:00-18:00', 'Sa 10:00-14:00'], $decoded['openingHours']);
+    }
+
+    function testAssoziativeMapBehaeltIhreSchluesselTrotzLeeremFeld(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'LocalBusiness', [
+            'name' => 'Muster GmbH',
+            'address' => [
+                'streetAddress' => '',
+                'postalCode' => '12345',
+                'addressLocality' => 'Musterstadt',
+                'addressCountry' => 'DE',
+            ],
+        ]);
+
+        // Gegenprobe zur Listen-Neuindizierung: sie darf assoziative
+        // Maps nicht erfassen, sonst gingen deren Schlüssel verloren.
+        $this->assertFalse(array_is_list($decoded['address']));
+        $this->assertArrayNotHasKey('streetAddress', $decoded['address']);
+        $this->assertSame('12345', $decoded['address']['postalCode']);
+        $this->assertSame('Musterstadt', $decoded['address']['addressLocality']);
+        $this->assertSame('DE', $decoded['address']['addressCountry']);
+    }
+
+    function testVerschachtelteListeInnerhalbEinerMapWirdNeuIndiziert(): void {
+        $decoded = $this->buildViaComponent($this->pluginSelfDir(), 'LocalBusiness', [
+            'name' => 'Muster GmbH',
+            'department' => [
+                'name' => 'Filiale Nord',
+                'sameAs' => ['https://a.example', '', 'https://b.example'],
+            ],
+        ]);
+
+        $this->assertFalse(array_is_list($decoded['department']));
+        $this->assertTrue(array_is_list($decoded['department']['sameAs']),
+            'Neuindizierung muss auf jeder Rekursionsebene greifen');
+        $this->assertSame(['https://a.example', 'https://b.example'], $decoded['department']['sameAs']);
+    }
+
+    // -----------------------------------------------------------
     // @id-Einbettung und resolveNodeId()-Randfälle
     // -----------------------------------------------------------
 
@@ -554,6 +617,64 @@ final class JsonLdBuilderTest extends TestCase {
         $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
 
         $this->assertArrayNotHasKey('organizer', $decoded);
+    }
+
+    // -----------------------------------------------------------
+    // id_reference_or_literal-Emission
+    // Werte, die nicht aus dem Widget stammen
+    // -----------------------------------------------------------
+
+    function testIdRefOrLiteralRohobjektWirdUnveraendertDurchgereichtDirekt(): void {
+        $dir = $this->createTestIdRefTypeDir();
+        // Über das Erweiterungsfeld gesetztes Rohobjekt: kein _mode-Schlüssel,
+        // eigenes @type. Das Widget darf fremde Semantik nicht umdeuten -
+        // ui:literalType ("Person") ersetzt das mitgegebene @type nicht.
+        $data = ['organizer' => ['@type' => 'Organization', 'name' => 'Muster GmbH', 'url' => 'https://example.com']];
+        $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
+
+        $this->assertSame(
+            ['@type' => 'Organization', 'name' => 'Muster GmbH', 'url' => 'https://example.com'],
+            $decoded['organizer']
+        );
+    }
+
+    function testIdRefOrLiteralRohobjektOhneAtTypeBekommtKeinesErgaenztDirekt(): void {
+        $dir = $this->createTestIdRefTypeDir();
+        $data = ['organizer' => ['name' => 'Max Mustermann']];
+        $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
+
+        $this->assertSame(['name' => 'Max Mustermann'], $decoded['organizer']);
+        $this->assertArrayNotHasKey('@type', $decoded['organizer'],
+            'Ein durchgereichtes Rohobjekt darf kein @type aus ui:literalType erhalten');
+    }
+
+    function testIdRefOrLiteralUnbekannterModusEmittiertKeinePropertyDirekt(): void {
+        $dir = $this->createTestIdRefTypeDir();
+        $data = ['organizer' => ['_mode' => 'unbekannt', 'name' => 'Max Mustermann']];
+        $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
+
+        $this->assertArrayNotHasKey('organizer', $decoded,
+            'Ein unbekannter _mode darf nicht emittiert werden');
+        $this->assertStringNotContainsString('_mode', json_encode($decoded),
+            'Der interne Schlüssel _mode darf nirgends in der Ausgabe erscheinen');
+    }
+
+    function testIdRefOrLiteralSkalarerWertWirdDurchgereichtDirekt(): void {
+        $dir = $this->createTestIdRefTypeDir();
+        $data = ['organizer' => 42];
+        $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
+
+        $this->assertSame(42, $decoded['organizer']);
+    }
+
+    function testIdRefOrLiteralStringWirdWeiterhinAlsLiteralUebernommenDirekt(): void {
+        $dir = $this->createTestIdRefTypeDir();
+        // Regressionsschutz für die Lesekompatibilität mit Freitext-Bestandsdaten:
+        // ein reiner String bleibt die einzige Umdeutung des Emitters.
+        $data = ['organizer' => 'Max Mustermann'];
+        $decoded = $this->buildViaComponent($dir, 'TestIdRefType', $data);
+
+        $this->assertSame(['@type' => 'Person', 'name' => 'Max Mustermann'], $decoded['organizer']);
     }
 
     // -----------------------------------------------------------
