@@ -62,7 +62,7 @@ kodiert mit dem Flag `JSON_HEX_TAG`:
   stammenden Meldungstexte fürs Admin-JavaScript.
 
 `JSON_HEX_TAG` kodiert `<`/`>` in Feldwerten als Unicode-Escapes
-(`<`/`>`). Ein Feldwert wie `</script><script>alert(1)</script>`
+(`\u003C`/`\u003E`). Ein Feldwert wie `</script><script>alert(1)</script>`
 kann den umgebenden `<script>`-Block dadurch nicht aufbrechen — das
 schließende `</script>`-Muster taucht im ausgelieferten HTML gar nicht
 mehr als solches auf. Betrifft strukturell jeden Formularwert, der ins

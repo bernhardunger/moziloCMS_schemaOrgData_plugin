@@ -35,7 +35,7 @@ Laufzeit über `resolveTypeInheritance()`, siehe
 `buildJsonLdScript()` übernimmt die zusammengeführten Properties eines
 Types (bereits feldweise über die Geltungsebenen vererbt, siehe
 [configuration.md](configuration.md)) und baut daraus den fertigen
-`<script>`-Block: HTML-Entity-Dekodierung, Entfernen leerer Properties,
+`<script>`-Block: Entfernen leerer Properties (Listen bleiben dabei Listen),
 verschachtelte Typisierung (`address` → `PostalAddress`, `geo` →
 `GeoCoordinates`, `location`/`jobLocation` → `Place`), Auflösung der
 `id_reference`/`id_reference_or_literal`-Widgets zu ihrem tatsächlichen
