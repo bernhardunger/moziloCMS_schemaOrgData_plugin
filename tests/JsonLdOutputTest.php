@@ -848,7 +848,7 @@ final class JsonLdOutputTest extends TestCase {
     // Sicherheit
     // -----------------------------------------------------------
 
-    function testHtmlEntitiesAreDecodedInOutput(): void {
+    function testHtmlEntitiesBleibenInOutputLiteral(): void {
         $plugin = $this->createPlugin();
         $this->writeGlobalConf([
             'LocalBusiness' => [
@@ -859,7 +859,7 @@ final class JsonLdOutputTest extends TestCase {
 
         [$jsonLd] = $this->getJsonLdBlocks($plugin);
 
-        $this->assertSame('Müller & Partner', $jsonLd['name']);
+        $this->assertSame('Müller &amp; Partner', $jsonLd['name']);
     }
 
     function testJsonEncodeFailureReturnsEmptyString(): void {
