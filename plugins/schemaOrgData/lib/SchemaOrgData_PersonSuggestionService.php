@@ -213,8 +213,14 @@ class SchemaOrgData_PersonSuggestionService {
         }
         unset($config[$type][$property]);
 
+        // Der Kern signalisiert einen fehlgeschlagenen Schreibzugriff per
+        // Rückgabewert false und rollt seinen In-Memory-Stand zurück - er
+        // wirft keine Exception. Der catch-Zweig bleibt als Netz für
+        // unerwartete Fehler daneben stehen.
         try {
-            $settings->set('config_global', $config);
+            if($settings->set('config_global', $config) === false) {
+                return ['success' => false, 'errors' => [$lang->getLanguageValue('error_config_write_failed')]];
+            }
         } catch (\Throwable $e) {
             error_log('schemaOrgData: acceptSuggestion fehlgeschlagen: '.$e->getMessage());
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_config_write_failed')]];

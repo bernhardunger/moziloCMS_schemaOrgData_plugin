@@ -257,6 +257,9 @@ class SchemaOrgData_ScopeResolver {
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $scope 'global' | 'category' | 'page'
     * @param array<string, mixed> $meta z. B. ['existing_jsonld' => true, 'jsonld_mode' => 'override']
+    * @return bool false, wenn die Metadaten nicht persistiert wurden -
+    *         weil der Scope nicht auflösbar war oder der Schreibzugriff
+    *         scheiterte; true nur bei tatsächlich geschriebenem Stand
     *
     ***************************************************************/
     public function saveScopeMeta(
@@ -265,10 +268,10 @@ class SchemaOrgData_ScopeResolver {
         array  $meta,
         ?string $cat  = null,
         ?string $page = null
-    ): void {
+    ): bool {
         $key = $this->getScopeSettingsKey($scope, $cat, $page);
         if ($key === null) {
-            return;
+            return false;
         }
         $existing = $settings->keyExists($key)
             ? $settings->get($key) : [];
@@ -284,13 +287,22 @@ class SchemaOrgData_ScopeResolver {
             ],
             $meta
         );
-        // Schreibfehler protokollieren — saveScopeMeta hat kein Rückgabe-Array,
-        // daher error_log als stilles Fallback
+        // Schreibfehler protokollieren — saveScopeMeta hat kein Rückgabe-Array
+        // mit Meldungstexten, daher error_log als stilles Fallback zusätzlich
+        // zum bool-Rückgabewert. Misserfolg signalisiert der Kern per
+        // Rückgabewert false, nicht per Exception; der catch-Zweig bleibt als
+        // Netz für unerwartete Fehler daneben stehen.
         try {
-            $settings->set($key, $existing);
+            if ($settings->set($key, $existing) === false) {
+                error_log('schemaOrgData: saveScopeMeta fehlgeschlagen: Schreibzugriff auf '.$key.' abgelehnt');
+                return false;
+            }
         } catch (\Throwable $e) {
             error_log('schemaOrgData: saveScopeMeta fehlgeschlagen: ' . $e->getMessage());
+            return false;
         }
+
+        return true;
     }
 
     /***************************************************************
@@ -301,10 +313,12 @@ class SchemaOrgData_ScopeResolver {
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $scope 'global' | 'category' | 'page'
+    * @param Language $lang liefert den Meldungstext eines
+    *        fehlgeschlagenen Schreibzugriffs
     * @return array{success: bool, errors: string[]}
     *
     ***************************************************************/
-    public function deleteConfig($settings, string $scope): array {
+    public function deleteConfig($settings, string $scope, Language $lang): array {
         [$cat, $page] = $this->resolveScopeIdentifiers($scope);
         $key = $this->getScopeSettingsKey($scope, $cat, $page);
 
@@ -312,8 +326,14 @@ class SchemaOrgData_ScopeResolver {
             return ['success' => false, 'errors' => []];
         }
 
-        if ($settings->keyExists($key)) {
-            $settings->delete($key);
+        // Der Kern liefert bei delete() auch dann false, wenn der Schlüssel
+        // gar nicht existierte - ein Fehlschlag ist deshalb nur nach der
+        // keyExists()-Vorprüfung als solcher zu werten. Misserfolg
+        // signalisiert der Kern per Rückgabewert, nicht per Exception.
+        if ($settings->keyExists($key) and $settings->delete($key) === false) {
+            return ['success' => false, 'errors' => [
+                $lang->getLanguageValue('error_config_write_failed')
+            ]];
         }
 
         return ['success' => true, 'errors' => []];

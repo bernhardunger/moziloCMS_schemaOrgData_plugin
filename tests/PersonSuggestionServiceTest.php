@@ -267,6 +267,30 @@ final class PersonSuggestionServiceTest extends TestCase {
         $this->assertSame([['person' => 'julia-weber', 'role' => 'member']], $savedConfig['org_relations']);
     }
 
+    /***************************************************************
+    *
+    * Die Fehlschlag-Simulation ist gezielt auf config_global
+    * beschränkt und die Person bereits angelegt - sonst scheitert
+    * schon createPerson() und der zu prüfende Schreibpfad wird gar
+    * nicht erreicht.
+    *
+    ***************************************************************/
+    function testAcceptSuggestionMeldetFehlschlagWennSettingsNichtSchreibt(): void {
+        $settings = new \InMemorySettings();
+        $this->setActivePerson($settings, 'julia-weber', ['name' => 'Julia Weber']);
+        $config = ['LocalBusiness' => ['member' => ['@type' => 'Person', 'name' => 'Julia Weber']]];
+        $settings->failWrites('config_global');
+
+        $result = $this->service()->acceptSuggestion(
+            'member', $config, 'LocalBusiness', $settings,
+            $this->personsRegistryService(), $this->orgRelationsService(), $this->adminLang(), $this->validator()
+        );
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertFalse($settings->keyExists('config_global'));
+    }
+
     function testAcceptSuggestionAppendsToExistingOrgRelations(): void {
         $settings = new \InMemorySettings();
         $this->setActivePerson($settings, 'max-mustermann');

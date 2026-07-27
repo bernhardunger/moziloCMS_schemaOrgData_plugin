@@ -56,7 +56,7 @@ class SchemaOrgData_PersonsAdminRequestHandler {
 
         if(str_starts_with($raw, 'delete:')) {
             $slug = substr($raw, strlen('delete:'));
-            $result = $registryService->deletePerson($settings, $slug);
+            $result = $registryService->deletePerson($settings, $slug, $lang);
             return ['success' => $result['success'], 'errors' => $result['errors'], 'persons' => true, 'action' => 'delete', 'slug' => $slug];
         }
 

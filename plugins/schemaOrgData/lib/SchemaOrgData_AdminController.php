@@ -566,6 +566,14 @@ class SchemaOrgData_AdminController {
             || $metaGlobal['existing_jsonld_content'] !== $templateContent
             || $metaGlobal['existing_jsonld_blocks'] !== $templateBlocks
         ) {
+            // Rückgabewert bewusst verworfen: renderAdminPage() liefert
+            // ausschließlich HTML und hat keinen Fehlerkanal - die
+            // Ergebnismeldung oben stammt aus der POST-Verarbeitung und
+            // gehört fachlich zum Speichern der Nutzereingaben, nicht zu
+            // dieser beiläufigen Kollisions-Metadatenschreibung. Ein
+            // Fehlschlag ist über das error_log in saveScopeMeta()
+            // nachvollziehbar und wirkt sich nur darauf aus, dass der
+            // Kollisionshinweis beim nächsten Aufruf erneut ermittelt wird.
             $scopeResolver->saveScopeMeta($settings, 'global', [
                 'existing_jsonld' => $templateHasJsonLd,
                 'existing_jsonld_content' => $templateContent,
