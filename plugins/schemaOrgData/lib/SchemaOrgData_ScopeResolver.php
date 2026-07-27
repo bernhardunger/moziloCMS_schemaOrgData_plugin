@@ -313,13 +313,12 @@ class SchemaOrgData_ScopeResolver {
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $scope 'global' | 'category' | 'page'
-    * @param ?Language $lang liefert den Meldungstext eines
-    *        fehlgeschlagenen Schreibzugriffs; ohne Sprachobjekt bleibt
-    *        der Schlüsselname als Rohtext übrig
+    * @param Language $lang liefert den Meldungstext eines
+    *        fehlgeschlagenen Schreibzugriffs
     * @return array{success: bool, errors: string[]}
     *
     ***************************************************************/
-    public function deleteConfig($settings, string $scope, ?Language $lang = null): array {
+    public function deleteConfig($settings, string $scope, Language $lang): array {
         [$cat, $page] = $this->resolveScopeIdentifiers($scope);
         $key = $this->getScopeSettingsKey($scope, $cat, $page);
 
@@ -333,9 +332,7 @@ class SchemaOrgData_ScopeResolver {
         // signalisiert der Kern per Rückgabewert, nicht per Exception.
         if ($settings->keyExists($key) and $settings->delete($key) === false) {
             return ['success' => false, 'errors' => [
-                $lang !== null
-                    ? $lang->getLanguageValue('error_config_write_failed')
-                    : 'error_config_write_failed'
+                $lang->getLanguageValue('error_config_write_failed')
             ]];
         }
 

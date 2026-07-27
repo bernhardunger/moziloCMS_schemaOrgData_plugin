@@ -311,7 +311,7 @@ final class PersonsRegistryServiceTest extends TestCase {
         $lang = $this->adminLang();
 
         $service->createPerson($settings, ['name' => 'Max Mustermann', 'slug' => 'max'], $lang, $this->validator());
-        $result = $service->deletePerson($settings, 'max');
+        $result = $service->deletePerson($settings, 'max', $lang);
 
         $this->assertTrue($result['success']);
         $this->assertFalse($service->slugExists($settings, 'max'));
@@ -321,7 +321,7 @@ final class PersonsRegistryServiceTest extends TestCase {
         $settings = new \InMemorySettings();
         $service = $this->service();
 
-        $result = $service->deletePerson($settings, 'nicht-vorhanden');
+        $result = $service->deletePerson($settings, 'nicht-vorhanden', $this->adminLang());
 
         $this->assertTrue($result['success']);
         $this->assertSame([], $result['errors']);

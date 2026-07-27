@@ -477,7 +477,7 @@ final class ScopeResolverTest extends TestCase {
         $settings = new \InMemorySettings();
         $settings->set('config_global', ['LocalBusiness' => ['name' => 'Muster GmbH']]);
 
-        $result = $this->resolver()->deleteConfig($settings, 'global');
+        $result = $this->resolver()->deleteConfig($settings, 'global', $this->adminLang());
 
         $this->assertSame(['success' => true, 'errors' => []], $result);
         $this->assertFalse($settings->keyExists('config_global'));
@@ -486,7 +486,7 @@ final class ScopeResolverTest extends TestCase {
     function testDeleteConfigFehlenderKeyLiefertErfolgOhneFehler(): void {
         $settings = new \InMemorySettings();
 
-        $result = $this->resolver()->deleteConfig($settings, 'global');
+        $result = $this->resolver()->deleteConfig($settings, 'global', $this->adminLang());
 
         $this->assertSame(['success' => true, 'errors' => []], $result);
     }
@@ -506,7 +506,7 @@ final class ScopeResolverTest extends TestCase {
     function testDeleteConfigUngueltigerScopeLiefertMisserfolg(): void {
         $settings = new \InMemorySettings();
 
-        $result = $this->resolver()->deleteConfig($settings, 'category');
+        $result = $this->resolver()->deleteConfig($settings, 'category', $this->adminLang());
 
         $this->assertSame(['success' => false, 'errors' => []], $result);
     }

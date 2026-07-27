@@ -358,13 +358,12 @@ class SchemaOrgData_PersonsRegistryService {
     * u. a.) werden hier NICHT geprüft/bereinigt - siehe findReferences().
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @param ?Language $lang liefert den Meldungstext eines
-    *        fehlgeschlagenen Schreibzugriffs; ohne Sprachobjekt bleibt
-    *        der Schlüsselname als Rohtext übrig
+    * @param Language $lang liefert den Meldungstext eines
+    *        fehlgeschlagenen Schreibzugriffs
     * @return array{success: bool, errors: string[]}
     *
     ***************************************************************/
-    public function deletePerson($settings, string $slug, ?Language $lang = null): array {
+    public function deletePerson($settings, string $slug, Language $lang): array {
         $registry = $this->loadRegistry($settings);
 
         // Vorprüfung vor dem Schreiben: ein nicht (mehr) vorhandener Slug
@@ -377,9 +376,7 @@ class SchemaOrgData_PersonsRegistryService {
         unset($registry[$slug]);
         if($this->saveRegistry($settings, $registry) === false) {
             return ['success' => false, 'errors' => [
-                $lang !== null
-                    ? $lang->getLanguageValue('error_config_write_failed')
-                    : 'error_config_write_failed'
+                $lang->getLanguageValue('error_config_write_failed')
             ]];
         }
 
