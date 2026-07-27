@@ -121,6 +121,82 @@ final class JsonLdBuilderTest extends TestCase {
 
     /***************************************************************
     *
+    * Der Emitter transformiert Feldwerte nicht: der Schreibpfad
+    * (sanitizePostData) kodiert nicht, also gibt es hier nichts zu
+    * dekodieren. Ein gespeichertes "&amp;" bleibt "&amp;" statt still
+    * zu "&" zu werden.
+    *
+    ***************************************************************/
+    function testBuildJsonLdScriptDekodiertEntitiesNichtMehr(): void {
+        $decoded = $this->decodeSingleNode(['name' => 'AT&amp;T']);
+
+        $this->assertSame('AT&amp;T', $decoded['name']);
+    }
+
+    /***************************************************************
+    *
+    * Kernzusicherung: Winkelklammer-Entities bleiben literal und werden
+    * nicht zu rohem HTML zurückgewandelt - sonst hinge die Abwehr eines
+    * Ausbruchs aus dem <script>-Block allein an JSON_HEX_TAG.
+    *
+    ***************************************************************/
+    function testBuildJsonLdScriptLaesstWinkelklammerEntitiesLiteral(): void {
+        $decoded = $this->decodeSingleNode(['name' => '&lt;b&gt;']);
+
+        $this->assertSame('&lt;b&gt;', $decoded['name']);
+        $this->assertNotSame('<b>', $decoded['name']);
+    }
+
+    function testBuildJsonLdScriptGibtKaufmannsUndUnveraendertAus(): void {
+        $decoded = $this->decodeSingleNode(['name' => 'AT&T']);
+
+        $this->assertSame('AT&T', $decoded['name']);
+    }
+
+    /***************************************************************
+    *
+    * Rohe Winkelklammern erreichen das JSON weiterhin über das
+    * Erweiterungsfeld; JSON_HEX_TAG entschärft sie. Geprüft am rohen
+    * json_encode()-Ergebnis, nicht am dekodierten Wert - nur dort ist
+    * das Escape sichtbar.
+    *
+    ***************************************************************/
+    function testBuildJsonLdScriptEscapedRoheWinkelklammerWeiterhinPerJsonHexTag(): void {
+        $builder = new \SchemaOrgData_JsonLdBuilder();
+
+        $script = $builder->buildJsonLdScript(
+            new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(),
+            $this->pluginSelfDir(), 'Organization', ['name' => 'Muster <b>GmbH</b>']
+        );
+
+        preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
+
+        $this->assertStringContainsString(sprintf('\u%04X', ord('<')), $matches[1]);
+        $this->assertStringNotContainsString('<b>', $matches[1]);
+    }
+
+    /***************************************************************
+    *
+    * Baut einen Organization-Knoten und liefert die dekodierten
+    * Properties des <script>-Blocks.
+    *
+    * @param array<string, mixed> $data Properties eines Schema-Types
+    * @return array<string, mixed> dekodierter JSON-LD-Knoten
+    *
+    ***************************************************************/
+    private function decodeSingleNode(array $data): array {
+        $script = (new \SchemaOrgData_JsonLdBuilder())->buildJsonLdScript(
+            new \SchemaOrgData_SchemaRepository(), new \SchemaOrgData_UrlHelper(),
+            $this->pluginSelfDir(), 'Organization', $data
+        );
+
+        preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $matches);
+
+        return json_decode($matches[1], true);
+    }
+
+    /***************************************************************
+    *
     * Direkt-Tests gegen SchemaOrgData_JsonLdBuilder statt gegen die
     * Fassade schemaOrgData.
     *

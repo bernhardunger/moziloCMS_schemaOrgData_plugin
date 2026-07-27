@@ -20,27 +20,6 @@ class SchemaOrgData_JsonLdBuilder {
 
     /***************************************************************
     *
-    * Wandelt HTML-Entities in allen String-Werten eines (verschachtelten)
-    * Arrays zurück in Klartext (Gegenstück zu htmlspecialchars(), siehe
-    * sanitizePostData()), bevor das Array als JSON-LD ausgegeben wird.
-    *
-    * @param array<string, mixed> $data Properties eines Schema-Types
-    * @return array<string, mixed> Properties mit dekodierten String-Werten
-    *
-    ***************************************************************/
-    public function decodeJsonLdValues(array $data): array {
-        foreach($data as $key => $value) {
-            if(is_array($value)) {
-                $data[$key] = $this->decodeJsonLdValues($value);
-            } elseif(is_string($value)) {
-                $data[$key] = htmlspecialchars_decode($value, ENT_QUOTES);
-            }
-        }
-        return $data;
-    }
-
-    /***************************************************************
-    *
     * Entfernt rekursiv Properties mit leerem Wert (null, '' oder [])
     * aus einem (verschachtelten) Array, damit sie nicht im JSON-LD
     * ausgegeben werden.
@@ -188,10 +167,6 @@ class SchemaOrgData_JsonLdBuilder {
         array $suppressedIdTargets = [],
         ?SchemaOrgData_OpeningHoursHelper $openingHoursHelper = null
     ): string {
-        // Werte wurden beim Speichern mit htmlspecialchars() gesichert -
-        // vor dem JSON-Encode wieder in Klartext umwandeln.
-        $data = $this->decodeJsonLdValues($data);
-
         // Leere Properties (null, '', []) entfernen, auch verschachtelt
         // (z. B. unvollständige PostalAddress/GeoCoordinates-Angaben).
         $data = $this->removeEmptyJsonLdProperties($data);

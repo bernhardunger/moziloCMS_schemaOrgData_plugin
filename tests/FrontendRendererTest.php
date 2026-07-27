@@ -493,11 +493,12 @@ final class FrontendRendererTest extends TestCase {
             [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Müller &amp; Partner', 'description' => ''])]
         ));
 
-        // decodeJsonLdValues() dekodiert "&amp;" zu "&", removeEmptyJsonLdProperties()
-        // entfernt die leere Property "description" - dieselben Transformationen
-        // wie in buildJsonLdScript(). Die Vorschau wird zur Laufzeit per
-        // textContent gesetzt (kein HTML-Escaping mehr nötig/vorhanden).
-        $this->assertStringContainsString('"name": "Müller & Partner"', $payload['blocks'][0]['json']);
+        // removeEmptyJsonLdProperties() entfernt die leere Property
+        // "description", Feldwerte bleiben unverändert - dieselben
+        // Transformationen wie in buildJsonLdScript(). Die Vorschau wird zur
+        // Laufzeit per textContent gesetzt (kein HTML-Escaping mehr
+        // nötig/vorhanden).
+        $this->assertStringContainsString('"name": "Müller &amp; Partner"', $payload['blocks'][0]['json']);
         $this->assertStringNotContainsString('"description"', $payload['blocks'][0]['json']);
     }
 
