@@ -11,6 +11,7 @@ tests/SMOKE-TESTS.md
 .git-doku/
 /scripts/doku-commit.sh
 tests/js/node_modules/
+plugins/schemaOrgData.zip
 
 # Rückmelde-Vorlage mischt stabile Struktur mit Lauf-Ergebnissen,
 # analog zu CLAUDE.md/doc-dev-local/TODO.md bewusst nicht getrackt:
