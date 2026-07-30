@@ -400,6 +400,51 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
+    * Redisplay nach einem Validierungsfehler: die persistierte Meta
+    * trägt noch den alten Modus, die gerade getroffene Auswahl liegt
+    * nur im POST.
+    *
+    ***************************************************************/
+    function testRenderExistingJsonLdNoticeUebernimmtWhitelistetenPostModusVorDerMeta(): void {
+        $settings = new \InMemorySettings();
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness"}']);
+        $_POST['schemaOrgData_jsonld_mode_global'] = 'override';
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('value="override" checked="checked"', $html);
+        $this->assertStringNotContainsString('value="keep" checked="checked"', $html);
+    }
+
+    function testRenderExistingJsonLdNoticeFolgtDerMetaOhnePostModus(): void {
+        $settings = new \InMemorySettings();
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness"}']);
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('value="keep" checked="checked"', $html);
+        $this->assertStringNotContainsString('value="override" checked="checked"', $html);
+    }
+
+    function testRenderExistingJsonLdNoticeIgnoriertNichtWhitelistetenPostModus(): void {
+        $settings = new \InMemorySettings();
+        $this->seedBlocks($settings, 'global', ['{"@type":"LocalBusiness"}']);
+        $_POST['schemaOrgData_jsonld_mode_global'] = 'manipuliert';
+
+        $html = $this->renderer()->renderExistingJsonLdNotice(
+            'global', null, null, $this->adminLang(), $this->scopeResolver(), $settings
+        );
+
+        $this->assertStringContainsString('value="keep" checked="checked"', $html);
+        $this->assertStringNotContainsString('value="override" checked="checked"', $html);
+    }
+
+    /***************************************************************
+    *
     * Kein automatischer Import-Client-Roundtrip mehr: kein Textarea
     * und kein POST-Feld schemaOrgData_import_{scope} im Output. Der
     * Import ist ein normaler Submit (schemaOrgData_import_action).

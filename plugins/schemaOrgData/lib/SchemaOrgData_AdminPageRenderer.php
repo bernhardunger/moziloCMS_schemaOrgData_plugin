@@ -324,8 +324,18 @@ class SchemaOrgData_AdminPageRenderer {
         // "Vorhandenes beibehalten" bereits kennen, bevor er die Auswahl trifft.
         $html .= '<p class="schemaOrgData-jsonld-notice__keep-hint">'.$lang->getLanguageHtml('notice_keep_consequence_hint').'</p>'."\n";
 
+        // Redisplay nach einem Validierungsfehler: die Auswahl wird erst nach
+        // dem Fehler-Gate persistiert (SchemaOrgData_ConfigSaveService::
+        // saveConfig()), die Meta trägt in diesem Fall noch den alten Modus.
+        // Analog zu den Formularfeldern gewinnt daher der gesendete Wert -
+        // nur aus derselben Whitelist wie auf der Schreibseite, damit ein
+        // manipulierter POST keinen Fremdwert in die Anzeige bringt.
+        $postedMode = $_POST[$fieldName] ?? null;
+        $activeMode = in_array($postedMode, ['keep', 'override'], true)
+            ? $postedMode : $meta['jsonld_mode'];
+
         foreach($options as $value => $labelKey) {
-            $checked = ($meta['jsonld_mode'] === $value) ? ' checked="checked"' : '';
+            $checked = ($activeMode === $value) ? ' checked="checked"' : '';
             $html .= '<label><input type="radio" name="'.$fieldName.'" value="'.$value.'"'.$checked.' /> '
                   .$lang->getLanguageHtml($labelKey).'</label><br />'."\n";
         }

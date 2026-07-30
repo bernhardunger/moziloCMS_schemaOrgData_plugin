@@ -188,6 +188,7 @@ label_full_jsonld_preview = Detected JSON-LD block (full view)
 label_detected_block = Detected block
 error_detected_block_invalid = The detected JSON-LD block could not be read (invalid JSON). Please fix the block at its source (layout template or page content).
 error_import_block_not_found = The selected block could no longer be found - the source was likely changed in the meantime. Please reload the admin page and import again.
+error_import_multivalue_type = The block's "@type" is not a single schema type but, for example, a list ("@type": ["Organization", "LocalBusiness"]). Multi-valued @type entries cannot be imported - please reduce the block to a single type at its source or enter the data manually in the form.
 
 hint_id_reference_auto_link = Automatically linked to:
 

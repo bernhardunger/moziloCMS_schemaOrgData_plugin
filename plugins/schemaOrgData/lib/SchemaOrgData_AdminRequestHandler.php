@@ -116,7 +116,11 @@ class SchemaOrgData_AdminRequestHandler {
         }
 
         foreach(['category', 'page'] as $scope) {
-            $hasData = isset($scopes[$scope]) and is_array($scopes[$scope]);
+            // Klammerung zwingend: "=" bindet stärker als "and", ohne sie
+            // würde nur das isset()-Ergebnis zugewiesen und ein manipulierter
+            // POST mit skalarem Scope-Wert lief unten in einen TypeError von
+            // saveConfig(array $postData).
+            $hasData = (isset($scopes[$scope]) and is_array($scopes[$scope]));
 
             if(!$hasData) {
                 continue;
@@ -215,7 +219,20 @@ class SchemaOrgData_AdminRequestHandler {
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_detected_block_invalid')], 'import' => true];
         }
 
-        $type = (string) ($decoded['@type'] ?? '');
+        $rawType = $decoded['@type'] ?? '';
+
+        // "@type" darf in JSON-LD eine Liste sein und ist das in
+        // Fremd-Blöcken auch. Ein Cast darauf erzeugt eine PHP-Warnung
+        // ("Array to string conversion") und den Wert "Array"; abgelehnt
+        // wird stattdessen mit eigener Meldung. Einen Type aus der Liste
+        // zu wählen wäre eine stille Bedeutungsänderung des importierten
+        // Blocks. Die Meldung deckt auch sonstige Nicht-String-Werte ab,
+        // die gleichfalls keinen einzelnen Type bezeichnen.
+        if(!is_string($rawType)) {
+            return ['success' => false, 'errors' => [$lang->getLanguageValue('error_import_multivalue_type')], 'import' => true];
+        }
+
+        $type = $rawType;
         $schema = ($type !== '') ? $schemaRepository->loadSchema($pluginSelfDir, $type) : null;
 
         if($schema === null or !in_array($rawScope, $schema['ui:scopes'] ?? [], true)) {
