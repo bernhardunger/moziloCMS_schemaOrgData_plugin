@@ -465,13 +465,19 @@ class SchemaOrgData_AdminPageRenderer {
     * JSON-LD-Ausgabe (siehe README.md, Abschnitt "Geltungsbereiche und Vererbung").
     * Zusätzlich wird die Debug-Modus-Checkbox gerendert.
     *
-    * @param string[] $excludedCats aktuell ausgeschlossene Kategorien
+    * @param string[] $excludedCats aktuell ausgeschlossene Kategorien in
+    *                 sanitierter Form (sanitizeScopeIdentifier())
     * @param bool $debugOutput      aktueller Zustand des Debug-Flags
     * @param Language $lang Admin-Sprachobjekt
     * @return string HTML-Snippet
     *
     ***************************************************************/
-    public function renderExcludedCatsField(array $excludedCats, bool $debugOutput, Language $lang): string {
+    public function renderExcludedCatsField(
+        array $excludedCats,
+        bool $debugOutput,
+        Language $lang,
+        SchemaOrgData_ScopeResolver $scopeResolver
+    ): string {
         global $CatPage;
         $html = '';
 
@@ -491,7 +497,20 @@ class SchemaOrgData_AdminPageRenderer {
                     continue;
                 }
 
-                $checked = in_array($cat, $excludedCats, true) ? ' checked="checked"' : '';
+                // $excludedCats liegt sanitiert vor (Schreibpfad in
+                // SchemaOrgData_ConfigSaveService::saveConfig()) - $cat von
+                // get_CatArray() muss für den Vergleich ebenso sanitiert
+                // werden, analog zum Scope-Vergleich in
+                // SchemaOrgData_AdminController::renderAdminPage() und zur
+                // Frontend-Auswertung in
+                // SchemaOrgData_FrontendRenderer::renderFrontend(). Der Punkt
+                // ist das einzige Zeichen, das der moziloCMS-Bezeichner
+                // unkodiert trägt und sanitizeScopeIdentifier() entfernt:
+                // ohne Angleichung bliebe die Checkbox einer Kategorie mit
+                // Punkt im Namen ungehakt, der Browser sendete das Feld beim
+                // nächsten Speichern nicht mit, und die Ausschlussregel wäre
+                // still gelöscht.
+                $checked = in_array($scopeResolver->sanitizeScopeIdentifier($cat), $excludedCats, true) ? ' checked="checked"' : '';
                 $catLabel = htmlspecialchars($cat, ENT_QUOTES, CHARSET);
                 // rawurldecode() dekodiert den moziloCMS-Bezeichner nur für die
                 // Anzeige - der value-Attributwert bleibt roh (% erhalten),
