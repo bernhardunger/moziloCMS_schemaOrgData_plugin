@@ -141,6 +141,35 @@ final class PersonsRegistryServiceTest extends TestCase {
         );
     }
 
+    function testSanitizePersonDataBehandeltNichtSkalareTeilwerteWieNichtGesendet(): void {
+        $service = $this->service();
+
+        $result = $service->sanitizePersonData([
+            'name'            => ['Max', 'Mustermann'],
+            'honorificPrefix' => ['Dr.'],
+            'jobTitle'        => ['Chef', 'Prokurist'],
+            'description'     => ['a'],
+            'url'             => ['https://example.com'],
+            'image'           => ['x.jpg'],
+            'sameAs'          => ['https://example.com/max'],
+            'knowsAbout'      => ['PHP'],
+            'status'          => ['inactive'],
+            'sortOrder'       => ['5'],
+        ]);
+
+        $this->assertSame('', $result['name']);
+        $this->assertSame('', $result['honorificPrefix']);
+        $this->assertSame('', $result['jobTitle']);
+        $this->assertSame('', $result['description']);
+        $this->assertSame('', $result['url']);
+        $this->assertSame('', $result['image']);
+        $this->assertSame([], $result['sameAs']);
+        $this->assertSame([], $result['knowsAbout']);
+        $this->assertSame('active', $result['status']);
+        $this->assertSame(100, $result['sortOrder']);
+        $this->assertNotContains('Array', $result);
+    }
+
     // validatePersonData() ---------------------------------------------
 
     function testValidatePersonDataMeldetFehlendenNamen(): void {

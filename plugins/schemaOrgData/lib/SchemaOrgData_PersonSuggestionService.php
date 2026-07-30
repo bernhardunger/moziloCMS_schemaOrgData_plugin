@@ -164,7 +164,7 @@ class SchemaOrgData_PersonSuggestionService {
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_person_suggestion_outdated')]];
         }
 
-        $name = trim((string) ($literal['name'] ?? ''));
+        $name = trim($this->scalarLiteralValue($literal['name'] ?? null));
         $slug = $this->matchPersonByName($name, $personsRegistryService->loadRegistry($settings));
 
         if($slug === null) {
@@ -172,18 +172,21 @@ class SchemaOrgData_PersonSuggestionService {
             $knowsAbout = $literal['knowsAbout'] ?? null;
             $rawData = [
                 'name'            => $name,
-                'honorificPrefix' => (string) ($literal['honorificPrefix'] ?? ''),
-                'jobTitle'        => (string) ($literal['jobTitle'] ?? ''),
-                'description'     => (string) ($literal['description'] ?? ''),
-                'url'             => (string) ($literal['url'] ?? ''),
-                'image'           => (string) ($literal['image'] ?? ''),
+                'honorificPrefix' => $this->scalarLiteralValue($literal['honorificPrefix'] ?? null),
+                'jobTitle'        => $this->scalarLiteralValue($literal['jobTitle'] ?? null),
+                'description'     => $this->scalarLiteralValue($literal['description'] ?? null),
+                'url'             => $this->scalarLiteralValue($literal['url'] ?? null),
+                'image'           => $this->scalarLiteralValue($literal['image'] ?? null),
                 // sanitizePersonData() zerlegt "sameAs"/"knowsAbout" zeilenweise
                 // (Textarea-Format) - ein Array wird hier zu genau dieser
                 // Zeilenform zusammengesetzt, damit createPerson() unverändert
                 // wiederverwendet werden kann, statt die Bereinigungslogik zu
-                // duplizieren.
-                'sameAs'          => is_array($sameAs) ? implode("\n", array_map('strval', $sameAs)) : (string) $sameAs,
-                'knowsAbout'      => is_array($knowsAbout) ? implode("\n", array_map('strval', $knowsAbout)) : (string) $knowsAbout,
+                // duplizieren. Ein Array ist an dieser Stelle also ein gültiger
+                // Eingabefall; der Skalar-Guard greift für die übrigen
+                // Nicht-Skalare - auch je Listeneintrag, da ein verschachteltes
+                // Element sonst dieselbe Lücke wieder aufrisse.
+                'sameAs'          => is_array($sameAs) ? $this->joinLiteralList($sameAs) : $this->scalarLiteralValue($sameAs),
+                'knowsAbout'      => is_array($knowsAbout) ? $this->joinLiteralList($knowsAbout) : $this->scalarLiteralValue($knowsAbout),
             ];
 
             $result = $personsRegistryService->createPerson($settings, $rawData, $lang, $validator);
@@ -227,6 +230,37 @@ class SchemaOrgData_PersonSuggestionService {
         }
 
         return ['success' => true, 'errors' => []];
+    }
+
+    /***************************************************************
+    *
+    * Liefert ein Literalfeld des erkannten Personen-Objekts als String -
+    * einen nicht-skalaren Wert (verschachteltes Objekt/Array) jedoch als
+    * Leerstring, also so, als wäre das Feld gar nicht vorhanden.
+    * Idiom-Gegenstück zum is_scalar()-Guard in
+    * SchemaOrgData_ConfigSaveService::sanitizePostData(), der dort die
+    * Feldschleife per continue überspringt; hier werden feste Schlüssel
+    * für createPerson() befüllt, weshalb der Leerstring an die Stelle des
+    * übersprungenen Felds tritt. Ohne den Guard legte die Übernahme eine
+    * Registry-Person mit dem Ersatzliteral "Array" an (plus PHP-Warnung).
+    *
+    ***************************************************************/
+    private function scalarLiteralValue(mixed $value): string {
+        return is_scalar($value) ? (string) $value : '';
+    }
+
+    /***************************************************************
+    *
+    * Setzt eine Literal-Liste (sameAs/knowsAbout) zur Zeilenform
+    * zusammen, die sanitizePersonData() erwartet - nicht-skalare
+    * Elemente werden dabei über scalarLiteralValue() zu Leerzeilen,
+    * die sanitizePersonData() anschließend tilgt.
+    *
+    * @param array<int|string, mixed> $values
+    *
+    ***************************************************************/
+    private function joinLiteralList(array $values): string {
+        return implode("\n", array_map(fn($value) => $this->scalarLiteralValue($value), $values));
     }
 
     /***************************************************************

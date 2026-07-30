@@ -168,20 +168,20 @@ class SchemaOrgData_PersonsRegistryService {
     ***************************************************************/
     public function sanitizePersonData(array $raw): array {
         $result = [
-            'name'            => trim(strip_tags((string) ($raw['name'] ?? ''))),
-            'honorificPrefix' => trim(strip_tags((string) ($raw['honorificPrefix'] ?? ''))),
-            'jobTitle'        => trim(strip_tags((string) ($raw['jobTitle'] ?? ''))),
-            'description'     => trim(strip_tags((string) ($raw['description'] ?? ''))),
-            'url'             => trim(strip_tags((string) ($raw['url'] ?? ''))),
+            'name'            => trim(strip_tags($this->scalarFieldValue($raw['name'] ?? null))),
+            'honorificPrefix' => trim(strip_tags($this->scalarFieldValue($raw['honorificPrefix'] ?? null))),
+            'jobTitle'        => trim(strip_tags($this->scalarFieldValue($raw['jobTitle'] ?? null))),
+            'description'     => trim(strip_tags($this->scalarFieldValue($raw['description'] ?? null))),
+            'url'             => trim(strip_tags($this->scalarFieldValue($raw['url'] ?? null))),
         ];
 
-        $imageRaw = trim(strip_tags((string) ($raw['image'] ?? '')));
+        $imageRaw = trim(strip_tags($this->scalarFieldValue($raw['image'] ?? null)));
         $result['image'] = (preg_match('#^https?://#i', $imageRaw) === 1)
             ? $imageRaw
             : $this->sanitizeRelativeMediaPath($imageRaw);
 
         $sameAs = [];
-        foreach(preg_split('/\r\n|\r|\n/', (string) ($raw['sameAs'] ?? '')) as $line) {
+        foreach(preg_split('/\r\n|\r|\n/', $this->scalarFieldValue($raw['sameAs'] ?? null)) as $line) {
             $line = trim(strip_tags($line));
             if($line !== '') {
                 $sameAs[] = $line;
@@ -190,7 +190,7 @@ class SchemaOrgData_PersonsRegistryService {
         $result['sameAs'] = $sameAs;
 
         $knowsAbout = [];
-        foreach(preg_split('/\r\n|\r|\n/', (string) ($raw['knowsAbout'] ?? '')) as $line) {
+        foreach(preg_split('/\r\n|\r|\n/', $this->scalarFieldValue($raw['knowsAbout'] ?? null)) as $line) {
             $line = trim(strip_tags($line));
             if($line !== '') {
                 $knowsAbout[] = $line;
@@ -198,15 +198,32 @@ class SchemaOrgData_PersonsRegistryService {
         }
         $result['knowsAbout'] = $knowsAbout;
 
-        $status = (string) ($raw['status'] ?? self::STATUS_ACTIVE);
+        $status = $this->scalarFieldValue($raw['status'] ?? self::STATUS_ACTIVE);
         $result['status'] = in_array($status, self::STATUSES, true) ? $status : self::STATUS_ACTIVE;
 
-        $sortOrderRaw = trim((string) ($raw['sortOrder'] ?? ''));
+        $sortOrderRaw = trim($this->scalarFieldValue($raw['sortOrder'] ?? null));
         $result['sortOrder'] = ($sortOrderRaw !== '' and preg_match('/^-?[0-9]+$/', $sortOrderRaw) === 1)
             ? (int) $sortOrderRaw
             : self::DEFAULT_SORT_ORDER;
 
         return $result;
+    }
+
+    /***************************************************************
+    *
+    * Liefert einen einzelnen POST-Teilwert als String - einen
+    * nicht-skalaren Wert (untergeschobenes Array/Objekt) jedoch als
+    * Leerstring, also so, als wäre das Feld gar nicht gesendet worden.
+    * Idiom-Gegenstück zum is_scalar()-Guard in
+    * SchemaOrgData_ConfigSaveService::sanitizePostData(), der dort die
+    * Feldschleife per continue überspringt; hier werden feste
+    * Schlüssel befüllt, weshalb der Leerstring an die Stelle des
+    * übersprungenen Felds tritt. Ohne den Guard schriebe der Cast das
+    * Ersatzliteral "Array" in die Registry (plus PHP-Warnung).
+    *
+    ***************************************************************/
+    private function scalarFieldValue(mixed $value): string {
+        return is_scalar($value) ? (string) $value : '';
     }
 
     /***************************************************************

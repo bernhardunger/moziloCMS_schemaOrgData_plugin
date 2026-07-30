@@ -249,6 +249,32 @@ final class PersonSuggestionServiceTest extends TestCase {
         );
     }
 
+    function testAcceptSuggestionBehandeltNichtSkalareLiteralfelderWieNichtVorhanden(): void {
+        $settings = new \InMemorySettings();
+        $config = ['LocalBusiness' => ['employee' => [
+            '@type'      => 'Person',
+            'name'       => 'Julia Weber',
+            // Mehrwertiges jobTitle aus einem importierten Erweiterungsfeld.
+            'jobTitle'   => ['Chefin', 'Prokuristin'],
+            'url'        => ['https://example.com'],
+            // Verschachteltes Element innerhalb einer sonst gueltigen Liste.
+            'knowsAbout' => ['Steuerrecht', ['Familienrecht']],
+        ]]];
+
+        $result = $this->service()->acceptSuggestion(
+            'employee', $config, 'LocalBusiness', $settings,
+            $this->personsRegistryService(), $this->orgRelationsService(), $this->adminLang(), $this->validator()
+        );
+
+        $this->assertTrue($result['success']);
+
+        $registry = $settings->get(\SchemaOrgData_PersonsRegistryService::SETTINGS_KEY);
+        $this->assertSame('', $registry['julia-weber']['jobTitle']);
+        $this->assertSame('', $registry['julia-weber']['url']);
+        $this->assertSame(['Steuerrecht'], $registry['julia-weber']['knowsAbout']);
+        $this->assertNotContains('Array', $registry['julia-weber']);
+    }
+
     function testAcceptSuggestionLinksExistingPersonWithoutCreatingDuplicate(): void {
         $settings = new \InMemorySettings();
         $this->setActivePerson($settings, 'julia-weber', ['name' => 'Julia Weber']);
