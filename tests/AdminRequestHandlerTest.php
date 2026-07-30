@@ -152,6 +152,26 @@ final class AdminRequestHandlerTest extends TestCase {
         $this->assertFalse($settings->keyExists('config_global'));
     }
 
+    /***************************************************************
+    *
+    * Manipulierter POST: skalarer Scope-Wert statt Array. Der
+    * is_array()-Guard des Scope-Loops muss greifen, sonst läuft
+    * saveConfig(array $postData) in einen TypeError.
+    *
+    ***************************************************************/
+    function testHandlePostRequestUeberspringtSkalarenScopeWertOhneTypeError(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData'] = ['category' => 'x'];
+        $_POST['schemaOrgData_cat'] = 'Testkategorie';
+        $_POST['schemaOrgData_page'] = '';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame([], $result['errors']);
+        $this->assertFalse($settings->keyExists($this->scopeResolver()->getScopeSettingsKey('category', 'Testkategorie')));
+    }
+
     // -----------------------------------------------------------
     // handlePostRequest() - Import-Dispatch
     // -----------------------------------------------------------

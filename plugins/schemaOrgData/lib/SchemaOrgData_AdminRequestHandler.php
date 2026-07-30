@@ -116,7 +116,11 @@ class SchemaOrgData_AdminRequestHandler {
         }
 
         foreach(['category', 'page'] as $scope) {
-            $hasData = isset($scopes[$scope]) and is_array($scopes[$scope]);
+            // Klammerung zwingend: "=" bindet stärker als "and", ohne sie
+            // würde nur das isset()-Ergebnis zugewiesen und ein manipulierter
+            // POST mit skalarem Scope-Wert lief unten in einen TypeError von
+            // saveConfig(array $postData).
+            $hasData = (isset($scopes[$scope]) and is_array($scopes[$scope]));
 
             if(!$hasData) {
                 continue;
