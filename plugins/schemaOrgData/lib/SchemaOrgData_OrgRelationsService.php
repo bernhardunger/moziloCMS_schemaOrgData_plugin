@@ -42,8 +42,9 @@ class SchemaOrgData_OrgRelationsService {
     * Bereinigt und validiert die POST-Rohdaten des Relationen-Widgets
     * (indizierte Zeilen, analog SchemaOrgData_FormRenderer::renderFaqListWidget()):
     * je Zeile ein Personen-Slug und eine Rolle. Zeilen ohne Personen-Slug
-    * (die stets mitgesendete leere Anlege-Zeile) werden stillschweigend
-    * verworfen. Ist ein Slug gesetzt, wird sowohl die Rolle gegen die
+    * (die stets mitgesendete leere Anlege-Zeile, ebenso eine Zeile mit
+    * nicht-skalarem person-Teilwert, siehe scalarRowValue()) werden
+    * stillschweigend verworfen. Ist ein Slug gesetzt, wird sowohl die Rolle gegen die
     * Whitelist (ROLES) als auch der Slug gegen die Personen-Registry
     * geprüft (SchemaOrgData_PersonsRegistryService::slugExists()) - beide
     * Prüfungen erzeugen bei Fehlschlag eine Fehlermeldung und blockieren
@@ -68,12 +69,12 @@ class SchemaOrgData_OrgRelationsService {
                 continue;
             }
 
-            $slug = trim(strip_tags((string) ($row['person'] ?? '')));
+            $slug = trim(strip_tags($this->scalarRowValue($row['person'] ?? null)));
             if($slug === '') {
                 continue;
             }
 
-            $role = trim(strip_tags((string) ($row['role'] ?? '')));
+            $role = trim(strip_tags($this->scalarRowValue($row['role'] ?? null)));
 
             if(!in_array($role, self::ROLES, true)) {
                 $errors[] = $lang->getLanguageValue('error_org_relation_invalid_role', $role);
@@ -89,6 +90,24 @@ class SchemaOrgData_OrgRelationsService {
         }
 
         return ['relations' => $relations, 'errors' => $errors];
+    }
+
+    /***************************************************************
+    *
+    * Liefert einen Teilwert einer Relationen-Zeile als String - einen
+    * nicht-skalaren Wert (untergeschobenes Array/Objekt) jedoch als
+    * Leerstring, also so, als wäre das Feld gar nicht gesendet worden.
+    * Idiom-Gegenstück zum is_scalar()-Guard in
+    * SchemaOrgData_ConfigSaveService::sanitizePostData(), der dort die
+    * Feldschleife per continue überspringt. Die is_array()-Prüfung in
+    * sanitizeAndValidate() schützt nur die Zeile selbst, nicht ihre
+    * Felder; ohne diesen Guard erzeugte der Cast das Ersatzliteral
+    * "Array" (plus PHP-Warnung) und daraus eine Fehlermeldung, die den
+    * eigentlichen Grund nicht nennt.
+    *
+    ***************************************************************/
+    private function scalarRowValue(mixed $value): string {
+        return is_scalar($value) ? (string) $value : '';
     }
 
     /***************************************************************

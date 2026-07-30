@@ -94,6 +94,26 @@ final class OrgRelationsServiceTest extends TestCase {
         $this->assertSame([], $result['relations']);
     }
 
+    function testSanitizeAndValidateBehandeltNichtSkalareTeilwerteWieNichtGesendet(): void {
+        $settings = new \InMemorySettings();
+        $this->setActivePerson($settings, 'max-mustermann');
+
+        $result = (new \SchemaOrgData_OrgRelationsService())->sanitizeAndValidate(
+            [
+                ['person' => ['max-mustermann'], 'role' => 'founder'],
+                ['person' => 'max-mustermann', 'role' => ['founder']],
+            ],
+            $settings, new \SchemaOrgData_PersonsRegistryService(), $this->adminLang()
+        );
+
+        $this->assertSame([], $result['relations']);
+        // Zeile 1 verhaelt sich wie eine Zeile ohne Personen-Slug (stiller
+        // Verwurf), Zeile 2 wie eine ohne Rolle (Whitelist-Fehler) - in keinem
+        // Fall taucht das Ersatzliteral "Array" auf.
+        $this->assertCount(1, $result['errors']);
+        $this->assertStringNotContainsString('Array', $result['errors'][0]);
+    }
+
     function testSanitizeAndValidateProcessesMultipleValidRows(): void {
         $settings = new \InMemorySettings();
         $this->setActivePerson($settings, 'max-mustermann');

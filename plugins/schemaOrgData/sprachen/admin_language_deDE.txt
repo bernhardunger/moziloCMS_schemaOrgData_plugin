@@ -246,6 +246,7 @@ notice_person_deleted = Die Person wurde gelöscht.
 error_person_slug_required = Bitte eine Kennung (Slug) angeben oder einen Namen eintragen, aus dem eine Kennung abgeleitet werden kann.
 error_person_slug_exists = Die Kennung ist bereits vergeben (vorhandene Person: "{PARAM1}"). Bitte eine andere Kennung wählen.
 error_person_not_found = Die Person wurde nicht gefunden - möglicherweise wurde sie zwischenzeitlich gelöscht.
+error_person_delete_has_references = Die Person kann nicht gelöscht werden, weil sie in den Organisations-Relationen der globalen Konfiguration noch verlinkt ist ({PARAM1}). Bitte die Verknüpfung zuerst im globalen Formular entfernen und danach erneut löschen.
 error_person_invalid_action = Ungültige Aktion für die Personen-Registry.
 warning_person_image_not_found = Unter diesem Pfad wurde keine Datei im Medienverzeichnis gefunden. Die Datei kann nachträglich hochgeladen werden.
 warning_sort_order_invalid = Ungültige Eingabe - wird beim Speichern auf den Standardwert 100 zurückgesetzt.
