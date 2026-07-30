@@ -330,7 +330,7 @@ class SchemaOrgData_AdminController {
                     : [];
                 $debugOutput = !empty($config['debug_output']);
             }
-            $html .= $adminPageRenderer->renderExcludedCatsField($excludedCats, $debugOutput, $lang);
+            $html .= $adminPageRenderer->renderExcludedCatsField($excludedCats, $debugOutput, $lang, $scopeResolver);
         }
 
         $html .= '</div>' . "\n";

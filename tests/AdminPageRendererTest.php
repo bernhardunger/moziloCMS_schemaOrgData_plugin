@@ -570,7 +570,7 @@ final class AdminPageRendererTest extends TestCase {
     }
 
     function testDebugOutputCheckboxIsUncheckedWhenDisabled(): void {
-        $html = $this->renderer()->renderExcludedCatsField([], false, $this->adminLang());
+        $html = $this->renderer()->renderExcludedCatsField([], false, $this->adminLang(), $this->scopeResolver());
 
         $this->assertMatchesRegularExpression(
             '/name="schemaOrgData\[global\]\[debug_output\]"[^>]*>/',
@@ -684,14 +684,14 @@ final class AdminPageRendererTest extends TestCase {
     // -----------------------------------------------------------
 
     function testRenderExcludedCatsFieldOhneCatPageNurDebugCheckbox(): void {
-        $html = $this->renderer()->renderExcludedCatsField([], false, $this->adminLang());
+        $html = $this->renderer()->renderExcludedCatsField([], false, $this->adminLang(), $this->scopeResolver());
 
         $this->assertStringNotContainsString('schemaOrgData-checkbox--all', $html);
         $this->assertStringContainsString('schemaOrgData_global_debug_output', $html);
     }
 
     function testRenderExcludedCatsFieldDebugCheckboxGesetztWennAktiv(): void {
-        $html = $this->renderer()->renderExcludedCatsField([], true, $this->adminLang());
+        $html = $this->renderer()->renderExcludedCatsField([], true, $this->adminLang(), $this->scopeResolver());
 
         $this->assertStringContainsString('schemaOrgData_global_debug_output" name="schemaOrgData[global][debug_output]" value="1" checked="checked"', $html);
     }
@@ -709,7 +709,7 @@ final class AdminPageRendererTest extends TestCase {
         global $CatPage;
         $CatPage = new FakeCatPage(['kategorien', 'ueber-uns', 'impressum']);
 
-        $html = $this->renderer()->renderExcludedCatsField([], false, $this->adminLang());
+        $html = $this->renderer()->renderExcludedCatsField([], false, $this->adminLang(), $this->scopeResolver());
 
         // unset($CatPage) würde nur die lokale global-Bindung lösen, nicht
         // den Eintrag in $GLOBALS selbst - echtes Aufräumen erfordert
@@ -725,12 +725,46 @@ final class AdminPageRendererTest extends TestCase {
 
     /***************************************************************
     *
+    * Gespeichert wird die sanitierte Form des Bezeichners, verglichen
+    * wird gegen den rohen Bezeichner aus get_CatArray(). Der Punkt ist
+    * das einzige Zeichen, das der moziloCMS-Bezeichner unkodiert trägt
+    * und sanitizeScopeIdentifier() entfernt - ohne beidseitige
+    * Sanitisierung bliebe die Checkbox einer Kategorie mit Punkt im
+    * Namen ungehakt und die Ausschlussregel würde beim nächsten
+    * Speichern still gelöscht.
+    *
+    ***************************************************************/
+    function testRenderExcludedCatsFieldCheckboxGehaktBeiPunktImBezeichner(): void {
+        global $CatPage;
+        $CatPage = new FakeCatPage(['z.B.%20Aktuelles']);
+
+        $html = $this->renderer()->renderExcludedCatsField(['zB%20Aktuelles'], false, $this->adminLang(), $this->scopeResolver());
+
+        unset($GLOBALS['CatPage']);
+
+        $this->assertStringContainsString('value="z.B.%20Aktuelles" checked="checked"', $html);
+    }
+
+    function testRenderExcludedCatsFieldCheckboxUngehaktWennNichtInAusschlussliste(): void {
+        global $CatPage;
+        $CatPage = new FakeCatPage(['z.B.%20Aktuelles', 'impressum']);
+
+        $html = $this->renderer()->renderExcludedCatsField(['impressum'], false, $this->adminLang(), $this->scopeResolver());
+
+        unset($GLOBALS['CatPage']);
+
+        $this->assertStringContainsString('value="z.B.%20Aktuelles" />', $html);
+        $this->assertStringContainsString('value="impressum" checked="checked"', $html);
+    }
+
+    /***************************************************************
+    *
     * Prüft in einem Aufruf sowohl das Vorhandensein der Checkbox als
     * auch Label und Hinweistext.
     *
     ***************************************************************/
     function testRenderExcludedCatsFieldDebugCheckboxImmerMitLabelUndHintDirekt(): void {
-        $html = $this->renderer()->renderExcludedCatsField([], false, $this->adminLang());
+        $html = $this->renderer()->renderExcludedCatsField([], false, $this->adminLang(), $this->scopeResolver());
 
         $this->assertStringContainsString('name="schemaOrgData[global][debug_output]"', $html);
         $this->assertStringContainsString('Debug', $html);
