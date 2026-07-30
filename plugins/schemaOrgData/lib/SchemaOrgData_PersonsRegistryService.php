@@ -26,6 +26,13 @@ class SchemaOrgData_PersonsRegistryService {
     /** Settings-Key der Personen-Registry (siehe README.md, Personen-Registry). */
     public const SETTINGS_KEY = 'persons_registry';
 
+    // Settings-Key des globalen Geltungsbereichs, gespiegelt aus
+    // SchemaOrgData_ScopeResolver::getScopeSettingsKey('global') - nur für die
+    // rein lesende Fundstellen-Prüfung in findReferences(). Bewusst keine
+    // Aufnahme des ScopeResolver in die Signatur: die Registry ist orthogonal
+    // zum Scope-Modell und soll es bleiben.
+    private const GLOBAL_CONFIG_KEY = 'config_global';
+
     public const STATUS_ACTIVE   = 'active';
     public const STATUS_INACTIVE = 'inactive';
 
@@ -354,12 +361,15 @@ class SchemaOrgData_PersonsRegistryService {
     * nicht (mehr) vorhandener Slug ist kein Fehler (analog
     * SchemaOrgData_ScopeResolver::deleteConfig()).
     *
-    * Referenzen auf den gelöschten Slug (org_relations, Artikel-Autor
-    * u. a.) werden hier NICHT geprüft/bereinigt - siehe findReferences().
+    * Eine in den Organisations-Relationen verlinkte Person wird NICHT
+    * gelöscht: die Meldung nennt die betroffenen Rollen, die Registry
+    * bleibt unverändert (siehe findReferences()). Andernfalls bliebe die
+    * verwaiste Relation gespeichert und ihre Slug-Existenzprüfung würde
+    * jedes weitere Speichern des globalen Geltungsbereichs blockieren.
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @param Language $lang liefert den Meldungstext eines
-    *        fehlgeschlagenen Schreibzugriffs
+    * @param Language $lang liefert die Meldungstexte einer blockierenden
+    *        Fundstelle bzw. eines fehlgeschlagenen Schreibzugriffs
     * @return array{success: bool, errors: string[]}
     *
     ***************************************************************/
@@ -368,9 +378,18 @@ class SchemaOrgData_PersonsRegistryService {
 
         // Vorprüfung vor dem Schreiben: ein nicht (mehr) vorhandener Slug
         // ist Erfolg, nicht Schreibfehlschlag - sonst wäre die Idempotenz
-        // dahin.
+        // dahin. Steht bewusst vor der Fundstellen-Prüfung: ein bereits
+        // gelöschter Slug soll auch dann Erfolg melden, wenn irgendwo noch
+        // eine Relation auf ihn zeigt.
         if(!array_key_exists($slug, $registry)) {
             return ['success' => true, 'errors' => []];
+        }
+
+        $references = $this->findReferences($settings, $slug, $lang);
+        if($references !== []) {
+            return ['success' => false, 'errors' => [
+                $lang->getLanguageValue('error_person_delete_has_references', implode(', ', $references))
+            ]];
         }
 
         unset($registry[$slug]);
@@ -418,20 +437,67 @@ class SchemaOrgData_PersonsRegistryService {
 
     /***************************************************************
     *
-    * Erweiterungspunkt für eine Fundstellen-Prüfung vor dem Löschen
-    * einer Person (org_relations, gespeicherter Artikel-Autor u. a.).
-    * Beide Datenquellen existieren zum jetzigen Umsetzungsstand noch
-    * nicht (folgen in AP3/AP4, siehe README.md) - liefert daher bewusst
-    * immer ein leeres Ergebnis. Für V1 dieses Pakets genügt ein
-    * einfacher Bestätigungsdialog vor dem Löschen (siehe
-    * SchemaOrgData_PersonsAdminRenderer, JS-confirm() am Löschen-Button).
+    * Ermittelt die speicherseitig blockierenden Fundstellen eines
+    * Personen-Slugs vor dem Löschen (siehe deletePerson()) und
+    * beschreibt sie über die Rollen-Label der jeweiligen Relation.
+    *
+    * Geprüft werden ausschließlich die Organisations-Relationen des
+    * globalen Geltungsbereichs (Settings-Key "config_global",
+    * Property "org_relations", siehe SchemaOrgData_OrgRelationsService)
+    * - denn allein deren Slug-Existenzprüfung blockiert das Speichern
+    * einer Scope-Konfiguration. Referenzen aus Kategorie-/Seiten-Scopes
+    * (Article.author, ProfilePage.mainEntity) sind NICHT Teil der
+    * Prüfung: sie verhindern kein Speichern, werden emissionsseitig
+    * ohnehin unterdrückt (siehe
+    * SchemaOrgData_IdReferenceService::applyDanglingReferenceGuard()),
+    * und die Settings-API bietet keine Aufzählung der vorhandenen
+    * Scope-Schlüssel, über die sie vollständig auffindbar wären.
+    *
+    * Rein lesend - kein Schreibzugriff auf die Settings.
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @return string[] lesbare Fundstellen-Beschreibungen, aktuell immer leer
+    * @param Language $lang liefert die Rollen-Label der Fundstellen
+    * @return string[] Rollen-Label in Fundreihenfolge, ohne Duplikate
+    *         (leer = keine blockierende Fundstelle)
     *
     ***************************************************************/
-    public function findReferences($settings, string $slug): array {
-        return [];
+    public function findReferences($settings, string $slug, Language $lang): array {
+        if(!$settings->keyExists(self::GLOBAL_CONFIG_KEY)) {
+            return [];
+        }
+
+        $config = $settings->get(self::GLOBAL_CONFIG_KEY);
+        if(!is_array($config) or !is_array($config['org_relations'] ?? null)) {
+            return [];
+        }
+
+        $roles = SchemaOrgData_OrgRelationsService::roles();
+        $labels = [];
+
+        foreach($config['org_relations'] as $relation) {
+            if(!is_array($relation)) {
+                continue;
+            }
+
+            $person = $relation['person'] ?? null;
+            $role = $relation['role'] ?? null;
+            if(!is_string($person) or !is_string($role) or $person !== $slug) {
+                continue;
+            }
+
+            // Eine Rolle außerhalb der Whitelist hat keinen Sprachschlüssel;
+            // getLanguageValue() lieferte dafür einen unbrauchbaren Platzhalter.
+            if(!in_array($role, $roles, true)) {
+                continue;
+            }
+
+            $label = $lang->getLanguageValue('label_role_'.$role);
+            if(!in_array($label, $labels, true)) {
+                $labels[] = $label;
+            }
+        }
+
+        return $labels;
     }
 
     /***************************************************************

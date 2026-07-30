@@ -246,6 +246,7 @@ notice_person_deleted = The person has been deleted.
 error_person_slug_required = Please provide a slug or a name a slug can be derived from.
 error_person_slug_exists = This slug is already taken (existing person: "{PARAM1}"). Please choose a different slug.
 error_person_not_found = The person could not be found - it may have been deleted in the meantime.
+error_person_delete_has_references = This person cannot be deleted because they are still linked in the organisation relations of the global configuration ({PARAM1}). Please remove the link in the global form first, then delete again.
 error_person_invalid_action = Invalid action for the persons registry.
 warning_person_image_not_found = No file was found at this path in the media directory. The file can be uploaded afterwards.
 warning_sort_order_invalid = Invalid input - will be reset to the default value 100 when saving.

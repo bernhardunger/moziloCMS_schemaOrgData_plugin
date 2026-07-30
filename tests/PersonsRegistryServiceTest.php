@@ -372,11 +372,122 @@ final class PersonsRegistryServiceTest extends TestCase {
 
     // findReferences() ----------------------------------------------------
 
-    function testFindReferencesLiefertAktuellImmerEinLeeresArray(): void {
+    /**
+    * Legt die Organisations-Relationen des globalen Geltungsbereichs so ab,
+    * wie SchemaOrgData_ConfigSaveService::saveConfig() sie schreibt.
+    *
+    * @param array<int, mixed> $relations
+    */
+    private function storeOrgRelations(\InMemorySettings $settings, $relations): void {
+        $settings->set('config_global', ['org_relations' => $relations]);
+    }
+
+    function testFindReferencesLiefertRollenLabelEinerVerlinktenPerson(): void {
         $settings = new \InMemorySettings();
         $service = $this->service();
+        $lang = $this->adminLang();
 
-        $this->assertSame([], $service->findReferences($settings, 'irgendein-slug'));
+        $this->storeOrgRelations($settings, [
+            ['person' => 'max', 'role' => 'founder'],
+            ['person' => 'erika', 'role' => 'employee'],
+            // Zweite Relation derselben Person und Rolle: das Label erscheint
+            // trotzdem nur einmal.
+            ['person' => 'max', 'role' => 'founder'],
+            ['person' => 'max', 'role' => 'member'],
+        ]);
+
+        $this->assertSame(
+            [$lang->getLanguageValue('label_role_founder'), $lang->getLanguageValue('label_role_member')],
+            $service->findReferences($settings, 'max', $lang)
+        );
+    }
+
+    function testFindReferencesLiefertLeeresArrayFuerNichtVerlinktePerson(): void {
+        $settings = new \InMemorySettings();
+        $service = $this->service();
+        $lang = $this->adminLang();
+
+        $this->storeOrgRelations($settings, [['person' => 'erika', 'role' => 'employee']]);
+
+        $this->assertSame([], $service->findReferences($settings, 'max', $lang));
+    }
+
+    function testFindReferencesUeberstehtFehlendesUndDefektesOrgRelations(): void {
+        $service = $this->service();
+        $lang = $this->adminLang();
+
+        $ohneKey = new \InMemorySettings();
+        $this->assertSame([], $service->findReferences($ohneKey, 'max', $lang));
+
+        $ohneRelationen = new \InMemorySettings();
+        $ohneRelationen->set('config_global', ['Organization' => ['name' => 'Beispiel']]);
+        $this->assertSame([], $service->findReferences($ohneRelationen, 'max', $lang));
+
+        $defekt = new \InMemorySettings();
+        $defekt->set('config_global', ['org_relations' => 'kein Array']);
+        $this->assertSame([], $service->findReferences($defekt, 'max', $lang));
+
+        $defekteZeilen = new \InMemorySettings();
+        $this->storeOrgRelations($defekteZeilen, [
+            'kein Array',
+            ['person' => ['max'], 'role' => 'founder'],
+            ['person' => 'max', 'role' => ['founder']],
+            ['person' => 'max', 'role' => 'geschaeftsfuehrer'],
+            ['role' => 'founder'],
+        ]);
+        $this->assertSame([], $service->findReferences($defekteZeilen, 'max', $lang));
+    }
+
+    function testDeletePersonBrichtBeiVorhandenerRelationAbUndLaesstRegistryUnveraendert(): void {
+        $settings = new \InMemorySettings();
+        $service = $this->service();
+        $lang = $this->adminLang();
+
+        $service->createPerson($settings, ['name' => 'Max Mustermann', 'slug' => 'max'], $lang, $this->validator());
+        $this->storeOrgRelations($settings, [['person' => 'max', 'role' => 'employee']]);
+
+        $result = $service->deletePerson($settings, 'max', $lang);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame([
+            $lang->getLanguageValue(
+                'error_person_delete_has_references',
+                $lang->getLanguageValue('label_role_employee')
+            )
+        ], $result['errors']);
+        $this->assertTrue($service->slugExists($settings, 'max'));
+    }
+
+    function testDeletePersonLoeschtWennOrgRelationsEineAnderePersonFuehrt(): void {
+        $settings = new \InMemorySettings();
+        $service = $this->service();
+        $lang = $this->adminLang();
+
+        $service->createPerson($settings, ['name' => 'Max Mustermann', 'slug' => 'max'], $lang, $this->validator());
+        $service->createPerson($settings, ['name' => 'Erika Mustermann', 'slug' => 'erika'], $lang, $this->validator());
+        $this->storeOrgRelations($settings, [['person' => 'erika', 'role' => 'founder']]);
+
+        $result = $service->deletePerson($settings, 'max', $lang);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame([], $result['errors']);
+        $this->assertFalse($service->slugExists($settings, 'max'));
+    }
+
+    function testDeletePersonBleibtBeiNichtVorhandenemSlugTrotzRelationIdempotent(): void {
+        $settings = new \InMemorySettings();
+        $service = $this->service();
+        $lang = $this->adminLang();
+
+        // Regressionsschutz für die Reihenfolge in deletePerson(): die
+        // Idempotenz-Vorprüfung steht vor der Fundstellen-Prüfung, sonst
+        // meldete ein bereits gelöschter Slug plötzlich einen Fehler.
+        $this->storeOrgRelations($settings, [['person' => 'max', 'role' => 'founder']]);
+
+        $result = $service->deletePerson($settings, 'max', $lang);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame([], $result['errors']);
     }
 
     // loadRegistry() -------------------------------------------------------
