@@ -295,6 +295,47 @@ final class AdminRequestHandlerTest extends TestCase {
         );
     }
 
+    /***************************************************************
+    *
+    * Mehrwertiger @type: eigene Meldung statt der irreführenden
+    * Ausgabe "Ungültiger Schema-Type: Array". Die zuvor zusätzlich
+    * erzeugte PHP-Warnung "Array to string conversion" entfällt mit
+    * dem is_string()-Guard; sie ist in diesem Lauf nicht mehr als
+    * PHPUnit-Warnung sichtbar (ohne failOnWarning kein eigener
+    * Assert dafür möglich).
+    *
+    ***************************************************************/
+    function testImportMitMehrwertigemTypeLiefertEigeneMeldung(): void {
+        $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', [json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => ['Organization', 'LocalBusiness'],
+            'name' => 'Muster GmbH',
+        ])]);
+        $_POST['schemaOrgData_import_action'] = 'global';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertTrue($result['import']);
+        $this->assertSame(
+            $this->adminLang()->getLanguageValue('error_import_multivalue_type'),
+            $result['errors'][0]
+        );
+        $this->assertArrayNotHasKey('schemaOrgData', $_POST);
+    }
+
+    function testImportMitEinwertigemTypeBleibtUnveraendert(): void {
+        $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', [$this->validLocalBusinessJsonLd()]);
+        $_POST['schemaOrgData_import_action'] = 'global';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('LocalBusiness', $_POST['schemaOrgData']['global']['type']);
+    }
+
     function testImportAktionHatVorrangVorMitgesendetenFormulardaten(): void {
         $settings = new \InMemorySettings();
         $this->seedScopeBlocks($settings, 'global', [$this->validLocalBusinessJsonLd()]);

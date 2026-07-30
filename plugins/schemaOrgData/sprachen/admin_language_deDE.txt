@@ -188,6 +188,7 @@ label_full_jsonld_preview = Erkannter JSON-LD-Block (Vollansicht)
 label_detected_block = Erkannter Block
 error_detected_block_invalid = Der erkannte JSON-LD-Block konnte nicht gelesen werden (ungültiges JSON). Bitte den Block an seiner Quelle korrigieren (Layout-Template bzw. Seiteninhalt).
 error_import_block_not_found = Der gewählte Block wurde nicht mehr gefunden - vermutlich wurde die Quelle zwischenzeitlich geändert. Bitte die Admin-Seite neu laden und erneut importieren.
+error_import_multivalue_type = Der "@type" des Blocks liegt nicht als einzelner Schema-Type vor, sondern z. B. als Liste ("@type": ["Organization", "LocalBusiness"]). Mehrwertige @type-Angaben können nicht importiert werden - bitte den Block an seiner Quelle auf einen einzelnen Type reduzieren oder die Daten manuell im Formular erfassen.
 
 hint_id_reference_auto_link = Wird automatisch verknüpft mit:
 
