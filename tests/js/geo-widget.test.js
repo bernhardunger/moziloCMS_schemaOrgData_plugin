@@ -95,6 +95,30 @@ describe('Geo-Widget - Live-Validierung (runGeoValidation)', function () {
         expect(feedbackFor(ID.latitude).textContent).toContain('LATITUDE_ERROR');
     });
 
+    // B5-05: "Number()" liest Hex-Literale ("0x1A" -> 26) - is_numeric()
+    // serverseitig (SchemaOrgData_Validator::validateGeoCoordinate()) nicht.
+    // Ohne diese Ablehnung wäre "0x1A" (innerhalb -90..90) fälschlich als
+    // gültige latitude durchgegangen.
+    test('Hex-Literal wird abgelehnt statt als Zahl interpretiert ("0x1A")', function () {
+        setValue(ID.latitude, '0x1A');
+        fire(document.getElementById(ID.latitude), 'blur');
+        setValue(ID.longitude, '11.64278');
+        fire(document.getElementById(ID.longitude), 'blur');
+
+        expect(feedbackFor(ID.latitude).className).toContain('schemaOrgData-feedback--error');
+        expect(feedbackFor(ID.latitude).textContent).toContain('LATITUDE_ERROR');
+    });
+
+    test('reguläre Dezimalwerte inklusive Vorzeichen und Exponent bleiben gültig (B5-05)', function () {
+        setValue(ID.latitude, '4.55e1');
+        fire(document.getElementById(ID.latitude), 'blur');
+        setValue(ID.longitude, '+11.64278');
+        fire(document.getElementById(ID.longitude), 'blur');
+
+        expect(feedbackFor(ID.latitude).className).toContain('schemaOrgData-feedback--ok');
+        expect(feedbackFor(ID.longitude).className).toContain('schemaOrgData-feedback--ok');
+    });
+
     test('Korrektur des fehlenden Gegenstücks entfernt den Paar-Pflicht-Fehler sofort (Regression: sofortige Honorierung)', function () {
         setValue(ID.latitude, '48.12567');
         fire(document.getElementById(ID.latitude), 'blur');

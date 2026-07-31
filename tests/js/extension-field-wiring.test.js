@@ -66,7 +66,7 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
 
         fetchMock = jest.fn(function (url) {
             var schema = url.indexOf('SchemaB') !== -1 ? SCHEMA_B : SCHEMA_A;
-            return Promise.resolve({ json: function () { return Promise.resolve(schema); } });
+            return Promise.resolve({ ok: true, json: function () { return Promise.resolve(schema); } });
         });
         global.fetch = fetchMock;
 
@@ -186,8 +186,14 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
         expect(feedbackFor(GLOBAL_ID).children.length).toBeGreaterThan(0);
     });
 
-    test('Schema-Ladefehler (fetch schlägt fehl) wirft keinen Fehler - ohne geladenes Schema wird weder auf Unbekannt- noch auf Format-Verletzungen geprüft (schema bleibt null, siehe checkUnknownProperties()/checkFormats())', async function () {
+    // B5-02: Vor dem Fix zeigte ein fehlgeschlagener Schema-Abruf fälschlich
+    // ein grünes "--ok"-Feedback (schema blieb null, checkUnknownProperties()/
+    // checkFormats() liefern dann beide [] statt eines Hinweises). Die
+    // Erwartung ist invertiert: kein Fehlerwurf bleibt weiterhin garantiert,
+    // aber das Feedback zeigt jetzt eine Warnung ("nur Syntax geprüft").
+    test('Schema-Ladefehler (fetch schlägt fehl) wirft keinen Fehler - ohne geladenes Schema zeigt das Feedback eine Warnung statt eines grünen Hakens (schema bleibt null, siehe checkUnknownProperties()/checkFormats())', async function () {
         global.fetch = jest.fn(function () { return Promise.reject(new Error('network down')); });
+        window.schemaOrgDataMessages.extensionSchemaUnavailable = 'SCHEMA_NICHT_LADBAR';
 
         document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
         validator.initAdminForm();
@@ -200,6 +206,27 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
 
         var feedback = feedbackFor(GLOBAL_ID);
         expect(feedback.children.length).toBe(1);
-        expect(feedback.querySelector('.schemaOrgData-feedback--ok')).not.toBeNull();
+        expect(feedback.querySelector('.schemaOrgData-feedback--ok')).toBeNull();
+        expect(feedback.querySelector('.schemaOrgData-feedback--warning')).not.toBeNull();
+        expect(feedback.textContent).toContain('SCHEMA_NICHT_LADBAR');
+    });
+
+    test('Schema-Abruf mit HTTP-Fehlerstatus (response.ok === false) zeigt ebenfalls eine Warnung statt eines grünen Hakens', async function () {
+        global.fetch = jest.fn(function () {
+            return Promise.resolve({ ok: false, status: 404, json: function () { return Promise.resolve({}); } });
+        });
+        window.schemaOrgDataMessages.extensionSchemaUnavailable = 'SCHEMA_NICHT_LADBAR';
+
+        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        validator.initAdminForm();
+        await flushPromises();
+
+        document.getElementById(GLOBAL_ID).value = '{"foo": "bar"}';
+        fire(document.getElementById(GLOBAL_ID), 'blur');
+
+        var feedback = feedbackFor(GLOBAL_ID);
+        expect(feedback.querySelector('.schemaOrgData-feedback--ok')).toBeNull();
+        expect(feedback.querySelector('.schemaOrgData-feedback--warning')).not.toBeNull();
+        expect(feedback.textContent).toContain('SCHEMA_NICHT_LADBAR');
     });
 });
