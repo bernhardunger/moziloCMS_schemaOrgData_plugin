@@ -81,21 +81,48 @@ class SchemaOrgData_PersonsRegistryService {
 
     /***************************************************************
     *
-    * Leitet aus einem Personennamen einen Slug-Vorschlag ab:
-    * Kleinschreibung, Umlaut-Transliteration (ä→ae, ö→oe, ü→ue,
-    * ß→ss), Leerzeichen/übrige Sonderzeichen → Bindestrich, führende/
-    * abschließende Bindestriche entfernt. Rein clientseitiger
-    * Vorschlag - maßgeblich bleibt sanitizeSlugCandidate() auf dem
-    * tatsächlich vom Nutzer übernommenen bzw. angepassten Wert.
+    * Wandelt die deutschen Umlaute und das Eszett in ihre
+    * ASCII-Entsprechungen (ä→ae, ö→oe, ü→ue, ß→ss). Einzige
+    * Transliterationsquelle beider Slug-Wege - der abgeleitete
+    * Vorschlag und der vom Nutzer getippte Wert müssen für denselben
+    * Eingabetext denselben Slug ergeben, sonst schlägt der
+    * Live-Vorschlag etwas anderes vor, als der Server speichert.
+    *
+    * Muss vor der Kleinschreibung laufen: strtolower() arbeitet
+    * ASCII-beschränkt und lässt "Ä"/"Ö"/"Ü" unangetastet - liefe die
+    * Transliteration danach, bliebe aus "Ä" ein "Ae" stehen, dessen
+    * großes "A" der nachfolgende Zeichenfilter ersatzlos löscht.
     *
     ***************************************************************/
-    public function generateSlugSuggestion(string $name): string {
-        $value = trim($name);
-        $value = str_replace(
+    private function transliterateSlugInput(string $value): string {
+        return str_replace(
             ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß'],
             ['ae', 'oe', 'ue', 'Ae', 'Oe', 'Ue', 'ss'],
             $value
         );
+    }
+
+    /***************************************************************
+    *
+    * Leitet aus einem Personennamen einen Slug-Vorschlag ab:
+    * Umlaut-Transliteration, Kleinschreibung, Leerzeichen/übrige
+    * Sonderzeichen → Bindestrich, führende/abschließende Bindestriche
+    * entfernt.
+    *
+    * Der Zeichenvorrat eines Slugs ist bewusst auf ASCII beschränkt
+    * (lateinische Buchstaben, Ziffern, Bindestrich, Unterstrich) -
+    * keine Nebenwirkung des Zeichenfilters, sondern eine Festlegung:
+    * der Slug ist zugleich das @id-Fragment der Person und nach
+    * Erstanlage unveränderlich. Eine Transliteration über
+    * iconv('ASCII//TRANSLIT') oder intl kommt dafür nicht in Frage,
+    * weil beide plattformabhängig sind und auf Shared Hosting nicht
+    * zugesichert werden können. Ein Name ganz ohne lateinische
+    * Zeichen ergibt daher einen leeren Slug; das Formular verlangt
+    * dann eine eigene Kennung.
+    *
+    ***************************************************************/
+    public function generateSlugSuggestion(string $name): string {
+        $value = $this->transliterateSlugInput(trim($name));
         $value = strtolower($value);
         $value = (string) preg_replace('/[^a-z0-9]+/', '-', $value);
         return trim($value, '-');
@@ -104,21 +131,41 @@ class SchemaOrgData_PersonsRegistryService {
     /***************************************************************
     *
     * Bereinigt einen vom Nutzer eingegebenen/übernommenen Slug-Wert
-    * auf die zulässige Zeichenmenge (Buchstaben, Ziffern, Bindestrich,
-    * Unterstrich - Zeichenregel analog
+    * auf die zulässige Zeichenmenge (lateinische Buchstaben, Ziffern,
+    * Bindestrich, Unterstrich - Zeichenregel analog
     * SchemaOrgData_ScopeResolver::sanitizeScopeIdentifier()), stets
     * kleingeschrieben (Slugs sind rein technische Bezeichner, keine
     * benutzersichtbaren Freitextwerte).
     *
+    * Nutzt dieselbe Transliteration wie generateSlugSuggestion() und
+    * liefert für denselben Eingabetext denselben Slug - welcher der
+    * beiden Wege den Wert erzeugt hat, ist am Ergebnis nicht mehr
+    * ablesbar. Zur bewussten ASCII-Beschränkung siehe dort.
+    *
+    * Bleibt nach dem Zeichenfilter kein einziges alphanumerisches
+    * Zeichen übrig, gilt die Kennung als nicht angegeben und der
+    * Rückgabewert ist der Leerstring. Ohne diese Bedingung passierte
+    * eine reine Trennzeichenfolge ("-", "--", "_", "-_-") die
+    * Leer-Prüfung des Aufrufers: aus einem von Hand eingetragenen
+    * "Иван Петров" entstünde der Slug "-" und damit dauerhaft das
+    * @id-Fragment "#person--", denn der Slug ist nach Erstanlage
+    * unveränderlich. Die Fehlermeldung bei leerer Kennung sagt zudem
+    * zu, dass eine Kennung lateinische Buchstaben oder Ziffern
+    * enthalten muss - eine Zusage, die der Code sonst nicht einhielte.
+    * Ein Rand-Trim genügte dafür nicht: er ließe "-_-" durch.
+    *
     ***************************************************************/
     public function sanitizeSlugCandidate(string $value): string {
-        $value = strtolower(trim($value));
+        $value = $this->transliterateSlugInput(trim($value));
+        $value = strtolower($value);
         // Leerraum wird vor dem Zeichenfilter in Bindestriche umgewandelt,
         // damit ein manuell eingegebener Slug-Wert ("Max Mustermann") nicht
         // zu einem verklebten "maxmustermann" wird, sondern zum erwarteten
         // "max-mustermann" (analog generateSlugSuggestion()).
         $value = (string) preg_replace('/\s+/', '-', $value);
-        return (string) preg_replace('/[^a-z0-9_\-]/', '', $value);
+        $value = (string) preg_replace('/[^a-z0-9_\-]/', '', $value);
+
+        return preg_match('/[a-z0-9]/', $value) === 1 ? $value : '';
     }
 
     /***************************************************************

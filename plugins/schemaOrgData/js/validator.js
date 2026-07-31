@@ -392,34 +392,85 @@
     }
 
     /**
+     * Umlaut-Transliteration beider Slug-Wege - Entsprechung von
+     * SchemaOrgData_PersonsRegistryService::transliterateSlugInput().
+     * Läuft vor der Kleinschreibung, weil die PHP-Gegenstelle es tun
+     * muss (dortiges strtolower() lässt "Ä"/"Ö"/"Ü" unangetastet) und
+     * beide Seiten sonst auseinanderliefen.
+     *
+     * @param {string} value
+     * @returns {string}
+     */
+    function transliterateSlugInputJs(value) {
+        var umlautMap = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ß': 'ss' };
+        return value.replace(/[äöüÄÖÜß]/g, function (match) { return umlautMap[match]; });
+    }
+
+    /**
+     * Schreibt ausschließlich die lateinischen Großbuchstaben klein.
+     * Bewusst nicht String.toLowerCase(): das ist unicode-bewusst und
+     * würde Zeichen kleinschreiben, die das PHP-seitige strtolower()
+     * unangetastet lässt - dieselbe Eingabe ergäbe dann client- und
+     * serverseitig verschiedene Slugs.
+     *
+     * @param {string} value
+     * @returns {string}
+     */
+    function toAsciiLowerCaseJs(value) {
+        return value.replace(/[A-Z]/g, function (match) { return match.toLowerCase(); });
+    }
+
+    /**
      * Bereinigt einen vom Nutzer eingegebenen Personen-Registry-Slug auf
      * die zulässige Zeichenmenge - client-seitige Entsprechung von
      * SchemaOrgData_PersonsRegistryService::sanitizeSlugCandidate(),
      * siehe README.md, Abschnitt "Personen-Registry".
      *
+     * Der Zeichenvorrat eines Slugs ist bewusst auf ASCII beschränkt -
+     * der Slug ist zugleich das @id-Fragment der Person und nach
+     * Erstanlage unveränderlich. Die Leerraumklasse ist deshalb
+     * ausgeschrieben statt \s: das unicode-bewusste \s träfe auch das
+     * geschützte Leerzeichen, das PHP-seitig kein Leerraum ist und vom
+     * Zeichenfilter ersatzlos gelöscht wird.
+     *
+     * String.trim() bleibt hier bewusst stehen, obwohl es
+     * unicode-bewusster ist als das PHP-seitige trim(): ein am Rand
+     * stehendes geschütztes Leerzeichen entfernt JS sofort, PHP
+     * anschließend über den Zeichenfilter - das Ergebnis ist beidseitig
+     * dasselbe.
+     *
+     * Bleibt nach dem Zeichenfilter kein alphanumerisches Zeichen übrig,
+     * gilt die Kennung als nicht angegeben (Leerstring) - eine reine
+     * Trennzeichenfolge ist kein brauchbares @id-Fragment. Ohne diese
+     * Bedingung schlüge der Live-Fill für "Иван Петров" einen einzelnen
+     * Bindestrich vor, den der Server ablehnt.
+     *
      * @param {string} value
      * @returns {string}
      */
     function sanitizeSlugCandidateJs(value) {
-        var result = String(value || '').trim().toLowerCase();
-        result = result.replace(/\s+/g, '-');
-        return result.replace(/[^a-z0-9_\-]/g, '');
+        var result = transliterateSlugInputJs(String(value || '').trim());
+        result = toAsciiLowerCaseJs(result);
+        result = result.replace(/[ \t\n\r\f\v]+/g, '-');
+        result = result.replace(/[^a-z0-9_\-]/g, '');
+
+        return /[a-z0-9]/.test(result) ? result : '';
     }
 
     /**
      * Leitet aus einem Personennamen einen Slug-Vorschlag ab (Umlaut-
      * Transliteration, Kleinschreibung) - client-seitige Entsprechung
      * von SchemaOrgData_PersonsRegistryService::generateSlugSuggestion(),
-     * siehe README.md, Abschnitt "Personen-Registry".
+     * siehe README.md, Abschnitt "Personen-Registry". Zeichenvorrat und
+     * ASCII-Kleinschreibung wie bei sanitizeSlugCandidateJs(); beide
+     * Wege liefern für denselben Eingabetext denselben Slug.
      *
      * @param {string} name
      * @returns {string}
      */
     function generateSlugSuggestionJs(name) {
-        var umlautMap = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ß': 'ss' };
-        var result = String(name || '').trim();
-        result = result.replace(/[äöüÄÖÜß]/g, function (match) { return umlautMap[match]; });
-        result = result.toLowerCase();
+        var result = transliterateSlugInputJs(String(name || '').trim());
+        result = toAsciiLowerCaseJs(result);
         result = result.replace(/[^a-z0-9]+/g, '-');
         return result.replace(/^-+|-+$/g, '');
     }

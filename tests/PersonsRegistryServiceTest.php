@@ -56,6 +56,69 @@ final class PersonsRegistryServiceTest extends TestCase {
         $this->assertSame('ab_c-1', $service->sanitizeSlugCandidate('A/b_c-1!'));
     }
 
+    function testSanitizeSlugCandidateTransliteriertUmlaute(): void {
+        $service = $this->service();
+
+        $this->assertSame('mueller', $service->sanitizeSlugCandidate('Müller'));
+    }
+
+    // Belegt die Reihenfolge Transliteration vor Kleinschreibung: liefe sie
+    // danach, bliebe aus "Ä" ein "Ae" stehen, dessen großes "A" der
+    // Zeichenfilter ersatzlos löschte ("ertzin" statt "aerztin").
+    function testSanitizeSlugCandidateTransliteriertGrossumlautAmWortanfang(): void {
+        $service = $this->service();
+
+        $this->assertSame('aerztin', $service->sanitizeSlugCandidate('Ärztin'));
+        $this->assertSame('aerztin', $service->generateSlugSuggestion('Ärztin'));
+    }
+
+    function testBeideSlugWegeLiefernDenselbenWert(): void {
+        $service = $this->service();
+
+        foreach(['Müller', 'Jürgen Müller-Schön', 'Straße Weiß', 'Max Mustermann'] as $input) {
+            $this->assertSame(
+                $service->generateSlugSuggestion($input),
+                $service->sanitizeSlugCandidate($input),
+                'Abgeleiteter und getippter Weg müssen für "'.$input.'" denselben Slug ergeben'
+            );
+        }
+    }
+
+    function testSanitizeSlugCandidateVerwirftReineTrennzeichenfolgen(): void {
+        $service = $this->service();
+
+        $this->assertSame('', $service->sanitizeSlugCandidate('-'));
+        $this->assertSame('', $service->sanitizeSlugCandidate('--'));
+        $this->assertSame('', $service->sanitizeSlugCandidate('_'));
+        $this->assertSame('', $service->sanitizeSlugCandidate('-_-'));
+    }
+
+    // Die Regel verwirft nur das restlos Alphanumerik-freie, sie trimmt nicht:
+    // ein Rand-Trim ließe "-_-" durch und entfernte hier die Bindestriche.
+    function testSanitizeSlugCandidateBehaeltRandBindestricheBeiInhalt(): void {
+        $service = $this->service();
+
+        $this->assertSame('-max-', $service->sanitizeSlugCandidate('-max-'));
+    }
+
+    function testReinNichtLateinischerNameErgibtLeerenSlugUndWirdAbgelehnt(): void {
+        $service = $this->service();
+        $settings = new \InMemorySettings();
+        $lang = $this->adminLang();
+
+        $this->assertSame('', $service->generateSlugSuggestion('Иван Петров'));
+        // Auch der getippte Weg liefert leer: das Leerzeichen wird zwar zum
+        // Bindestrich, aber eine Kennung ohne alphanumerisches Zeichen gilt als
+        // nicht angegeben. Beide Eingabewege lösen bei einem rein
+        // nicht-lateinischen Text damit dieselbe Fehlermeldung aus.
+        $this->assertSame('', $service->sanitizeSlugCandidate('Иван Петров'));
+
+        $result = $service->createPerson($settings, ['name' => 'Иван Петров'], $lang, $this->validator());
+
+        $this->assertFalse($result['success']);
+        $this->assertContains($lang->getLanguageValue('error_person_slug_required'), $result['errors']);
+    }
+
     // sanitizeRelativeMediaPath() -----------------------------------------
 
     function testSanitizeRelativeMediaPathEntferntTraversalUndFuehrendeSlashes(): void {
