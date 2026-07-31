@@ -23,7 +23,109 @@
     var ajvInstance = null;
 
     /**
-     * Erstellt bzw. liefert die AJV-Instanz.
+     * Prüft eine URL wie SchemaOrgData_Validator::validateUrl() (PHP):
+     * FILTER_VALIDATE_URL-Kern (hier über "new URL()" nachgebildet) plus
+     * "^https?://"-Vorfilter. Zusätzlich werden Nicht-ASCII-Zeichen
+     * abgelehnt - "new URL()" akzeptiert IDN-Hostnamen ("http://ä.de")
+     * ungeprüft, filter_var() nicht. Von getAjv() (Format "uri") und
+     * validateUrl() gemeinsam genutzt, damit AJV nie einen Wert grün
+     * zeigt, den das serverseitige Speichern ablehnt.
+     *
+     * @param {*} value
+     * @returns {boolean}
+     */
+    function isValidUrlFormat(value) {
+        if (typeof value !== 'string') {
+            return false;
+        }
+
+        if (!/^https?:\/\//i.test(value) || /[^\x00-\x7F]/.test(value)) {
+            return false;
+        }
+
+        try {
+            new URL(value);
+        } catch (e) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /** Lokalteil einer E-Mail-Adresse: Punkt-getrennte, nicht-leere Segmente (keine aufeinanderfolgenden Punkte). */
+    var EMAIL_LOCAL_PART_PATTERN = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*$/;
+    /** Einzelnes Domain-Label (kein führender/nachgestellter Bindestrich). */
+    var EMAIL_DOMAIN_LABEL_PATTERN = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
+
+    /**
+     * Prüft eine E-Mail-Adresse angenähert an FILTER_VALIDATE_EMAIL
+     * (SchemaOrgData_Validator::validateEmail(), PHP): lehnt - anders als
+     * das bisherige, deutlich lockerere Regex - aufeinanderfolgende Punkte
+     * im Lokalteil ("a..b@c.de") und Nicht-ASCII-Zeichen im Lokalteil ab.
+     * Von getAjv() (Format "email") und validateEmail() gemeinsam genutzt.
+     *
+     * @param {*} value
+     * @returns {boolean}
+     */
+    function isValidEmailFormat(value) {
+        if (typeof value !== 'string') {
+            return false;
+        }
+
+        var atIndex = value.lastIndexOf('@');
+        if (atIndex <= 0 || atIndex === value.length - 1) {
+            return false;
+        }
+
+        var local = value.slice(0, atIndex);
+        var domain = value.slice(atIndex + 1);
+
+        if (/[^\x00-\x7F]/.test(local) || !EMAIL_LOCAL_PART_PATTERN.test(local)) {
+            return false;
+        }
+
+        var domainLabels = domain.split('.');
+        if (domainLabels.length < 2) {
+            return false;
+        }
+
+        return domainLabels.every(function (label) {
+            return EMAIL_DOMAIN_LABEL_PATTERN.test(label);
+        });
+    }
+
+    /**
+     * Prüft ein ISO-8601-Datum wie SchemaOrgData_Validator::validateIso8601Date()
+     * (PHP): reines Datum ("YYYY-MM-DD") oder Datum+Zeit+Zeitzone
+     * ("YYYY-MM-DDTHH:MM:SS±HH:MM" bzw. "...Z"), zusätzlich kalendarisch
+     * gültig (siehe isValidCalendarDate()). Von getAjv() (Format
+     * "date-time") genutzt - das Erweiterungsfeld speichert Datumswerte
+     * ausschließlich in diesem Format, nie im deutschen TT.MM.YYYY-Format
+     * der Formularfelder (siehe validateEventDateInput()).
+     *
+     * @param {*} value
+     * @returns {boolean}
+     */
+    function isValidIso8601Format(value) {
+        if (typeof value !== 'string') {
+            return false;
+        }
+
+        var match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:Z|[+-]\d{2}:\d{2}))?$/);
+        if (!match) {
+            return false;
+        }
+
+        return isValidCalendarDate(parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10));
+    }
+
+    /**
+     * Erstellt bzw. liefert die AJV-Instanz. Registriert die drei im
+     * Projekt genutzten "format"-Schlüssel ("uri", "email", "date-time",
+     * siehe schemas/*.json) über dieselben Prädikate wie validateUrl()/
+     * validateEmail() - AJV bringt ohne "ajv-formats" (bewusst nicht
+     * eingebunden, siehe README.md) keine Formatprüfung mit, das
+     * "format"-Keyword der Schemas wäre sonst wirkungslos.
      *
      * @returns {object|null} AJV-Instanz oder null, falls ajv.min.js
      *                         nicht geladen wurde
@@ -32,6 +134,9 @@
         if (ajvInstance === null && typeof window.ajv7 !== 'undefined') {
             var Ajv = window.ajv7.default || window.ajv7;
             ajvInstance = new Ajv({ allErrors: true, strict: false });
+            ajvInstance.addFormat('uri', isValidUrlFormat);
+            ajvInstance.addFormat('email', isValidEmailFormat);
+            ajvInstance.addFormat('date-time', isValidIso8601Format);
         }
         return ajvInstance;
     }
@@ -251,16 +356,7 @@
             return { status: null, message: null };
         }
 
-        try {
-            new URL(value);
-        } catch (e) {
-            return { status: 'error', message: getMessages().urlInvalid || null };
-        }
-
-        // new URL() prüft nur allgemeine URI-Syntax, kein konkretes Schema -
-        // "htto://..." oder "htxxxs://..." würden sonst fälschlich als
-        // gültig durchgehen.
-        if (!/^https?:\/\//i.test(value)) {
+        if (!isValidUrlFormat(value)) {
             return { status: 'error', message: getMessages().urlInvalid || null };
         }
 
@@ -388,7 +484,7 @@
     }
 
     /**
-     * Validiert eine E-Mail-Adresse (siehe index.php, validateEmail()).
+     * Validiert eine E-Mail-Adresse (siehe SchemaOrgData_Validator::validateEmail()).
      *
      * @param {string} value
      * @returns {{status: string|null, message: string|null}}
@@ -398,7 +494,7 @@
             return { status: null, message: null };
         }
 
-        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        if (isValidEmailFormat(value)) {
             return { status: 'ok', message: null };
         }
 
@@ -647,9 +743,23 @@
     }
 
     /**
+     * Prüft eine numerische Zeichenkette wie PHPs is_numeric()
+     * (SchemaOrgData_Validator::validateGeoCoordinate() nutzt
+     * is_numeric() direkt): Vorzeichen, Dezimalpunkt und Exponent
+     * erlaubt, aber - anders als "Number()" - keine Hex- ("0x1A"),
+     * Oktal- oder Binärliteral-Schreibweisen.
+     *
+     * @param {string} value
+     * @returns {boolean}
+     */
+    function isNumericStringLikePhp(value) {
+        return typeof value === 'string' && /^\s*[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\s*$/.test(value);
+    }
+
+    /**
      * Validiert eine Geo-Koordinate (latitude/longitude), siehe
-     * index.php, validateGeoCoordinate(). Leerer Wert wird hier nicht
-     * geprüft (Paar-Pflicht siehe runGeoValidation()).
+     * SchemaOrgData_Validator::validateGeoCoordinate(). Leerer Wert
+     * wird hier nicht geprüft (Paar-Pflicht siehe runGeoValidation()).
      *
      * @param {string} value
      * @param {number} min
@@ -662,9 +772,13 @@
             return { status: null, message: null };
         }
 
-        var numeric = Number(value);
+        if (!isNumericStringLikePhp(value)) {
+            return { status: 'error', message: message || null };
+        }
 
-        if (isNaN(numeric) || numeric < min || numeric > max) {
+        var numeric = parseFloat(value);
+
+        if (numeric < min || numeric > max) {
             return { status: 'error', message: message || null };
         }
 
@@ -1509,8 +1623,14 @@
      *
      * @param {HTMLElement} feedback
      * @param {object} result Rückgabe von validateExtensionField()
+     * @param {boolean} [schemaLoadFailed] true, wenn das Schema nicht
+     *        geladen werden konnte (siehe initExtensionFieldValidation()) -
+     *        Stufe 2 (Property-Whitelist) und Stufe 3 (Format) sind dann
+     *        stumm ausgefallen (schema === null), ohne diesen Parameter
+     *        würde ein leeres unknownProperties/formatErrors fälschlich
+     *        als grünes "✅" gewertet.
      */
-    function showExtensionFeedback(feedback, result) {
+    function showExtensionFeedback(feedback, result, schemaLoadFailed) {
         while (feedback.firstChild) {
             feedback.removeChild(feedback.firstChild);
         }
@@ -1526,25 +1646,31 @@
 
         if (result.syntaxError) {
             appendFeedbackSpan('error', '❌ ' + result.syntaxError);
-        } else {
-            result.unknownProperties.forEach(function (property) {
-                var value = result.data ? result.data[property] : undefined;
-                if (isPersonSuggestionCandidate(property, value)) {
-                    appendFeedbackSpan('info', 'ℹ️ '
-                        + (getMessages().personSuggestionCandidate || property).replace('{PARAM1}', property));
-                } else {
-                    appendFeedbackSpan('warning', '⚠️ '
-                        + (getMessages().unknownProperty || property).replace('{PARAM1}', property));
-                }
-            });
+            return;
+        }
 
-            result.formatErrors.forEach(function (error) {
-                appendFeedbackSpan('error', '❌ ' + (error.instancePath || '') + ' ' + error.message);
-            });
+        if (schemaLoadFailed) {
+            appendFeedbackSpan('warning', '⚠️ ' + (getMessages().extensionSchemaUnavailable || ''));
+            return;
+        }
 
-            if (feedback.children.length === 0) {
-                appendFeedbackSpan('ok', '✅');
+        result.unknownProperties.forEach(function (property) {
+            var value = result.data ? result.data[property] : undefined;
+            if (isPersonSuggestionCandidate(property, value)) {
+                appendFeedbackSpan('info', 'ℹ️ '
+                    + (getMessages().personSuggestionCandidate || property).replace('{PARAM1}', property));
+            } else {
+                appendFeedbackSpan('warning', '⚠️ '
+                    + (getMessages().unknownProperty || property).replace('{PARAM1}', property));
             }
+        });
+
+        result.formatErrors.forEach(function (error) {
+            appendFeedbackSpan('error', '❌ ' + (error.instancePath || '') + ' ' + error.message);
+        });
+
+        if (feedback.children.length === 0) {
+            appendFeedbackSpan('ok', '✅');
         }
     }
 
@@ -1558,6 +1684,15 @@
      * nach dem Nachladen des Schemas wird bei einem nicht-leeren Feld
      * erneut validiert, damit Warnungen zu unbekannten Properties
      * bzw. Format-Fehler ebenfalls ohne Blur sichtbar werden.
+     *
+     * Ein fehlgeschlagener Abruf (Netzwerkfehler oder HTTP-Fehlerstatus -
+     * response.ok wird deshalb geprüft, ein 404 mit HTML-Fehlerseite als
+     * Body würde sonst erst über den response.json()-Parsingfehler im
+     * catch landen) setzt schemaLoadFailed dauerhaft auf true: schema
+     * bleibt null, Stufe 2 (Property-Whitelist) und Stufe 3 (Format)
+     * finden dadurch nicht statt. showExtensionFeedback() zeigt in diesem
+     * Fall eine Warnung statt eines grünen Hakens, da nur die JSON-Syntax
+     * (Stufe 1) tatsächlich geprüft wurde - Speichern bleibt möglich.
      */
     function initExtensionFieldValidation() {
         var textareas = document.querySelectorAll('.schemaOrgData-extension-field');
@@ -1565,25 +1700,37 @@
         for (var i = 0; i < textareas.length; i++) {
             (function (textarea) {
                 var schema = null;
+                var schemaLoadFailed = false;
                 var schemaUrl = textarea.getAttribute('data-schema-url');
 
                 var validate = function () {
                     var feedback = document.getElementById(textarea.id + '_feedback');
                     if (feedback) {
-                        showExtensionFeedback(feedback, validateExtensionField(textarea.value, schema));
+                        showExtensionFeedback(feedback, validateExtensionField(textarea.value, schema), schemaLoadFailed);
                     }
                 };
 
                 if (schemaUrl) {
                     fetch(schemaUrl)
-                        .then(function (response) { return response.json(); })
+                        .then(function (response) {
+                            if (!response.ok) {
+                                throw new Error('schema fetch failed: ' + response.status);
+                            }
+                            return response.json();
+                        })
                         .then(function (data) {
                             schema = data;
                             if (textarea.value.trim() !== '') {
                                 validate();
                             }
                         })
-                        .catch(function () { schema = null; });
+                        .catch(function () {
+                            schema = null;
+                            schemaLoadFailed = true;
+                            if (textarea.value.trim() !== '') {
+                                validate();
+                            }
+                        });
                 }
 
                 textarea.addEventListener('blur', validate);

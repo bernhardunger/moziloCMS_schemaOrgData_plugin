@@ -5,13 +5,14 @@ var loadPluginScripts = require('./helpers/load-plugin-scripts');
 // Repräsentatives Mini-Schema für checkFormats()/checkUnknownProperties()/
 // validateExtensionField() - bewusst kein Laden einer echten schemas/*.json-
 // Datei (das wäre Schema-Validierung, nicht Validator-Logik-Test).
-// Hinweis: js/ajv.min.js bündelt kein "ajv-formats" - getAjv() ruft
-// ajv.addFormat() nirgends auf, daher wird das "format"-Keyword (z. B.
-// "uri" für hasMap) von checkFormats()/validateExtensionField() aktuell
-// NICHT tatsächlich geprüft ("strict: false" unterdrückt lediglich die
-// sonst von AJV geworfene Ausnahme für das unbekannte Format). Bestehendes
-// Produktionsverhalten, außerhalb des Scopes dieses Fixes - das Mini-Schema
-// nutzt daher "type" statt "format" als real durchsetzbare Verletzung.
+// getAjv() registriert die drei im Projekt genutzten Formate ("uri",
+// "email", "date-time") über eigene Prädikate (siehe isValidUrlFormat()/
+// isValidEmailFormat()/isValidIso8601Format() in js/validator.js) - das
+// "format"-Keyword wird also tatsächlich geprüft. Das Mini-Schema nutzt
+// trotzdem "type" statt "format" als Verletzung: eigene, dedizierte Tests
+// für "format" stehen weiter unten (checkFormats()-Block), das Mini-Schema
+// bleibt damit auf die hier im Vordergrund stehende Property-Whitelist-
+// und Typ-Prüfung fokussiert.
 var MINI_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-07/schema#',
     title: 'MiniTestSchema',
@@ -20,6 +21,20 @@ var MINI_SCHEMA = {
         name: { type: 'string' },
         hasMap: { type: 'string' },
         count: { type: 'integer' }
+    }
+};
+
+// Eigenes Mini-Schema für die "format"-Prüfung (B5-01): getAjv() registriert
+// "uri"/"email"/"date-time" über dieselben Prädikate wie validateUrl()/
+// validateEmail()/isValidIso8601Format() in js/validator.js.
+var MINI_SCHEMA_WITH_FORMATS = {
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+    title: 'MiniTestSchemaWithFormats',
+    type: 'object',
+    properties: {
+        website: { type: 'string', format: 'uri' },
+        contact: { type: 'string', format: 'email' },
+        published: { type: 'string', format: 'date-time' }
     }
 };
 
@@ -108,6 +123,14 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
         test('ähnliches, aber falsches Schema ist ein Fehler ("htxxxs://...")', function () {
             expect(validator.validateUrl('htxxxs://www.example.com/pfad').status).toBe('error');
         });
+
+        // B5-04: "new URL()" akzeptiert IDN-Hostnamen ungeprüft, filter_var()
+        // serverseitig (FILTER_VALIDATE_URL) nicht - ohne die Nicht-ASCII-
+        // Ablehnung zeigte der Client hier fälschlich Grün, das Speichern
+        // wäre serverseitig gescheitert.
+        test('IDN-Hostname mit Nicht-ASCII-Zeichen ist ein Fehler ("http://ä.de")', function () {
+            expect(validator.validateUrl('http://ä.de').status).toBe('error');
+        });
     });
 
     describe('validateSortOrder()', function () {
@@ -171,6 +194,14 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
 
         test('leerer Wert wird nicht geprüft', function () {
             expect(validator.validateEmail('').status).toBeNull();
+        });
+
+        // B5-04: das bisherige Regex (/^[^\s@]+@[^\s@]+\.[^\s@]+$/) ließ
+        // aufeinanderfolgende Punkte im Lokalteil durch, FILTER_VALIDATE_EMAIL
+        // serverseitig nicht - ohne diese Ablehnung zeigte der Client
+        // fälschlich Grün, das Speichern wäre serverseitig gescheitert.
+        test('aufeinanderfolgende Punkte im Lokalteil sind ein Fehler ("a..b@c.de")', function () {
+            expect(validator.validateEmail('a..b@c.de').status).toBe('error');
         });
     });
 
@@ -331,6 +362,35 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
             var result = validator.validateExtensionField('{"count": "keine-zahl"}', MINI_SCHEMA);
             expect(result.valid).toBe(false);
             expect(result.formatErrors.length).toBeGreaterThan(0);
+        });
+    });
+
+    // B5-01: getAjv() registriert "uri"/"email"/"date-time" jetzt tatsächlich
+    // (siehe Kopfkommentar) - vorher war "strict: false" die einzige Wirkung
+    // dieser "format"-Schlüssel, checkFormats() ließ jeden Wert durch.
+    describe('checkFormats() gegen "format"-Schlüssel (uri/email/date-time, B5-01)', function () {
+        test('gültige Werte für uri/email/date-time ergeben keine Formatfehler', function () {
+            var errors = validator.checkFormats({
+                website: 'https://example.com',
+                contact: 'info@example.com',
+                published: '2026-07-31T10:00:00Z'
+            }, MINI_SCHEMA_WITH_FORMATS);
+            expect(errors).toEqual([]);
+        });
+
+        test('ungültiger Wert für format "uri" ergibt einen Formatfehler', function () {
+            var errors = validator.checkFormats({ website: 'nicht-valide' }, MINI_SCHEMA_WITH_FORMATS);
+            expect(errors.length).toBeGreaterThan(0);
+        });
+
+        test('ungültiger Wert für format "email" ergibt einen Formatfehler', function () {
+            var errors = validator.checkFormats({ contact: 'keine-email' }, MINI_SCHEMA_WITH_FORMATS);
+            expect(errors.length).toBeGreaterThan(0);
+        });
+
+        test('ungültiger Wert für format "date-time" ergibt einen Formatfehler (deutsches Format statt ISO 8601)', function () {
+            var errors = validator.checkFormats({ published: '31.07.2026' }, MINI_SCHEMA_WITH_FORMATS);
+            expect(errors.length).toBeGreaterThan(0);
         });
     });
 

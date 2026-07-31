@@ -703,6 +703,7 @@ class SchemaOrgData_AdminController {
             // Property-Namen erfolgt erst clientseitig in
             // initExtensionFieldValidation() (validator.js).
             'unknownProperty'    => $lang->getLanguageValue('warning_unknown_property', '{PARAM1}'),
+            'extensionSchemaUnavailable' => $lang->getLanguageValue('warning_extension_schema_unavailable'),
             // '{PARAM1}' wird hier als Wert übergeben, damit
             // getLanguageValue() den Platzhalter NICHT durch ""
             // ersetzt (Default von $param1) - die Ersetzung mit dem
