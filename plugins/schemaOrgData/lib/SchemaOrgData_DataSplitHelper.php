@@ -26,7 +26,11 @@ class SchemaOrgData_DataSplitHelper {
     *
     ***************************************************************/
     public function splitDataForRendering(array $data, ?array $schema): array {
-        $knownProperties = array_keys($schema['properties'] ?? []);
+        // Ein Schema, dessen properties keine Array-Form hat, gilt wie ein
+        // fehlendes Schema: keine bekannten Properties, alles landet in der
+        // Erweiterung - statt array_keys() in einen TypeError laufen zu lassen.
+        $properties = $schema['properties'] ?? null;
+        $knownProperties = is_array($properties) ? array_keys($properties) : [];
         $form = [];
         $extension = [];
 

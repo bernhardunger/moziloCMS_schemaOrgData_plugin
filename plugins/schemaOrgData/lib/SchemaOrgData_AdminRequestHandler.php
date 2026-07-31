@@ -313,7 +313,7 @@ class SchemaOrgData_AdminRequestHandler {
             and is_array($result['formData']['openingHours'])
             and !$openingHoursHelper->isPerDayOpeningHoursValue($result['formData']['openingHours'])) {
             $fieldSchema = $schema['properties']['openingHours'] ?? [];
-            $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+            $days = SchemaOrgData_OpeningHoursHelper::resolveDays($fieldSchema);
             $dropped = [];
             $result['formData']['openingHours'] = $openingHoursHelper->parseOpeningHours(
                 $result['formData']['openingHours'], $days, $dropped

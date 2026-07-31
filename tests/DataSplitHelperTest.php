@@ -47,6 +47,30 @@ final class DataSplitHelperTest extends TestCase {
         $this->assertSame(['name' => 'Muster GmbH', 'url' => 'https://example.org'], $result['extension']);
     }
 
+    function testPropertiesOhneArrayFormLegtAllesInExtension(): void {
+        $helper = new \SchemaOrgData_DataSplitHelper();
+
+        $result = $helper->splitDataForRendering(
+            ['name' => 'Muster GmbH', 'url' => 'https://example.org'],
+            ['properties' => 'kaputt']
+        );
+
+        $this->assertSame([], $result['form']);
+        $this->assertSame(['name' => 'Muster GmbH', 'url' => 'https://example.org'], $result['extension']);
+    }
+
+    function testWohlgeformtesSchemaBleibtVomTypGuardUnberuehrt(): void {
+        $helper = new \SchemaOrgData_DataSplitHelper();
+
+        $result = $helper->splitDataForRendering(
+            ['name' => 'Muster GmbH', 'url' => 'https://example.org', 'hasMap' => 'https://maps.example.org'],
+            $this->schema()
+        );
+
+        $this->assertSame(['name' => 'Muster GmbH', 'url' => 'https://example.org'], $result['form']);
+        $this->assertSame(['hasMap' => 'https://maps.example.org'], $result['extension']);
+    }
+
     function testLeeresDataArrayErgibtLeereFormUndExtension(): void {
         $helper = new \SchemaOrgData_DataSplitHelper();
 
