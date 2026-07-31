@@ -58,12 +58,22 @@ class SchemaOrgData_OpeningHoursHelper {
     * erkannt, ein Bereich darf über das Wochenende hinweg laufen
     * ("Fr-Mo" ergibt Fr, Sa, Su, Mo).
     *
+    * $dropped sammelt einen Marker je verworfenem Eintrag (Nicht-String,
+    * unlesbare Notation, unauflösbares Tageskürzel) - der Rohwert selbst
+    * fließt bewusst nicht hinein, da Aufrufer daraus ausschließlich die
+    * Frage "ist etwas verlorengegangen" beantworten, nie den Wert
+    * anzeigen. Wortgleich mit buildOpeningHoursSpecifications() bleiben
+    * dort ausschließlich Notations-Regex und Tagesauflösung - der
+    * Sammler ist reiner Re-Display-Bedarf dieser Methode und hat dort
+    * keine Entsprechung.
+    *
     * @param string[] $openingHours z. B. ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
     * @param string[] $days Wochentags-Kürzel in Reihenfolge, z. B. ["Mo",...,"Su"]
+    * @param bool[] $dropped Referenzparameter - ein Eintrag je verworfener Notation
     * @return array<string,array{from:string,to:string,from2:string,to2:string}> je Tag (leer = geschlossen)
     *
     ***************************************************************/
-    public function parseOpeningHours(array $openingHours, array $days): array {
+    public function parseOpeningHours(array $openingHours, array $days, array &$dropped = []): array {
         $collected = [];
         foreach($days as $day) {
             $collected[$day] = [];
@@ -85,10 +95,12 @@ class SchemaOrgData_OpeningHoursHelper {
 
         foreach($openingHours as $entry) {
             if(!is_string($entry)) {
+                $dropped[] = true;
                 continue;
             }
 
             if(!preg_match('/^([A-Za-z]{2})(?:-([A-Za-z]{2}))? ([0-9]{2}:[0-9]{2})-([0-9]{2}:[0-9]{2})$/', trim($entry), $matches)) {
+                $dropped[] = true;
                 continue;
             }
 
@@ -98,6 +110,7 @@ class SchemaOrgData_OpeningHoursHelper {
             $startIndex = $dayIndex[strtolower($startDay)] ?? false;
             $endIndex = $dayIndex[strtolower($endDay)] ?? false;
             if($startIndex === false or $endIndex === false) {
+                $dropped[] = true;
                 continue;
             }
 
@@ -208,7 +221,10 @@ class SchemaOrgData_OpeningHoursHelper {
     * bewusst Kopien aus parseOpeningHours() statt einer gemeinsamen
     * Extraktion: jene Methode bedient den verlustbehafteten
     * Re-Display-Pfad des Widgets und bleibt davon unberührt. Beide
-    * Stellen werden wortgleich gehalten und gemeinsam gepflegt.
+    * Stellen werden wortgleich gehalten und gemeinsam gepflegt - das
+    * gilt ausdrücklich nur für Notations-Regex und Tagesauflösung.
+    * Diese Methode kennt keinen Sammler verworfener Einträge: sie ist
+    * der Ausgabepfad, für den es keinen Adressaten einer Meldung gibt.
     *
     * @param string[] $openingHours z. B. ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
     * @param string[] $days Wochentags-Kürzel in Reihenfolge, z. B. ["Mo",...,"Su"]

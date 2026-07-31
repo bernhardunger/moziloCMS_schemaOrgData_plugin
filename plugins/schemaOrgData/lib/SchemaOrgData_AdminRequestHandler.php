@@ -224,14 +224,18 @@ class SchemaOrgData_AdminRequestHandler {
     * schema.org-Notation ("Mo-Th 08:00-12:00") - der $_POST-Redisplay-
     * Pfad erwartet dort die Pro-Tag-Formularstruktur, daher Konvertierung
     * über parseOpeningHours() (dieselbe Methode wie beim regulären
-    * Rendering aus gespeicherter Config).
+    * Rendering aus gespeicherter Config). Verwirft parseOpeningHours()
+    * dabei einen Eintrag (unlesbare Notation, unauflösbares Tageskürzel),
+    * entsteht dafür genau ein "notices"-Hinweis für das Feld
+    * "openingHours" - der Admin sähe sonst kommentarlos weniger
+    * Zeiträume, als der Fremdblock enthielt.
     *
     * Scope-Identifier für category/page stammen aus den bereits im
     * Formular vorhandenen Feldern schemaOrgData_cat/schemaOrgData_page
     * (sanitizeScopeIdentifier(), analog renderAdminPage()).
     *
     * @param string $rawAction Wert des Import-Buttons ("{scope}" | "{scope}:{index}")
-    * @return array{success: bool, errors: string[], import: bool}
+    * @return array{success: bool, errors: string[], notices?: string[], import: bool}
     *
     ***************************************************************/
     private function handleImportAction(
@@ -304,14 +308,26 @@ class SchemaOrgData_AdminRequestHandler {
 
         // openingHours liegt nach dem Import noch in komprimierter
         // schema.org-Notation vor - siehe Docblock oben.
+        $notices = [];
         if(isset($result['formData']['openingHours'])
             and is_array($result['formData']['openingHours'])
             and !$openingHoursHelper->isPerDayOpeningHoursValue($result['formData']['openingHours'])) {
             $fieldSchema = $schema['properties']['openingHours'] ?? [];
             $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+            $dropped = [];
             $result['formData']['openingHours'] = $openingHoursHelper->parseOpeningHours(
-                $result['formData']['openingHours'], $days
+                $result['formData']['openingHours'], $days, $dropped
             );
+
+            // Ein Fremdblock kann mehrere unlesbare openingHours-Einträge
+            // enthalten - der Admin bekommt trotzdem nur einen Hinweis je
+            // Feld, nicht einen je verworfenem Eintrag (siehe README.md,
+            // Abschnitt "Öffnungszeiten").
+            if($dropped !== []) {
+                $fieldLabelKey = $fieldSchema['ui:label'] ?? '';
+                $fieldLabel = ($fieldLabelKey !== '') ? $lang->getLanguageValue($fieldLabelKey) : 'openingHours';
+                $notices[] = $lang->getLanguageValue('notice_value_dropped', $fieldLabel);
+            }
         }
 
         $extensionJson = ($result['extensionData'] === [])
@@ -325,7 +341,7 @@ class SchemaOrgData_AdminRequestHandler {
             'extension' => [$result['type'] => $extensionJson],
         ];
 
-        return ['success' => true, 'errors' => [], 'import' => true];
+        return ['success' => true, 'errors' => [], 'notices' => $notices, 'import' => true];
     }
 
     /***************************************************************

@@ -117,6 +117,55 @@ final class OpeningHoursHelperTest extends TestCase {
         $this->assertSame(['from' => '09:00', 'to' => '17:00', 'from2' => '', 'to2' => ''], $result['Mo']);
     }
 
+    // -----------------------------------------------------------
+    // parseOpeningHours() - Sammler verworfener Einträge ($dropped)
+    // -----------------------------------------------------------
+
+    function testUnlesbareNotationLandetImSammler(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $dropped = [];
+        $result = $helper->parseOpeningHours(['Montag 9-18', 'Mo 09:00-18:00'], self::DAYS, $dropped);
+
+        $this->assertCount(1, $dropped);
+        $this->assertSame(['from' => '09:00', 'to' => '18:00', 'from2' => '', 'to2' => ''], $result['Mo']);
+    }
+
+    function testUnaufloesbaresTageskuerzelLandetImSammler(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $dropped = [];
+        $helper->parseOpeningHours(['Xx 09:00-18:00'], self::DAYS, $dropped);
+
+        $this->assertCount(1, $dropped);
+    }
+
+    function testNichtStringfoermigerEintragLandetImSammler(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $dropped = [];
+        $helper->parseOpeningHours([['nicht' => 'string']], self::DAYS, $dropped);
+
+        $this->assertCount(1, $dropped);
+    }
+
+    function testAusschliesslichGueltigeEintraegeLassenSammlerLeer(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $dropped = [];
+        $helper->parseOpeningHours(['Mo-Fr 09:00-18:00', 'Sa 10:00-14:00'], self::DAYS, $dropped);
+
+        $this->assertSame([], $dropped);
+    }
+
+    function testAufrufOhneSammlerParameterBleibtUnveraendert(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $result = $helper->parseOpeningHours(['Montag 9-18', 'Mo 09:00-18:00'], self::DAYS);
+
+        $this->assertSame(['from' => '09:00', 'to' => '18:00', 'from2' => '', 'to2' => ''], $result['Mo']);
+    }
+
     /***************************************************************
     *
     * Der Bauer gruppiert ausschließlich in $days-Reihenfolge und kann
