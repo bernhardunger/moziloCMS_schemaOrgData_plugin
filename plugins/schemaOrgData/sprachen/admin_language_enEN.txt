@@ -247,7 +247,7 @@ notice_person_created = The person has been created.
 notice_person_updated = The person has been saved.
 notice_person_deleted = The person has been deleted.
 
-error_person_slug_required = Please provide a slug or a name a slug can be derived from.
+error_person_slug_required = A slug may only contain Latin letters, digits, hyphens and underscores. If the name contains none of these characters, please enter a slug of your own.
 error_person_slug_exists = This slug is already taken (existing person: "{PARAM1}"). Please choose a different slug.
 error_person_not_found = The person could not be found - it may have been deleted in the meantime.
 error_person_delete_has_references = This person cannot be deleted because they are still linked in the organisation relations of the global configuration ({PARAM1}). Please remove the link in the global form first, then delete again.

@@ -181,6 +181,21 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
         test('wandelt Leerraum in Bindestriche statt ihn zu verkleben', function () {
             expect(validator.sanitizeSlugCandidateJs('MM 2026!')).toBe('mm-2026');
         });
+
+        test('transliteriert Umlaute wie der abgeleitete Weg', function () {
+            expect(validator.sanitizeSlugCandidateJs('Müller')).toBe('mueller');
+            expect(validator.sanitizeSlugCandidateJs('Jürgen Müller-Schön')).toBe('juergen-mueller-schoen');
+        });
+
+        // Das geschützte Leerzeichen ist für PHP kein Leerraum: preg_replace('/\s+/')
+        // ohne /u trifft seine beiden UTF-8-Bytes nicht, der Zeichenfilter von
+        // SchemaOrgData_PersonsRegistryService::sanitizeSlugCandidate() löscht sie
+        // ersatzlos. Die ausgeschriebene ASCII-Leerraumklasse hier hält dagegen,
+        // dass String.replace(/\s+/) sie zu einem Bindestrich machen würde.
+        test('geschütztes Leerzeichen wird gelöscht, nicht zum Bindestrich', function () {
+            expect(validator.sanitizeSlugCandidateJs('max mustermann')).toBe('maxmustermann');
+            expect(validator.sanitizeSlugCandidateJs('max mustermann')).toBe('max-mustermann');
+        });
     });
 
     describe('validateEmail()', function () {

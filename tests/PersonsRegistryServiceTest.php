@@ -56,6 +56,52 @@ final class PersonsRegistryServiceTest extends TestCase {
         $this->assertSame('ab_c-1', $service->sanitizeSlugCandidate('A/b_c-1!'));
     }
 
+    function testSanitizeSlugCandidateTransliteriertUmlaute(): void {
+        $service = $this->service();
+
+        $this->assertSame('mueller', $service->sanitizeSlugCandidate('Müller'));
+    }
+
+    // Belegt die Reihenfolge Transliteration vor Kleinschreibung: liefe sie
+    // danach, bliebe aus "Ä" ein "Ae" stehen, dessen großes "A" der
+    // Zeichenfilter ersatzlos löschte ("ertzin" statt "aerztin").
+    function testSanitizeSlugCandidateTransliteriertGrossumlautAmWortanfang(): void {
+        $service = $this->service();
+
+        $this->assertSame('aerztin', $service->sanitizeSlugCandidate('Ärztin'));
+        $this->assertSame('aerztin', $service->generateSlugSuggestion('Ärztin'));
+    }
+
+    function testBeideSlugWegeLiefernDenselbenWert(): void {
+        $service = $this->service();
+
+        foreach(['Müller', 'Jürgen Müller-Schön', 'Straße Weiß', 'Max Mustermann'] as $input) {
+            $this->assertSame(
+                $service->generateSlugSuggestion($input),
+                $service->sanitizeSlugCandidate($input),
+                'Abgeleiteter und getippter Weg müssen für "'.$input.'" denselben Slug ergeben'
+            );
+        }
+    }
+
+    function testReinNichtLateinischerNameErgibtLeerenSlugUndWirdAbgelehnt(): void {
+        $service = $this->service();
+        $settings = new \InMemorySettings();
+        $lang = $this->adminLang();
+
+        $this->assertSame('', $service->generateSlugSuggestion('Иван Петров'));
+        // Der getippte Weg lässt Rand-Bindestriche stehen (kein trim($value, '-')
+        // wie im abgeleiteten Weg): das Leerzeichen wird zum Bindestrich, die
+        // kyrillischen Zeichen fallen weg. createPerson() leitet bei leerem
+        // Slug-Feld aus dem Namen ab, greift hier also nicht darauf zurück.
+        $this->assertSame('-', $service->sanitizeSlugCandidate('Иван Петров'));
+
+        $result = $service->createPerson($settings, ['name' => 'Иван Петров'], $lang, $this->validator());
+
+        $this->assertFalse($result['success']);
+        $this->assertContains($lang->getLanguageValue('error_person_slug_required'), $result['errors']);
+    }
+
     // sanitizeRelativeMediaPath() -----------------------------------------
 
     function testSanitizeRelativeMediaPathEntferntTraversalUndFuehrendeSlashes(): void {
