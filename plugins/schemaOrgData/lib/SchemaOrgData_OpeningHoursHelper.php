@@ -54,6 +54,10 @@ class SchemaOrgData_OpeningHoursHelper {
     * Zeitraum (from2/to2). Ein dritter Eintrag für denselben Tag
     * wird ignoriert (außerhalb des Widget-Scopes).
     *
+    * Tageskürzel werden unabhängig von der Groß-/Kleinschreibung
+    * erkannt, ein Bereich darf über das Wochenende hinweg laufen
+    * ("Fr-Mo" ergibt Fr, Sa, Su, Mo).
+    *
     * @param string[] $openingHours z. B. ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
     * @param string[] $days Wochentags-Kürzel in Reihenfolge, z. B. ["Mo",...,"Su"]
     * @return array<string,array{from:string,to:string,from2:string,to2:string}> je Tag (leer = geschlossen)
@@ -64,6 +68,20 @@ class SchemaOrgData_OpeningHoursHelper {
         foreach($days as $day) {
             $collected[$day] = [];
         }
+
+        // Fremde JSON-LD-Blöcke schreiben Tageskürzel häufig klein
+        // ("mo 09:00-17:00"). Der Nachschlag läuft deshalb über einen
+        // einmal vorberechneten, case-insensitiven Index; das erste
+        // Vorkommen gewinnt. Maßgeblich für alles Weitere bleibt die
+        // kanonische Schreibweise aus $days.
+        $dayIndex = [];
+        foreach($days as $position => $day) {
+            $key = strtolower((string) $day);
+            if(!isset($dayIndex[$key])) {
+                $dayIndex[$key] = $position;
+            }
+        }
+        $dayCount = count($days);
 
         foreach($openingHours as $entry) {
             if(!is_string($entry)) {
@@ -77,14 +95,20 @@ class SchemaOrgData_OpeningHoursHelper {
             [, $startDay, $endDay, $from, $to] = $matches;
             $endDay = $endDay !== '' ? $endDay : $startDay;
 
-            $startIndex = array_search($startDay, $days, true);
-            $endIndex = array_search($endDay, $days, true);
+            $startIndex = $dayIndex[strtolower($startDay)] ?? false;
+            $endIndex = $dayIndex[strtolower($endDay)] ?? false;
             if($startIndex === false or $endIndex === false) {
                 continue;
             }
 
-            for($i = $startIndex; $i <= $endIndex; $i++) {
-                $collected[$days[$i]][] = ['from' => $from, 'to' => $to];
+            // Bereiche über das Wochenende hinweg ("Fr-Mo") sind in
+            // fremden openingHours-Strings verbreitet und laufen zyklisch
+            // weiter, statt leer auszugehen. Die Schrittzahl deckt höchstens
+            // eine Woche ab, damit kein Umlauf entsteht; "Mo-Mo" bleibt ein
+            // einzelner Tag.
+            $steps = ($endIndex - $startIndex + $dayCount) % $dayCount;
+            for($step = 0; $step <= $steps; $step++) {
+                $collected[$days[($startIndex + $step) % $dayCount]][] = ['from' => $from, 'to' => $to];
             }
         }
 
@@ -176,10 +200,15 @@ class SchemaOrgData_OpeningHoursHelper {
     * Die Reihenfolge der Eingabe bleibt erhalten; sie ist semantisch
     * bedeutungslos und wird deshalb nicht sortiert.
     *
-    * Die Notations-Regex ist bewusst eine Kopie aus
-    * parseOpeningHours() statt einer gemeinsamen Extraktion: jene
-    * Methode bedient den verlustbehafteten Re-Display-Pfad des
-    * Widgets und bleibt davon unberührt.
+    * Wie dort werden Tageskürzel unabhängig von der
+    * Groß-/Kleinschreibung erkannt und ein Bereich darf über das
+    * Wochenende hinweg laufen ("Fr-Mo" zählt Fr, Sa, Su, Mo auf).
+    *
+    * Die Notations-Regex und die Auflösung der Tagesbereiche sind
+    * bewusst Kopien aus parseOpeningHours() statt einer gemeinsamen
+    * Extraktion: jene Methode bedient den verlustbehafteten
+    * Re-Display-Pfad des Widgets und bleibt davon unberührt. Beide
+    * Stellen werden wortgleich gehalten und gemeinsam gepflegt.
     *
     * @param string[] $openingHours z. B. ["Mo-Fr 09:00-18:00", "Sa 10:00-14:00"]
     * @param string[] $days Wochentags-Kürzel in Reihenfolge, z. B. ["Mo",...,"Su"]
@@ -188,6 +217,20 @@ class SchemaOrgData_OpeningHoursHelper {
     ***************************************************************/
     public function buildOpeningHoursSpecifications(array $openingHours, array $days): array {
         $result = [];
+
+        // Fremde JSON-LD-Blöcke schreiben Tageskürzel häufig klein
+        // ("mo 09:00-17:00"). Der Nachschlag läuft deshalb über einen
+        // einmal vorberechneten, case-insensitiven Index; das erste
+        // Vorkommen gewinnt. Maßgeblich für alles Weitere bleibt die
+        // kanonische Schreibweise aus $days.
+        $dayIndex = [];
+        foreach($days as $position => $day) {
+            $key = strtolower((string) $day);
+            if(!isset($dayIndex[$key])) {
+                $dayIndex[$key] = $position;
+            }
+        }
+        $dayCount = count($days);
 
         foreach($openingHours as $entry) {
             if(!is_string($entry)) {
@@ -201,18 +244,25 @@ class SchemaOrgData_OpeningHoursHelper {
             [, $startDay, $endDay, $from, $to] = $matches;
             $endDay = $endDay !== '' ? $endDay : $startDay;
 
-            $startIndex = array_search($startDay, $days, true);
-            $endIndex = array_search($endDay, $days, true);
+            $startIndex = $dayIndex[strtolower($startDay)] ?? false;
+            $endIndex = $dayIndex[strtolower($endDay)] ?? false;
             if($startIndex === false or $endIndex === false) {
                 continue;
             }
 
+            // Bereiche über das Wochenende hinweg ("Fr-Mo") sind in
+            // fremden openingHours-Strings verbreitet und laufen zyklisch
+            // weiter, statt leer auszugehen. Die Schrittzahl deckt höchstens
+            // eine Woche ab, damit kein Umlauf entsteht; "Mo-Mo" bleibt ein
+            // einzelner Tag.
+            $steps = ($endIndex - $startIndex + $dayCount) % $dayCount;
             $dayOfWeek = [];
-            for($i = $startIndex; $i <= $endIndex; $i++) {
+            for($step = 0; $step <= $steps; $step++) {
+                $day = $days[($startIndex + $step) % $dayCount];
                 // Ein Kürzel ohne kanonische URI lässt den Tag entfallen,
                 // statt einen unauflösbaren Wert ins JSON-LD zu schreiben.
-                if(isset(self::DAY_OF_WEEK_URIS[$days[$i]])) {
-                    $dayOfWeek[] = self::DAY_OF_WEEK_URIS[$days[$i]];
+                if(isset(self::DAY_OF_WEEK_URIS[$day])) {
+                    $dayOfWeek[] = self::DAY_OF_WEEK_URIS[$day];
                 }
             }
 

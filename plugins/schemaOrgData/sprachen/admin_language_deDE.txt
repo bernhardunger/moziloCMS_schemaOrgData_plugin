@@ -121,7 +121,7 @@ label_opening_hours_from = Von
 label_opening_hours_to = Bis
 label_opening_hours_closed = geschlossen
 label_opening_hours_second_range = + Pause
-hint_opening_hours = Bitte im 24-Stunden-Format eingeben (z. B. 09:00, 18:00). Leere Felder bedeuten
+hint_opening_hours = Bitte im 24-Stunden-Format eingeben (z. B. 09:00, 18:00). Zeiten über Mitternacht werden nicht unterstützt. Leere Felder bedeuten
 
 label_faq_entries = Fragen & Antworten
 label_faq_question = Frage
@@ -154,7 +154,7 @@ warning_url_http = Für Produktivseiten wird HTTPS empfohlen.
 error_email_invalid = Die eingegebene E-Mail-Adresse ist ungültig.
 error_opening_hours_format = Bitte im 24-Stunden-Format eingeben (z. B. 09:00, 18:00).
 error_opening_hours_incomplete = Bitte beide Zeitfelder ausfüllen oder beide leer lassen.
-error_opening_hours_order = Die Von-Zeit muss vor der Bis-Zeit liegen.
+error_opening_hours_order = Die Von-Zeit muss vor der Bis-Zeit liegen. Zeiten über Mitternacht werden nicht unterstützt.
 error_opening_hours_overlap = Der zweite Zeitraum muss nach dem Ende des ersten beginnen.
 error_geo_latitude = Der Breitengrad (latitude) muss zwischen -90 und 90 liegen.
 error_geo_longitude = Der Längengrad (longitude) muss zwischen -180 und 180 liegen.

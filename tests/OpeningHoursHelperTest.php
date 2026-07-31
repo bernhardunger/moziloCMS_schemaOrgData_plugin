@@ -96,6 +96,45 @@ final class OpeningHoursHelperTest extends TestCase {
         $this->assertSame(['from' => '09:00', 'to' => '18:00', 'from2' => '', 'to2' => ''], $result['Mo']);
     }
 
+    function testRueckwaertsLaufenderTagesbereichLaeuftUeberDasWochenende(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $result = $helper->parseOpeningHours(['Fr-Mo 09:00-17:00'], self::DAYS);
+
+        foreach(['Fr', 'Sa', 'Su', 'Mo'] as $day) {
+            $this->assertSame(['from' => '09:00', 'to' => '17:00', 'from2' => '', 'to2' => ''], $result[$day]);
+        }
+        foreach(['Tu', 'We', 'Th'] as $day) {
+            $this->assertSame(['from' => '', 'to' => '', 'from2' => '', 'to2' => ''], $result[$day]);
+        }
+    }
+
+    function testKleingeschriebenesTageskuerzelWirdErkannt(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $result = $helper->parseOpeningHours(['mo 09:00-17:00'], self::DAYS);
+
+        $this->assertSame(['from' => '09:00', 'to' => '17:00', 'from2' => '', 'to2' => ''], $result['Mo']);
+    }
+
+    /***************************************************************
+    *
+    * Der Bauer gruppiert ausschließlich in $days-Reihenfolge und kann
+    * deshalb keinen über das Wochenende laufenden Bereich erzeugen.
+    * Das Ergebnis ist semantisch gleichwertig zur Eingabe, aber nicht
+    * bytegleich - die Erwartung ist bewusst exakt festgenagelt, damit
+    * niemand sie später zur Eingabeform "zurückrepariert".
+    *
+    ***************************************************************/
+    function testRoundtripEinesWochenendbereichsErgibtZweiEintraege(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $perDay = $helper->parseOpeningHours(['Fr-Mo 09:00-17:00'], self::DAYS);
+        $result = $helper->buildOpeningHoursArray($perDay, self::DAYS);
+
+        $this->assertSame(['Mo 09:00-17:00', 'Fr-Su 09:00-17:00'], $result);
+    }
+
     // -----------------------------------------------------------
     // buildOpeningHoursArray()
     // -----------------------------------------------------------
@@ -253,5 +292,28 @@ final class OpeningHoursHelperTest extends TestCase {
         $result = $helper->buildOpeningHoursSpecifications(['Zz 09:00-18:00'], ['Zz']);
 
         $this->assertSame([], $result);
+    }
+
+    function testRueckwaertsLaufenderTagesbereichZaehltUeberDasWochenendeAuf(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $result = $helper->buildOpeningHoursSpecifications(['Fr-Mo 09:00-17:00'], self::DAYS);
+
+        $this->assertCount(1, $result);
+        $this->assertSame([
+            'https://schema.org/Friday',
+            'https://schema.org/Saturday',
+            'https://schema.org/Sunday',
+            'https://schema.org/Monday',
+        ], $result[0]['dayOfWeek']);
+    }
+
+    function testKleingeschriebenesTageskuerzelLiefertKanonischeUri(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $result = $helper->buildOpeningHoursSpecifications(['mo 09:00-17:00'], self::DAYS);
+
+        $this->assertCount(1, $result);
+        $this->assertSame(['https://schema.org/Monday'], $result[0]['dayOfWeek']);
     }
 }

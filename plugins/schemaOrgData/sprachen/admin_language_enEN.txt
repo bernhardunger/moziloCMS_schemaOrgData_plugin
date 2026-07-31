@@ -121,7 +121,7 @@ label_opening_hours_from = From
 label_opening_hours_to = To
 label_opening_hours_closed = closed
 label_opening_hours_second_range = + Break
-hint_opening_hours = Please use 24-hour format (e.g. 09:00, 18:00). Empty fields mean
+hint_opening_hours = Please use 24-hour format (e.g. 09:00, 18:00). Opening hours crossing midnight are not supported. Empty fields mean
 
 label_faq_entries = Questions & Answers
 label_faq_question = Question
@@ -154,7 +154,7 @@ warning_url_http = HTTPS is recommended for production sites.
 error_email_invalid = The entered email address is invalid.
 error_opening_hours_format = Please use 24-hour format (e.g. 09:00, 18:00).
 error_opening_hours_incomplete = Please fill in both time fields or leave both empty.
-error_opening_hours_order = The start time must be earlier than the end time.
+error_opening_hours_order = The start time must be earlier than the end time. Opening hours crossing midnight are not supported.
 error_opening_hours_overlap = The second time range must not start before the end of the first.
 error_geo_latitude = Latitude must be between -90 and 90.
 error_geo_longitude = Longitude must be between -180 and 180.
