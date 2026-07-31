@@ -196,6 +196,15 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
             expect(validator.sanitizeSlugCandidateJs('max mustermann')).toBe('maxmustermann');
             expect(validator.sanitizeSlugCandidateJs('max mustermann')).toBe('max-mustermann');
         });
+
+        // Spiegelt SchemaOrgData_PersonsRegistryService::sanitizeSlugCandidate():
+        // ohne alphanumerisches Zeichen gilt die Kennung als nicht angegeben,
+        // sonst schlüge der Live-Fill einen Wert vor, den der Server ablehnt.
+        test('reine Trennzeichenfolge gilt als nicht angegeben', function () {
+            expect(validator.sanitizeSlugCandidateJs('Иван Петров')).toBe('');
+            expect(validator.sanitizeSlugCandidateJs('-_-')).toBe('');
+            expect(validator.sanitizeSlugCandidateJs('-max-')).toBe('-max-');
+        });
     });
 
     describe('validateEmail()', function () {

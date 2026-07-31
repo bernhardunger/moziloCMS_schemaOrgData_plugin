@@ -439,6 +439,12 @@
      * anschließend über den Zeichenfilter - das Ergebnis ist beidseitig
      * dasselbe.
      *
+     * Bleibt nach dem Zeichenfilter kein alphanumerisches Zeichen übrig,
+     * gilt die Kennung als nicht angegeben (Leerstring) - eine reine
+     * Trennzeichenfolge ist kein brauchbares @id-Fragment. Ohne diese
+     * Bedingung schlüge der Live-Fill für "Иван Петров" einen einzelnen
+     * Bindestrich vor, den der Server ablehnt.
+     *
      * @param {string} value
      * @returns {string}
      */
@@ -446,7 +452,9 @@
         var result = transliterateSlugInputJs(String(value || '').trim());
         result = toAsciiLowerCaseJs(result);
         result = result.replace(/[ \t\n\r\f\v]+/g, '-');
-        return result.replace(/[^a-z0-9_\-]/g, '');
+        result = result.replace(/[^a-z0-9_\-]/g, '');
+
+        return /[a-z0-9]/.test(result) ? result : '';
     }
 
     /**

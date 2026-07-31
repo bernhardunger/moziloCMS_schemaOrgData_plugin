@@ -84,17 +84,34 @@ final class PersonsRegistryServiceTest extends TestCase {
         }
     }
 
+    function testSanitizeSlugCandidateVerwirftReineTrennzeichenfolgen(): void {
+        $service = $this->service();
+
+        $this->assertSame('', $service->sanitizeSlugCandidate('-'));
+        $this->assertSame('', $service->sanitizeSlugCandidate('--'));
+        $this->assertSame('', $service->sanitizeSlugCandidate('_'));
+        $this->assertSame('', $service->sanitizeSlugCandidate('-_-'));
+    }
+
+    // Die Regel verwirft nur das restlos Alphanumerik-freie, sie trimmt nicht:
+    // ein Rand-Trim ließe "-_-" durch und entfernte hier die Bindestriche.
+    function testSanitizeSlugCandidateBehaeltRandBindestricheBeiInhalt(): void {
+        $service = $this->service();
+
+        $this->assertSame('-max-', $service->sanitizeSlugCandidate('-max-'));
+    }
+
     function testReinNichtLateinischerNameErgibtLeerenSlugUndWirdAbgelehnt(): void {
         $service = $this->service();
         $settings = new \InMemorySettings();
         $lang = $this->adminLang();
 
         $this->assertSame('', $service->generateSlugSuggestion('Иван Петров'));
-        // Der getippte Weg lässt Rand-Bindestriche stehen (kein trim($value, '-')
-        // wie im abgeleiteten Weg): das Leerzeichen wird zum Bindestrich, die
-        // kyrillischen Zeichen fallen weg. createPerson() leitet bei leerem
-        // Slug-Feld aus dem Namen ab, greift hier also nicht darauf zurück.
-        $this->assertSame('-', $service->sanitizeSlugCandidate('Иван Петров'));
+        // Auch der getippte Weg liefert leer: das Leerzeichen wird zwar zum
+        // Bindestrich, aber eine Kennung ohne alphanumerisches Zeichen gilt als
+        // nicht angegeben. Beide Eingabewege lösen bei einem rein
+        // nicht-lateinischen Text damit dieselbe Fehlermeldung aus.
+        $this->assertSame('', $service->sanitizeSlugCandidate('Иван Петров'));
 
         $result = $service->createPerson($settings, ['name' => 'Иван Петров'], $lang, $this->validator());
 

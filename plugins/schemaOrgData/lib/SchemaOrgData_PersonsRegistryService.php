@@ -142,6 +142,18 @@ class SchemaOrgData_PersonsRegistryService {
     * beiden Wege den Wert erzeugt hat, ist am Ergebnis nicht mehr
     * ablesbar. Zur bewussten ASCII-Beschränkung siehe dort.
     *
+    * Bleibt nach dem Zeichenfilter kein einziges alphanumerisches
+    * Zeichen übrig, gilt die Kennung als nicht angegeben und der
+    * Rückgabewert ist der Leerstring. Ohne diese Bedingung passierte
+    * eine reine Trennzeichenfolge ("-", "--", "_", "-_-") die
+    * Leer-Prüfung des Aufrufers: aus einem von Hand eingetragenen
+    * "Иван Петров" entstünde der Slug "-" und damit dauerhaft das
+    * @id-Fragment "#person--", denn der Slug ist nach Erstanlage
+    * unveränderlich. Die Fehlermeldung bei leerer Kennung sagt zudem
+    * zu, dass eine Kennung lateinische Buchstaben oder Ziffern
+    * enthalten muss - eine Zusage, die der Code sonst nicht einhielte.
+    * Ein Rand-Trim genügte dafür nicht: er ließe "-_-" durch.
+    *
     ***************************************************************/
     public function sanitizeSlugCandidate(string $value): string {
         $value = $this->transliterateSlugInput(trim($value));
@@ -151,7 +163,9 @@ class SchemaOrgData_PersonsRegistryService {
         // zu einem verklebten "maxmustermann" wird, sondern zum erwarteten
         // "max-mustermann" (analog generateSlugSuggestion()).
         $value = (string) preg_replace('/\s+/', '-', $value);
-        return (string) preg_replace('/[^a-z0-9_\-]/', '', $value);
+        $value = (string) preg_replace('/[^a-z0-9_\-]/', '', $value);
+
+        return preg_match('/[a-z0-9]/', $value) === 1 ? $value : '';
     }
 
     /***************************************************************
