@@ -395,6 +395,47 @@ final class AdminRequestHandlerTest extends TestCase {
         $this->assertSame('LocalBusiness', $_POST['schemaOrgData']['global']['type']);
     }
 
+    // -----------------------------------------------------------
+    // handleImportAction() - openingHours-Meldung bei verworfenen Einträgen
+    // -----------------------------------------------------------
+
+    function testImportMitUnlesbaremOpeningHoursEintragErzeugtGenauEineMeldung(): void {
+        $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', [json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'LocalBusiness',
+            'name' => 'Muster GmbH',
+            'url' => 'https://www.example.com',
+            'openingHours' => ['Mo-Fr 09:00-18:00', 'Montag 9-18'],
+        ])]);
+        $_POST['schemaOrgData_import_action'] = 'global';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame(
+            [$this->adminLang()->getLanguageValue('notice_value_dropped', $this->adminLang()->getLanguageValue('label_opening_hours'))],
+            $result['notices']
+        );
+    }
+
+    function testImportMitAusschliesslichGueltigenOpeningHoursHatKeineMeldung(): void {
+        $settings = new \InMemorySettings();
+        $this->seedScopeBlocks($settings, 'global', [json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'LocalBusiness',
+            'name' => 'Muster GmbH',
+            'url' => 'https://www.example.com',
+            'openingHours' => ['Mo-Fr 09:00-18:00', 'Sa 10:00-14:00'],
+        ])]);
+        $_POST['schemaOrgData_import_action'] = 'global';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame([], $result['notices']);
+    }
+
     function testImportAktionHatVorrangVorMitgesendetenFormulardaten(): void {
         $settings = new \InMemorySettings();
         $this->seedScopeBlocks($settings, 'global', [$this->validLocalBusinessJsonLd()]);
