@@ -229,7 +229,13 @@ class SchemaOrgData_AdminPageRenderer {
     * Rendert das Ergebnis von handlePostRequest() als Hinweisblock
     * (Erfolg oder Fehlerliste) oberhalb der Geltungsebenen.
     *
-    * @param array{success: bool, errors: string[]} $result
+    * "notices" (Eingaben wurden gespeichert, aber nicht unverändert)
+    * hängen ausschließlich unter der Erfolgsmeldung: sie beschreiben,
+    * was persistiert wurde. Ist der Speichervorgang gescheitert, wurde
+    * nichts geschrieben, und "HTML-Auszeichnung wurde entfernt" wäre
+    * schlicht falsch.
+    *
+    * @param array{success: bool, errors: string[], notices?: string[]} $result
     * @param Language $lang Admin-Sprachobjekt
     * @param string $successMessageKey Sprachschlüssel für den Erfolgsfall -
     *        abweichend z. B. "notice_import_success" statt der Standard-
@@ -239,9 +245,25 @@ class SchemaOrgData_AdminPageRenderer {
     ***************************************************************/
     public function renderSaveResultNotice(array $result, Language $lang, string $successMessageKey = 'notice_config_saved'): string {
         if($result['success']) {
-            return '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--success">'
-                .$lang->getLanguageHtml($successMessageKey)
-                .'</div>'."\n";
+            // Rückfall auf das leere Array: nicht jeder Aufrufer eines
+            // Erfolgsergebnisses führt den Schlüssel.
+            $notices = $result['notices'] ?? [];
+
+            $html = '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--success">'
+                .$lang->getLanguageHtml($successMessageKey);
+
+            if($notices !== []) {
+                $html .= '<p>'.$lang->getLanguageHtml('notice_save_adjustments').'</p>'."\n";
+                $html .= '<ul>'."\n";
+
+                foreach($notices as $notice) {
+                    $html .= '<li>'.htmlspecialchars($notice, ENT_QUOTES, CHARSET).'</li>'."\n";
+                }
+
+                $html .= '</ul>';
+            }
+
+            return $html.'</div>'."\n";
         }
 
         $html = '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--error">'."\n";

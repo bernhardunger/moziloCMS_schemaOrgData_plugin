@@ -107,11 +107,36 @@ final class OrgRelationsServiceTest extends TestCase {
         );
 
         $this->assertSame([], $result['relations']);
-        // Zeile 1 verhaelt sich wie eine Zeile ohne Personen-Slug (stiller
-        // Verwurf), Zeile 2 wie eine ohne Rolle (Whitelist-Fehler) - in keinem
-        // Fall taucht das Ersatzliteral "Array" auf.
+        // Zeile 1 verhaelt sich wie eine Zeile ohne Personen-Slug (Verwurf
+        // ohne Fehler, siehe notices-Test unten), Zeile 2 wie eine ohne Rolle
+        // (Whitelist-Fehler) - in keinem Fall taucht das Ersatzliteral
+        // "Array" auf.
         $this->assertCount(1, $result['errors']);
         $this->assertStringNotContainsString('Array', $result['errors'][0]);
+    }
+
+    function testSanitizeAndValidateMeldetNichtSkalarenZeilenwertAlsVerworfen(): void {
+        $settings = new \InMemorySettings();
+
+        $result = (new \SchemaOrgData_OrgRelationsService())->sanitizeAndValidate(
+            [['person' => ['max-mustermann'], 'role' => 'founder']],
+            $settings, new \SchemaOrgData_PersonsRegistryService(), $this->adminLang()
+        );
+
+        $this->assertSame([], $result['errors'], 'Der Hinweis blockiert das Speichern nicht');
+        $this->assertSame([['field' => 'org_relations', 'kind' => 'dropped']], $result['notices']);
+    }
+
+    function testSanitizeAndValidateMeldetLeereAnlegeZeileNicht(): void {
+        $settings = new \InMemorySettings();
+
+        $result = (new \SchemaOrgData_OrgRelationsService())->sanitizeAndValidate(
+            [['person' => '', 'role' => 'founder']],
+            $settings, new \SchemaOrgData_PersonsRegistryService(), $this->adminLang()
+        );
+
+        $this->assertSame([], $result['notices'],
+            'Die stets mitgesendete leere Anlege-Zeile ist kein Verlust, sondern Normalbetrieb');
     }
 
     function testSanitizeAndValidateProcessesMultipleValidRows(): void {

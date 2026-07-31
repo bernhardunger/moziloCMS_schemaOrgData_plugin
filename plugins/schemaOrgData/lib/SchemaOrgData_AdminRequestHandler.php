@@ -42,8 +42,17 @@ class SchemaOrgData_AdminRequestHandler {
     * @param SchemaOrgData_DataSplitHelper $dataSplitHelper für handleImportAction() (importJsonLd())
     * @param SchemaOrgData_PersonsRegistryService $personsRegistryService wird an saveConfig() durchgereicht
     * @param SchemaOrgData_OrgRelationsService $orgRelationsService wird an saveConfig() durchgereicht
+    * Neben "errors" wird "notices" über alle verarbeiteten Ebenen
+    * gefaltet (nicht blockierende Hinweise auf bereinigte oder
+    * verworfene Eingaben, siehe
+    * SchemaOrgData_ConfigSaveService::saveConfig()). Wurde in einem
+    * Request mehr als eine Ebene verarbeitet, werden beide Listen je
+    * Ebene mit deren Bezeichnung versehen (buildScopeLabel()) - sonst
+    * ließe sich eine Meldung keiner Ebene mehr zuordnen. Im Regelfall
+    * (genau eine Ebene) bleibt die Meldung unverändert schlank.
+    *
     * @param SchemaOrgData_PersonSuggestionService $personSuggestionService für handleAcceptPersonSuggestion()
-    * @return ?array{success: bool, errors: string[], import?: bool}
+    * @return ?array{success: bool, errors: string[], notices: string[], import?: bool}
     *
     ***************************************************************/
     public function handlePostRequest(
@@ -63,20 +72,20 @@ class SchemaOrgData_AdminRequestHandler {
         SchemaOrgData_PersonSuggestionService $personSuggestionService
     ): ?array {
         if(isset($_POST['schemaOrgData_import_action'])) {
-            return $this->handleImportAction(
+            return $this->withNotices($this->handleImportAction(
                 (string) $_POST['schemaOrgData_import_action'],
                 $settings, $scopeResolver,
                 $schemaRepository, $pluginSelfDir, $lang, $importService, $dataSplitHelper, $openingHoursHelper
-            );
+            ));
         }
 
         if(isset($_POST['schemaOrgData_accept_person_suggestion'])) {
-            return $this->handleAcceptPersonSuggestion(
+            return $this->withNotices($this->handleAcceptPersonSuggestion(
                 (string) $_POST['schemaOrgData_accept_person_suggestion'],
                 $settings, $scopeResolver, $schemaRepository, $pluginSelfDir, $lang,
                 $personSuggestionService, $personsRegistryService, $orgRelationsService, $validator,
                 $configSaveService, $openingHoursHelper, $adminPageRenderer
-            );
+            ));
         }
 
         $scopes = $_POST['schemaOrgData'] ?? null;
@@ -88,7 +97,11 @@ class SchemaOrgData_AdminRequestHandler {
         }
 
         $success = true;
-        $errors = [];
+
+        // Die Ergebnisse werden zunächst je Ebene getrennt gesammelt: ob
+        // ihre Meldungen ein Scope-Label brauchen, steht erst fest, wenn
+        // alle Ebenen dieses Requests durch sind.
+        $processed = [];
 
         // Globaler Geltungsbereich (Sonderfall): schemaOrgData_cat und
         // schemaOrgData_page sind beide leer, wenn "Global" der aktive
@@ -112,7 +125,7 @@ class SchemaOrgData_AdminRequestHandler {
                 : $configSaveService->saveConfig('global', $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
 
             $success = $success && $result['success'];
-            $errors = array_merge($errors, $result['errors']);
+            $processed[] = ['scope' => 'global', 'cat' => null, 'page' => null, 'result' => $result];
         }
 
         foreach(['category', 'page'] as $scope) {
@@ -131,10 +144,54 @@ class SchemaOrgData_AdminRequestHandler {
                 : $configSaveService->saveConfig($scope, $scopes[$scope], $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
 
             $success = $success && $result['success'];
-            $errors = array_merge($errors, $result['errors']);
+            $processed[] = [
+                'scope'  => $scope,
+                'cat'    => ($catParam !== '') ? $catParam : null,
+                'page'   => ($pageParam !== '') ? $pageParam : null,
+                'result' => $result,
+            ];
         }
 
-        return ['success' => $success, 'errors' => $errors];
+        $errors = [];
+        $notices = [];
+
+        // Nur bei mehr als einer verarbeiteten Ebene wird das Label
+        // vorangestellt - im Regelfall ist die Zuordnung eindeutig und ein
+        // Präfix wäre nur Ballast. deleteConfig() liefert kein "notices"
+        // (ein Löschvorgang bereinigt nichts), deshalb der Rückfall.
+        $labelPerScope = (count($processed) > 1);
+
+        foreach($processed as $entry) {
+            $label = $labelPerScope
+                ? $adminPageRenderer->buildScopeLabel($entry['scope'], $entry['cat'], $entry['page'], $lang)
+                : null;
+
+            foreach($entry['result']['errors'] as $error) {
+                $errors[] = ($label !== null) ? $label.': '.$error : $error;
+            }
+
+            foreach($entry['result']['notices'] ?? [] as $notice) {
+                $notices[] = ($label !== null) ? $label.': '.$notice : $notice;
+            }
+        }
+
+        return ['success' => $success, 'errors' => $errors, 'notices' => $notices];
+    }
+
+    /***************************************************************
+    *
+    * Ergänzt ein Ergebnis der Sonderpfade (Import, Personen-Vorschlag)
+    * um "notices", sofern es den Schlüssel nicht selbst führt - die
+    * Ergebnisform von handlePostRequest() ist damit unabhängig davon,
+    * welcher Zweig sie erzeugt hat. Ein bereits vorhandener Wert bleibt
+    * erhalten.
+    *
+    * @param array<string, mixed> $result
+    * @return array<string, mixed>
+    *
+    ***************************************************************/
+    private function withNotices(array $result): array {
+        return $result + ['notices' => []];
     }
 
     /***************************************************************
@@ -314,6 +371,11 @@ class SchemaOrgData_AdminRequestHandler {
         $fromImport = !empty($_POST['schemaOrgData_person_suggestion_from_import']);
         $globalPostData = is_array($_POST['schemaOrgData']['global'] ?? null) ? $_POST['schemaOrgData']['global'] : null;
 
+        // Das implizite Speichern durchläuft denselben Bereinigungspfad wie
+        // ein regulärer Submit - seine Hinweise gehören deshalb ins
+        // Endergebnis, sonst gingen sie in genau diesem Sonderfall verloren.
+        $carriedNotices = [];
+
         if($fromImport and $globalPostData !== null) {
             $saveResult = $configSaveService->saveConfig(
                 'global', $globalPostData, $settings, $lang, $scopeResolver, $schemaRepository,
@@ -321,8 +383,9 @@ class SchemaOrgData_AdminRequestHandler {
                 $personsRegistryService, $orgRelationsService
             );
             if(!$saveResult['success']) {
-                return ['success' => false, 'errors' => $saveResult['errors']];
+                return ['success' => false, 'errors' => $saveResult['errors'], 'notices' => []];
             }
+            $carriedNotices = $saveResult['notices'];
         }
 
         $config = $scopeResolver->loadScopeConfig($settings, 'global');
@@ -330,11 +393,15 @@ class SchemaOrgData_AdminRequestHandler {
         $schema = ($type !== null) ? $schemaRepository->loadSchema($pluginSelfDir, $type) : null;
 
         if($schema === null or ($schema['ui:idFragment'] ?? '') !== 'organization') {
-            return ['success' => false, 'errors' => [$lang->getLanguageValue('error_person_suggestion_outdated')]];
+            return ['success' => false, 'errors' => [$lang->getLanguageValue('error_person_suggestion_outdated')], 'notices' => []];
         }
 
-        return $personSuggestionService->acceptSuggestion(
+        $result = $personSuggestionService->acceptSuggestion(
             $property, $config, $type, $settings, $personsRegistryService, $orgRelationsService, $lang, $validator
         );
+
+        $result['notices'] = $result['success'] ? $carriedNotices : [];
+
+        return $result;
     }
 }

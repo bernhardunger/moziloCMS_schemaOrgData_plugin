@@ -42,9 +42,12 @@ class SchemaOrgData_OrgRelationsService {
     * Bereinigt und validiert die POST-Rohdaten des Relationen-Widgets
     * (indizierte Zeilen, analog SchemaOrgData_FormRenderer::renderFaqListWidget()):
     * je Zeile ein Personen-Slug und eine Rolle. Zeilen ohne Personen-Slug
-    * (die stets mitgesendete leere Anlege-Zeile, ebenso eine Zeile mit
-    * nicht-skalarem person-Teilwert, siehe scalarRowValue()) werden
-    * stillschweigend verworfen. Ist ein Slug gesetzt, wird sowohl die Rolle gegen die
+    * werden verworfen: die stets mitgesendete leere Anlege-Zeile
+    * kommentarlos (sie ist kein Verlust, sondern Normalbetrieb), eine
+    * Zeile mit nicht-skalarem person-Teilwert (siehe scalarRowValue())
+    * dagegen mit einem nicht blockierenden Hinweis in "notices" - dort
+    * war etwas gesendet worden, das nicht übernommen werden konnte.
+    * Ist ein Slug gesetzt, wird sowohl die Rolle gegen die
     * Whitelist (ROLES) als auch der Slug gegen die Personen-Registry
     * geprüft (SchemaOrgData_PersonsRegistryService::slugExists()) - beide
     * Prüfungen erzeugen bei Fehlschlag eine Fehlermeldung und blockieren
@@ -52,7 +55,7 @@ class SchemaOrgData_OrgRelationsService {
     *
     * @param array<int, array{person?: mixed, role?: mixed}> $rawRows
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @return array{relations: array<int, array{person: string, role: string}>, errors: string[]}
+    * @return array{relations: array<int, array{person: string, role: string}>, errors: string[], notices: array<int, array{field: string, kind: string}>}
     *
     ***************************************************************/
     public function sanitizeAndValidate(
@@ -63,14 +66,22 @@ class SchemaOrgData_OrgRelationsService {
     ): array {
         $relations = [];
         $errors = [];
+        $notices = [];
 
         foreach($rawRows as $row) {
             if(!is_array($row)) {
                 continue;
             }
 
-            $slug = trim(strip_tags($this->scalarRowValue($row['person'] ?? null)));
+            $rawPerson = $row['person'] ?? null;
+            $slug = trim(strip_tags($this->scalarRowValue($rawPerson)));
             if($slug === '') {
+                // Ein nicht-skalarer Teilwert kommt hier als Leerstring an
+                // und sähe damit aus wie die leere Anlege-Zeile - gesendet
+                // wurde aber etwas, das nicht übernommen werden konnte.
+                if($rawPerson !== null and !is_scalar($rawPerson)) {
+                    $notices[] = ['field' => 'org_relations', 'kind' => 'dropped'];
+                }
                 continue;
             }
 
@@ -89,7 +100,7 @@ class SchemaOrgData_OrgRelationsService {
             $relations[] = ['person' => $slug, 'role' => $role];
         }
 
-        return ['relations' => $relations, 'errors' => $errors];
+        return ['relations' => $relations, 'errors' => $errors, 'notices' => $notices];
     }
 
     /***************************************************************

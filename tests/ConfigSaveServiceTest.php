@@ -908,4 +908,103 @@ final class ConfigSaveServiceTest extends TestCase {
             'saveConfig() baut config_global bei jedem Speichern mit genau einem aktiven Type neu auf');
         $this->assertSame([['person' => 'max-mustermann', 'role' => 'founder']], $config['org_relations']);
     }
+
+    // -----------------------------------------------------------
+    // saveConfig() - Hinweise auf stille Wertänderungen (notices)
+    // -----------------------------------------------------------
+
+    private function expectedNotice(string $key, string $labelKey): string {
+        return $this->adminLang()->getLanguageValue($key, $this->adminLang()->getLanguageValue($labelKey));
+    }
+
+    function testSaveConfigMeldetEntfernteHtmlAuszeichnung(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['description'] = '<b>fett</b>';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame('fett', $settings->get('config_global')['LocalBusiness']['description']);
+        $this->assertSame(
+            [$this->expectedNotice('notice_value_cleaned', 'label_description')],
+            $result['notices']
+        );
+    }
+
+    /***************************************************************
+    *
+    * Der folgenschwerste Fall: eine Eingabe, die nur aus Auszeichnung
+    * besteht, ist nach dem Strippen ersatzlos weg. Sie läuft durch
+    * beide Zweige der Feldbereinigung, gemeldet wird aber nur die
+    * stärkere der beiden Aussagen.
+    *
+    ***************************************************************/
+    function testSaveConfigMeldetNurVerworfenBeiEingabeAusReinerAuszeichnung(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['description'] = '<b></b>';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertArrayNotHasKey('description', $settings->get('config_global')['LocalBusiness']);
+        $this->assertSame(
+            [$this->expectedNotice('notice_value_dropped', 'label_description')],
+            $result['notices']
+        );
+    }
+
+    function testSaveConfigMeldetReinesTrimmenNicht(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['description'] = '  Beschreibung  ';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame('Beschreibung', $settings->get('config_global')['LocalBusiness']['description']);
+        $this->assertSame([], $result['notices']);
+    }
+
+    function testSaveConfigMeldetTelefonNormalisierungNicht(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['telephone'] = '+49 170 123 45 67';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame('+491701234567', $settings->get('config_global')['LocalBusiness']['telephone']);
+        $this->assertSame([], $result['notices']);
+    }
+
+    function testSaveConfigMeldetUnvollstaendigenFaqEintragAlsVerworfen(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData_cat'] = 'ueber-uns';
+
+        $postData = $this->validFaqPageData();
+        $postData['data']['mainEntity'][] = ['name' => 'Frage ohne Antwort', 'acceptedAnswer' => ['text' => '']];
+
+        $result = $this->callSaveConfig('category', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertCount(1, $settings->get('config_cat_ueber-uns')['FAQPage']['mainEntity']);
+        $this->assertSame(
+            [$this->expectedNotice('notice_value_dropped', 'label_faq_entries')],
+            $result['notices']
+        );
+    }
+
+    function testSaveConfigLiefertNoticesAlsLeeresArrayOhneBereinigung(): void {
+        $settings = new \InMemorySettings();
+
+        $result = $this->callSaveConfig('global', $this->validLocalBusinessData(), $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertArrayHasKey('notices', $result,
+            'Der Schlüssel muss auch ohne Bereinigung vorhanden sein - Konsumenten sollen '
+            .'sich nicht auf einen Rückfall verlassen müssen');
+        $this->assertSame([], $result['notices']);
+    }
 }
