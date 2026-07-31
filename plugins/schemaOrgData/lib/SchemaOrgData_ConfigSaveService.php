@@ -99,8 +99,19 @@ class SchemaOrgData_ConfigSaveService {
     * (buildOpeningHoursArray) und FAQ-Einträge ohne vollständige
     * Frage/Antwort entfernt.
     *
+    * Bereinigungen, bei denen Inhalt verloren geht, werden zusätzlich in
+    * $notices vermerkt (siehe collectNotice()) - die Methode führt kein
+    * Language und kann deshalb keine Texte bauen; das übernimmt
+    * saveConfig() anhand der gesammelten Feldnamen. Reines Trimmen und die
+    * Telefon-Normalisierung melden bewusst nicht: beides ist
+    * dokumentiertes Sollverhalten, steht nach dem Neuladen sichtbar im
+    * Feld und feuert bei alltäglicher Eingabe - eine Meldung, die ständig
+    * erscheint, wird weggeklickt und hilft im Ernstfall (Eingabe nur aus
+    * Tags, Feld danach ersatzlos leer) nicht mehr.
+    *
     * @param array<string, mixed> $formData Formularfeld-Werte (schemaOrgData[scope][data])
     * @param array<string, mixed> $schema aktives JSON-Schema (schemas/{Type}.json)
+    * @param array<int, array{field: string, kind: string}> $notices Sammler für Verlust-Hinweise
     * @return array<string, mixed> bereinigte Properties, bereit für serialize()
     *
     ***************************************************************/
@@ -109,9 +120,20 @@ class SchemaOrgData_ConfigSaveService {
         array $schema,
         SchemaOrgData_SchemaRepository $schemaRepository,
         SchemaOrgData_OpeningHoursHelper $openingHoursHelper,
-        SchemaOrgData_Validator $validator
+        SchemaOrgData_Validator $validator,
+        array &$notices = []
     ): array {
         $result = [];
+
+        // Gesendete Felder ohne Gegenstück im Schema erreichen die
+        // Feldschleife unten nie - sie iteriert über die Schema-Properties,
+        // nicht über die Formulardaten. Der Verlust wird deshalb hier
+        // vermerkt, wo die Schema-Bindung stattfindet.
+        foreach(array_keys($formData) as $postedName) {
+            if(!array_key_exists($postedName, $schema['properties'] ?? [])) {
+                $this->collectNotice($notices, (string) $postedName, 'dropped');
+            }
+        }
 
         foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
             if(!array_key_exists($name, $formData)) {
@@ -123,7 +145,7 @@ class SchemaOrgData_ConfigSaveService {
             $value = $formData[$name];
 
             if($widget === 'postal_address') {
-                $address = $this->sanitizeAddressData(is_array($value) ? $value : [], $fieldSchema, $validator);
+                $address = $this->sanitizeAddressData(is_array($value) ? $value : [], $fieldSchema, $validator, $notices);
                 if($address !== []) {
                     $result[$name] = $address;
                 }
@@ -136,7 +158,11 @@ class SchemaOrgData_ConfigSaveService {
                 $place = is_array($value) ? $value : [];
                 $placeResult = [];
 
-                $placeName = trim(strip_tags((string) ($place['name'] ?? '')));
+                $placeRaw = (string) ($place['name'] ?? '');
+                $placeName = trim(strip_tags($placeRaw));
+                if($placeName !== trim($placeRaw)) {
+                    $this->collectNotice($notices, (string) $name, 'cleaned');
+                }
                 if($placeName !== '') {
                     $placeResult['name'] = $placeName;
                 }
@@ -144,7 +170,7 @@ class SchemaOrgData_ConfigSaveService {
                 $properties = $fieldSchema['properties'] ?? [];
                 if(isset($properties['address'])) {
                     $addressSchema = $schemaRepository->resolveSchemaRef($properties['address'], $schema);
-                    $address = $this->sanitizeAddressData(is_array($place['address'] ?? null) ? $place['address'] : [], $addressSchema, $validator);
+                    $address = $this->sanitizeAddressData(is_array($place['address'] ?? null) ? $place['address'] : [], $addressSchema, $validator, $notices);
                     if($address !== []) {
                         $placeResult['address'] = $address;
                     }
@@ -171,10 +197,22 @@ class SchemaOrgData_ConfigSaveService {
             if($widget === 'faq_list') {
                 $entries = [];
                 foreach((is_array($value) ? $value : []) as $entry) {
-                    $question = trim(strip_tags((string) ($entry['name'] ?? '')));
-                    $answer = trim(strip_tags((string) ($entry['acceptedAnswer']['text'] ?? '')));
+                    $questionRaw = (string) ($entry['name'] ?? '');
+                    $answerRaw = (string) ($entry['acceptedAnswer']['text'] ?? '');
+                    $question = trim(strip_tags($questionRaw));
+                    $answer = trim(strip_tags($answerRaw));
+
+                    if($question !== trim($questionRaw) or $answer !== trim($answerRaw)) {
+                        $this->collectNotice($notices, (string) $name, 'cleaned');
+                    }
 
                     if($question === '' or $answer === '') {
+                        // Die stets mitgesendete leere Anlege-Zeile ist kein
+                        // Verlust und meldet deshalb nicht - nur ein Eintrag,
+                        // von dem eine der beiden Hälften ausgefüllt war.
+                        if($question !== '' or $answer !== '') {
+                            $this->collectNotice($notices, (string) $name, 'dropped');
+                        }
                         continue;
                     }
 
@@ -193,8 +231,13 @@ class SchemaOrgData_ConfigSaveService {
                 // (statt String), damit buildJsonLdScript() korrekte
                 // JSON-Zahlen statt gequoteter Strings ausgibt.
                 $geo = is_array($value) ? $value : [];
-                $latValue = trim(strip_tags((string) ($geo['latitude'] ?? '')));
-                $lonValue = trim(strip_tags((string) ($geo['longitude'] ?? '')));
+                $latRaw = (string) ($geo['latitude'] ?? '');
+                $lonRaw = (string) ($geo['longitude'] ?? '');
+                $latValue = trim(strip_tags($latRaw));
+                $lonValue = trim(strip_tags($lonRaw));
+                if($latValue !== trim($latRaw) or $lonValue !== trim($lonRaw)) {
+                    $this->collectNotice($notices, (string) $name, 'cleaned');
+                }
                 if($latValue !== '' and $lonValue !== '') {
                     $result[$name] = ['latitude' => (float) $latValue, 'longitude' => (float) $lonValue];
                 }
@@ -207,14 +250,22 @@ class SchemaOrgData_ConfigSaveService {
                 }
                 $mode = (string) ($value['_mode'] ?? '');
                 if($mode === 'reference') {
-                    $fragment = trim(strip_tags((string) ($value['_fragment'] ?? '')));
+                    $fragmentRaw = (string) ($value['_fragment'] ?? '');
+                    $fragment = trim(strip_tags($fragmentRaw));
+                    if($fragment !== trim($fragmentRaw)) {
+                        $this->collectNotice($notices, (string) $name, 'cleaned');
+                    }
                     if($fragment !== '') {
                         $result[$name] = ['_mode' => 'reference', '_fragment' => $fragment];
                     }
                 } elseif($mode === 'literal') {
                     $literal = ['_mode' => 'literal'];
                     foreach($fieldSchema['ui:literalFields'] ?? [] as $lf) {
-                        $lv = trim(strip_tags((string) ($value[(string) $lf] ?? '')));
+                        $lvRaw = (string) ($value[(string) $lf] ?? '');
+                        $lv = trim(strip_tags($lvRaw));
+                        if($lv !== trim($lvRaw)) {
+                            $this->collectNotice($notices, (string) $name, 'cleaned');
+                        }
                         if($lv !== '') {
                             $literal[(string) $lf] = $lv;
                         }
@@ -227,11 +278,24 @@ class SchemaOrgData_ConfigSaveService {
             }
 
             if(!is_scalar($value)) {
+                $this->collectNotice($notices, (string) $name, 'dropped');
                 continue;
             }
 
-            $stringValue = trim(strip_tags((string) $value));
+            $rawValue = (string) $value;
+            $stringValue = trim(strip_tags($rawValue));
+            if($stringValue !== trim($rawValue)) {
+                $this->collectNotice($notices, (string) $name, 'cleaned');
+            }
             if($stringValue === '') {
+                // Bestand die Eingabe nur aus Auszeichnung ("<b></b>"), ist
+                // das Feld nach dem Strippen ersatzlos weg - die stärkere
+                // Aussage ersetzt den eben vermerkten cleaned-Hinweis
+                // (siehe collectNotice()). Ein von vornherein leeres Feld
+                // ist dagegen kein Verlust und meldet nicht.
+                if(trim($rawValue) !== '') {
+                    $this->collectNotice($notices, (string) $name, 'dropped');
+                }
                 continue;
             }
 
@@ -257,10 +321,11 @@ class SchemaOrgData_ConfigSaveService {
     * unvollständiges "address"-Property gespeichert, das nur den
     * Default-Wert von addressCountry enthält.
     *
+    * @param array<int, array{field: string, kind: string}> $notices Sammler für Verlust-Hinweise, siehe sanitizePostData()
     * @return array<string, mixed> bereinigte Adress-Properties, ggf. leer
     *
     ***************************************************************/
-    public function sanitizeAddressData(array $address, array $fieldSchema, SchemaOrgData_Validator $validator): array {
+    public function sanitizeAddressData(array $address, array $fieldSchema, SchemaOrgData_Validator $validator, array &$notices = []): array {
         $subProperties = $fieldSchema['properties'] ?? [];
 
         if(!$validator->isAddressProvided($address, $subProperties)) {
@@ -269,13 +334,46 @@ class SchemaOrgData_ConfigSaveService {
 
         $result = [];
         foreach($subProperties as $subName => $subSchema) {
-            $subValue = trim(strip_tags((string) ($address[$subName] ?? '')));
+            $subRaw = (string) ($address[$subName] ?? '');
+            $subValue = trim(strip_tags($subRaw));
+            if($subValue !== trim($subRaw)) {
+                $this->collectNotice($notices, (string) $subName, 'cleaned');
+            }
             if($subValue !== '') {
                 $result[$subName] = $subValue;
             }
         }
 
         return $result;
+    }
+
+    /***************************************************************
+    *
+    * Nimmt einen Verlust-Hinweis in den Sammler auf - höchstens einen
+    * je Feld. Eine Eingabe, die nur aus Auszeichnung besteht, läuft
+    * durch beide Zweige der Feldbereinigung (Inhalt entfernt, danach
+    * leer und verworfen); der Admin braucht dann die stärkere der
+    * beiden Aussagen und nicht beide, deshalb ersetzt "dropped" ein
+    * bereits vermerktes "cleaned" desselben Feldes, nicht umgekehrt.
+    *
+    * @param array<int, array{field: string, kind: string}> $notices Sammler
+    * @param string $kind 'cleaned' | 'dropped'
+    *
+    ***************************************************************/
+    private function collectNotice(array &$notices, string $field, string $kind): void {
+        foreach($notices as $index => $notice) {
+            if(($notice['field'] ?? null) !== $field) {
+                continue;
+            }
+
+            if($kind === 'dropped' and ($notice['kind'] ?? null) === 'cleaned') {
+                $notices[$index]['kind'] = 'dropped';
+            }
+
+            return;
+        }
+
+        $notices[] = ['field' => $field, 'kind' => $kind];
     }
 
     /***************************************************************
@@ -333,8 +431,17 @@ class SchemaOrgData_ConfigSaveService {
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param SchemaOrgData_AdminPageRenderer $adminPageRenderer wird an resolveInheritableFields() durchgereicht
     * @param SchemaOrgData_PersonsRegistryService $personsRegistryService für die Slug-Existenzprüfung der Organisations-Relationen
+    * Neben "errors" (blockierend) führt das Ergebnis "notices": nicht
+    * blockierende Hinweise darauf, dass eine Eingabe zwar gespeichert
+    * wurde, aber nicht unverändert (siehe sanitizePostData()). Sie
+    * beeinflussen "success" nicht und werden hier - der einzigen Stelle,
+    * die Language und Schema zugleich führt - aus den gesammelten
+    * Feldnamen in Text übersetzt. Der Schlüssel wird an jeder
+    * Rückgabestelle gesetzt, auch in den Fehlerzweigen, damit die
+    * Ergebnisform nie wechselt.
+    *
     * @param SchemaOrgData_OrgRelationsService $orgRelationsService für Validierung/Bereinigung der Organisations-Relationen (nur global)
-    * @return array{success: bool, errors: string[]}
+    * @return array{success: bool, errors: string[], notices: string[]}
     *
     ***************************************************************/
     public function saveConfig(
@@ -356,7 +463,7 @@ class SchemaOrgData_ConfigSaveService {
         $key = $scopeResolver->getScopeSettingsKey($scope, $cat, $page);
 
         if ($key === null) {
-            return ['success' => false, 'errors' => []];
+            return ['success' => false, 'errors' => [], 'notices' => []];
         }
 
         $existing = $settings->keyExists($key)
@@ -374,9 +481,12 @@ class SchemaOrgData_ConfigSaveService {
 
         $type = (string) ($postData['type'] ?? '');
         $errors = [];
+        $collectedNotices = [];
+        $activeSchema = null;
 
         if($type !== '') {
             $schema = $schemaRepository->loadSchema($pluginSelfDir, $type);
+            $activeSchema = is_array($schema) ? $schema : null;
 
             // LocalBusiness-Familie: bei Kategorie/Seite nur der bei Global
             // aktive Familien-Type zulässig. Schutz gegen Formular-
@@ -416,7 +526,7 @@ class SchemaOrgData_ConfigSaveService {
 
                 // 3. Normalisieren
                 if($errors === []) {
-                    $config[$type] = array_merge($extensionResult->extensionData, $this->sanitizePostData($formData, $schema, $schemaRepository, $openingHoursHelper, $validator));
+                    $config[$type] = array_merge($extensionResult->extensionData, $this->sanitizePostData($formData, $schema, $schemaRepository, $openingHoursHelper, $validator, $collectedNotices));
                 }
             }
         }
@@ -449,10 +559,16 @@ class SchemaOrgData_ConfigSaveService {
                 $settings, $personsRegistryService, $lang
             );
             $errors = array_merge($errors, $orgRelationsResult['errors']);
+            // Über collectNotice() statt array_merge(), damit mehrere
+            // kaputte Relationen-Zeilen nicht dieselbe Meldung mehrfach
+            // erzeugen (ein Hinweis je Feld).
+            foreach($orgRelationsResult['notices'] ?? [] as $orgNotice) {
+                $this->collectNotice($collectedNotices, (string) ($orgNotice['field'] ?? ''), (string) ($orgNotice['kind'] ?? 'dropped'));
+            }
         }
 
         if($errors !== []) {
-            return ['success' => false, 'errors' => $errors];
+            return ['success' => false, 'errors' => $errors, 'notices' => []];
         }
 
         if($scope === 'global') {
@@ -486,15 +602,145 @@ class SchemaOrgData_ConfigSaveService {
             if($settings->set($key, $config) === false) {
                 return ['success' => false, 'errors' => [
                     $lang->getLanguageValue('error_config_write_failed')
-                ]];
+                ], 'notices' => []];
             }
         } catch (\Throwable $e) {
             error_log('schemaOrgData: saveConfig fehlgeschlagen: ' . $e->getMessage());
             return ['success' => false, 'errors' => [
                 $lang->getLanguageValue('error_config_write_failed')
-            ]];
+            ], 'notices' => []];
         }
 
-        return ['success' => true, 'errors' => []];
+        return [
+            'success' => true,
+            'errors' => [],
+            'notices' => $this->buildNoticeTexts($collectedNotices, $activeSchema, $lang, $schemaRepository),
+        ];
+    }
+
+    /***************************************************************
+    *
+    * Übersetzt die von den Sanitisierungsstellen gesammelten
+    * Feldnamen in fertige Meldungstexte. Der Wert selbst wird bewusst
+    * nicht genannt: der Admin sieht das Ergebnis ohnehin im Formular,
+    * und ein Echo der Roheingabe in die Admin-Seite wäre eine
+    * zusätzliche Kodierungsfläche ohne Zusatznutzen.
+    *
+    * @param array<int, array{field: string, kind: string}> $collected Sammler aus sanitizePostData()
+    * @param array<string, mixed>|null $schema aktives Schema für die Label-Auflösung
+    * @return string[] fertige Meldungstexte
+    *
+    ***************************************************************/
+    private function buildNoticeTexts(
+        array $collected,
+        ?array $schema,
+        Language $lang,
+        SchemaOrgData_SchemaRepository $schemaRepository
+    ): array {
+        $texts = [];
+
+        foreach($collected as $notice) {
+            $field = (string) ($notice['field'] ?? '');
+            if($field === '') {
+                continue;
+            }
+
+            $key = (($notice['kind'] ?? '') === 'dropped')
+                ? 'notice_value_dropped' : 'notice_value_cleaned';
+
+            $texts[] = $lang->getLanguageValue(
+                $key, $this->resolveFieldLabel($field, $schema, $lang, $schemaRepository)
+            );
+        }
+
+        return $texts;
+    }
+
+    /***************************************************************
+    *
+    * Liefert die für den Admin lesbare Bezeichnung eines Feldes:
+    * das über "ui:label" aufgelöste, übersetzte Label, sonst der rohe
+    * Property-Name. "Feld 'Beschreibung'" ist brauchbar, "Feld
+    * 'description'" nicht - aber ein Property ohne Label ist immer noch
+    * besser benannt als gar nicht.
+    *
+    * @param array<string, mixed>|null $schema aktives Schema
+    *
+    ***************************************************************/
+    private function resolveFieldLabel(
+        string $field,
+        ?array $schema,
+        Language $lang,
+        SchemaOrgData_SchemaRepository $schemaRepository
+    ): string {
+        // Die Organisations-Relationen sind kein Schema-Property, sondern
+        // ein eigenständiges Widget mit festem Sprachschlüssel.
+        $labelKey = ($field === 'org_relations') ? 'label_org_relations' : null;
+
+        if($labelKey === null and $schema !== null) {
+            $labelKey = $this->findLabelKey($field, $schema['properties'] ?? [], $schema, $schemaRepository);
+        }
+
+        if($labelKey === null) {
+            return $field;
+        }
+
+        $label = $lang->getLanguageValue($labelKey);
+
+        return ($label !== '') ? $label : $field;
+    }
+
+    /***************************************************************
+    *
+    * Sucht den "ui:label"-Sprachschlüssel eines Property-Namens im
+    * Schema. Verschachtelte Properties (Adress-Teilfelder, FAQ-Einträge)
+    * werden mit durchsucht, aber erst im zweiten Durchgang: ein
+    * gleichnamiges Feld der obersten Ebene gewinnt, weil die
+    * Sanitisierungsstellen dort ebenfalls zuerst greifen.
+    *
+    * @param array<string, mixed> $properties zu durchsuchende Property-Ebene
+    * @param array<string, mixed> $schema Wurzelschema für die $ref-Auflösung
+    *
+    ***************************************************************/
+    private function findLabelKey(
+        string $field,
+        array $properties,
+        array $schema,
+        SchemaOrgData_SchemaRepository $schemaRepository,
+        int $depth = 0
+    ): ?string {
+        // Rekursionsbremse gegen ein Schema, dessen $ref-Kette auf sich
+        // selbst zurückführt - die Schemadateien sind flach, die Grenze
+        // wird im Bestand nicht erreicht.
+        if($depth > 4) {
+            return null;
+        }
+
+        $resolved = [];
+        foreach($properties as $name => $propSchema) {
+            $propSchema = $schemaRepository->resolveSchemaRef($propSchema, $schema);
+            if(!is_array($propSchema)) {
+                continue;
+            }
+            $resolved[(string) $name] = $propSchema;
+        }
+
+        if(isset($resolved[$field]['ui:label'])) {
+            return (string) $resolved[$field]['ui:label'];
+        }
+
+        foreach($resolved as $propSchema) {
+            $nested = $propSchema['properties'] ?? ($propSchema['items']['properties'] ?? null);
+            if(!is_array($nested)) {
+                continue;
+            }
+
+            $found = $this->findLabelKey($field, $nested, $schema, $schemaRepository, $depth + 1);
+            if($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
     }
 }

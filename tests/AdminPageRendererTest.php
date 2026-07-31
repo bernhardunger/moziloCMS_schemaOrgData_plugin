@@ -363,6 +363,44 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringNotContainsString('&amp;amp;', $html);
     }
 
+    function testRenderSaveResultNoticeHaengtHinweisblockUnterDieErfolgsmeldung(): void {
+        $html = $this->renderer()->renderSaveResultNotice(
+            ['success' => true, 'errors' => [], 'notices' => ['Feld "Beschreibung": HTML-Auszeichnung wurde entfernt.']],
+            $this->adminLang()
+        );
+
+        $this->assertStringContainsString('schemaOrgData-notice--success', $html);
+        $this->assertStringContainsString(
+            $this->adminLang()->getLanguageValue('notice_save_adjustments'), $html
+        );
+        $this->assertStringContainsString('<li>', $html);
+        $this->assertStringContainsString('Beschreibung', $html);
+    }
+
+    /***************************************************************
+    *
+    * Hinweise beschreiben, was persistiert wurde. Ist nichts
+    * gespeichert worden, wäre "HTML-Auszeichnung wurde entfernt"
+    * schlicht falsch - der Fehlerzweig zeigt sie deshalb nicht.
+    *
+    ***************************************************************/
+    function testRenderSaveResultNoticeZeigtHinweiseImFehlerfallNicht(): void {
+        $html = $this->renderer()->renderSaveResultNotice(
+            [
+                'success' => false,
+                'errors' => ['Feld X ist ungültig'],
+                'notices' => ['Feld "Beschreibung": HTML-Auszeichnung wurde entfernt.'],
+            ],
+            $this->adminLang()
+        );
+
+        $this->assertStringContainsString('schemaOrgData-notice--error', $html);
+        $this->assertStringNotContainsString(
+            $this->adminLang()->getLanguageValue('notice_save_adjustments'), $html
+        );
+        $this->assertStringNotContainsString('Beschreibung', $html);
+    }
+
     // -----------------------------------------------------------
     // renderExistingJsonLdNotice()
     // -----------------------------------------------------------

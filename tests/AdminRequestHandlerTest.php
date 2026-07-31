@@ -173,6 +173,65 @@ final class AdminRequestHandlerTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // handlePostRequest() - Hinweise (notices) und Scope-Label
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Article-Formulardaten mit einer Beschreibung, die nach dem
+    * Strippen der Auszeichnung ersatzlos entfällt - erzeugt also
+    * garantiert genau einen Hinweis.
+    *
+    ***************************************************************/
+    private function articleDataMitVerworfenerBeschreibung(string $headline): array {
+        return [
+            'type' => 'Article',
+            'data' => ['headline' => $headline, 'description' => '<b></b>'],
+            'extension' => ['Article' => ''],
+        ];
+    }
+
+    function testHandlePostRequestOhneScopeLabelBeiEinerEbene(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData'] = ['category' => $this->articleDataMitVerworfenerBeschreibung('Neuigkeiten')];
+        $_POST['schemaOrgData_cat'] = 'ueber-uns';
+        $_POST['schemaOrgData_page'] = '';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame(
+            [$this->adminLang()->getLanguageValue(
+                'notice_value_dropped', $this->adminLang()->getLanguageValue('label_description')
+            )],
+            $result['notices'],
+            'Bei genau einer verarbeiteten Ebene ist die Zuordnung eindeutig - kein Präfix'
+        );
+    }
+
+    function testHandlePostRequestStelltScopeLabelVoranBeiZweiEbenen(): void {
+        $settings = new \InMemorySettings();
+        $_POST['schemaOrgData'] = [
+            'category' => $this->articleDataMitVerworfenerBeschreibung('Neuigkeiten'),
+            'page'     => $this->articleDataMitVerworfenerBeschreibung('Kontakt'),
+        ];
+        $_POST['schemaOrgData_cat'] = 'ueber-uns';
+        $_POST['schemaOrgData_page'] = 'kontakt';
+
+        $result = $this->callHandlePostRequest($settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertCount(2, $result['notices']);
+
+        $lang = $this->adminLang();
+        $catLabel = $this->adminPageRenderer()->buildScopeLabel('category', 'ueber-uns', 'kontakt', $lang);
+        $pageLabel = $this->adminPageRenderer()->buildScopeLabel('page', 'ueber-uns', 'kontakt', $lang);
+
+        $this->assertStringStartsWith($catLabel.': ', $result['notices'][0]);
+        $this->assertStringStartsWith($pageLabel.': ', $result['notices'][1]);
+    }
+
+    // -----------------------------------------------------------
     // handlePostRequest() - Import-Dispatch
     // -----------------------------------------------------------
 

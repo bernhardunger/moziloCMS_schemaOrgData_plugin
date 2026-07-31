@@ -169,6 +169,9 @@ notice_config_saved = Die Konfiguration wurde gespeichert.
 notice_import_success = Import übernommen - bitte die befüllten Felder unten prüfen und anschließend speichern.
 notice_config_save_error = Die Konfiguration konnte nicht gespeichert werden:
 notice_unsaved_changes = Nicht gespeicherte Eingaben im Bereich {PARAM1} – bei Bedarf dort speichern.
+notice_save_adjustments = Beim Speichern wurden Eingaben angepasst:
+notice_value_cleaned = Feld „{PARAM1}“: HTML-Auszeichnung wurde entfernt.
+notice_value_dropped = Feld „{PARAM1}“: Der Wert wurde nicht übernommen.
 error_config_write_failed = Die Konfigurationsdatei konnte nicht geschrieben werden. Bitte Schreibrechte auf das conf/-Verzeichnis prüfen.
 
 notice_existing_jsonld_title = Auf dieser Seite wurde bereits ein JSON-LD-Block gefunden.
