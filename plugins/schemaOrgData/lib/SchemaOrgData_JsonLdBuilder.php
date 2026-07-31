@@ -300,10 +300,9 @@ class SchemaOrgData_JsonLdBuilder {
 
                         $specs = [];
                         if(is_array($rawValue) and $rawValue !== []) {
-                            $days = $propSchema['ui:days'] ?? null;
                             $specs = $openingHoursHelper->buildOpeningHoursSpecifications(
                                 $rawValue,
-                                is_array($days) ? $days : ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
+                                SchemaOrgData_OpeningHoursHelper::resolveDays($propSchema)
                             );
                             foreach($specs as $index => $spec) {
                                 // Der Item-Type kommt aus dem Schema, nicht aus

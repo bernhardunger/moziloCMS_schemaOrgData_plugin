@@ -755,7 +755,7 @@ class SchemaOrgData_FormRenderer {
     ***************************************************************/
     public function renderOpeningHoursWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix, Language $lang, Language $weekdayLang, SchemaOrgData_OpeningHoursHelper $openingHoursHelper, SchemaOrgData_Validator $validator): string {
         $idPrefix = $idPrefix ?? $scope;
-        $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+        $days = SchemaOrgData_OpeningHoursHelper::resolveDays($fieldSchema);
         $dayLabelKeys = $fieldSchema['ui:dayLabelKeys'] ?? [];
 
         // $value liegt entweder als openingHours-Array in schema.org-Notation

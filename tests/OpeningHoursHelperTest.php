@@ -242,6 +242,74 @@ final class OpeningHoursHelperTest extends TestCase {
         $this->assertSame(['Mo 09:00-18:00'], $result);
     }
 
+    function testNichtSkalarerVonWertGiltAlsGeschlossen(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $perDay = [
+            'Mo' => ['from' => ['09:00'], 'to' => '18:00'],
+            'Tu' => ['from' => '09:00', 'to' => '18:00'],
+        ];
+
+        // Der (string)-Cast eines Arrays löst eine PHP-Warnung aus und ergibt
+        // das Ersatzliteral "Array" - beides darf der Guard nicht mehr
+        // durchlassen. Der eigene Handler prüft das unabhängig von der
+        // PHPUnit-Konfiguration.
+        $diagnostics = [];
+        set_error_handler(function (int $errno, string $errstr) use (&$diagnostics): bool {
+            $diagnostics[] = $errstr;
+
+            return true;
+        });
+        try {
+            $result = $helper->buildOpeningHoursArray($perDay, ['Mo', 'Tu']);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(['Tu 09:00-18:00'], $result);
+        $this->assertSame([], $diagnostics);
+    }
+
+    function testNichtSkalarerWertImZweitenZeitraumGiltAlsGeschlossen(): void {
+        $helper = new \SchemaOrgData_OpeningHoursHelper();
+
+        $perDay = [
+            'Mo' => ['from2' => '13:00', 'to2' => ['18:00']],
+            'Tu' => ['from2' => '13:00', 'to2' => '18:00'],
+        ];
+
+        $diagnostics = [];
+        set_error_handler(function (int $errno, string $errstr) use (&$diagnostics): bool {
+            $diagnostics[] = $errstr;
+
+            return true;
+        });
+        try {
+            $result = $helper->buildOpeningHoursArray($perDay, ['Mo', 'Tu'], 'from2', 'to2');
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(['Tu 13:00-18:00'], $result);
+        $this->assertSame([], $diagnostics);
+    }
+
+    // -----------------------------------------------------------
+    // resolveDays()
+    // -----------------------------------------------------------
+
+    function testResolveDaysUebernimmtGueltigesUiDays(): void {
+        $days = \SchemaOrgData_OpeningHoursHelper::resolveDays(['ui:days' => ['Mo', 'We', 'Fr']]);
+
+        $this->assertSame(['Mo', 'We', 'Fr'], $days);
+    }
+
+    function testResolveDaysFaelltOhneOderMitFalschTypisiertemUiDaysAufStandardZurueck(): void {
+        $this->assertSame(self::DAYS, \SchemaOrgData_OpeningHoursHelper::resolveDays([]));
+        $this->assertSame(self::DAYS, \SchemaOrgData_OpeningHoursHelper::resolveDays(['ui:days' => null]));
+        $this->assertSame(self::DAYS, \SchemaOrgData_OpeningHoursHelper::resolveDays(['ui:days' => 'Mo-Su']));
+    }
+
     // -----------------------------------------------------------
     // buildOpeningHoursSpecifications()
     // -----------------------------------------------------------

@@ -28,6 +28,34 @@ class SchemaOrgData_OpeningHoursHelper {
         'Su' => 'https://schema.org/Sunday',
     ];
 
+    /**
+     * Wochentagsvektor des Widgets in Anzeigereihenfolge, wenn ein
+     * Feld-Schema keinen eigenen vorgibt. Die Kürzel sind exakt die
+     * Schlüssel von DAY_OF_WEEK_URIS.
+     */
+    private const DEFAULT_DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+
+    /***************************************************************
+    *
+    * Löst aus einem Feld-Schema den Wochentagsvektor auf. `ui:days`
+    * stammt aus einer Schema-Datei und muss deshalb weder vorhanden
+    * noch typrichtig sein: nur ein Array gilt, jeder andere Wert fällt
+    * auf den Standardvektor zurück.
+    *
+    * Statisch, weil zustandslos - so erreichen auch Aufrufstellen ohne
+    * Helper-Instanz (SchemaOrgData_Validator::validateFormData()) die
+    * Auflösung, ohne dass deren Signatur sich ändern müsste.
+    *
+    * @param array<string, mixed> $fieldSchema Feld-Schema des Widgets (ui:days)
+    * @return string[] Wochentags-Kürzel in Reihenfolge, z. B. ["Mo",...,"Su"]
+    *
+    ***************************************************************/
+    public static function resolveDays(array $fieldSchema): array {
+        $days = $fieldSchema['ui:days'] ?? null;
+
+        return is_array($days) ? $days : self::DEFAULT_DAYS;
+    }
+
     /***************************************************************
     *
     * Erkennt, ob ein openingHours-Wert bereits als rohe Pro-Tag-Werte
@@ -174,8 +202,13 @@ class SchemaOrgData_OpeningHoursHelper {
         };
 
         foreach($days as $day) {
-            $from = trim((string) ($perDay[$day][$fromKey] ?? ''));
-            $to = trim((string) ($perDay[$day][$toKey] ?? ''));
+            // Ein nicht-skalarer Teilwert gilt wie ein nicht gesendeter, der
+            // Tag damit als geschlossen: der Cast trüge sonst das
+            // Ersatzliteral "Array" als Uhrzeit in die Notation.
+            $rawFrom = $perDay[$day][$fromKey] ?? '';
+            $rawTo = $perDay[$day][$toKey] ?? '';
+            $from = is_scalar($rawFrom) ? trim((string) $rawFrom) : '';
+            $to = is_scalar($rawTo) ? trim((string) $rawTo) : '';
 
             if($from === '' or $to === '') {
                 $flush();

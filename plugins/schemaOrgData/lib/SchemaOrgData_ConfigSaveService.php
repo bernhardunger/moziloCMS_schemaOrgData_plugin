@@ -183,7 +183,7 @@ class SchemaOrgData_ConfigSaveService {
             }
 
             if($widget === 'opening_hours') {
-                $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+                $days = SchemaOrgData_OpeningHoursHelper::resolveDays($fieldSchema);
                 $perDay = is_array($value) ? $value : [];
                 $primary = $openingHoursHelper->buildOpeningHoursArray($perDay, $days);
                 $secondary = $openingHoursHelper->buildOpeningHoursArray($perDay, $days, 'from2', 'to2');

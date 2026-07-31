@@ -131,7 +131,7 @@ class SchemaOrgData_Validator {
             }
 
             if($widget === 'opening_hours') {
-                $days = $fieldSchema['ui:days'] ?? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+                $days = SchemaOrgData_OpeningHoursHelper::resolveDays($fieldSchema);
                 $perDay = is_array($value) ? $value : [];
                 foreach($days as $day) {
                     $from  = (string) ($perDay[$day]['from']  ?? '');
