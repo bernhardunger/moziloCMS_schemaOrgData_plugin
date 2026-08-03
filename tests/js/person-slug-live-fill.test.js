@@ -1,6 +1,7 @@
 'use strict';
 
 var loadPluginScripts = require('./helpers/load-plugin-scripts');
+var adminContainer = require('./helpers/admin-container');
 
 /**
  * Baut das Markup des "Neue Person"-Formulars nach (Namens-/Slug-Feld samt
@@ -33,10 +34,9 @@ describe('Personen-Registry - Slug-Live-Fill (initPersonSlugLiveFill)', function
     var validator;
 
     function setup() {
-        document.body.innerHTML = buildFixture();
-        window.schemaOrgDataMessages = {
+        document.body.innerHTML = adminContainer.buildAdminContainer({
             personSlugCollision: 'Die Kennung ist bereits vergeben (vorhandene Person: "{PARAM1}").'
-        };
+        }, buildFixture());
         validator = loadPluginScripts.loadValidator();
     }
 

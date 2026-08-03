@@ -1,6 +1,7 @@
 'use strict';
 
 var loadPluginScripts = require('./helpers/load-plugin-scripts');
+var adminContainer = require('./helpers/admin-container');
 
 /**
  * Baut das Markup von Event.startDate/endDate exakt nach dem Muster von
@@ -36,12 +37,11 @@ describe('Event.startDate/endDate - Live-Validierung (runEventDateValidation)', 
     var validator;
 
     beforeEach(function () {
-        document.body.innerHTML = '<form>' + buildEventDateFixture(ID_PREFIX) + '</form>';
-        window.schemaOrgDataMessages = {
+        document.body.innerHTML = '<form>' + adminContainer.buildAdminContainer({
             dateInvalid: 'DATE_INVALID',
             dateRangeInvalid: 'DATE_RANGE_INVALID',
             dateInPast: 'DATE_IN_PAST'
-        };
+        }, buildEventDateFixture(ID_PREFIX)) + '</form>';
         validator = loadPluginScripts.loadValidator();
         validator.initAdminForm();
     });
@@ -212,11 +212,10 @@ describe('JobPosting.datePosted/validThrough - Live-Validierung (runEventDateVal
     var validator;
 
     beforeEach(function () {
-        document.body.innerHTML = '<form>' + buildJobPostingDateFixture(JOBPOSTING_ID_PREFIX) + '</form>';
-        window.schemaOrgDataMessages = {
+        document.body.innerHTML = '<form>' + adminContainer.buildAdminContainer({
             dateInvalid: 'DATE_INVALID',
             dateRangeInvalid: 'DATE_RANGE_INVALID'
-        };
+        }, buildJobPostingDateFixture(JOBPOSTING_ID_PREFIX)) + '</form>';
         validator = loadPluginScripts.loadValidator();
         validator.initAdminForm();
     });

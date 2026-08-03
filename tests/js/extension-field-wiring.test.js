@@ -1,6 +1,7 @@
 'use strict';
 
 var loadPluginScripts = require('./helpers/load-plugin-scripts');
+var adminContainer = require('./helpers/admin-container');
 
 /**
  * Baut das Markup eines Erweiterungsfelds exakt nach dem Muster von
@@ -60,6 +61,7 @@ var CATEGORY_ID = 'schemaOrgData_category_extension';
 describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', function () {
     var validator;
     var fetchMock;
+    var messages;
 
     beforeEach(function () {
         loadPluginScripts.loadAjv();
@@ -70,7 +72,7 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
         });
         global.fetch = fetchMock;
 
-        window.schemaOrgDataMessages = {
+        messages = {
             unknownProperty: 'UNBEKANNTE_PROPERTY {PARAM1}',
             personSuggestionCandidate: 'PERSONEN_KANDIDAT {PARAM1}'
         };
@@ -86,8 +88,21 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
         return document.getElementById(fieldId + '_feedback');
     }
 
+    /**
+     * Setzt das Fixture in den Formular-Container, an dem getMessages()
+     * die Texte liest. Erst hier - nicht schon in beforeEach() - steht
+     * der endgültige Inhalt von messages fest: zwei Tests ergänzen
+     * vorher noch extensionSchemaUnavailable.
+     *
+     * @param {string} innerHtml
+     * @returns {string}
+     */
+    function adminFixture(innerHtml) {
+        return '<form>' + adminContainer.buildAdminContainer(messages, innerHtml) + '</form>';
+    }
+
     test('lädt das Schema über data-schema-url und schreibt das Ergebnis in das per ID-Konvention gefundene Feedback-Element', async function () {
-        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
         validator.initAdminForm();
         await flushPromises();
 
@@ -103,7 +118,7 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
     });
 
     test('gültige, bekannte Properties erzeugen genau ein OK-Feedback (Klasse schemaOrgData-feedback--ok)', async function () {
-        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
         validator.initAdminForm();
         await flushPromises();
 
@@ -116,7 +131,7 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
     });
 
     test('Formatverletzung (falscher Typ) erzeugt Feedback mit Klasse schemaOrgData-feedback--error', async function () {
-        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
         validator.initAdminForm();
         await flushPromises();
 
@@ -128,7 +143,7 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
     });
 
     test('ein Personen-Suggestion-Kandidat (employee mit @type Person) erhält Info- statt Warnung-Feedback', async function () {
-        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
         validator.initAdminForm();
         await flushPromises();
 
@@ -142,7 +157,7 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
     });
 
     test('ein Array unter employee bleibt eine gewöhnliche Unbekannt-Warnung (kein Personen-Suggestion-Kandidat)', async function () {
-        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
         validator.initAdminForm();
         await flushPromises();
 
@@ -156,10 +171,10 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
     });
 
     test('mehrere Erweiterungsfelder verschiedener Scopes bleiben unabhängig - Blur eines Feldes aktualisiert nicht das Feedback des anderen Feldes', async function () {
-        document.body.innerHTML = '<form>'
-            + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json')
+        document.body.innerHTML = adminFixture(
+            buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json')
             + buildExtensionFieldFixture(CATEGORY_ID, '/schemas/SchemaB.json')
-            + '</form>';
+        );
         validator.initAdminForm();
         await flushPromises();
 
@@ -171,7 +186,7 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
     });
 
     test('kein globaler document.body-Fallback - Feedback landet ausschließlich im vorgesehenen Feedback-Element', async function () {
-        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
         validator.initAdminForm();
         await flushPromises();
 
@@ -193,9 +208,9 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
     // aber das Feedback zeigt jetzt eine Warnung ("nur Syntax geprüft").
     test('Schema-Ladefehler (fetch schlägt fehl) wirft keinen Fehler - ohne geladenes Schema zeigt das Feedback eine Warnung statt eines grünen Hakens (schema bleibt null, siehe checkUnknownProperties()/checkFormats())', async function () {
         global.fetch = jest.fn(function () { return Promise.reject(new Error('network down')); });
-        window.schemaOrgDataMessages.extensionSchemaUnavailable = 'SCHEMA_NICHT_LADBAR';
+        messages.extensionSchemaUnavailable = 'SCHEMA_NICHT_LADBAR';
 
-        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
         validator.initAdminForm();
         await flushPromises();
 
@@ -215,9 +230,9 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
         global.fetch = jest.fn(function () {
             return Promise.resolve({ ok: false, status: 404, json: function () { return Promise.resolve({}); } });
         });
-        window.schemaOrgDataMessages.extensionSchemaUnavailable = 'SCHEMA_NICHT_LADBAR';
+        messages.extensionSchemaUnavailable = 'SCHEMA_NICHT_LADBAR';
 
-        document.body.innerHTML = '<form>' + buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json') + '</form>';
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
         validator.initAdminForm();
         await flushPromises();
 

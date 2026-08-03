@@ -473,6 +473,52 @@ class SchemaOrgData_AdminController {
                 : $personsAdminRenderer->newViewId();
         }
 
+        // Lokalisierte Texte für die clientseitige Validierung (validator.js)
+        $messages = [
+            'postalCode'         => $lang->getLanguageValue('error_postal_code_format'),
+            'telephone'          => $lang->getLanguageValue('error_telephone_format'),
+            'urlInvalid'         => $lang->getLanguageValue('error_url_invalid'),
+            'urlHttpWarning'     => $lang->getLanguageValue('warning_url_http'),
+            'emailInvalid'       => $lang->getLanguageValue('error_email_invalid'),
+            'openingHoursFormat'     => $lang->getLanguageValue('error_opening_hours_format'),
+            'openingHoursIncomplete' => $lang->getLanguageValue('error_opening_hours_incomplete'),
+            'openingHoursOrder'      => $lang->getLanguageValue('error_opening_hours_order'),
+            'openingHoursOverlap'    => $lang->getLanguageValue('error_opening_hours_overlap'),
+            'geoLatitude'        => $lang->getLanguageValue('error_geo_latitude'),
+            'geoLongitude'       => $lang->getLanguageValue('error_geo_longitude'),
+            'geoIncomplete'      => $lang->getLanguageValue('error_geo_incomplete'),
+            'dateInvalid'        => $lang->getLanguageValue('error_date_invalid'),
+            'dateRangeInvalid'   => $lang->getLanguageValue('error_date_range_invalid'),
+            'dateInPast'         => $lang->getLanguageValue('warning_date_in_past'),
+            'sortOrderInvalid'   => $lang->getLanguageValue('warning_sort_order_invalid'),
+            // '{PARAM1}' wird hier als Wert übergeben, damit
+            // getLanguageValue() den Platzhalter NICHT durch ""
+            // ersetzt (Default von $param1) - die Ersetzung mit dem
+            // Property-Namen erfolgt erst clientseitig in
+            // initExtensionFieldValidation() (validator.js).
+            'unknownProperty'    => $lang->getLanguageValue('warning_unknown_property', '{PARAM1}'),
+            'extensionSchemaUnavailable' => $lang->getLanguageValue('warning_extension_schema_unavailable'),
+            // '{PARAM1}' wird hier als Wert übergeben, damit
+            // getLanguageValue() den Platzhalter NICHT durch ""
+            // ersetzt (Default von $param1) - die Ersetzung mit dem
+            // Property-Namen erfolgt erst clientseitig in
+            // showExtensionFeedback() (validator.js).
+            'personSuggestionCandidate' => $lang->getLanguageValue('hint_extension_person_candidate', '{PARAM1}'),
+            // '{PARAM1}' wird hier als Wert übergeben, damit
+            // getLanguageValue() den Platzhalter NICHT durch ""
+            // ersetzt - die Ersetzung mit dem Namen der kollidierenden
+            // Person erfolgt erst clientseitig in
+            // runPersonSlugValidation() (validator.js).
+            'personSlugCollision' => $lang->getLanguageValue('error_person_slug_exists', '{PARAM1}'),
+            'jsonInvalid'        => $lang->getLanguageValue('error_json_invalid'),
+            // '{PARAM1}' wird hier als Wert übergeben, damit
+            // getLanguageValue() den Platzhalter NICHT durch ""
+            // ersetzt (Default von $param1) - die Ersetzung mit dem
+            // tatsächlichen Bereichsnamen erfolgt erst clientseitig
+            // in showUnsavedNotice() (validator.js).
+            'unsavedChanges'     => $lang->getLanguageValue('notice_unsaved_changes', '{PARAM1}'),
+        ];
+
         $formAction = URL_BASE . ADMIN_DIR_NAME . '/index.php';
         $saveButtonLabel = $adminPageRenderer->buildSaveButtonLabel($selectedCat, $selectedPage, $lang);
 
@@ -480,7 +526,19 @@ class SchemaOrgData_AdminController {
         $html .= '<form method="POST" action="' . htmlspecialchars($formAction, ENT_QUOTES, CHARSET) . '">' . "\n";
         $html .= '<input type="hidden" name="pluginadmin" value="' . PLUGINADMIN . '" />' . "\n";
         $html .= '<input type="hidden" name="action" value="' . ACTION . '" />' . "\n";
-        $html .= '<div class="schemaOrgData-admin">' . "\n";
+        // Die lokalisierten Texte reisen als data-Attribut des
+        // Formular-Containers zum Client, den validator.js über
+        // .schemaOrgData-admin findet. htmlspecialchars() mit ENT_QUOTES
+        // kodiert alle Zeichen, die den Attributwert vorzeitig beenden
+        // oder eigenes Markup einschleusen könnten (Anführungszeichen und
+        // Winkelklammern) - ein Sprachdatei-Wert bleibt damit auch dann
+        // reiner Text, wenn er selbst nach HTML aussieht.
+        $html .= '<div class="schemaOrgData-admin" data-messages="'
+            . htmlspecialchars(
+                json_encode($messages, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                ENT_QUOTES,
+                CHARSET
+            ) . '">' . "\n";
 
         if ($saveResult !== null) {
             // Import-Erfolg zeigt einen eigenen Hinweis statt der
@@ -678,59 +736,6 @@ class SchemaOrgData_AdminController {
         $html .= '</div>' . "\n"; // schließt .schemaOrgData-admin
         $html .= '</form>' . "\n";
 
-        // Lokalisierte Texte für die clientseitige Validierung (validator.js)
-        $messages = [
-            'postalCode'         => $lang->getLanguageValue('error_postal_code_format'),
-            'telephone'          => $lang->getLanguageValue('error_telephone_format'),
-            'urlInvalid'         => $lang->getLanguageValue('error_url_invalid'),
-            'urlHttpWarning'     => $lang->getLanguageValue('warning_url_http'),
-            'emailInvalid'       => $lang->getLanguageValue('error_email_invalid'),
-            'openingHoursFormat'     => $lang->getLanguageValue('error_opening_hours_format'),
-            'openingHoursIncomplete' => $lang->getLanguageValue('error_opening_hours_incomplete'),
-            'openingHoursOrder'      => $lang->getLanguageValue('error_opening_hours_order'),
-            'openingHoursOverlap'    => $lang->getLanguageValue('error_opening_hours_overlap'),
-            'geoLatitude'        => $lang->getLanguageValue('error_geo_latitude'),
-            'geoLongitude'       => $lang->getLanguageValue('error_geo_longitude'),
-            'geoIncomplete'      => $lang->getLanguageValue('error_geo_incomplete'),
-            'dateInvalid'        => $lang->getLanguageValue('error_date_invalid'),
-            'dateRangeInvalid'   => $lang->getLanguageValue('error_date_range_invalid'),
-            'dateInPast'         => $lang->getLanguageValue('warning_date_in_past'),
-            'sortOrderInvalid'   => $lang->getLanguageValue('warning_sort_order_invalid'),
-            // '{PARAM1}' wird hier als Wert übergeben, damit
-            // getLanguageValue() den Platzhalter NICHT durch ""
-            // ersetzt (Default von $param1) - die Ersetzung mit dem
-            // Property-Namen erfolgt erst clientseitig in
-            // initExtensionFieldValidation() (validator.js).
-            'unknownProperty'    => $lang->getLanguageValue('warning_unknown_property', '{PARAM1}'),
-            'extensionSchemaUnavailable' => $lang->getLanguageValue('warning_extension_schema_unavailable'),
-            // '{PARAM1}' wird hier als Wert übergeben, damit
-            // getLanguageValue() den Platzhalter NICHT durch ""
-            // ersetzt (Default von $param1) - die Ersetzung mit dem
-            // Property-Namen erfolgt erst clientseitig in
-            // showExtensionFeedback() (validator.js).
-            'personSuggestionCandidate' => $lang->getLanguageValue('hint_extension_person_candidate', '{PARAM1}'),
-            // '{PARAM1}' wird hier als Wert übergeben, damit
-            // getLanguageValue() den Platzhalter NICHT durch ""
-            // ersetzt - die Ersetzung mit dem Namen der kollidierenden
-            // Person erfolgt erst clientseitig in
-            // runPersonSlugValidation() (validator.js).
-            'personSlugCollision' => $lang->getLanguageValue('error_person_slug_exists', '{PARAM1}'),
-            'jsonInvalid'        => $lang->getLanguageValue('error_json_invalid'),
-            // '{PARAM1}' wird hier als Wert übergeben, damit
-            // getLanguageValue() den Platzhalter NICHT durch ""
-            // ersetzt (Default von $param1) - die Ersetzung mit dem
-            // tatsächlichen Bereichsnamen erfolgt erst clientseitig
-            // in showUnsavedNotice() (validator.js).
-            'unsavedChanges'     => $lang->getLanguageValue('notice_unsaved_changes', '{PARAM1}'),
-        ];
-
-        // JSON_HEX_TAG kodiert Winkelklammern in Sprachstring-Werten als Unicode-
-        // Escapes und verhindert so einen Script-Break-out, falls ein
-        // Sprachdatei-Wert jemals "</script>" enthalten sollte (analoges
-        // Härtungsmuster zu buildJsonLdScript()/buildDebugWidget(), siehe
-        // README.md, Abschnitt "Sicherheit").
-        $html .= '<script>window.schemaOrgDataMessages = '
-            . json_encode($messages, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . ';</script>' . "\n";
         // Beide Skripte werden hier direkt als <script src="…"> ausgegeben und
         // bewusst nicht über $PLUGIN_ADMIN_ADD_HEAD angemeldet: Der Kern
         // durchsucht diesen Kopfbereich nach <script ... src=...> und zieht
@@ -743,9 +748,6 @@ class SchemaOrgData_AdminController {
         // Ausgabe samt Cache-Buster bleibt deshalb.
         $html .= '<script src="' . $pluginSelfUrl . 'js/ajv.min.js?v=' . $this->resolveAssetCacheBuster($pluginSelfDir, 'js/ajv.min.js') . '"></script>' . "\n";
         $html .= '<script src="' . $pluginSelfUrl . 'js/validator.js?v=' . $this->resolveAssetCacheBuster($pluginSelfDir, 'js/validator.js') . '"></script>' . "\n";
-        $html .= '<script>document.addEventListener("DOMContentLoaded", function () {'
-            . ' if(window.schemaOrgDataValidator) { window.schemaOrgDataValidator.initAdminForm(); }'
-            . ' });</script>' . "\n";
 
         return $html;
     }

@@ -19,6 +19,7 @@
  */
 
 var loadPluginScripts = require('./helpers/load-plugin-scripts');
+var adminContainer = require('./helpers/admin-container');
 
 var UNSAVED_TEMPLATE = 'Im Bereich {PARAM1} liegen ungespeicherte Eingaben vor.';
 
@@ -128,8 +129,7 @@ function buildAdminPage(opts) {
     var pagesJson = (opts.pagesJson !== undefined) ? opts.pagesJson : JSON.stringify(PAGES_BY_CAT);
     var saveLabel = 'Global speichern';
 
-    return ''
-        + '<div class="schemaOrgData-admin">'
+    return adminContainer.buildAdminContainer({ unsavedChanges: UNSAVED_TEMPLATE }, ''
         + (opts.saveNotice ? '<div id="schemaOrgData_save_notice" class="schemaOrgData-notice schemaOrgData-notice--success">Gespeichert.</div>' : '')
         + '<div id="schemaOrgData_scope_container">'
         + '<div class="schemaOrgData-admin-toolbar">'
@@ -159,7 +159,7 @@ function buildAdminPage(opts) {
         + '<div class="schemaOrgData-save-bar">'
         + '<button type="submit" class="mo-btn mo-btn--primary">' + saveLabel + '</button>'
         + '</div>'
-        + '</div></div>';
+        + '</div>');
 }
 
 function fire(el, eventType) {
@@ -208,14 +208,12 @@ describe('Scope-Selektor (initScopeSelector)', function () {
 
     function setup(html) {
         document.body.innerHTML = html;
-        window.schemaOrgDataMessages = { unsavedChanges: UNSAVED_TEMPLATE };
         validator = loadPluginScripts.loadValidator();
         return validator;
     }
 
     beforeEach(function () {
         document.body.innerHTML = '';
-        window.schemaOrgDataMessages = {};
     });
 
     describe('Initialzustand', function () {

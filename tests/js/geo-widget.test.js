@@ -1,6 +1,7 @@
 'use strict';
 
 var loadPluginScripts = require('./helpers/load-plugin-scripts');
+var adminContainer = require('./helpers/admin-container');
 
 /**
  * Baut das Markup des Geo-Widgets exakt nach dem Muster von
@@ -35,12 +36,11 @@ describe('Geo-Widget - Live-Validierung (runGeoValidation)', function () {
     var validator;
 
     beforeEach(function () {
-        document.body.innerHTML = '<form>' + buildGeoFixture(BASE_ID) + '</form>';
-        window.schemaOrgDataMessages = {
+        document.body.innerHTML = '<form>' + adminContainer.buildAdminContainer({
             geoLatitude: 'LATITUDE_ERROR',
             geoLongitude: 'LONGITUDE_ERROR',
             geoIncomplete: 'INCOMPLETE_ERROR'
-        };
+        }, buildGeoFixture(BASE_ID)) + '</form>';
         validator = loadPluginScripts.loadValidator();
         validator.initAdminForm();
     });
