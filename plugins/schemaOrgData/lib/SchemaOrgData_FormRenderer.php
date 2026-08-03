@@ -206,8 +206,9 @@ class SchemaOrgData_FormRenderer {
     *        IdReferenceService::filterFragmentsByReferenceTargets() gefiltert
     * @return string HTML des Widgets - die beiden Modus-Radios tragen einen
     *         je Instanz eindeutigen (nicht submittierten) Namen, der
-    *         tatsächlich gespeicherte _mode-Wert läuft über ein per JS
-    *         nachgeführtes verstecktes Feld mit dem regulären Feldnamen
+    *         tatsächlich gespeicherte _mode-Wert läuft über ein verstecktes
+    *         Feld mit dem regulären Feldnamen, das der data-action-Handler
+    *         "idrl-toggle" (js/validator.js) nachführt
     *
     ***************************************************************/
     public function renderIdReferenceOrLiteralWidget(string $scope, string $name, array $fieldSchema, array $value, string $idPrefix, Language $lang, array $availableFragments): string {
@@ -314,21 +315,6 @@ class SchemaOrgData_FormRenderer {
             $html .= '</div>'."\n";
         }
         $html .= '</div>'."\n";
-
-        if($allowLiteral) {
-            // Einmalig definierte Toggle-Funktion (idempotent via window-Guard).
-            // Pflegt zusätzlich das versteckte Feld schemaOrgData-idrl-mode-field
-            // nach, das - anders als die (je Instanz eindeutig benannten) Radios -
-            // unter dem tatsächlichen Formularfeldnamen ($modeField) übermittelt wird.
-            $html .= '<script>if(!window.schemaOrgDataIdRlToggle){'
-                .'window.schemaOrgDataIdRlToggle=function(r){'
-                .'var c=r.closest(".schemaOrgData-idrl-container");'
-                .'c.querySelectorAll(".schemaOrgData-idrl-section").forEach(function(s){s.style.display="none";});'
-                .'c.querySelector(".schemaOrgData-idrl-"+r.value).style.display="";'
-                .'var h=c.querySelector(".schemaOrgData-idrl-mode-field");'
-                .'if(h){h.value=r.value;}'
-                .'};}</script>'."\n";
-        }
 
         return $html;
     }

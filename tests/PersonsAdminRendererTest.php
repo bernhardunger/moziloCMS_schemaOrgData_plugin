@@ -156,7 +156,7 @@ final class PersonsAdminRendererTest extends TestCase {
         // Die "Neue Person"-Ansicht ist vorgerendert, aber inaktiv (Liste ist
         // Default-Ansicht) - ihre Felder müssen disabled sein, sonst würden
         // mehrfach vorgerenderte Formulare mit identischen Feldnamen beim
-        // Speichern kollidieren (siehe renderToggleScript()-Docblock).
+        // Speichern kollidieren.
         $this->assertMatchesRegularExpression(
             '/id="schemaOrgData_persons_view_new"[^>]*style="display:none"/',
             $html
@@ -460,5 +460,16 @@ final class PersonsAdminRendererTest extends TestCase {
         $html = $this->render($settings, true);
 
         $this->assertDoesNotMatchRegularExpression('/\son(click|change|submit|keyup|input)=/i', $html);
+    }
+
+    function testAusgabeEnthaeltKeinInlineScript(): void {
+        $settings = new \InMemorySettings();
+        $this->registryService()->createPerson($settings, [
+            'name' => 'Max Mustermann', 'slug' => 'max',
+        ], $this->adminLang(), $this->validator());
+
+        $html = $this->render($settings, true);
+
+        $this->assertStringNotContainsString('<script', $html);
     }
 }

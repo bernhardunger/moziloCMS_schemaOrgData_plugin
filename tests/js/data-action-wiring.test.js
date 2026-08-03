@@ -268,6 +268,36 @@ describe('data-action-Verdrahtung (initDataActions) - Referenz-/Literal-Umschalt
         expect(document.querySelector('.schemaOrgData-idrl-literal').style.display).toBe('none');
         expect(document.querySelector('.schemaOrgData-idrl-mode-field').value).toBe('reference');
     });
+
+    test('idrl-toggle ohne umschliessenden Container laesst das DOM unveraendert', function () {
+        document.body.innerHTML = '<form>'
+            + '<input type="radio" class="schemaOrgData-idrl-radio" value="literal" data-action="idrl-toggle" />'
+            + '<div class="schemaOrgData-idrl-section schemaOrgData-idrl-literal" style="display:none"></div>'
+            + '</form>';
+
+        validator.initDataActions();
+        var radio = idrlRadio('literal');
+        radio.checked = true;
+        fire(radio, 'change');
+
+        expect(document.querySelector('.schemaOrgData-idrl-literal').style.display).toBe('none');
+    });
+
+    test('Wechsel auf einen Wert ohne passende Sektion blendet alle aus und fuehrt das Modus-Feld trotzdem nach', function () {
+        document.body.innerHTML = '<form>' + buildIdRlFixture('reference') + '</form>';
+        // Das Nachfuehren des Modus-Felds steht im Handler hinter dem
+        // Einblenden und laeuft deshalb auch dann, wenn keine Sektion passt.
+        var radio = idrlRadio('literal');
+        radio.value = 'organization';
+
+        validator.initDataActions();
+        radio.checked = true;
+        fire(radio, 'change');
+
+        expect(document.querySelector('.schemaOrgData-idrl-reference').style.display).toBe('none');
+        expect(document.querySelector('.schemaOrgData-idrl-literal').style.display).toBe('none');
+        expect(document.querySelector('.schemaOrgData-idrl-mode-field').value).toBe('organization');
+    });
 });
 
 describe('data-action-Verdrahtung (initDataActions) - Randfälle der Verdrahtung', function () {
