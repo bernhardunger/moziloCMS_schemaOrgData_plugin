@@ -1328,4 +1328,35 @@ final class AdminControllerTest extends TestCase {
         $this->assertStringNotContainsString('schemaOrgData_persons_back_btn', $html);
         $this->assertStringNotContainsString($this->adminLang()->getLanguageHtml('button_back_to_scopes'), $html);
     }
+
+    // -----------------------------------------------------------
+    // data-action-Verdrahtung (js/validator.js, initDataActions())
+    // -----------------------------------------------------------
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testPersonenUmschalterTraegtDataActionStattInlineHandler(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $html = $this->callRenderAdminPage(new \InMemorySettings());
+
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*id="schemaOrgData_persons_toggle_btn"[^>]*data-action="persons-open"/',
+            $html
+        );
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testAdminSeiteEnthaeltKeineInlineEventHandlerAttribute(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $html = $this->callRenderAdminPage(new \InMemorySettings());
+
+        $this->assertDoesNotMatchRegularExpression('/\son(click|change|submit|keyup|input)=/i', $html);
+    }
 }

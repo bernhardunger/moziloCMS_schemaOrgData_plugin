@@ -355,4 +355,110 @@ final class PersonsAdminRendererTest extends TestCase {
         $this->assertIsInt($slugPosEdit);
         $this->assertLessThan($slugPosEdit, $namePosEdit);
     }
+
+    // -----------------------------------------------------------
+    // data-action-Verdrahtung (js/validator.js, initDataActions())
+    // -----------------------------------------------------------
+
+    function testZurueckButtonTraegtDataActionStattInlineHandler(): void {
+        $html = $this->render(new \InMemorySettings(), true);
+
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*id="schemaOrgData_persons_back_btn"[^>]*data-action="persons-back"/',
+            $html
+        );
+    }
+
+    function testListenButtonsTragenDataActionMitViewZiel(): void {
+        $settings = new \InMemorySettings();
+        $this->registryService()->createPerson($settings, [
+            'name' => 'Max Mustermann', 'slug' => 'max',
+        ], $this->adminLang(), $this->validator());
+
+        $html = $this->render($settings, true);
+
+        $this->assertMatchesRegularExpression(
+            '/data-action="persons-show" data-persons-target="schemaOrgData_persons_view_edit_max"/',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/data-action="persons-show" data-persons-target="'.preg_quote($this->renderer()->newViewId(), '/').'"/',
+            $html
+        );
+    }
+
+    function testAbbrechenButtonZeigtAufDieListenansicht(): void {
+        $html = $this->render(new \InMemorySettings(), true, $this->renderer()->newViewId());
+
+        $this->assertMatchesRegularExpression(
+            '/data-action="persons-show" data-persons-target="'.preg_quote($this->renderer()->listViewId(), '/').'"/',
+            $html
+        );
+    }
+
+    function testLoeschenButtonTraegtBestaetigungstextAlsDatenattribut(): void {
+        $settings = new \InMemorySettings();
+        $this->registryService()->createPerson($settings, [
+            'name' => 'Max Mustermann', 'slug' => 'max',
+        ], $this->adminLang(), $this->validator());
+
+        $html = $this->render($settings, true);
+
+        $this->assertStringContainsString(
+            'data-action="confirm" data-confirm="'
+                .htmlspecialchars($this->adminLang()->getLanguageValue('confirm_delete_person'), ENT_QUOTES, CHARSET).'"',
+            $html
+        );
+    }
+
+    /***************************************************************
+    *
+    * Ein Apostroph im Bestätigungstext darf das Attribut nicht
+    * verlassen. Als Inhalt eines onclick-Attributs lag der Wert in
+    * einem JS-String-Literal innerhalb eines HTML-Attributs: der
+    * HTML-Parser wandelte das von ENT_QUOTES erzeugte &#039; vor der
+    * JS-Auswertung wieder in einen Apostroph zurück, der das Literal
+    * dann vorzeitig beendete. Als reines Datenattribut gibt es nur
+    * noch den HTML-Kontext, den htmlspecialchars() abdeckt.
+    *
+    ***************************************************************/
+    function testApostrophImBestaetigungstextBleibtImDatenattributKodiert(): void {
+        $settings = new \InMemorySettings();
+        $this->registryService()->createPerson($settings, [
+            'name' => 'Max Mustermann', 'slug' => 'max',
+        ], $this->adminLang(), $this->validator());
+
+        $langFile = sys_get_temp_dir().'/schemaOrgData_admin_language_apostroph_'.uniqid().'_deDE.txt';
+        $original = file_get_contents($this->pluginSelfDir().'sprachen/admin_language_deDE.txt');
+        $patched = preg_replace(
+            '/^confirm_delete_person = .*$/m',
+            "confirm_delete_person = Person's Eintrag wirklich löschen?",
+            (string) $original
+        );
+        file_put_contents($langFile, $patched);
+
+        try {
+            $renderer = $this->renderer();
+            $html = $renderer->renderPersonsSection(
+                $settings, new \Language($langFile), $this->registryService(), $this->validator(),
+                $this->urlHelper(), $this->formRenderer(), true, $renderer->listViewId(), [], []
+            );
+
+            $this->assertStringContainsString('data-confirm="Person&#039;s Eintrag wirklich löschen?"', $html);
+            $this->assertStringNotContainsString('data-confirm="Person\'s', $html);
+        } finally {
+            unlink($langFile);
+        }
+    }
+
+    function testAusgabeEnthaeltKeineInlineEventHandlerAttribute(): void {
+        $settings = new \InMemorySettings();
+        $this->registryService()->createPerson($settings, [
+            'name' => 'Max Mustermann', 'slug' => 'max',
+        ], $this->adminLang(), $this->validator());
+
+        $html = $this->render($settings, true);
+
+        $this->assertDoesNotMatchRegularExpression('/\son(click|change|submit|keyup|input)=/i', $html);
+    }
 }

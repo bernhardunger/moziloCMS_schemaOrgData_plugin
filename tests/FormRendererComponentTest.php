@@ -987,4 +987,37 @@ final class FormRendererComponentTest extends TestCase {
             $html
         );
     }
+
+    // -----------------------------------------------------------
+    // data-action-Verdrahtung (js/validator.js, initDataActions())
+    // -----------------------------------------------------------
+
+    function testIdReferenceOrLiteralRadiosTragenDataActionStattInlineHandler(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $fieldSchema = [
+            'ui:widget' => 'id_reference_or_literal',
+            'ui:literalFields' => ['name'],
+            'ui:literalFieldLabels' => ['name' => 'label_name'],
+        ];
+
+        $html = $renderer->renderField(
+            'page', 'organizer', $fieldSchema, [], ['properties' => ['organizer' => $fieldSchema]], [], null, null, null,
+            $this->adminLang(), $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(),
+            ['organization' => 'Organization — Muster GmbH'],
+        );
+
+        $this->assertMatchesRegularExpression('/value="reference"[^>]*data-action="idrl-toggle"/', $html);
+        $this->assertMatchesRegularExpression('/value="literal"[^>]*data-action="idrl-toggle"/', $html);
+        $this->assertDoesNotMatchRegularExpression('/\son(click|change|submit|keyup|input)=/i', $html);
+    }
+
+    function testOrgRelationsWidgetUmschalterTraegtDataActionStattInlineHandler(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+
+        $html = $renderer->renderOrgRelationsWidget('global', [], null, $this->adminLang(), []);
+
+        $this->assertStringContainsString('data-action="persons-open"', $html);
+        $this->assertDoesNotMatchRegularExpression('/\son(click|change|submit|keyup|input)=/i', $html);
+    }
 }

@@ -80,9 +80,7 @@ class SchemaOrgData_PersonsAdminRenderer {
         // Bearbeiten) immer erreichbar ist, aber nie im Scope-Container
         // erscheint, wo er ins Leere liefe.
         $html .= '<div class="schemaOrgData-persons-toggle">'."\n";
-        $html .= '<button type="button" id="schemaOrgData_persons_back_btn" class="mo-btn" onclick="'
-            .'document.getElementById(\'schemaOrgData_persons_container\').style.display=\'none\';'
-            .'document.getElementById(\'schemaOrgData_scope_container\').style.display=\'\';">'
+        $html .= '<button type="button" id="schemaOrgData_persons_back_btn" class="mo-btn" data-action="persons-back">'
             .$lang->getLanguageHtml('button_back_to_scopes').'</button>'."\n";
         $html .= '</div>'."\n";
 
@@ -169,6 +167,16 @@ class SchemaOrgData_PersonsAdminRenderer {
                 $statusLabel = $lang->getLanguageHtml($isInactive ? 'label_person_status_inactive' : 'label_person_status_active');
                 $slugAttr = htmlspecialchars((string) $slug, ENT_QUOTES, CHARSET);
                 $editViewId = htmlspecialchars($this->buildEditViewId((string) $slug), ENT_QUOTES, CHARSET);
+                // Der Text der Löschbestätigung wird als reines Datenattribut
+                // übergeben und erst vom data-action-Handler "confirm"
+                // (js/validator.js) an window.confirm() gereicht. Damit
+                // durchläuft er genau einen Kodierungskontext - die
+                // HTML-Attribut-Kodierung -, den htmlspecialchars() vollständig
+                // abdeckt. Als Inhalt eines on*-Attributs wären es zwei
+                // ineinander verschachtelte Kontexte gewesen: Der HTML-Parser
+                // hätte das von ENT_QUOTES erzeugte &#039; vor der
+                // JS-Auswertung wieder zu einem Apostroph gemacht, der dann das
+                // umschließende JS-String-Literal beendet hätte.
                 $confirmText = htmlspecialchars($lang->getLanguageValue('confirm_delete_person'), ENT_QUOTES, CHARSET);
 
                 $html .= '<tr data-slug="'.$slugAttr.'" data-slug-name="'.htmlspecialchars($displayName, ENT_QUOTES, CHARSET).'">'
@@ -177,10 +185,10 @@ class SchemaOrgData_PersonsAdminRenderer {
                     .'<td>'.$statusLabel.'</td>'
                     .'<td>'.htmlspecialchars((string) ($person['sortOrder'] ?? 100), ENT_QUOTES, CHARSET).'</td>'
                     .'<td>'
-                    .'<button type="button" class="mo-btn" onclick="schemaOrgDataPersonsShow(\''.$editViewId.'\')">'
+                    .'<button type="button" class="mo-btn" data-action="persons-show" data-persons-target="'.$editViewId.'">'
                     .$lang->getLanguageHtml('button_edit_person').'</button> '
                     .'<button type="submit" name="schemaOrgData_persons_action" value="delete:'.$slugAttr.'" class="mo-btn"'
-                    .' onclick="return confirm(\''.$confirmText.'\')">'
+                    .' data-action="confirm" data-confirm="'.$confirmText.'">'
                     .$lang->getLanguageHtml('button_delete_person').'</button>'
                     .'</td>'
                     .'</tr>'."\n";
@@ -189,7 +197,7 @@ class SchemaOrgData_PersonsAdminRenderer {
             $html .= '</tbody></table>'."\n";
         }
 
-        $html .= '<button type="button" class="mo-btn mo-btn--primary" onclick="schemaOrgDataPersonsShow(\''.self::NEW_VIEW_ID.'\')">'
+        $html .= '<button type="button" class="mo-btn mo-btn--primary" data-action="persons-show" data-persons-target="'.htmlspecialchars(self::NEW_VIEW_ID, ENT_QUOTES, CHARSET).'">'
             .$lang->getLanguageHtml('button_add_person').'</button>'."\n";
         $html .= '</div>'."\n";
 
@@ -276,7 +284,7 @@ class SchemaOrgData_PersonsAdminRenderer {
         $html .= '<div class="schemaOrgData-persons-form-actions">'."\n";
         $html .= '<button type="submit" name="schemaOrgData_persons_action" value="'.$submitValue.'" class="mo-btn mo-btn--primary">'
             .$lang->getLanguageHtml($isEdit ? 'button_save_person' : 'button_create_person').'</button> '."\n";
-        $html .= '<button type="button" class="mo-btn" onclick="schemaOrgDataPersonsShow(\''.self::LIST_VIEW_ID.'\')">'
+        $html .= '<button type="button" class="mo-btn" data-action="persons-show" data-persons-target="'.htmlspecialchars(self::LIST_VIEW_ID, ENT_QUOTES, CHARSET).'">'
             .$lang->getLanguageHtml('button_cancel_person').'</button>'."\n";
         $html .= '</div>'."\n";
 

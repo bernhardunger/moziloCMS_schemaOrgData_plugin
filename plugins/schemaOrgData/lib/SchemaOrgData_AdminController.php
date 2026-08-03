@@ -518,8 +518,7 @@ class SchemaOrgData_AdminController {
 
         $html .= '<div class="schemaOrgData-persons-toggle">' . "\n";
         $html .= '<button type="button" id="schemaOrgData_persons_toggle_btn" class="mo-btn" '
-            . 'onclick="document.getElementById(\'schemaOrgData_scope_container\').style.display=\'none\';'
-            . 'document.getElementById(\'schemaOrgData_persons_container\').style.display=\'\';">'
+            . 'data-action="persons-open">'
             . $lang->getLanguageHtml('button_manage_persons') . '</button>' . "\n";
         $html .= '</div>' . "\n";
 
