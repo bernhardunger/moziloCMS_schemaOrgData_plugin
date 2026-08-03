@@ -836,6 +836,59 @@ final class FormRendererComponentTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // renderIdReferenceOrLiteralWidget() - Anfangszustand des Markups
+    // -----------------------------------------------------------
+
+    private function idRlWidgetSchema(bool $allowLiteral = true): array {
+        return [
+            'ui:widget' => 'id_reference_or_literal',
+            'ui:literalFields' => ['name'],
+            'ui:literalFieldLabels' => ['name' => 'label_name'],
+            'ui:allowLiteral' => $allowLiteral,
+        ];
+    }
+
+    private function renderIdRlWidget(array $fieldSchema, array $value): string {
+        $renderer = new \SchemaOrgData_FormRenderer();
+
+        return $renderer->renderIdReferenceOrLiteralWidget(
+            'global', 'author', $fieldSchema, $value, 'global',
+            $this->adminLang(), ['organization' => 'Organization — Muster GmbH'],
+        );
+    }
+
+    function testIdRlWidgetImReferenzModusZeigtReferenzSektionUndSetztModusFeld(): void {
+        $html = $this->renderIdRlWidget($this->idRlWidgetSchema(), ['_mode' => 'reference', '_fragment' => 'organization']);
+
+        $this->assertMatchesRegularExpression('/schemaOrgData-idrl-reference"\s*>/', $html);
+        $this->assertMatchesRegularExpression('/schemaOrgData-idrl-literal" style="display:none"/', $html);
+        $this->assertMatchesRegularExpression('/schemaOrgData-idrl-mode-field"[^>]*value="reference"/', $html);
+    }
+
+    function testIdRlWidgetImLiteralModusZeigtLiteralSektionUndSetztModusFeld(): void {
+        $html = $this->renderIdRlWidget($this->idRlWidgetSchema(), ['_mode' => 'literal', 'name' => 'Gast Autor']);
+
+        $this->assertMatchesRegularExpression('/schemaOrgData-idrl-literal"\s*>/', $html);
+        $this->assertMatchesRegularExpression('/schemaOrgData-idrl-reference" style="display:none"/', $html);
+        $this->assertMatchesRegularExpression('/schemaOrgData-idrl-mode-field"[^>]*value="literal"/', $html);
+    }
+
+    function testIdRlWidgetOhneAllowLiteralRendertNurDieReferenzSektion(): void {
+        $html = $this->renderIdRlWidget($this->idRlWidgetSchema(false), ['_mode' => 'reference']);
+
+        $this->assertStringNotContainsString('schemaOrgData-idrl-radio', $html);
+        $this->assertStringNotContainsString('data-action="idrl-toggle"', $html);
+        $this->assertStringNotContainsString('schemaOrgData-idrl-literal', $html);
+        $this->assertMatchesRegularExpression('/schemaOrgData-idrl-reference"\s*>/', $html);
+    }
+
+    function testIdRlWidgetGibtKeinInlineScriptAus(): void {
+        $html = $this->renderIdRlWidget($this->idRlWidgetSchema(), ['_mode' => 'reference']);
+
+        $this->assertStringNotContainsString('<script', $html);
+    }
+
+    // -----------------------------------------------------------
     // renderPlaceWidget() / renderField() - place (Event.location)
     // -----------------------------------------------------------
 

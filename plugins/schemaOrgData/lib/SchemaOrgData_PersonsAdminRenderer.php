@@ -8,12 +8,11 @@
 * SchemaOrgData_PersonsRegistryService): Personenliste, "Neue Person"-
 * Formular sowie ein Bearbeiten-Formular je bestehender Person. Alle
 * Ansichten werden vorgerendert (analog zum Scope-/Kategorie-/Seiten-
-* Muster in SchemaOrgData_AdminController::renderScopeSection()); ein
-* eigenständiges, inline eingebettetes Toggle-Script
-* (window.schemaOrgDataPersonsShow, siehe renderToggleScript())
+* Muster in SchemaOrgData_AdminController::renderScopeSection()); die
+* Umschaltung läuft über data-action="persons-show" samt Zielangabe in
+* data-persons-target, verdrahtet in js/validator.js - der Handler
 * blendet die jeweils aktive Ansicht ein und deaktiviert die Felder
-* der übrigen - dasselbe Muster wie das bereits bestehende
-* window.schemaOrgDataIdRlToggle (SchemaOrgData_FormRenderer::renderIdReferenceOrLiteralWidget()).
+* der übrigen.
 * Vollständig entkoppelt vom Scope-Formular (initScopeSelector() in
 * js/validator.js) - keine gemeinsame CSS-Klasse, kein Eingriff in
 * dessen bestehende Logik (siehe README.md, Personen-Registry).
@@ -38,7 +37,7 @@ class SchemaOrgData_PersonsAdminRenderer {
     /***************************************************************
     *
     * Rendert den vollständigen Personen-Container: Liste, "Neue
-    * Person"-Formular, ein Bearbeiten-Formular je Person, Toggle-Script.
+    * Person"-Formular, ein Bearbeiten-Formular je Person.
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param bool $visibleInitially ob der Container beim Laden der Seite
@@ -106,7 +105,6 @@ class SchemaOrgData_PersonsAdminRenderer {
             $html .= $this->renderPersonForm($slug, $data, $errors, $lang, $registryService, $validator, $urlHelper, $formRenderer, $isActive);
         }
 
-        $html .= $this->renderToggleScript();
         $html .= '</div>'."\n";
 
         return $html;
@@ -367,26 +365,4 @@ class SchemaOrgData_PersonsAdminRenderer {
             .'</div>'."\n";
     }
 
-    /***************************************************************
-    *
-    * Einmalig definierte, idempotente Toggle-Funktion (analog
-    * window.schemaOrgDataIdRlToggle, siehe
-    * SchemaOrgData_FormRenderer::renderIdReferenceOrLiteralWidget()):
-    * blendet die Ansicht mit passender ID ein (alle anderen
-    * [data-persons-view]-Ansichten aus) und (de-)aktiviert deren
-    * Formularfelder, damit beim Speichern ausschließlich die aktive
-    * Ansicht übertragen wird (mehrere vorgerenderte Formulare teilen
-    * sich dieselben Feldnamen "schemaOrgData_persons_data[...]").
-    *
-    ***************************************************************/
-    private function renderToggleScript(): string {
-        return '<script>if(!window.schemaOrgDataPersonsShow){'
-            .'window.schemaOrgDataPersonsShow=function(viewId){'
-            .'document.querySelectorAll("[data-persons-view]").forEach(function(el){'
-            .'var active=(el.id===viewId);'
-            .'el.style.display=active?"":"none";'
-            .'el.querySelectorAll("input, select, textarea").forEach(function(f){f.disabled=!active;});'
-            .'});'
-            .'};}</script>'."\n";
-    }
 }
