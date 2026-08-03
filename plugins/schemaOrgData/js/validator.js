@@ -1907,6 +1907,8 @@
         validateEventDateInput: validateEventDateInput,
         isEventDateInPast: isEventDateInPast,
         showExtensionFeedback: showExtensionFeedback,
+        initScopeSelector: initScopeSelector,
+        initTypeSwitcher: initTypeSwitcher,
         initExcludedCatsSelectAll: initExcludedCatsSelectAll,
         initPreviewDialogs: initPreviewDialogs,
         initPersonSlugLiveFill: initPersonSlugLiveFill,
