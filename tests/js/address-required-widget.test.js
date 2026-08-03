@@ -46,7 +46,6 @@ describe('PostalAddress-Widget - gruppen-bedingte Live-Pflicht (checkAddressRequ
     var validator;
 
     beforeEach(function () {
-        window.schemaOrgDataMessages = {};
         validator = loadPluginScripts.loadValidator();
     });
 
