@@ -356,8 +356,15 @@ class SchemaOrgData_ConfigSaveService {
     * beiden Aussagen und nicht beide, deshalb ersetzt "dropped" ein
     * bereits vermerktes "cleaned" desselben Feldes, nicht umgekehrt.
     *
+    * "extension_property_dropped" hat Vorrang vor beiden anderen und
+    * wird von keiner überschrieben: Was das Formular bereinigt hat, sieht
+    * der Admin nach dem Neuladen im Feld selbst - was aus dem
+    * Erweiterungsfeld verworfen wurde, sieht er nirgends. Für ein Property,
+    * das in beiden Eingabewegen zugleich auftaucht, ist deshalb der
+    * Erweiterungsfeld-Hinweis der einzige, der ihm etwas Neues sagt.
+    *
     * @param array<int, array{field: string, kind: string}> $notices Sammler
-    * @param string $kind 'cleaned' | 'dropped'
+    * @param string $kind 'cleaned' | 'dropped' | 'extension_property_dropped'
     *
     ***************************************************************/
     private function collectNotice(array &$notices, string $field, string $kind): void {
@@ -366,8 +373,15 @@ class SchemaOrgData_ConfigSaveService {
                 continue;
             }
 
-            if($kind === 'dropped' and ($notice['kind'] ?? null) === 'cleaned') {
-                $notices[$index]['kind'] = 'dropped';
+            $existingKind = (string) ($notice['kind'] ?? '');
+
+            if($existingKind === 'extension_property_dropped') {
+                return;
+            }
+
+            if($kind === 'extension_property_dropped'
+                or ($kind === 'dropped' and $existingKind === 'cleaned')) {
+                $notices[$index]['kind'] = $kind;
             }
 
             return;
@@ -378,8 +392,56 @@ class SchemaOrgData_ConfigSaveService {
 
     /***************************************************************
     *
+    * Entfernt aus den Erweiterungsfeld-Daten jeden Schlüssel, den das
+    * Schema als eigenes Formularfeld führt, und vermerkt ihn im
+    * Notice-Sammler.
+    *
+    * Das Erweiterungsfeld ist für Properties gedacht, die das Formular
+    * NICHT abbildet (siehe README.md "Erweiterungsfeld"). Ein
+    * gleichnamiger Schlüssel umginge sonst die Feldbereinigung: lässt der
+    * Admin das Formularfeld leer, liefert sanitizePostData() für dieses
+    * Property gar keinen Wert, und der Merge hat nichts, womit er den
+    * ungereinigten Eintrag aus dem Erweiterungsfeld überschreiben könnte -
+    * gespeichert würde die Roheingabe samt Auszeichnung.
+    *
+    * Der Schlüssel wird verworfen und gemeldet, nicht abgelehnt: ein
+    * Fehler würde eine bestehende Konfiguration beim nächsten Speichern
+    * blockieren, ohne dass der Admin etwas falsch gemacht hätte.
+    *
+    * @param array<string, mixed> $extensionData dekodierte Erweiterungsfeld-Daten
+    * @param array<string, mixed> $schema aktives JSON-Schema (schemas/{Type}.json)
+    * @param array<int, array{field: string, kind: string}> $notices Sammler für Verlust-Hinweise
+    * @return array<string, mixed> Erweiterungsfeld-Daten ohne Schema-Property-Schlüssel
+    *
+    ***************************************************************/
+    private function dropSchemaPropertyKeys(array $extensionData, array $schema, array &$notices): array {
+        // Ein Schema ohne Array unter "properties" führt keine bekannten
+        // Properties - dann bleibt alles stehen, statt array_keys() mit
+        // einem Nicht-Array aufzurufen.
+        if(!is_array($schema['properties'] ?? null)) {
+            return $extensionData;
+        }
+
+        $knownProperties = array_keys($schema['properties']);
+        $result = [];
+
+        foreach($extensionData as $key => $value) {
+            if(in_array($key, $knownProperties, true)) {
+                $this->collectNotice($notices, (string) $key, 'extension_property_dropped');
+                continue;
+            }
+
+            $result[$key] = $value;
+        }
+
+        return $result;
+    }
+
+    /***************************************************************
+    *
     * Validiert das Erweiterungsfeld (freies JSON-Textarea, siehe
-    * README.md "Erweiterungsfeld"): dekodiert die Rohdaten und prüft
+    * README.md "Erweiterungsfeld"): dekodiert die Rohdaten, prüft die
+    * Struktur (erwartet wird ein JSON-Objekt, keine Liste) und prüft
     * Geo-Properties (validateExtensionGeo()). Aus saveConfig() ausgelagert,
     * damit saveConfig() nur noch orchestriert und keine Validierungslogik
     * selbst enthält.
@@ -405,6 +467,18 @@ class SchemaOrgData_ConfigSaveService {
             return new SchemaOrgData_ValidationResult(false, [$lang->getLanguageValue('error_json_invalid')], []);
         }
 
+        // json_decode() liefert für Objekt und Liste gleichermaßen ein
+        // PHP-Array, is_array() trennt die beiden also nicht. Eine Liste
+        // hat keine Property-Namen - der Merge in saveConfig() vergäbe ihre
+        // numerischen Schlüssel neu und schriebe sie als Properties "0",
+        // "1", "2" in die Konfiguration. Die Nicht-Leer-Bedingung ist
+        // notwendig, weil json_decode('{}', true) ein leeres Array liefert,
+        // das array_is_list() als Liste zählt: das leere Objekt ist ein
+        // gültiges, folgenloses Erweiterungsfeld und wird nicht abgelehnt.
+        if($decoded !== [] and array_is_list($decoded)) {
+            return new SchemaOrgData_ValidationResult(false, [$lang->getLanguageValue('error_json_not_object')], []);
+        }
+
         $errors = $validator->validateExtensionGeo($decoded, $lang);
 
         return new SchemaOrgData_ValidationResult($errors === [], $errors, $decoded);
@@ -418,8 +492,10 @@ class SchemaOrgData_ConfigSaveService {
     * Formularfelder und Erweiterungsfeld validieren (validateFormData()/
     * validateExtensionField()). Bei Validierungsfehlern wird nicht
     * gespeichert. Andernfalls werden die Formularfelder bereinigt
-    * (sanitizePostData) und mit dem Erweiterungsfeld zusammengeführt
-    * (Formular hat Vorrang, siehe README.md "Erweiterungsfeld"),
+    * (sanitizePostData) und mit dem Erweiterungsfeld zusammengeführt -
+    * Schlüssel, die das Formular als eigenes Feld führt, verwirft
+    * dropSchemaPropertyKeys() vorher aus dem Erweiterungsfeld (siehe
+    * README.md, Abschnitt zum Erweiterungsfeld),
     * zusätzlich excluded_cats (nur global) und jsonld_mode
     * übernommen und über $this->settings gespeichert. Wurde kein Type
     * gewählt ("- kein Schema -"), wird die bisherige
@@ -526,7 +602,8 @@ class SchemaOrgData_ConfigSaveService {
 
                 // 3. Normalisieren
                 if($errors === []) {
-                    $config[$type] = array_merge($extensionResult->extensionData, $this->sanitizePostData($formData, $schema, $schemaRepository, $openingHoursHelper, $validator, $collectedNotices));
+                    $extensionData = $this->dropSchemaPropertyKeys($extensionResult->extensionData, $schema, $collectedNotices);
+                    $config[$type] = array_merge($extensionData, $this->sanitizePostData($formData, $schema, $schemaRepository, $openingHoursHelper, $validator, $collectedNotices));
                 }
             }
         }
@@ -645,8 +722,11 @@ class SchemaOrgData_ConfigSaveService {
                 continue;
             }
 
-            $key = (($notice['kind'] ?? '') === 'dropped')
-                ? 'notice_value_dropped' : 'notice_value_cleaned';
+            $key = match((string) ($notice['kind'] ?? '')) {
+                'extension_property_dropped' => 'notice_extension_property_dropped',
+                'dropped' => 'notice_value_dropped',
+                default => 'notice_value_cleaned',
+            };
 
             $texts[] = $lang->getLanguageValue(
                 $key, $this->resolveFieldLabel($field, $schema, $lang, $schemaRepository)

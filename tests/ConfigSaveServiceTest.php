@@ -8,8 +8,10 @@ use PHPUnit\Framework\TestCase;
 *
 * Direkt-Tests der Komponente SchemaOrgData_ConfigSaveService:
 * feldweise Vererbungsanzeige (resolveInheritableFields()),
-* POST-Sanitizing (sanitizePostData(), sanitizeAddressData())
-* sowie Validieren/Speichern (saveConfig()) - vorher auf
+* POST-Sanitizing (sanitizePostData(), sanitizeAddressData()),
+* Struktur- und Abgrenzungsprüfung des Erweiterungsfelds (JSON-Objekt
+* statt Liste, Verwerfen von Schlüsseln, die das Formular als eigenes
+* Feld führt) sowie Validieren/Speichern (saveConfig()) - vorher auf
 * SchemaOrgData_AdminController (siehe tests/AdminControllerTest.php).
 * Echte, zustandslose Language-/SchemaOrgData_ScopeResolver-/
 * SchemaOrgData_SchemaRepository-/SchemaOrgData_Validator-/
@@ -1018,6 +1020,101 @@ final class ConfigSaveServiceTest extends TestCase {
         $this->assertArrayHasKey('notices', $result,
             'Der Schlüssel muss auch ohne Bereinigung vorhanden sein - Konsumenten sollen '
             .'sich nicht auf einen Rückfall verlassen müssen');
+        $this->assertSame([], $result['notices']);
+    }
+
+    // -----------------------------------------------------------
+    // saveConfig() - Struktur und Abgrenzung des Erweiterungsfelds
+    // -----------------------------------------------------------
+
+    function testSaveConfigLehntErweiterungsJsonListeAb(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['extension']['LocalBusiness'] = '[1,2,3]';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertFalse($settings->keyExists('config_global'));
+    }
+
+    /***************************************************************
+    *
+    * json_decode('{}', true) liefert ein leeres Array, das
+    * array_is_list() als Liste zählt - das leere Objekt darf trotzdem
+    * nicht in die Listen-Ablehnung laufen.
+    *
+    ***************************************************************/
+    function testSaveConfigAkzeptiertLeeresErweiterungsObjekt(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['extension']['LocalBusiness'] = '{}';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame('Muster GmbH', $settings->get('config_global')['LocalBusiness']['name']);
+    }
+
+    /***************************************************************
+    *
+    * Der Kern von B2-03: "description" ist ein optionales
+    * LocalBusiness-Property. Bliebe der Eintrag aus dem
+    * Erweiterungsfeld stehen, käme er ungereinigt in die
+    * Konfiguration - das leer gelassene Formularfeld liefert
+    * sanitizePostData() keinen Wert, mit dem der Merge ihn
+    * überschreiben könnte.
+    *
+    ***************************************************************/
+    function testSaveConfigVerwirftSchemaPropertyAusErweiterungsfeld(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['description'] = '';
+        $postData['extension']['LocalBusiness'] = '{"description":"<b>ungereinigt</b>"}';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertArrayNotHasKey('description', $settings->get('config_global')['LocalBusiness']);
+        $this->assertSame(
+            [$this->expectedNotice('notice_extension_property_dropped', 'label_description')],
+            $result['notices']
+        );
+    }
+
+    function testSaveConfigBehaeltFormularwertBeiGleichnamigemErweiterungsSchluessel(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['data']['description'] = 'Aus dem Formular';
+        $postData['extension']['LocalBusiness'] = '{"description":"Aus dem Erweiterungsfeld"}';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame('Aus dem Formular', $settings->get('config_global')['LocalBusiness']['description']);
+        $this->assertSame(
+            [$this->expectedNotice('notice_extension_property_dropped', 'label_description')],
+            $result['notices']
+        );
+    }
+
+    /***************************************************************
+    *
+    * Gegenprobe: "slogan" kommt in LocalBusiness.json nicht vor und ist
+    * damit genau der Fall, für den das Erweiterungsfeld gedacht ist -
+    * der Wert bleibt unangetastet und meldet nicht.
+    *
+    ***************************************************************/
+    function testSaveConfigUebernimmtUnbekanntesPropertyAusErweiterungsfeld(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['extension']['LocalBusiness'] = '{"slogan":"Immer für Sie da"}';
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertTrue($result['success'], implode(', ', $result['errors']));
+        $this->assertSame('Immer für Sie da', $settings->get('config_global')['LocalBusiness']['slogan']);
         $this->assertSame([], $result['notices']);
     }
 }

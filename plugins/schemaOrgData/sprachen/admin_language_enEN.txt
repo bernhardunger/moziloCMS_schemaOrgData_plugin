@@ -140,6 +140,7 @@ badge_inherited = i
 tooltip_inherited_from = Inherited from: {PARAM1}
 
 error_json_invalid = The entered JSON is invalid.
+error_json_not_object = The extension field expects a JSON object in curly braces, not a list.
 error_json_syntax = JSON syntax error at line {PARAM1}, column {PARAM2}
 warning_unknown_property = Unknown property "{PARAM1}" will be saved but is not defined in the schema.
 warning_extension_schema_unavailable = The schema could not be loaded - only the JSON syntax was checked.
@@ -173,6 +174,7 @@ notice_unsaved_changes = Unsaved changes in {PARAM1} – save there if needed.
 notice_save_adjustments = Some entries were adjusted while saving:
 notice_value_cleaned = Field "{PARAM1}": HTML markup was removed.
 notice_value_dropped = Field "{PARAM1}": The value was not saved.
+notice_extension_property_dropped = Field "{PARAM1}": The entry from the extension field was not applied - this property is handled by the form.
 error_config_write_failed = The configuration file could not be written. Please check write permissions on the conf/ directory.
 
 notice_existing_jsonld_title = A JSON-LD block was already found on this page.
