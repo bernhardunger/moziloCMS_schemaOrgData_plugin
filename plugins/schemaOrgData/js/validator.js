@@ -289,16 +289,48 @@
         };
     }
 
+    // Gemerktes Ergebnis von getMessages(). null bedeutet "noch nicht
+    // gelesen" - ein leeres Objekt ist ein gültiges Ergebnis und darf
+    // nicht als "noch nicht gelesen" missverstanden werden.
+    var cachedMessages = null;
+
     /**
-     * Liefert die lokalisierten Texte für die Feldvalidierung.
-     * Werden von getConfig() als window.schemaOrgDataMessages
-     * eingebettet (admin_language_{lang}.txt). Fallback: leere
-     * Strings, falls das Skript ohne diese Variable geladen wird.
+     * Liefert die lokalisierten Texte für die Feldvalidierung
+     * (admin_language_{lang}.txt). Quelle ist das Attribut
+     * data-messages am Formular-Container .schemaOrgData-admin, das
+     * SchemaOrgData_AdminController::renderAdminPage() ausgibt.
+     * Attributwert und Parse-Ergebnis ändern sich zur Laufzeit nicht,
+     * die Aufrufer sitzen aber in Validierungs-Handlern, die bei jedem
+     * Tastendruck laufen - deshalb wird einmalig gelesen und geparst
+     * und danach das gemerkte Objekt geliefert. Fallback ist ein leeres
+     * Objekt, damit das Skript auch ohne Container, ohne Attribut oder
+     * mit defektem JSON funktionsfähig bleibt.
      *
      * @returns {object}
      */
     function getMessages() {
-        return window.schemaOrgDataMessages || {};
+        if (cachedMessages !== null) {
+            return cachedMessages;
+        }
+
+        cachedMessages = {};
+
+        var container = document.querySelector('.schemaOrgData-admin');
+        var raw = container ? container.getAttribute('data-messages') : null;
+
+        if (raw) {
+            try {
+                var parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') {
+                    cachedMessages = parsed;
+                }
+            } catch (e) {
+                // Defektes JSON darf die Validierung nicht abbrechen -
+                // es bleibt beim leeren Fallback-Objekt.
+            }
+        }
+
+        return cachedMessages;
     }
 
     /**
@@ -2065,5 +2097,21 @@
         initPersonSlugLiveFill: initPersonSlugLiveFill,
         initAdminForm: initAdminForm
     };
+
+    // Selbstauslösung: Das Skript startet das Admin-Formular selbst,
+    // sobald das Dokument geladen ist - der Präsenz-Guard hält es von
+    // jeder Seite fern, die den Formular-Container nicht führt.
+    // Bewusst ausschließlich am Ereignis DOMContentLoaded und ohne
+    // Auswertung von document.readyState: Ein readyState-Zweig würde
+    // auch dann initialisieren, wenn das DOM beim Laden des Skripts
+    // bereits steht. Das ist eine Verhaltensänderung gegenüber dem
+    // Ereignis allein, und in Testumgebungen, die ihr Fixture vor dem
+    // Skript aufbauen und danach selbst initialisieren, führte es zu
+    // doppelt registrierten Listenern.
+    document.addEventListener('DOMContentLoaded', function () {
+        if (document.querySelector('.schemaOrgData-admin')) {
+            initAdminForm();
+        }
+    });
 
 })(window);

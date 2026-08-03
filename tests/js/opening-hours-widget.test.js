@@ -1,6 +1,7 @@
 'use strict';
 
 var loadPluginScripts = require('./helpers/load-plugin-scripts');
+var adminContainer = require('./helpers/admin-container');
 
 /**
  * Baut das Markup für einen Wochentag des Öffnungszeiten-Widgets exakt
@@ -48,13 +49,12 @@ describe('Öffnungszeiten-Widget - Live-Validierung (runOpeningHoursValidation)'
     var validator;
 
     beforeEach(function () {
-        document.body.innerHTML = '<form>' + buildOpeningHoursDayFixture(BASE_ID) + '</form>';
-        window.schemaOrgDataMessages = {
+        document.body.innerHTML = '<form>' + adminContainer.buildAdminContainer({
             openingHoursOverlap: 'PAUSE_OVERLAP',
             openingHoursOrder: 'ORDER_ERROR',
             openingHoursFormat: 'FORMAT_ERROR',
             openingHoursIncomplete: 'INCOMPLETE_ERROR'
-        };
+        }, buildOpeningHoursDayFixture(BASE_ID)) + '</form>';
         validator = loadPluginScripts.loadValidator();
         validator.initAdminForm();
     });

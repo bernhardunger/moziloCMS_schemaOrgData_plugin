@@ -666,8 +666,10 @@ final class AdminControllerTest extends TestCase {
     *
     * js/validator.js liest getMessages().dateInvalid
     * bzw. getMessages().dateRangeInvalid für die date-time-Live-
-    * Validierung von Event.startDate/endDate - ohne diese beiden Keys in
-    * window.schemaOrgDataMessages liefen die Aufrufe dort ins Leere.
+    * Validierung von Event.startDate/endDate - ohne diese beiden Keys im
+    * data-messages-Attribut liefen die Aufrufe dort ins Leere. Die
+    * Schlüssel erscheinen entity-kodiert, weil der JSON-Text als
+    * Attributwert ausgegeben wird.
     *
     ***************************************************************/
     #[RunInSeparateProcess]
@@ -679,9 +681,9 @@ final class AdminControllerTest extends TestCase {
 
         $html = $this->callRenderAdminPage(new \InMemorySettings());
 
-        $this->assertStringContainsString('"dateInvalid"', $html);
-        $this->assertStringContainsString('"dateRangeInvalid"', $html);
-        $this->assertStringContainsString('"dateInPast"', $html);
+        $this->assertStringContainsString('&quot;dateInvalid&quot;', $html);
+        $this->assertStringContainsString('&quot;dateRangeInvalid&quot;', $html);
+        $this->assertStringContainsString('&quot;dateInPast&quot;', $html);
     }
 
     #[RunInSeparateProcess]
@@ -702,16 +704,16 @@ final class AdminControllerTest extends TestCase {
 
     /***************************************************************
     *
-    * Regressionstest: window.schemaOrgDataMessages wird per
-    * json_encode() mit JSON_HEX_TAG kodiert. Enthält ein
-    * Sprachdatei-Wert "</script>",
-    * darf dieser NICHT literal im erzeugten <script>-Block erscheinen
-    * (Script-Break-out), sondern muss als Unicode-Escape kodiert sein.
+    * Regressionstest: Die Sprachtexte stehen als JSON im Attribut
+    * data-messages. Enthält ein Sprachdatei-Wert "</script>",
+    * darf dieser NICHT literal in der Ausgabe erscheinen, sondern muss
+    * durch htmlspecialchars() als HTML-Entity kodiert sein - ein Wert,
+    * der wie Markup aussieht, bleibt damit reiner Attributtext.
     *
     ***************************************************************/
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
-    function testRenderAdminPageEscaptSchemaOrgDataMessagesGegenScriptBreakout(): void {
+    function testRenderAdminPageEscaptSchemaOrgDataMessagesImDataAttribut(): void {
         define('PLUGINADMIN', 'schemaOrgData');
         define('ACTION', 'plugin_admin');
         define('ADMIN_DIR_NAME', 'admin');
@@ -733,9 +735,59 @@ final class AdminControllerTest extends TestCase {
 
         $this->assertStringNotContainsString('</script><script>alert(1)</script>', $html);
         $this->assertStringContainsString(
-            "\\u003C/script\\u003E\\u003Cscript\\u003Ealert(1)\\u003C/script\\u003E",
+            '&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;',
             $html
         );
+    }
+
+    /***************************************************************
+    *
+    * Die Admin-Ausgabe kommt ohne eingebettetes JavaScript aus: die
+    * einzigen <script>-Elemente sind die beiden Einbindungen mit
+    * src-Attribut. Ein Block ohne src wäre ein Rückfall in eingebetteten
+    * Code - genau das, was der Weg über data-Attribute und
+    * data-action-Handler ablöst.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageGibtKeinenScriptBlockOhneSrcAus(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $html = $this->callRenderAdminPage(new \InMemorySettings());
+
+        $this->assertSame(
+            0,
+            preg_match_all('#<script(?![^>]*\ssrc=)[^>]*>#i', $html),
+            'Die Admin-Ausgabe enthält einen <script>-Block ohne src-Attribut.'
+        );
+    }
+
+    /***************************************************************
+    *
+    * Der Formular-Container trägt die Sprachtexte als data-messages -
+    * er ist die einzige Stelle, an der js/validator.js sie sucht
+    * (getMessages()). Ein leeres Attribut wäre gleichbedeutend mit
+    * fehlenden Texten in der gesamten Live-Validierung.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testRenderAdminPageContainerTraegtNichtLeeresDataMessages(): void {
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('ADMIN_DIR_NAME', 'admin');
+
+        $html = $this->callRenderAdminPage(new \InMemorySettings());
+
+        $this->assertSame(
+            1,
+            preg_match('#<div class="schemaOrgData-admin" data-messages="([^"]+)">#', $html, $matches)
+        );
+        $this->assertNotSame('', $matches[1]);
+        $this->assertNotSame('{}', html_entity_decode($matches[1], ENT_QUOTES, CHARSET));
     }
 
     /***************************************************************
