@@ -241,8 +241,8 @@ class SchemaOrgData_FormRenderer {
         // Speichern ist kein Radio mehr ausgewählt", sobald eine andere
         // Seite/Kategorie mit demselben Feld ebenfalls vorgerendert wird. Der
         // tatsächlich zu speichernde Wert läuft deshalb über das separate
-        // versteckte Feld $modeField, dessen Value die Toggle-Funktion
-        // (schemaOrgDataIdRlToggle) bei jeder Radio-Auswahl mitführt.
+        // versteckte Feld $modeField, dessen Value der data-action-Handler
+        // "idrl-toggle" (js/validator.js) bei jeder Radio-Auswahl mitführt.
         $radioGroupName = 'schemaOrgData_idrl_'.$idPrefix.'_'.$name.'_mode';
 
         $html  = '<div class="schemaOrgData-idrl-container" id="'.htmlspecialchars($containerId, ENT_QUOTES, CHARSET).'">'."\n";
@@ -258,7 +258,7 @@ class SchemaOrgData_FormRenderer {
             $html .= '<label class="schemaOrgData-idrl-radio-label">'
                 .'<input type="radio" class="schemaOrgData-idrl-radio"'
                 .' name="'.htmlspecialchars($radioGroupName, ENT_QUOTES, CHARSET).'" value="reference"'
-                .$refChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
+                .$refChecked.' data-action="idrl-toggle" />'
                 .' '.$lang->getLanguageHtml('label_id_reflit_reference')
                 .'</label>'."\n";
         }
@@ -286,7 +286,7 @@ class SchemaOrgData_FormRenderer {
             $html .= '<label class="schemaOrgData-idrl-radio-label">'
                 .'<input type="radio" class="schemaOrgData-idrl-radio"'
                 .' name="'.htmlspecialchars($radioGroupName, ENT_QUOTES, CHARSET).'" value="literal"'
-                .$litChecked.' onchange="schemaOrgDataIdRlToggle(this)" />'
+                .$litChecked.' data-action="idrl-toggle" />'
                 .' '.$lang->getLanguageHtml('label_id_reflit_literal')
                 .'</label>'."\n";
 
@@ -990,11 +990,10 @@ class SchemaOrgData_FormRenderer {
 
         // Wiederverwendung des bereits am Formularanfang vorhandenen
         // Personen-Registry-Umschalters (siehe SchemaOrgData_AdminController::
-        // renderAdminPage()) - kein Modal, kein eigener JS-Mechanismus.
+        // renderAdminPage()) - kein Modal, kein eigener JS-Mechanismus: beide
+        // Buttons lösen dieselbe Aktion "persons-open" aus.
         $html .= '<p class="schemaOrgData-hint">'
-            .'<button type="button" class="mo-btn" onclick="'
-            .'document.getElementById(\'schemaOrgData_scope_container\').style.display=\'none\';'
-            .'document.getElementById(\'schemaOrgData_persons_container\').style.display=\'\';">'
+            .'<button type="button" class="mo-btn" data-action="persons-open">'
             .$lang->getLanguageHtml('button_manage_persons').'</button></p>'."\n";
 
         $html .= '</fieldset>'."\n";
