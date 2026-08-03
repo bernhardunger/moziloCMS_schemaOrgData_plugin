@@ -23,9 +23,21 @@ class SchemaOrgData_SchemaRepository {
     *
     * Lädt ein JSON-Schema aus schemas/{type}.json.
     *
+    * Kontrakt: Ein Type-Name, der nicht wörtlich als Datei im Bestand von
+    * schemas/ liegt, liefert null - auch dann, wenn er nach einer
+    * Normalisierung auf ein vorhandenes Schema zeigen würde. Die Prüfung
+    * sitzt hier und nicht bei den Aufrufern, weil der Rückgabewert dieser
+    * Methode das Schema ist, nicht der Name: Ein still bereinigter Name
+    * ("./LocalBusiness", "foo/LocalBusiness") lädt zwar ein Schema, der
+    * Aufrufer speichert und emittiert danach aber weiterhin den rohen Wert.
+    * Er arbeitet also mit einem anderen Type weiter, als das geladene Schema
+    * beschreibt - im JSON-LD landet ein "@type", den schema.org nicht kennt,
+    * und derselbe Type kann eine Scope-Konfiguration doppelt belegen.
+    *
     * @param string $pluginSelfDir Plugin-Basisverzeichnis (PLUGIN_SELF_DIR)
     * @param string $type Schema.org-Type, z. B. "LocalBusiness"
-    * @return array<string, mixed>|null dekodiertes Schema oder null bei Fehler
+    * @return array<string, mixed>|null dekodiertes Schema oder null bei
+    *         unbekanntem Type bzw. nicht lesbarem/defektem Schema
     *
     ***************************************************************/
     public function loadSchema(string $pluginSelfDir, string $type): ?array {
@@ -36,7 +48,14 @@ class SchemaOrgData_SchemaRepository {
             return $this->schemaCache[$cacheKey];
         }
 
-        $file = $pluginSelfDir.'schemas/'.basename($type).'.json';
+        if(!in_array($type, $this->getAvailableSchemaTypes($pluginSelfDir), true)) {
+            return $this->schemaCache[$cacheKey] = null;
+        }
+
+        // Der Guard bleibt trotz Bestandsprüfung: die Bestandsliste ist
+        // ihrerseits gecacht und kann gegenüber der Platte veralten, wenn
+        // eine Schema-Datei zwischen Listen-Aufbau und Lesen verschwindet.
+        $file = $pluginSelfDir.'schemas/'.$type.'.json';
         if(!file_exists($file)) {
             return $this->schemaCache[$cacheKey] = null;
         }

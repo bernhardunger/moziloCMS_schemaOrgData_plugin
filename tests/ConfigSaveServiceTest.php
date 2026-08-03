@@ -687,6 +687,19 @@ final class ConfigSaveServiceTest extends TestCase {
         $this->assertSame('override', $meta['jsonld_mode']);
     }
 
+    function testSaveConfigLehntTypeMitPfadanteilAb(): void {
+        $settings = new \InMemorySettings();
+        $postData = $this->validLocalBusinessData();
+        $postData['type'] = './LocalBusiness';
+        $postData['extension'] = ['./LocalBusiness' => ''];
+
+        $result = $this->callSaveConfig('global', $postData, $settings);
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertArrayNotHasKey('./LocalBusiness', $settings->get('config_global') ?? []);
+    }
+
     // -----------------------------------------------------------
     // saveConfig() - LocalBusiness-Familie
     // -----------------------------------------------------------

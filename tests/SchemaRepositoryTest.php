@@ -8,8 +8,8 @@ use PHPUnit\Framework\TestCase;
 *
 * Tests für SchemaOrgData_SchemaRepository:
 *
-*   - loadSchema(): existierender/nicht existierender Type,
-*     $pluginSelfDir wird als Parameter durchgereicht
+*   - loadSchema(): existierender/nicht existierender Type, Type-Name
+*     mit Pfadanteil, $pluginSelfDir wird als Parameter durchgereicht
 *   - resolveSchemaRef(): kein "$ref", aufgelöster "$ref" mit
 *     lokalem Override, "$ref" ohne führendes "#/", "$ref" auf
 *     nicht existierenden Pfad
@@ -51,6 +51,18 @@ final class SchemaRepositoryTest extends TestCase {
 
         $this->assertIsArray($real);
         $this->assertNull($missing);
+    }
+
+    function testLoadSchemaLiefertNullFuerTypeMitPfadanteil(): void {
+        $repository = $this->repository();
+
+        // Alle vier Schreibweisen würden per basename() auf "LocalBusiness"
+        // normalisieren; der Aufrufer arbeitet danach aber mit dem rohen Wert
+        // weiter und emittiert ihn als "@type".
+        foreach(['./LocalBusiness', 'foo/LocalBusiness', '../LocalBusiness', 'LocalBusiness/'] as $type) {
+            $this->assertNull($repository->loadSchema($this->pluginSelfDir(), $type),
+                'Type-Name mit Pfadanteil darf kein Schema laden: '.$type);
+        }
     }
 
     // resolveSchemaRef() ------------------------------------------------------
@@ -231,6 +243,14 @@ final class SchemaRepositoryTest extends TestCase {
 
     function testResolveActiveTypeLiefertNullWennKeinSchluesselBekanntesSchemaReferenziert(): void {
         $config = ['_meta' => [], 'excluded_cats' => '', 'debug_output' => false];
+
+        $result = $this->repository()->resolveActiveType($config, $this->pluginSelfDir());
+
+        $this->assertNull($result);
+    }
+
+    function testResolveActiveTypeLiefertNullFuerSchluesselMitPfadanteil(): void {
+        $config = ['./LocalBusiness' => ['name' => 'Kanzlei Muster']];
 
         $result = $this->repository()->resolveActiveType($config, $this->pluginSelfDir());
 
