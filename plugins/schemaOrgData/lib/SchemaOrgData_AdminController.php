@@ -732,6 +732,16 @@ class SchemaOrgData_AdminController {
         // README.md, Abschnitt "Sicherheit").
         $html .= '<script>window.schemaOrgDataMessages = '
             . json_encode($messages, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . ';</script>' . "\n";
+        // Beide Skripte werden hier direkt als <script src="…"> ausgegeben und
+        // bewusst nicht über $PLUGIN_ADMIN_ADD_HEAD angemeldet: Der Kern
+        // durchsucht diesen Kopfbereich nach <script ... src=...> und zieht
+        // jede Datei, deren Pfad nicht auf ".min.js" endet, aus dem <head>
+        // heraus in ein gepacktes Inline-Bündel (in Kernversion 3.0.4 fest
+        // aktiviert, nicht abschaltbar). validator.js käme über diesen Kanal
+        // also inline im Seitenquelltext an - das Gegenteil einer
+        // ausgelagerten Skriptdatei, und schwer zu bemerken, weil die
+        // Einbindung im PHP-Quelltext weiterhin extern aussieht. Die direkte
+        // Ausgabe samt Cache-Buster bleibt deshalb.
         $html .= '<script src="' . $pluginSelfUrl . 'js/ajv.min.js?v=' . $this->resolveAssetCacheBuster($pluginSelfDir, 'js/ajv.min.js') . '"></script>' . "\n";
         $html .= '<script src="' . $pluginSelfUrl . 'js/validator.js?v=' . $this->resolveAssetCacheBuster($pluginSelfDir, 'js/validator.js') . '"></script>' . "\n";
         $html .= '<script>document.addEventListener("DOMContentLoaded", function () {'
