@@ -1870,6 +1870,155 @@
     }
 
     /**
+     * Verdrahtet alle Elemente, die ein data-action-Attribut tragen, mit
+     * dem zugehörigen Handler. Der Attributwert benennt die Aktion, weitere
+     * data-Attribute tragen deren Parameter:
+     *
+     *   persons-open   (click)  - Scope-Container aus, Personen-Container ein
+     *   persons-back   (click)  - umgekehrt
+     *   persons-show   (click)  - data-persons-target: die [data-persons-view]
+     *                             mit dieser id sichtbar und ihre Felder aktiv,
+     *                             alle anderen aus und disabled
+     *   confirm        (click)  - data-confirm: Rückfrage vor dem Submit,
+     *                             bei Ablehnung preventDefault()
+     *   idrl-toggle    (change) - im umschließenden .schemaOrgData-idrl-container
+     *                             die passende .schemaOrgData-idrl-<value>-Sektion
+     *                             einblenden und .schemaOrgData-idrl-mode-field
+     *                             nachführen
+     *
+     * Warum data-action statt eines on*-Attributs: In einem on*-Attribut steht
+     * JavaScript-Quelltext innerhalb eines HTML-Attributs, ein eingesetzter Wert
+     * durchläuft also zwei ineinander verschachtelte Kodierungskontexte
+     * (JS-String im HTML-Attribut) - eine Fehlerquelle, die sich nicht durch
+     * htmlspecialchars() allein schließen lässt. Als data-Attribut ist ein
+     * Parameter reiner Text und braucht nur die HTML-Attribut-Kodierung.
+     *
+     * Warum kein einzelner Delegations-Listener am document: Die Admin-Seite
+     * wird serverseitig einmal je Request vollständig gerendert, es kommt kein
+     * Markup nachträglich hinzu - Delegation brächte hier keinen Vorteil, würde
+     * aber die Zuordnung Element/Handler verschleiern. Ein Listener je Element
+     * macht im Debugger sichtbar, welches Element woran hängt.
+     *
+     * Ein data-action-Wert ist von beiden Seiten greppbar: derselbe Zeichenkette
+     * folgt man vom erzeugenden Renderer bis hierher und zurück.
+     *
+     * Unbekannte Aktionen werden übersprungen; ein fehlender Parameter lässt
+     * den Handler wirkungslos, wirft aber nicht.
+     */
+    function initDataActions() {
+        // Beide Container gehören fest zur Admin-Seite (Scope-Formular und
+        // Personen-Registry) und sind deshalb kein Parameter des auslösenden
+        // Elements.
+        var SCOPE_CONTAINER_ID = 'schemaOrgData_scope_container';
+        var PERSONS_CONTAINER_ID = 'schemaOrgData_persons_container';
+
+        var setContainerVisible = function (containerId, visible) {
+            var container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = visible ? '' : 'none';
+            }
+        };
+
+        var showPersonsView = function (viewId) {
+            var views = document.querySelectorAll('[data-persons-view]');
+            for (var i = 0; i < views.length; i++) {
+                var active = (views[i].id === viewId);
+                views[i].style.display = active ? '' : 'none';
+                // Mehrere vorgerenderte Personen-Formulare teilen sich dieselben
+                // Feldnamen - nur die Felder der aktiven Ansicht dürfen beim
+                // Speichern übertragen werden.
+                var fields = views[i].querySelectorAll('input, select, textarea');
+                for (var j = 0; j < fields.length; j++) {
+                    fields[j].disabled = !active;
+                }
+            }
+        };
+
+        var handlers = {
+            'persons-open': {
+                event: 'click',
+                run: function () {
+                    setContainerVisible(SCOPE_CONTAINER_ID, false);
+                    setContainerVisible(PERSONS_CONTAINER_ID, true);
+                }
+            },
+            'persons-back': {
+                event: 'click',
+                run: function () {
+                    setContainerVisible(PERSONS_CONTAINER_ID, false);
+                    setContainerVisible(SCOPE_CONTAINER_ID, true);
+                }
+            },
+            'persons-show': {
+                event: 'click',
+                run: function (event, element) {
+                    var viewId = element.getAttribute('data-persons-target');
+                    if (!viewId) {
+                        return;
+                    }
+                    showPersonsView(viewId);
+                }
+            },
+            'confirm': {
+                event: 'click',
+                run: function (event, element) {
+                    var text = element.getAttribute('data-confirm');
+                    // Ohne Text keine Rückfrage - ein fehlender Sprachwert darf
+                    // den Button nicht unbrauchbar machen, der Submit läuft.
+                    if (!text) {
+                        return;
+                    }
+                    if (!window.confirm(text)) {
+                        event.preventDefault();
+                    }
+                }
+            },
+            'idrl-toggle': {
+                event: 'change',
+                run: function (event, element) {
+                    var container = element.closest('.schemaOrgData-idrl-container');
+                    if (!container) {
+                        return;
+                    }
+                    var sections = container.querySelectorAll('.schemaOrgData-idrl-section');
+                    for (var i = 0; i < sections.length; i++) {
+                        sections[i].style.display = 'none';
+                    }
+                    var active = container.querySelector('.schemaOrgData-idrl-' + element.value);
+                    if (active) {
+                        active.style.display = '';
+                    }
+                    // Das versteckte Feld trägt den tatsächlichen Formularfeldnamen;
+                    // die Radios sind je Instanz eindeutig benannt und taugen
+                    // deshalb nicht als übertragener Wert.
+                    var modeField = container.querySelector('.schemaOrgData-idrl-mode-field');
+                    if (modeField) {
+                        modeField.value = element.value;
+                    }
+                }
+            }
+        };
+
+        var elements = document.querySelectorAll('[data-action]');
+
+        for (var i = 0; i < elements.length; i++) {
+            (function (element) {
+                var action = element.getAttribute('data-action');
+                // hasOwnProperty statt einer einfachen Wahrheitsprüfung: ein
+                // data-action="constructor" träfe sonst auf das Object-Prototyp
+                // und liefe in einen Handler ohne run().
+                if (!Object.prototype.hasOwnProperty.call(handlers, action)) {
+                    return;
+                }
+                var handler = handlers[action];
+                element.addEventListener(handler.event, function (event) {
+                    handler.run(event, element);
+                });
+            })(elements[i]);
+        }
+    }
+
+    /**
      * Initialisiert das gesamte Admin-Formular: Scope-Selektor,
      * Type-Umschaltung, Live-Validierung der Formularfelder sowie der
      * Erweiterungsfelder, Slug-Ableitung im "Neue Person"-Formular.
@@ -1883,6 +2032,7 @@
         initExtensionFieldValidation();
         initExcludedCatsSelectAll();
         initPreviewDialogs();
+        initDataActions();
     }
 
     // Öffentliche API
@@ -1911,6 +2061,7 @@
         initTypeSwitcher: initTypeSwitcher,
         initExcludedCatsSelectAll: initExcludedCatsSelectAll,
         initPreviewDialogs: initPreviewDialogs,
+        initDataActions: initDataActions,
         initPersonSlugLiveFill: initPersonSlugLiveFill,
         initAdminForm: initAdminForm
     };
