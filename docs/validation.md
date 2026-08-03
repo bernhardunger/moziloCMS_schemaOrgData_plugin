@@ -107,10 +107,16 @@ Zweistufig validiert, siehe
 **Server-seitig (PHP, beim Speichern):**
 - `json_decode()` — bei ungültigem JSON wird nicht gespeichert, eine
   Fehlermeldung wird zurückgegeben
+- Strukturprüfung — erwartet wird ein JSON-Objekt; eine Liste wird mit
+  eigener Fehlermeldung abgelehnt
 - inhaltliche Prüfung bekannter Properties (z. B. `geo`-Koordinaten)
 
-Die Formularfelder haben bei gleichnamigen Properties Vorrang vor dem
-Erweiterungsfeld (Merge, siehe README).
+Schlüssel, die das Formular als eigenes Feld führt, werden beim Speichern
+aus dem Erweiterungsfeld verworfen und als Hinweis gemeldet. Andernfalls
+ließe sich die Bereinigung der Formularfelder umgehen: Ein leer gelassenes
+Formularfeld liefert beim Merge keinen Wert, mit dem es den ungereinigten
+Eintrag aus dem Erweiterungsfeld überschreiben könnte. Das Erweiterungsfeld
+ist für Properties gedacht, die das Formular nicht abbildet.
 
 ## Siehe auch
 

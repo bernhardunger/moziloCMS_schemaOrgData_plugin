@@ -1,6 +1,6 @@
 # schemaOrgData — moziloCMS Plugin
 
-![Version](https://img.shields.io/badge/version-0.11.35--beta-blue)
+![Version](https://img.shields.io/badge/version-0.11.36--beta-blue)
 ![PHP](https://img.shields.io/badge/PHP-8.1%2B-777bb4)
 ![moziloCMS](https://img.shields.io/badge/moziloCMS-3.0.4%2B-orange)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green)](https://www.gnu.org/licenses/gpl-3.0)
@@ -324,8 +324,11 @@ gespeichert (Beispiel siehe [Erste Konfiguration](#erste-konfiguration)). Es wir
 
 Jede Konfiguration enthält optional ein JSON-Textarea-Feld für
 Properties, die das Formular nicht abbildet. Die Inhalte werden beim
-Speichern mit den Formularfeldern zusammengeführt (merge); das Formular
-hat Vorrang bei gleichnamigen Properties. Die Eingabe wird zweistufig
+Speichern mit den Formularfeldern zusammengeführt (merge). Properties, die
+das Formular führt, gehören nicht ins Erweiterungsfeld: Ein gleichnamiger
+Schlüssel wird beim Speichern verworfen und gemeldet, damit die
+Feldbereinigung des Formulars nicht umgangen werden kann. Die Eingabe wird
+zweistufig
 validiert — client-seitig live per AJV.js, server-seitig in PHP beim
 Speichern.
 
