@@ -132,7 +132,12 @@ class SchemaOrgData_FrontendRenderer {
             // Seiteninhalt nicht, er ist für den parameterlosen
             // {schemaOrgData} der Leerstring. Die Nutzerentscheidung
             // jsonld_mode kommt auf allen drei Ebenen aus dem gespeicherten
-            // Meta (siehe loadScopeMeta()).
+            // Meta (siehe loadScopeMeta()). Für Kategorie und Seite
+            // schreibt dieses Erkennungsflag kein Pfad; wirksam ist der
+            // Zweig dort nur für bereits gespeicherte Altbestände, und
+            // der Admin-Hinweis blendet bei gesetztem Flag die
+            // Modus-Auswahl ein, über die sich die Unterdrückung
+            // abschalten lässt.
             $hasExistingJsonLd = $scope === 'global' ? $hasJsonLdInTemplate : $meta['existing_jsonld'];
 
             if($hasExistingJsonLd and ($meta['jsonld_mode'] ?? 'override') === 'keep') {

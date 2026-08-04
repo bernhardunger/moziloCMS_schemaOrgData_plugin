@@ -211,8 +211,10 @@ class SchemaOrgData_ScopeResolver {
     * als Ganzes gültiges JSON, war es ein Einzelblock und dient als
     * blocks[0]. Ungültiges JSON deutet auf ein altes
     * Mehrblock-Konkatenat (implode "\n\n") hin - blocks bleibt dann
-    * leer, bis der jeweilige Erkennungspfad (Admin-Load global /
-    * Frontend-Aufruf page) die Meta neu schreibt.
+    * leer, bis der Layout-Scan des Admin-Renderpfads die Meta des
+    * Global-Scopes neu schreibt. Für Kategorie- und Seiten-Scopes
+    * gibt es keinen schreibenden Pfad; ein dort gespeicherter
+    * Altbestand bleibt unverändert stehen.
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $scope 'global' | 'category' | 'page'
@@ -250,13 +252,18 @@ class SchemaOrgData_ScopeResolver {
 
     /***************************************************************
     *
-    * Speichert die Kollisions-Metadaten einer Geltungsebene
-    * (existing_jsonld-Flag, jsonld_mode), ohne die bereits
-    * konfigurierten Schema-Type-Properties zu verändern.
+    * Speichert die Kollisions-Metadaten einer Geltungsebene, ohne die
+    * bereits konfigurierten Schema-Type-Properties zu verändern.
+    * Der Admin-Renderpfad schreibt darüber ausschließlich das
+    * Ergebnis der Layout-Erkennung (existing_jsonld,
+    * existing_jsonld_content, existing_jsonld_blocks). Die
+    * Nutzerentscheidung jsonld_mode läuft nicht hierüber, sondern
+    * über den regulären Speicherweg des Formulars
+    * (SchemaOrgData_ConfigSaveService::saveConfig()).
     *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $scope 'global' | 'category' | 'page'
-    * @param array<string, mixed> $meta z. B. ['existing_jsonld' => true, 'jsonld_mode' => 'override']
+    * @param array<string, mixed> $meta Teilmenge der Meta-Schlüssel, z. B. ['existing_jsonld' => true]
     * @return bool false, wenn die Metadaten nicht persistiert wurden -
     *         weil der Scope nicht auflösbar war oder der Schreibzugriff
     *         scheiterte; true nur bei tatsächlich geschriebenem Stand
