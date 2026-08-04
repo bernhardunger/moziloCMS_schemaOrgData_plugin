@@ -21,7 +21,7 @@ use PHPUnit\Framework\TestCase;
 * Hinweis zu CAT_REQUEST/PAGE_REQUEST: In tests/bootstrap.php sind
 * beide Konstanten fest auf "false" gesetzt (siehe JsonLdOutputTest.php).
 * Testfälle, die eine aktive Kategorie/Seite voraussetzen (excluded_cats-
-* Unterdrückung, Seiten-Scope-Kollisionserkennung), sind daher analog
+* Unterdrückung, Scope-Beschränkung von org_relations), sind daher analog
 * JsonLdOutputTest.php als markTestSkipped() dokumentiert.
 *
 ***************************************************************/
@@ -108,6 +108,34 @@ final class FrontendRendererTest extends TestCase {
         ];
     }
 
+    /***************************************************************
+    *
+    * Führt $body mit einer temporären Layout-Template-Datei des
+    * übergebenen Inhalts als $GLOBALS['TEMPLATE_FILE'] aus und setzt
+    * den vorherigen Wert danach zurück. renderFrontend() liest das
+    * Template über `global $TEMPLATE_FILE` - die Kollisionserkennung
+    * des Global-Scopes hängt damit an dieser Datei, nicht an einem
+    * gespeicherten Meta-Wert.
+    *
+    ***************************************************************/
+    private function withTemplateFile(string $html, callable $body): void {
+        $templateFile = sys_get_temp_dir().'/schemaOrgData_tpl_'.uniqid().'.html';
+        file_put_contents($templateFile, $html);
+        $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;
+        $GLOBALS['TEMPLATE_FILE'] = $templateFile;
+
+        try {
+            $body();
+        } finally {
+            unlink($templateFile);
+            $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
+        }
+    }
+
+    private function templateWithJsonLd(): string {
+        return '<script type="application/ld+json">{"@context":"https://schema.org"}</script>';
+    }
+
     // -----------------------------------------------------------
     // Grundausgabe
     // -----------------------------------------------------------
@@ -180,20 +208,33 @@ final class FrontendRendererTest extends TestCase {
         $settings = new \InMemorySettings();
         $settings->set('config_global', [
             'LocalBusiness' => $this->validLocalBusinessConfig(),
-            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep'],
+            '_meta' => ['jsonld_mode' => 'keep'],
         ]);
 
-        $this->assertSame('', $this->callRenderFrontend('', $settings));
+        $this->withTemplateFile($this->templateWithJsonLd(), function() use ($settings): void {
+            $this->assertSame('', $this->callRenderFrontend('', $settings));
+        });
     }
 
     function testRenderFrontendJsonldModeOverrideProduziertOutput(): void {
         $settings = new \InMemorySettings();
         $settings->set('config_global', [
             'LocalBusiness' => $this->validLocalBusinessConfig(),
-            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'override'],
+            '_meta' => ['jsonld_mode' => 'override'],
         ]);
 
-        $this->assertStringContainsString('"@type": "LocalBusiness"', $this->callRenderFrontend('', $settings));
+        $this->withTemplateFile($this->templateWithJsonLd(), function() use ($settings): void {
+            $this->assertStringContainsString('"@type": "LocalBusiness"', $this->callRenderFrontend('', $settings));
+        });
+    }
+
+    function testRenderFrontendOverrideOhneTypeSchaltetNichtsFrei(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['_meta' => ['jsonld_mode' => 'override']]);
+
+        $this->withTemplateFile($this->templateWithJsonLd(), function() use ($settings): void {
+            $this->assertSame('', $this->callRenderFrontend('', $settings));
+        });
     }
 
     // -----------------------------------------------------------
@@ -262,121 +303,98 @@ final class FrontendRendererTest extends TestCase {
     // Kollisionserkennung (existing_jsonld-Meta)
     // -----------------------------------------------------------
 
-    function testRenderFrontendTemplateJsonLdSchreibtGlobalMeta(): void {
-        $settings = new \InMemorySettings();
-
-        $templateFile = sys_get_temp_dir().'/schemaOrgData_tpl_'.uniqid().'.html';
-        file_put_contents($templateFile, '<script type="application/ld+json">{"@context":"https://schema.org"}</script>');
-        $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;
-        $GLOBALS['TEMPLATE_FILE'] = $templateFile;
-
-        try {
-            $this->callRenderFrontend('', $settings);
-
-            $metaGlobal = $this->scopeResolver()->loadScopeMeta($settings, 'global');
-            $this->assertTrue($metaGlobal['existing_jsonld']);
-        } finally {
-            unlink($templateFile);
-            $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
-        }
-    }
-
     /***************************************************************
     *
-    * existing_jsonld_blocks wird als Einzelblock-Array persistiert -
-    * Grundlage des serverseitigen Pro-Block-Imports (siehe
-    * SchemaOrgData_ScopeResolver::loadScopeMeta()).
+    * Ein gespeicherter Bestand, der nach Abzug der Verwaltungsdaten
+    * (_meta, excluded_cats, debug_output, org_relations) keinen
+    * Schema-Type mehr trägt, gilt der Emission als nicht konfiguriert.
+    * Ein solcher Bestand entsteht real durch den Meta-Write des
+    * Admin-Renderpfads und durch ein Speichern mit "- kein Schema -".
+    *
+    * Das Template trägt hier bewusst keinen JSON-LD-Block: Bei einem
+    * Treffer entfernte der keep-Zweig den Scope schon vor der
+    * Typ-Auflösung, und der Test wäre aus dem falschen Grund grün.
     *
     ***************************************************************/
-    function testRenderFrontendTemplateJsonLdPersistiertBlocksArray(): void {
+    function testRenderFrontendMetaOhneTypeEmittiertNichts(): void {
         $settings = new \InMemorySettings();
-
-        $templateFile = sys_get_temp_dir().'/schemaOrgData_tpl_'.uniqid().'.html';
-        file_put_contents(
-            $templateFile,
-            '<script type="application/ld+json">{"@type":"LocalBusiness"}</script>'
-            .'<script type="application/ld+json">{"@type":"WebSite"}</script>'
-        );
-        $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;
-        $GLOBALS['TEMPLATE_FILE'] = $templateFile;
-
-        try {
-            $this->callRenderFrontend('', $settings);
-
-            $metaGlobal = $this->scopeResolver()->loadScopeMeta($settings, 'global');
-            $this->assertSame(
-                ['{"@type":"LocalBusiness"}', '{"@type":"WebSite"}'],
-                $metaGlobal['existing_jsonld_blocks']
-            );
-        } finally {
-            unlink($templateFile);
-            $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
-        }
-    }
-
-    /***************************************************************
-    *
-    * Der Schreib-Guard greift auch bei reiner Reihenfolge-Änderung
-    * der Blöcke, bei der Flag und implodierter Content-String gleich
-    * blieben (implode() ist reihenfolge-sensitiv, der reine
-    * String-Vergleich griffe hier zwar bereits - dieser Test
-    * dokumentiert den Fall explizit als Regressionsanker für den
-    * neuen Blocks-Vergleich).
-    *
-    ***************************************************************/
-    function testRenderFrontendTemplateJsonLdSchreibtBeiBlockReihenfolgeAenderung(): void {
-        $settings = new \InMemorySettings();
-        $this->scopeResolver()->saveScopeMeta($settings, 'global', [
-            'existing_jsonld' => true,
-            'existing_jsonld_content' => "{\"@type\":\"WebSite\"}\n\n{\"@type\":\"LocalBusiness\"}",
-            'existing_jsonld_blocks' => ['{"@type":"WebSite"}', '{"@type":"LocalBusiness"}'],
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => false, 'jsonld_mode' => 'keep'],
         ]);
 
-        $templateFile = sys_get_temp_dir().'/schemaOrgData_tpl_'.uniqid().'.html';
-        file_put_contents(
-            $templateFile,
-            '<script type="application/ld+json">{"@type":"LocalBusiness"}</script>'
-            .'<script type="application/ld+json">{"@type":"WebSite"}</script>'
-        );
-        $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;
-        $GLOBALS['TEMPLATE_FILE'] = $templateFile;
-
-        try {
-            $this->callRenderFrontend('', $settings);
-
-            $metaGlobal = $this->scopeResolver()->loadScopeMeta($settings, 'global');
-            $this->assertSame(
-                ['{"@type":"LocalBusiness"}', '{"@type":"WebSite"}'],
-                $metaGlobal['existing_jsonld_blocks']
-            );
-        } finally {
-            unlink($templateFile);
-            $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
-        }
+        $this->withTemplateFile('<html><head></head></html>', function() use ($settings): void {
+            $this->assertSame('', $this->callRenderFrontend('', $settings));
+        });
     }
 
-    function testRenderFrontendOhneTemplateTrefferGlobalMetaBleibtFalse(): void {
+    function testRenderFrontendMetaMitTypeEmittiertBlock(): void {
         $settings = new \InMemorySettings();
-        $prevTemplate = $GLOBALS['TEMPLATE_FILE'] ?? null;
-        $GLOBALS['TEMPLATE_FILE'] = '';
+        $settings->set('config_global', [
+            '_meta' => ['existing_jsonld' => false, 'jsonld_mode' => 'keep'],
+            'LocalBusiness' => $this->validLocalBusinessConfig(),
+        ]);
 
-        try {
-            $this->callRenderFrontend('', $settings);
-
-            $metaGlobal = $this->scopeResolver()->loadScopeMeta($settings, 'global');
-            $this->assertFalse($metaGlobal['existing_jsonld']);
-        } finally {
-            $GLOBALS['TEMPLATE_FILE'] = $prevTemplate;
-        }
+        $this->withTemplateFile('<html><head></head></html>', function() use ($settings): void {
+            $this->assertStringContainsString('"@type": "LocalBusiness"', $this->callRenderFrontend('', $settings));
+        });
     }
 
-    function testRenderFrontendSeitenScopeMetaNichtTestbarOhneAktiveSeite(): void {
-        $this->markTestSkipped(
-            'CAT_REQUEST/PAGE_REQUEST sind in tests/bootstrap.php fest auf "false" '
-            .'gesetzt. Der Schreib-Guard in renderFrontend() verhindert den Write '
-            .'auf den Seiten-Scope ohne eine aktiv gerenderte Seite - identische '
-            .'Einschränkung wie JsonLdOutputTest::testSeiteJsonLdOhnePageRequestNichtTestbar().'
-        );
+    /***************************************************************
+    *
+    * Der Global-Scope entscheidet gegen den Live-Zustand des
+    * Layout-Templates, nicht gegen das gespeicherte Erkennungsflag:
+    * Ein gespeichertes existing_jsonld=true unterdrückt die eigene
+    * Ausgabe nicht mehr, sobald der fremde Block aus dem Layout
+    * entfernt wurde.
+    *
+    ***************************************************************/
+    function testRenderFrontendGlobalEntscheidetGegenLiveTemplateStattGespeichertemFlag(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            'LocalBusiness' => $this->validLocalBusinessConfig(),
+            '_meta' => ['existing_jsonld' => true, 'jsonld_mode' => 'keep'],
+        ]);
+
+        $this->withTemplateFile('<html><head></head></html>', function() use ($settings): void {
+            $this->assertStringContainsString('"@type": "LocalBusiness"', $this->callRenderFrontend('', $settings));
+        });
+    }
+
+    /***************************************************************
+    *
+    * Gegenrichtung: Ein Block, der erst nach dem letzten Öffnen der
+    * Plugin-Verwaltung ins Layout kam, wirkt sofort - obwohl das
+    * gespeicherte Flag noch false ist.
+    *
+    ***************************************************************/
+    function testRenderFrontendLiveTemplateTrefferUnterdruecktTrotzGespeichertemFalse(): void {
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', [
+            'LocalBusiness' => $this->validLocalBusinessConfig(),
+            '_meta' => ['existing_jsonld' => false, 'jsonld_mode' => 'keep'],
+        ]);
+
+        $this->withTemplateFile($this->templateWithJsonLd(), function() use ($settings): void {
+            $this->assertSame('', $this->callRenderFrontend('', $settings));
+        });
+    }
+
+    /***************************************************************
+    *
+    * renderFrontend() schreibt im Frontend nichts mehr in die
+    * Settings: Properties::set() ist außerhalb von IS_ADMIN ohnehin
+    * ein No-Op, der Wert für den Admin-Hinweis stammt allein aus dem
+    * Admin-Pfad.
+    *
+    ***************************************************************/
+    function testRenderFrontendSchreibtKeinMetaInDieSettings(): void {
+        $settings = new \InMemorySettings();
+
+        $this->withTemplateFile($this->templateWithJsonLd(), function() use ($settings): void {
+            $this->callRenderFrontend('', $settings);
+
+            $this->assertFalse($settings->keyExists('config_global'));
+        });
     }
 
     // -----------------------------------------------------------

@@ -162,6 +162,34 @@ final class IdReferenceServiceTest extends TestCase {
 
     /***************************************************************
     *
+    * Der Stub-Zweig hilft bei einem typlosen Global-Bestand nicht
+    * nach: Er setzt einen Type-Schlüssel mit passendem ui:idFragment
+    * in config_global voraus. Ein Bestand, der nur Verwaltungsdaten
+    * trägt, erzeugt deshalb keinen Stub - auch dann nicht, wenn der
+    * keep-Vorrang gar nicht greift ($globalSuppressedByKeep = false)
+    * und der Zweig somit tatsächlich betreten wird. Positivkontrolle
+    * ist der vorstehende Test mit typisiertem config_global.
+    *
+    ***************************************************************/
+    function testTyploserGlobalBestandErzeugtKeinenStub(): void {
+        $service = new \SchemaOrgData_IdReferenceService();
+        $settings = new \InMemorySettings();
+        $settings->set('config_global', ['_meta' => ['existing_jsonld' => false, 'jsonld_mode' => 'keep']]);
+
+        $scopeConfigs = ['page' => ['DonateAction' => []]];
+
+        [$result, $suppressed] = $service->applyDanglingReferenceGuard(
+            new \SchemaOrgData_ScopeResolver(), new \SchemaOrgData_SchemaRepository(),
+            $settings, $this->pluginSelfDir(), $scopeConfigs, false, new \SchemaOrgData_PersonsRegistryService()
+        );
+
+        $this->assertSame([], $suppressed);
+        $this->assertArrayNotHasKey('global', $result,
+            'Ohne Type-Schlüssel in config_global darf der Stub-Zweig keinen globalen Scope anlegen');
+    }
+
+    /***************************************************************
+    *
     * applyDanglingReferenceGuard() lädt in seiner ersten Schleife
     * für JEDEN Type in $scopeConfigs zunächst
     * dessen eigenes Schema per loadSchema($pluginSelfDir, $type) -

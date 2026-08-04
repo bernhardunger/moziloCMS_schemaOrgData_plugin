@@ -9,8 +9,8 @@
 * Filter anwenden, feldweise Vererbung und Dangling-Reference-Guard
 * durchlaufen, JSON-LD-Blöcke je Type ausgeben, tatsächlich
 * referenzierte Registry-Personen als eigenständige Knoten emittieren,
-* optional das Debug-Widget anhängen sowie die scope-genaue
-* Kollisionserkennung (existing_jsonld-Meta) persistieren.
+* optional das Debug-Widget anhängen. Die Kollisionserkennung des
+* Layout-Templates wird dabei live ausgewertet und nicht gespeichert.
 *
 * Zustandslos: keine Konstruktor-Injection, alle Kollaboratoren
 * werden je Aufruf als Parameter durchgereicht (siehe README.md,
@@ -25,8 +25,10 @@ class SchemaOrgData_FrontendRenderer {
     * Seite (1:1 übernommener Rumpf des Frontend-Zweigs von
     * getContent(), siehe README.md, Abschnitt "JSON-LD-Ausgabe").
     *
-    * @param mixed $value Seiteninhalt (Platzhalterinhalt), für die
-    *              Kollisionserkennung im Seiten-Scope
+    * @param mixed $value Parameterteil des Platzhalters, für den
+    *              parameterlosen Aufruf der Leerstring - wird nicht
+    *              ausgewertet, bleibt aber in der Signatur, weil der
+    *              moziloCMS-Kern getContent() so aufruft
     * @param SchemaOrgData_FrontendRequestContext $context bündelt Settings
     *              und Kollaboratoren (siehe SchemaOrgData_FrontendRequestContext)
     * @return string fertige <script>-Blöcke (ggf. inkl. Debug-Widget)
@@ -95,6 +97,14 @@ class SchemaOrgData_FrontendRenderer {
             unset($scopeConfigs[$scope]['_meta'], $scopeConfigs[$scope]['excluded_cats'], $scopeConfigs[$scope]['debug_output'], $scopeConfigs[$scope]['org_relations']);
         }
 
+        // Kollisionserkennung des Layout-Templates, ausgewertet bevor über die
+        // Emission entschieden wird: Ein dort gefundener Block ist layoutweit
+        // gültig und allein aus der ausgelieferten Layout-Datei ermittelbar,
+        // ohne Request-Kontext.
+        $templateBlocks = array_values(array_map('trim',
+            $context->collisionDetector->extractExistingJsonLdBlocksFromTemplate((string) ($TEMPLATE_FILE ?? ''))));
+        $hasJsonLdInTemplate = !empty($templateBlocks);
+
         // jsonld_mode prüfen: wurde bereits vorhandenes JSON-LD erkannt
         // und für diese Ebene "Vorhandenes beibehalten" gewählt (Standard,
         // solange der Admin keine Wahl getroffen hat), wird die eigene
@@ -112,7 +122,20 @@ class SchemaOrgData_FrontendRenderer {
             };
 
             $meta = $context->scopeResolver->loadScopeMeta($context->settings, $scope, ...$scopeArgs);
-            if($meta['existing_jsonld'] and ($meta['jsonld_mode'] ?? 'override') === 'keep') {
+
+            // Nur der Global-Scope entscheidet gegen das Live-Ergebnis: Sein
+            // Signal ist der Layout-Treffer, der hier unmittelbar vorliegt und
+            // sich damit nicht von einer Layout-Änderung überholen lässt.
+            // Kategorie und Seite bleiben beim gespeicherten Erkennungsflag —
+            // ihr Signal stammt aus dem Seiteninhalt, den das Frontend nicht in
+            // der Hand hat: Der Platzhalter-Parameter $value trägt den
+            // Seiteninhalt nicht, er ist für den parameterlosen
+            // {schemaOrgData} der Leerstring. Die Nutzerentscheidung
+            // jsonld_mode kommt auf allen drei Ebenen aus dem gespeicherten
+            // Meta (siehe loadScopeMeta()).
+            $hasExistingJsonLd = $scope === 'global' ? $hasJsonLdInTemplate : $meta['existing_jsonld'];
+
+            if($hasExistingJsonLd and ($meta['jsonld_mode'] ?? 'override') === 'keep') {
                 if($scope === 'global') {
                     $globalSuppressedByKeep = true;
                 }
@@ -243,45 +266,6 @@ class SchemaOrgData_FrontendRenderer {
                 $context->urlHelper, $context->pluginSelfDir, $suppressedIdTargets,
                 $context->openingHoursHelper
             );
-        }
-
-        // Kollisionserkennung: vorhandenes JSON-LD scope-genau persistieren
-        // (Flag + Inhalt für den Autofill-Button, siehe ADR autofill).
-        // Ein im Layout-Template gefundener Block ist layoutweit — er wird
-        // ausschließlich dem Global-Scope zugeordnet (analog Admin-Pfad,
-        // siehe extractExistingJsonLdBlocksFromTemplateAdmin() / renderAdminPage()).
-        // Ein im Seiteninhalt ($value) gefundener Block ist seitenspezifisch —
-        // er wird ausschließlich dem Seiten-Scope der aktuell gerenderten
-        // Seite zugeordnet, sofern CAT_REQUEST und PAGE_REQUEST gesetzt sind.
-        // Kategorie-Scope erhält über diesen Mechanismus keinen Eintrag.
-        $templateBlocks = array_values(array_map('trim', $context->collisionDetector->extractExistingJsonLdBlocksFromTemplate((string) ($TEMPLATE_FILE ?? ''))));
-        $hasJsonLdInTemplate = !empty($templateBlocks);
-        $templateContent = implode("\n\n", $templateBlocks);
-        $metaGlobal = $context->scopeResolver->loadScopeMeta($context->settings, 'global');
-        if($metaGlobal['existing_jsonld'] !== $hasJsonLdInTemplate
-            || $metaGlobal['existing_jsonld_content'] !== $templateContent
-            || $metaGlobal['existing_jsonld_blocks'] !== $templateBlocks) {
-            $context->scopeResolver->saveScopeMeta($context->settings, 'global', [
-                'existing_jsonld' => $hasJsonLdInTemplate,
-                'existing_jsonld_content' => $templateContent,
-                'existing_jsonld_blocks' => $templateBlocks,
-            ]);
-        }
-
-        $contentBlocks = array_values(array_map('trim', $context->collisionDetector->extractExistingJsonLdBlocks((string) $value)));
-        $hasJsonLdInContent = !empty($contentBlocks);
-        $pageContent = implode("\n\n", $contentBlocks);
-        if($cat !== null and $page !== null) {
-            $metaPage = $context->scopeResolver->loadScopeMeta($context->settings, 'page', $cat, $page);
-            if($metaPage['existing_jsonld'] !== $hasJsonLdInContent
-                || $metaPage['existing_jsonld_content'] !== $pageContent
-                || $metaPage['existing_jsonld_blocks'] !== $contentBlocks) {
-                $context->scopeResolver->saveScopeMeta($context->settings, 'page', [
-                    'existing_jsonld' => $hasJsonLdInContent,
-                    'existing_jsonld_content' => $pageContent,
-                    'existing_jsonld_blocks' => $contentBlocks,
-                ], $cat, $page);
-            }
         }
 
         return $output;
