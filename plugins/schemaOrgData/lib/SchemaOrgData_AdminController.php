@@ -363,10 +363,10 @@ class SchemaOrgData_AdminController {
      * im Iframe-Kontext definiert): die moziloCMS-Pflichtfelder
      * "pluginadmin" und "action" werden als hidden inputs mitgesendet,
      * der Speichern-Button ist ein echter <button type="submit">.
-     * moziloCMS speichert $this->settings nach Rückgabe dieser Methode
-     * automatisch - saveConfig() (aufgerufen über handlePostRequest())
-     * persistiert daher zuverlässig über $this->settings->set(), ohne
-     * eigenen JS-Workaround.
+     * saveConfig() (aufgerufen über handlePostRequest()) persistiert
+     * über $this->settings->set(), das im IS_ADMIN-Kontext sofort in
+     * die plugin.conf.php schreibt - kein Nachspeichern durch den Kern
+     * nach Rückgabe dieser Methode, kein eigener JS-Workaround nötig.
      *
      * Damit der Scope-Wechsel ohne Page-Reload funktioniert, werden
      * alle Geltungsbereiche (Global + alle Kategorien + alle Seiten
@@ -604,10 +604,12 @@ class SchemaOrgData_AdminController {
         // und damit kein seiten-/kategoriespezifisches Signal - das Ergebnis
         // wird deshalb unabhängig vom aktiven Scope ausschließlich dem
         // Global-Scope zugeordnet (siehe README.md). Properties::set()
-        // schreibt im IS_ADMIN-Kontext auf die Platte (im Frontend war
-        // set() ein No-Op). Reihenfolge: erst saveScopeMeta(), dann
-        // renderScopeSection(), damit renderExistingJsonLdNotice() das
-        // frisch gesetzte Flag sieht.
+        // schreibt nur im IS_ADMIN-Kontext auf die Platte; außerhalb
+        // davon ist set() ein No-Op, weshalb das Frontend den
+        // Layout-Zustand live liest statt ihn zu speichern.
+        // Reihenfolge: erst saveScopeMeta(), dann renderScopeSection(),
+        // damit renderExistingJsonLdNotice() das frisch gesetzte Flag
+        // sieht.
         $templateBlocks = array_values(array_map('trim', $collisionDetector->extractExistingJsonLdBlocksFromTemplateAdmin($CMS_CONF)));
         $templateHasJsonLd = !empty($templateBlocks);
         $templateContent = implode("\n\n", $templateBlocks);

@@ -269,7 +269,7 @@ class SchemaOrgData_AdminRequestHandler {
         $blocks = $meta['existing_jsonld_blocks'];
 
         if(!isset($blocks[$blockIndex])) {
-            // Meta veraltet (Template/Seiteninhalt zwischenzeitlich geändert)
+            // Meta veraltet (Layout-Template zwischenzeitlich geändert)
             // oder Legacy-Mehrblock-Konkatenat vor Neuerkennung.
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_import_block_not_found')], 'import' => true];
         }
