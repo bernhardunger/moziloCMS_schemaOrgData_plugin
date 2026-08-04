@@ -2,7 +2,7 @@
 
 Das Import-Feature besteht aus zwei zusammenspielenden, aber unabhängigen
 Teilen: **Kollisionserkennung** (`SchemaOrgData_CollisionDetector` findet
-vorhandenes JSON-LD in Template/Seiteninhalt) und **Import-Parsing**
+vorhandenes JSON-LD im Layout-Template) und **Import-Parsing**
 (`SchemaOrgData_ImportService` übernimmt einen erkannten JSON-LD-Block ins
 Formular). Die Admin-UI dafür rendert
 `SchemaOrgData_AdminPageRenderer::renderExistingJsonLdNotice()`, die
@@ -17,8 +17,8 @@ handleImportAction()`.
 ```mermaid
 flowchart TD
     A["extractExistingJsonLdBlocks()<br/>Regex über &lt;script type=application/ld+json&gt;-Blöcke"] --> B["Extraktion je Kontext"]
-    B --> B1["Frontend: ...FromTemplate($templateFile)"]
-    B --> B2["Admin: ...FromTemplateAdmin($cmsConf)<br/>inkl. Draftlayout"]
+    B --> B1["Frontend: ...FromTemplate($templateFile)<br/>live je Request, kein Schreibzugriff"]
+    B --> B2["Admin: ...FromTemplateAdmin($cmsConf)<br/>inkl. Draftlayout, Ergebnis persistiert"]
 
     B1 --> C["Platzhalter-Check<br/>detectPluginPlaceholderInTemplateAdmin()"]
     B2 --> C
@@ -28,15 +28,14 @@ flowchart TD
 
     C1 --> D["Scope-genaue Zuordnung"]
     D --> D1["Fund im Layout-Template<br/>→ Global-Scope"]
-    D --> D2["Fund im Seiteninhalt ($value)<br/>→ Seiten-Scope"]
-    D --> D3["Kategorie-Scope<br/>erhält keinen eigenen Treffer"]
+    D --> D2["Kategorie- und Seiten-Scope<br/>erhalten keinen eigenen Treffer"]
 ```
 
 </details>
 
 Grundlage aller Erkennungsmethoden ist ein Regex über
-`<script type="application/ld+json">`-Blöcke, sowohl im Layout-Template
-(Frontend- wie Admin-Pfad, inkl. Draftlayout) als auch im Seiteninhalt.
+`<script type="application/ld+json">`-Blöcke im Layout-Template — im
+Frontend live je Request, im Admin zusätzlich über das Draftlayout.
 Beide Kontexte prüfen ausschließlich `template.html` — ein JSON-LD-Block,
 der nur in `gallerytemplate.html` steht, zählt nicht mit. Grund: Eine
 Galerie-Vollansicht rendert strukturell nie echten Seiteninhalt (eigenes
@@ -67,25 +66,26 @@ Inhalt faktisch in den `<body>` durchreichen).
 ### Scope-genaue Zuordnung
 
 Ein im **Layout-Template** gefundener Block ist layoutweit gültig und
-wird ausschließlich dem **Global-Scope** zugeordnet. Ein im
-**Seiteninhalt** gefundener Block ist seitenspezifisch und wird
-ausschließlich dem **Seiten-Scope** der betreffenden Seite zugeordnet (nur
-wenn `CAT_REQUEST`/`PAGE_REQUEST` gesetzt sind). Der **Kategorie-Scope**
-erhält über diesen Mechanismus grundsätzlich keinen eigenen Treffer —
-beide Quellen (Template, Seiteninhalt) haben kein kategoriespezifisches
-Signal.
+wird ausschließlich dem **Global-Scope** zugeordnet. Der **Seiteninhalt**
+wird nicht geprüft; **Kategorie- und Seiten-Scope** erhalten über diesen
+Mechanismus deshalb keinen eigenen Treffer. Ein dort aus früheren Beständen
+gespeichertes `existing_jsonld`-Flag bleibt wirksam und über die
+`keep`/`override`-Auswahl bedienbar.
 
 Das Ergebnis (`existing_jsonld`-Flag plus die Liste gefundener Blöcke,
-`existing_jsonld_blocks`) wird pro Scope über
-`SchemaOrgData_ScopeResolver::saveScopeMeta()` persistiert, identisch für
-Frontend- und Admin-Pfad. Für Meta-Daten aus einer Version vor dem
-serverseitigen Pro-Block-Import (Einzelstring `existing_jsonld_content`
-statt Blockliste) normalisiert `loadScopeMeta()` beim Lesen automatisch
-auf das neue Array-Format. Ein Schreib-Guard verhindert unnötige
-Schreibvorgänge: `saveScopeMeta()` wird nur aufgerufen, wenn sich Flag
-oder Inhalt seit dem letzten Laden geändert haben — sonst würde jeder
-Admin-Seitenaufruf bzw. jeder Frontend-Request einen `file_put_contents()`
-auf `plugin.conf.php` auslösen.
+`existing_jsonld_blocks`) wird ausschließlich im Admin-Pfad über
+`SchemaOrgData_ScopeResolver::saveScopeMeta()` unter `config_global`
+persistiert. Der Frontend-Pfad speichert nichts: `Properties::set()` ist
+außerhalb von `IS_ADMIN` ein No-Op (siehe
+[configuration.md](configuration.md)), weshalb `renderFrontend()` den
+Layout-Zustand bei jedem Request live liest und unmittelbar auswertet. Für
+Meta-Daten aus einer Version vor dem serverseitigen Pro-Block-Import
+(Einzelstring `existing_jsonld_content` statt Blockliste) normalisiert
+`loadScopeMeta()` beim Lesen automatisch auf das neue Array-Format. Ein
+Schreib-Guard verhindert unnötige Schreibvorgänge: `saveScopeMeta()` wird
+nur aufgerufen, wenn sich Flag, Inhalt oder Blockliste seit dem letzten
+Laden geändert haben — sonst würde jeder Admin-Seitenaufruf ein
+`file_put_contents()` auf `plugin.conf.php` auslösen.
 
 ### `keep`/`override` und die Wirkung auf die eigene Ausgabe
 
@@ -94,11 +94,8 @@ auf `plugin.conf.php` auslösen.
 
 ```mermaid
 flowchart TD
-    A["Vorhandenes JSON-LD erkannt"] --> B{"Fundort?"}
-    B -->|Layout-Template| C["Hinweis im Global-Scope"]
-    B -->|Seiteninhalt| D["Hinweis im Seiten-Scope"]
+    A["Vorhandenes JSON-LD im Layout-Template erkannt"] --> C["Hinweis im Global-Scope"]
     C --> E{"Nutzerentscheidung"}
-    D --> E
     E -->|Beibehalten| F["Kein eigenes JSON-LD für diesen Scope"]
     E -->|Überschreiben| G["Plugin-JSON-LD zusätzlich zum vorhandenen Block<br/>(kein automatischer Merge, alter Block bleibt stehen)"]
 ```
@@ -174,10 +171,11 @@ Felddaten der aktiven Sektion mitsendet, finden in diesem Request kein
    mehreren erkannten Blöcken zuvor per Vollansicht-Dialog den richtigen
    identifizieren).
 2. Übernommene Formularfelder prüfen und anpassen.
-3. Alten JSON-LD-Block manuell aus Template bzw. Seiteninhalt entfernen.
-4. Auf `override` umstellen (oder, falls der alte Block bereits entfernt
-   wurde, bleibt `keep` wirkungslos, da `existing_jsonld` beim nächsten
-   Request ohnehin auf `false` fällt).
+3. Alten JSON-LD-Block manuell aus dem Layout-Template entfernen.
+4. Auf `override` umstellen — oder den Hinweis ignorieren: Ist der alte
+   Block aus dem Layout entfernt, greift `keep` nicht mehr, weil das
+   Frontend den Layout-Zustand bei jedem Request neu liest. Der
+   Admin-Hinweis verschwindet beim nächsten Öffnen der Plugin-Verwaltung.
 
 ## Siehe auch
 

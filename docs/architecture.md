@@ -56,10 +56,12 @@ nötigen Kollaboratoren bündelt:
   (zusätzlich zu den Frontend-Kollaboratoren), u. a. `lang`,
   `formRenderer`, `validator`, `configSaveService`.
 
-Der Seiteninhalt (`$value`) ist bewusst **kein** Teil von
-`SchemaOrgData_FrontendRequestContext` — er ist Methoden-Input für die
-Kollisionserkennung, kein Laufzeit-Kontext, und bleibt eigener Parameter
-von `renderFrontend()`.
+Der Platzhalter-Parameter (`$value`) ist bewusst **kein** Teil von
+`SchemaOrgData_FrontendRequestContext`: Er wird nicht ausgewertet und bleibt
+nur deshalb eigener Parameter von `renderFrontend()`, weil der
+moziloCMS-Kern `getContent()` so aufruft. Für den parameterlosen
+Platzhalter `{schemaOrgData}` ist er der Leerstring — insbesondere trägt er
+nicht den Seiteninhalt.
 
 ## Komponentenübersicht (`lib/`)
 
@@ -71,7 +73,7 @@ von `renderFrontend()`.
 | `SchemaOrgData_ScopeResolver` | Kapselt die gesamte Geltungsbereichs-Logik: Settings-Key-Bildung (`getScopeSettingsKey()`), Bezeichner-Sanitizing (`sanitizeScopeIdentifier()`), Ermittlung der aktiven Kategorie/Seite (`resolveScopeIdentifiers()`), Laden/Speichern von Konfiguration und Meta-Daten (`loadScopeConfig()`, `loadScopeMeta()`, `saveScopeMeta()`, `deleteConfig()`), feldweise Vererbung (`mergeConfigs()`, `resolveTypeInheritance()`) und Type-Kollisionserkennung (`detectTypeCollision()`). Siehe [configuration.md](configuration.md). |
 | `SchemaOrgData_JsonLdBuilder` | Baut aus zusammengeführten Formulardaten den fertigen `<script type="application/ld+json">`-Block: HTML-Entity-Dekodierung, Leerfeld-Bereinigung, verschachtelte `PostalAddress`/`GeoCoordinates`/`Place`-Typisierung, `id_reference`/`id_reference_or_literal`-Auflösung, `@id`-Vergabe (`resolveNodeId()`, De-Dup-Guard). Siehe [rendering.md](rendering.md). |
 | `SchemaOrgData_IdReferenceService` | Ergänzt den `@id`-Mechanismus um zwei Dienste: verfügbare globale `@id`-Fragmente für das `id_reference_or_literal`-Dropdown (`resolveAvailableGlobalFragments()`) sowie den Dangling-Reference-Guard (`applyDanglingReferenceGuard()`), der hängende Verweise auf fehlende Zielknoten abfängt. Siehe [rendering.md](rendering.md). |
-| `SchemaOrgData_CollisionDetector` | Erkennt vorhandene `<script type="application/ld+json">`-Blöcke in Template und Seiteninhalt, sowohl frontend- (`extractExistingJsonLdBlocksFromTemplate()`) als auch admin-seitig (`extractExistingJsonLdBlocksFromTemplateAdmin()`, inkl. Draftmode), und prüft, ob der Plugin-Platzhalter im Template steht und innerhalb `<head>` liegt (`detectPluginPlaceholderInTemplateAdmin()`). Siehe [import.md](import.md). |
+| `SchemaOrgData_CollisionDetector` | Erkennt vorhandene `<script type="application/ld+json">`-Blöcke im Layout-Template, sowohl frontend- (`extractExistingJsonLdBlocksFromTemplate()`, live je Request) als auch admin-seitig (`extractExistingJsonLdBlocksFromTemplateAdmin()`, inkl. Draftmode), und prüft, ob der Plugin-Platzhalter im Template steht und innerhalb `<head>` liegt (`detectPluginPlaceholderInTemplateAdmin()`). Siehe [import.md](import.md). |
 | `SchemaOrgData_OpeningHoursHelper` | Reine Array-/String-Transformationen für das Öffnungszeiten-Widget: Erkennung roher Pro-Tag-Werte (`isPerDayOpeningHoursValue()`), Parsen eines `openingHours`-Arrays in Von/Bis-Zeiten je Wochentag (`parseOpeningHours()`) und die Umkehrung (`buildOpeningHoursArray()`). |
 | `SchemaOrgData_DataSplitHelper` | Trennt gespeicherte bzw. importierte Properties eines Types anhand des aktiven Schemas in bekannte Formularfelder und unbekannte Erweiterungs-Properties (`splitDataForRendering()`) — gemeinsamer Mapper für `FormRenderer` und `ImportService`. |
 | `SchemaOrgData_Validator` | Serverseitige Feldvalidierung (PLZ, Telefon, URL, E-Mail, Öffnungszeiten, ISO-/deutsches Datum, Geo-Koordinaten, PostalAddress, FAQ) sowie die formularweite Validierung `validateFormData()`, die pro Widget-Typ delegiert. |
@@ -82,7 +84,7 @@ von `renderFrontend()`.
 | `SchemaOrgData_AdminController` | Orchestriert eine einzelne Geltungsbereich-Sektion (`renderScopeSection()`) sowie die vollständige Admin-Seite (`renderAdminPage()`): POST-Verarbeitung anstoßen, alle Scopes vorrendern, Assets samt Cache-Busting einbinden. |
 | `SchemaOrgData_AdminPageRenderer` | Zustandslose, reine Anzeige-Bausteine der Admin-Seite: Admin-CSS (`getAdminCss()`), Info-Block, Scope-Label/-Selektor, Speichern-Button-Beschriftung, Speicher-Ergebnis-Hinweis, Hinweis auf vorhandenes/kollidierendes JSON-LD samt Import-UI (`renderExistingJsonLdNotice()`), Ausschlussliste, Platzhalter-Hinweis, Type-Auswahl. |
 | `SchemaOrgData_AdminRequestHandler` | POST/Actions-Dispatch: verteilt `$_POST['schemaOrgData']` je Geltungsebene auf `deleteConfig()` oder `ConfigSaveService::saveConfig()`, bzw. auf den Import-Pfad (`handleImportAction()`), wenn der Import-Button ausgelöst wurde. |
-| `SchemaOrgData_FrontendRenderer` | Orchestriert die Frontend-Ausgabepipeline: Scope-Konfiguration laden, `excluded_cats`- und `jsonld_mode = 'keep'`-Filter, feldweise Vererbung, Dangling-Reference-Guard, JSON-LD-Blöcke ausgeben, optional Debug-Widget (`buildDebugWidget()`) anhängen, scope-genaue Kollisionserkennung persistieren. |
+| `SchemaOrgData_FrontendRenderer` | Orchestriert die Frontend-Ausgabepipeline: Scope-Konfiguration laden, Layout-Template live auf fremdes JSON-LD prüfen, `excluded_cats`- und `jsonld_mode = 'keep'`-Filter, feldweise Vererbung, Dangling-Reference-Guard, JSON-LD-Blöcke ausgeben, optional Debug-Widget (`buildDebugWidget()`) anhängen. Schreibt selbst keine Meta-Daten. |
 | `SchemaOrgData_FrontendRequestContext` / `SchemaOrgData_AdminRequestContext` | Reine Daten-Objekte, bündeln die Laufzeit-Kollaboratoren für `renderFrontend()` bzw. `renderAdminPage()`/`renderScopeSection()`. |
 
 ## Kontrollfluss: Admin-Request
@@ -117,11 +119,12 @@ Grobe Flughöhe:
 schemaOrgData::getContent($value)
   └─ FrontendRenderer::renderFrontend()
        ├─ Galerie-Vollansicht? → '' (kein JSON-LD)
-       ├─ ScopeResolver::loadScopeConfig() je Ebene, excluded_cats-/keep-Filter
+       ├─ ScopeResolver::loadScopeConfig() je Ebene, excluded_cats-Filter
+       ├─ CollisionDetector::extractExistingJsonLdBlocksFromTemplate() (live, kein Schreibzugriff)
+       ├─ keep-Filter je Ebene (global gegen den Live-Befund, sonst gegen das gespeicherte Flag)
        ├─ ScopeResolver::resolveTypeInheritance() (feldweise Vererbung)
        ├─ IdReferenceService::applyDanglingReferenceGuard()
-       ├─ je verbleibendem Type: JsonLdBuilder::resolveNodeId() + buildJsonLdScript()
-       └─ Kollisionserkennung scope-genau persistieren
+       └─ je verbleibendem Type: JsonLdBuilder::resolveNodeId() + buildJsonLdScript()
 ```
 
 Details zu den einzelnen Guards (`excluded_cats`, `jsonld_mode`, De-Dup-,
