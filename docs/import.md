@@ -68,9 +68,10 @@ Inhalt faktisch in den `<body>` durchreichen).
 Ein im **Layout-Template** gefundener Block ist layoutweit gültig und
 wird ausschließlich dem **Global-Scope** zugeordnet. Der **Seiteninhalt**
 wird nicht geprüft; **Kategorie- und Seiten-Scope** erhalten über diesen
-Mechanismus deshalb keinen eigenen Treffer. Ein dort aus früheren Beständen
-gespeichertes `existing_jsonld`-Flag bleibt wirksam und über die
-`keep`/`override`-Auswahl bedienbar.
+Mechanismus deshalb keinen eigenen Treffer. Ein dort gespeichertes
+`existing_jsonld`-Flag bliebe zwar wirksam und über die
+`keep`/`override`-Auswahl bedienbar — auf regulärem Weg entsteht dort
+aber keines.
 
 Das Ergebnis (`existing_jsonld`-Flag plus die Liste gefundener Blöcke,
 `existing_jsonld_blocks`) wird ausschließlich im Admin-Pfad über
