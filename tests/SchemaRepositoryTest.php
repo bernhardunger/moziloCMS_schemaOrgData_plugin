@@ -242,7 +242,7 @@ final class SchemaRepositoryTest extends TestCase {
     }
 
     function testResolveActiveTypeLiefertNullWennKeinSchluesselBekanntesSchemaReferenziert(): void {
-        $config = ['_meta' => [], 'excluded_cats' => '', 'debug_output' => false];
+        $config = ['_meta' => [], 'excluded_cats' => '', 'debug_output' => false, 'org_relations' => []];
 
         $result = $this->repository()->resolveActiveType($config, $this->pluginSelfDir());
 

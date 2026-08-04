@@ -176,6 +176,75 @@ final class ScopeResolverTest extends TestCase {
 
     /***************************************************************
     *
+    * Bildet den Verwaltungsschlüssel-Abzug aus
+    * SchemaOrgData_FrontendRenderer::renderFrontend() nach: _meta,
+    * excluded_cats, debug_output und org_relations sind keine
+    * Schema-Types und werden vor der Typ-Auflösung entfernt. Erst
+    * dadurch wird ein nur mit _meta gespeicherter Geltungsbereich zu
+    * dem leeren Array, das resolveTypeInheritance() zu sehen bekommt -
+    * die beiden Hälften stoßen sonst in keinem Test aneinander.
+    *
+    ***************************************************************/
+    private function stripManagementKeys(array $scopeConfigs): array {
+        foreach($scopeConfigs as $scope => $config) {
+            unset(
+                $scopeConfigs[$scope]['_meta'], $scopeConfigs[$scope]['excluded_cats'],
+                $scopeConfigs[$scope]['debug_output'], $scopeConfigs[$scope]['org_relations']
+            );
+        }
+
+        return $scopeConfigs;
+    }
+
+    /***************************************************************
+    *
+    * Ein Geltungsbereich, der gespeichert zwar existiert, nach dem
+    * Verwaltungsschlüssel-Abzug aber keinen Schema-Type mehr trägt,
+    * verhält sich in der Typ-Auflösung wie nicht vorhanden: Er zieht
+    * den Type der übergeordneten Ebene nicht an sich und maskiert sie
+    * damit auch nicht. Geprüft für Kategorie und Seite gleichzeitig.
+    *
+    ***************************************************************/
+    function testResolveTypeInheritanceTyploseKategorieUndSeiteMaskierenGlobalNicht(): void {
+        $scopeConfigs = $this->stripManagementKeys([
+            'global' => ['LocalBusiness' => ['name' => 'Global', 'telephone' => '+49891234567']],
+            'category' => ['_meta' => ['existing_jsonld' => false, 'jsonld_mode' => 'keep']],
+            'page' => ['_meta' => ['existing_jsonld' => false, 'jsonld_mode' => 'keep']],
+        ]);
+
+        $result = $this->resolver()->resolveTypeInheritance($scopeConfigs);
+
+        $this->assertSame('Global', $result['global']['LocalBusiness']['name']);
+        $this->assertSame([], $result['category']);
+        $this->assertSame([], $result['page']);
+    }
+
+    /***************************************************************
+    *
+    * Positivkontrolle zum vorstehenden Test: Derselbe Aufbau mit
+    * einem Schema-Type auf der Kategorie zieht den globalen Type
+    * sehr wohl an sich - der Negativbefund oben belegt also nicht
+    * bloß, dass dieser Aufbau überhaupt nichts erzeugte.
+    *
+    ***************************************************************/
+    function testResolveTypeInheritanceKategorieMitTypeNebenMetaZiehtGlobalenTypeAnSich(): void {
+        $scopeConfigs = $this->stripManagementKeys([
+            'global' => ['LocalBusiness' => ['name' => 'Global', 'telephone' => '+49891234567']],
+            'category' => [
+                '_meta' => ['existing_jsonld' => false, 'jsonld_mode' => 'keep'],
+                'LocalBusiness' => ['name' => 'Kategorie'],
+            ],
+        ]);
+
+        $result = $this->resolver()->resolveTypeInheritance($scopeConfigs);
+
+        $this->assertSame([], $result['global']);
+        $this->assertSame('Kategorie', $result['category']['LocalBusiness']['name']);
+        $this->assertSame('+49891234567', $result['category']['LocalBusiness']['telephone']);
+    }
+
+    /***************************************************************
+    *
     * Wichtigster Fall: Verhalten bei verschachtelten Objekten
     * (address) — die spezifischere Ebene überschreibt das gesamte
     * Sub-Objekt, es findet kein Feld-Merge innerhalb von address
