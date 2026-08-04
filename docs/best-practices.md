@@ -142,8 +142,8 @@ Aktualisierung der jeweiligen Seite mitprüfen, statt sie als
 
 ## Migration von bestehendem JSON-LD
 
-Wird beim Umstieg auf das Plugin bereits vorhandenes JSON-LD im Template
-oder Seiteninhalt erkannt, empfiehlt sich die in
+Wird beim Umstieg auf das Plugin bereits vorhandenes JSON-LD im
+Layout-Template erkannt, empfiehlt sich die in
 [import.md](import.md) beschriebene Reihenfolge: zunächst importieren und
 im Formular prüfen, erst danach den alten Block entfernen und auf
 „Überschreiben" umstellen — nie beides gleichzeitig ohne Zwischenschritt.
