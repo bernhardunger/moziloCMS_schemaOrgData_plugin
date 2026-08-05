@@ -28,9 +28,11 @@ class SchemaOrgData_CollisionDetector {
     * Extrahiert alle JSON-LD-Blöcke aus einem HTML-String und gibt
     * deren innere JSON-Texte zurück (ohne <script>-Tags).
     *
-    * Gemeinsame Hilfsfunktion für detectExistingJsonLd*()-Methoden
-    * sowie für die Inhaltsspeicherung (existing_jsonld_content,
-    * siehe loadScopeMeta()/saveScopeMeta()).
+    * Gemeinsame Hilfsfunktion beider Extraktionswege
+    * (extractExistingJsonLdBlocksFromTemplate() für das im Frontend
+    * aktiv geladene Template, extractExistingJsonLdBlocksFromTemplateAdmin()
+    * für die Layout-Templates im Admin) sowie für die Inhaltsspeicherung
+    * (existing_jsonld_content, siehe loadScopeMeta()/saveScopeMeta()).
     * Kein Absturz bei malformed HTML — preg_match_all gibt im
     * Fehlerfall false zurück, was als leeres Array behandelt wird.
     *
@@ -45,32 +47,6 @@ class SchemaOrgData_CollisionDetector {
             $matches
         );
         return ($result !== false and !empty($matches[1])) ? $matches[1] : [];
-    }
-
-    /***************************************************************
-    *
-    * Prüft, ob im gerenderten HTML der Seite bereits ein
-    * <script type="application/ld+json">-Block vorhanden ist
-    * (kombinierte Prüfung: Inhalt + Template).
-    *
-    * Hinweis: Für die produktive Scope-Zuordnung in getContent()
-    * wird diese kombinierte Methode nicht mehr verwendet — stattdessen
-    * prüfen dort extractExistingJsonLdBlocksFromTemplate() (→ Global-Scope)
-    * und extractExistingJsonLdBlocks($value) (→ Seiten-Scope) getrennt.
-    * Diese Methode bleibt erhalten, da CollisionDetectorTest.php das
-    * kombinierte Verhalten gezielt testet.
-    *
-    * @param string $html zu prüfendes HTML
-    * @param string $templateFile Pfad zur aktiv geladenen Template-Datei
-    *                              (entspricht $TEMPLATE_FILE)
-    * @return bool true, wenn mindestens ein JSON-LD-Block gefunden wurde
-    *
-    ***************************************************************/
-    public function detectExistingJsonLd(string $html, string $templateFile): bool {
-        if(!empty($this->extractExistingJsonLdBlocks($html))) {
-            return true;
-        }
-        return $this->detectExistingJsonLdInTemplate($templateFile);
     }
 
     /***************************************************************
@@ -92,20 +68,6 @@ class SchemaOrgData_CollisionDetector {
         }
         $content = file_get_contents($templateFile);
         return $content !== false ? $this->extractExistingJsonLdBlocks($content) : [];
-    }
-
-    /***************************************************************
-    *
-    * Prüft, ob das aktiv geladene Website-Template einen
-    * <script type="application/ld+json">-Block enthält.
-    *
-    * @param string $templateFile Pfad zur aktiv geladenen Template-Datei
-    *                              (entspricht $TEMPLATE_FILE)
-    * @return bool true, wenn mindestens ein JSON-LD-Block gefunden wurde
-    *
-    ***************************************************************/
-    public function detectExistingJsonLdInTemplate(string $templateFile): bool {
-        return !empty($this->extractExistingJsonLdBlocksFromTemplate($templateFile));
     }
 
     /***************************************************************
@@ -171,19 +133,6 @@ class SchemaOrgData_CollisionDetector {
         }
 
         return $allBlocks;
-    }
-
-    /***************************************************************
-    *
-    * Prüft im Admin-Kontext, ob das aktiv ausgelieferte Layout-Template
-    * einen <script type="application/ld+json">-Block enthält.
-    *
-    * @param mixed $cmsConf moziloCMS-Konfigurationsobjekt (entspricht $CMS_CONF)
-    * @return bool true wenn mindestens ein JSON-LD-Block gefunden wurde
-    *
-    ***************************************************************/
-    public function detectExistingJsonLdInTemplateAdmin($cmsConf): bool {
-        return !empty($this->extractExistingJsonLdBlocksFromTemplateAdmin($cmsConf));
     }
 
     /***************************************************************

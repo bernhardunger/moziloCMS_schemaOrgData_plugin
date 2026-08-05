@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 
 /***************************************************************
 *
-* Tests für detectExistingJsonLd() - Erkennung bereits
+* Tests für SchemaOrgData_CollisionDetector - Erkennung bereits
 * vorhandener <script type="application/ld+json">-Blöcke.
 *
 ***************************************************************/
@@ -14,12 +14,6 @@ final class CollisionDetectorTest extends TestCase {
 
     private function extract(string $html): array {
         return (new \SchemaOrgData_CollisionDetector())->extractExistingJsonLdBlocks($html);
-    }
-
-    private function detect(string $html): bool {
-        return (new \SchemaOrgData_CollisionDetector())->detectExistingJsonLd(
-            $html, (string) ($GLOBALS['TEMPLATE_FILE'] ?? '')
-        );
     }
 
     // -----------------------------------------------------------
@@ -77,49 +71,17 @@ final class CollisionDetectorTest extends TestCase {
         $this->assertSame($json, $blocks[0]);
     }
 
-    // -----------------------------------------------------------
-    // detectExistingJsonLd() — bestehende Tests bleiben grün
-    // -----------------------------------------------------------
-
-    function testExistingJsonLdBlockIsDetected(): void {
-        $html = '<head><script type="application/ld+json">{"@context":"https://schema.org"}</script></head>';
-
-        $this->assertTrue($this->detect($html));
-    }
-
-    function testHtmlWithoutJsonLdReturnsFalse(): void {
-        $html = '<head><title>Muster GmbH</title></head>';
-
-        $this->assertFalse($this->detect($html));
-    }
-
-    function testMultipleBlocksAreDetected(): void {
-        $html = '<head>'
-            .'<script type="application/ld+json">{"@type":"Organization"}</script>'
-            .'<script type="application/ld+json">{"@type":"WebSite"}</script>'
-            .'</head>';
-
-        $this->assertTrue($this->detect($html));
-    }
-
-    function testSingleQuotedAttributeIsDetected(): void {
-        $html = "<script type='application/ld+json'>{}</script>";
-
-        $this->assertTrue($this->detect($html));
-    }
-
     private ?string $templateFile = null;
 
     /** Temporäre Layout-Verzeichnisse, die in tearDown() entfernt werden */
     private array $layoutDirsToCleanup = [];
 
     protected function tearDown(): void {
-        // Temporäre Template-Datei entfernen und globale Variable zurücksetzen
+        // Temporäre Template-Datei entfernen
         if($this->templateFile !== null && file_exists($this->templateFile)) {
             unlink($this->templateFile);
         }
         $this->templateFile = null;
-        $GLOBALS['TEMPLATE_FILE'] = null;
 
         // Test-Layout-Verzeichnisse entfernen
         foreach($this->layoutDirsToCleanup as $dir) {
@@ -151,8 +113,8 @@ final class CollisionDetectorTest extends TestCase {
     // Hilfsmethoden für Admin-Template-Erkennung
     // ---------------------------------------------------------------------------
 
-    private function detectAdmin(): bool {
-        return (new \SchemaOrgData_CollisionDetector())->detectExistingJsonLdInTemplateAdmin(
+    private function extractAdmin(): array {
+        return (new \SchemaOrgData_CollisionDetector())->extractExistingJsonLdBlocksFromTemplateAdmin(
             $GLOBALS['CMS_CONF'] ?? null
         );
     }
@@ -173,51 +135,18 @@ final class CollisionDetectorTest extends TestCase {
         }
     }
 
-    function testJsonLdInTemplateIsDetected(): void {
-        // Temporäre Template-Datei mit JSON-LD-Block anlegen
-        $this->templateFile = sys_get_temp_dir().'/schemaOrgData_template_'.uniqid().'.html';
-        file_put_contents($this->templateFile, '<head><script type="application/ld+json">{"@context":"https://schema.org"}</script></head>');
-        $GLOBALS['TEMPLATE_FILE'] = $this->templateFile;
-
-        $this->assertTrue($this->detect(''));
-    }
-
-    function testTemplateWithoutJsonLdReturnsFalse(): void {
-        // Temporäre Template-Datei ohne JSON-LD-Block anlegen
-        $this->templateFile = sys_get_temp_dir().'/schemaOrgData_template_'.uniqid().'.html';
-        file_put_contents($this->templateFile, '<head><title>Muster GmbH</title></head>');
-        $GLOBALS['TEMPLATE_FILE'] = $this->templateFile;
-
-        $this->assertFalse($this->detect(''));
-    }
-
-    function testJsonLdInContentIsDetectedWithoutTemplate(): void {
-        // Kein Template gesetzt - bestehende Content-Prüfung muss weiterhin greifen
-        $GLOBALS['TEMPLATE_FILE'] = '';
-
-        $this->assertTrue($this->detect('<script type="application/ld+json">{"@type":"LocalBusiness"}</script>'));
-    }
-
-    function testNonExistentTemplateFileReturnsFalse(): void {
-        // Template-Pfad existiert nicht - keine Fehlermeldung, sondern false
-        $GLOBALS['TEMPLATE_FILE'] = '/tmp/does-not-exist-schemaorgdata.html';
-
-        $this->assertFalse($this->detect(''));
-    }
-
     // ---------------------------------------------------------------------------
-    // Tests für detectExistingJsonLdInTemplateAdmin()
+    // Admin-Layout-Erkennung: Persistenz der Meta und Layout-Auswahl
     // ---------------------------------------------------------------------------
 
     function testAdminDetectsJsonLdInActiveTemplateHtml(): void {
-        // Block in template.html des aktiven Layouts, $TEMPLATE_FILE NICHT gesetzt
-        // → existing_jsonld wird true, lässt sich über saveScopeMeta persistieren.
+        // Block in template.html des aktiven Layouts → existing_jsonld wird
+        // true und lässt sich über saveScopeMeta persistieren.
         $layout = 'schemaOrgData_test_' . uniqid();
         $this->createLayoutTemplate($layout, 'template.html',
             '<head><script type="application/ld+json">{"@context":"https://schema.org"}</script></head>'
         );
         $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
-        $GLOBALS['TEMPLATE_FILE'] = '';
 
         $plugin = new \schemaOrgData();
         $refObj = new \ReflectionObject($plugin);
@@ -226,7 +155,7 @@ final class CollisionDetectorTest extends TestCase {
         $settings = new \InMemorySettings();
         $settingsProp->setValue($plugin, $settings);
 
-        $detected = (new \SchemaOrgData_CollisionDetector())->detectExistingJsonLdInTemplateAdmin($GLOBALS['CMS_CONF'] ?? null);
+        $detected = $this->extractAdmin() !== [];
         $this->assertTrue($detected);
 
         // Persistenz prüfen: saveScopeMeta() speichert, loadScopeMeta() liest korrekt
@@ -251,86 +180,7 @@ final class CollisionDetectorTest extends TestCase {
 
         $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $activeLayout]);
 
-        $this->assertFalse($this->detectAdmin());
-    }
-
-    /***************************************************************
-    *
-    * gallerytemplate.html rendert strukturell nie echten Seiteninhalt
-    * (eigenständiges Voll-Layout für die Galerie-Vollansicht ohne
-    * {CONTENT}-Platzhalter) - ein dort gefundener Block ist für die
-    * reale Seiten-/Kategorie-Ausgabe irrelevant und wird daher bewusst
-    * NICHT mehr mitgezählt.
-    *
-    ***************************************************************/
-    function testAdminIgnoriertBlockAusschliesslichInGalleryTemplate(): void {
-        $layout = 'schemaOrgData_gallery_' . uniqid();
-        $this->createLayoutTemplate($layout, 'template.html',
-            '<head><title>Kein JSON-LD</title></head>'
-        );
-        $this->createLayoutTemplate($layout, 'gallerytemplate.html',
-            '<head><script type="application/ld+json">{"@context":"https://schema.org"}</script></head>'
-        );
-
-        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
-
-        $this->assertFalse($this->detectAdmin());
-    }
-
-    function testAdminDetectsDraftlayoutWhenDraftmodeActive(): void {
-        // Block nur im draftlayout, draftmode aktiv → true
-        $draftLayout = 'schemaOrgData_draft_' . uniqid();
-        $this->createLayoutTemplate($draftLayout, 'template.html',
-            '<head><script type="application/ld+json">{"@context":"https://schema.org"}</script></head>'
-        );
-
-        $activeLayout = 'schemaOrgData_main_' . uniqid();
-        $this->createLayoutTemplate($activeLayout, 'template.html',
-            '<head><title>Kein JSON-LD</title></head>'
-        );
-
-        $GLOBALS['CMS_CONF'] = new \MockConf([
-            'cmslanguage' => 'de',
-            'cmslayout'   => $activeLayout,
-            'draftmode'   => 'true',
-            'draftlayout' => $draftLayout,
-        ]);
-
-        $this->assertTrue($this->detectAdmin());
-    }
-
-    function testAdminIgnoresDraftlayoutWhenDraftmodeInactive(): void {
-        // Block nur im draftlayout, draftmode INAKTIV → false
-        $draftLayout = 'schemaOrgData_draft2_' . uniqid();
-        $this->createLayoutTemplate($draftLayout, 'template.html',
-            '<head><script type="application/ld+json">{"@context":"https://schema.org"}</script></head>'
-        );
-
-        $activeLayout = 'schemaOrgData_main2_' . uniqid();
-        $this->createLayoutTemplate($activeLayout, 'template.html',
-            '<head><title>Kein JSON-LD</title></head>'
-        );
-
-        $GLOBALS['CMS_CONF'] = new \MockConf([
-            'cmslanguage' => 'de',
-            'cmslayout'   => $activeLayout,
-            'draftmode'   => 'false',
-            'draftlayout' => $draftLayout,
-        ]);
-
-        $this->assertFalse($this->detectAdmin());
-    }
-
-    function testAdminReturnsFalseWhenNoJsonLdInAnyActiveLayout(): void {
-        // Kein Block → false
-        $layout = 'schemaOrgData_nojsonld_' . uniqid();
-        $this->createLayoutTemplate($layout, 'template.html',
-            '<head><title>Kein JSON-LD</title></head>'
-        );
-
-        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
-
-        $this->assertFalse($this->detectAdmin());
+        $this->assertSame([], $this->extractAdmin());
     }
 
     // ---------------------------------------------------------------------------
@@ -456,48 +306,6 @@ final class CollisionDetectorTest extends TestCase {
         ]);
 
         $this->assertSame([], $detector->extractExistingJsonLdBlocksFromTemplateAdmin($cmsConf));
-    }
-
-    function testComponentDetectExistingJsonLdInTemplateDelegatesToExtract(): void {
-        $this->templateFile = sys_get_temp_dir().'/schemaOrgData_component_template_'.uniqid().'.html';
-        file_put_contents($this->templateFile, '<head><script type="application/ld+json">{}</script></head>');
-
-        $detector = new \SchemaOrgData_CollisionDetector();
-
-        $this->assertTrue($detector->detectExistingJsonLdInTemplate($this->templateFile));
-        $this->assertFalse($detector->detectExistingJsonLdInTemplate(''));
-    }
-
-    function testComponentDetectExistingJsonLdInTemplateAdminDelegatesToExtract(): void {
-        $layout = 'schemaOrgData_component_delegate_' . uniqid();
-        $this->createLayoutTemplate($layout, 'template.html',
-            '<head><script type="application/ld+json">{}</script></head>'
-        );
-
-        $detector = new \SchemaOrgData_CollisionDetector();
-        $cmsConf = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => $layout]);
-
-        $this->assertTrue($detector->detectExistingJsonLdInTemplateAdmin($cmsConf));
-        $this->assertFalse($detector->detectExistingJsonLdInTemplateAdmin(null));
-    }
-
-    function testComponentDetectExistingJsonLdCombinesContentAndTemplate(): void {
-        $this->templateFile = sys_get_temp_dir().'/schemaOrgData_component_template_'.uniqid().'.html';
-        file_put_contents($this->templateFile, '<head><title>Kein JSON-LD</title></head>');
-
-        $detector = new \SchemaOrgData_CollisionDetector();
-
-        // Weder Content noch Template enthalten einen Block → false.
-        $this->assertFalse($detector->detectExistingJsonLd('<title>x</title>', $this->templateFile));
-
-        // Block im Content, Template ohne Block → true (Content-Pfad greift).
-        $this->assertTrue($detector->detectExistingJsonLd(
-            '<script type="application/ld+json">{}</script>', $this->templateFile
-        ));
-
-        // Kein Block im Content, aber im Template → true (Template-Pfad greift).
-        file_put_contents($this->templateFile, '<head><script type="application/ld+json">{}</script></head>');
-        $this->assertTrue($detector->detectExistingJsonLd('<title>x</title>', $this->templateFile));
     }
 
     // ---------------------------------------------------------------------------
