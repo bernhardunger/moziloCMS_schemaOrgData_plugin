@@ -177,8 +177,8 @@ Block-JSON `error_detected_block_invalid`.
 `SchemaOrgData_AdminRequestHandler::handlePostRequest()` gibt dem
 Import-Dispatch weiterhin Vorrang: Ist der Import-Button gesetzt, wird
 ausschließlich der Import verarbeitet — auch wenn das Formular zusätzlich
-Felddaten der aktiven Sektion mitsendet, finden in diesem Request kein
-`saveConfig()`/`deleteConfig()` statt.
+Felddaten der aktiven Sektion mitsendet, findet in diesem Request kein
+`saveConfig()` statt.
 
 ## Empfohlene Migrations-Reihenfolge
 

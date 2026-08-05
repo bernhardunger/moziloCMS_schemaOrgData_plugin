@@ -6,8 +6,7 @@
 *
 * POST/Actions-Dispatch des Admin-Formulars: handlePostRequest()
 * verarbeitet die $_POST-Daten je Geltungsebene und delegiert an
-* deleteConfig() (SchemaOrgData_ScopeResolver) bzw. saveConfig()
-* (SchemaOrgData_ConfigSaveService).
+* saveConfig() (SchemaOrgData_ConfigSaveService).
 *
 * Zustandslos: Kollaboratoren (Language, SchemaOrgData_ScopeResolver,
 * SchemaOrgData_SchemaRepository, SchemaOrgData_Validator,
@@ -24,12 +23,11 @@ class SchemaOrgData_AdminRequestHandler {
     * Verarbeitet die $_POST-Daten des Admin-Formulars. Für jede
     * übermittelte Geltungsebene (schemaOrgData[global|category|page],
     * siehe SchemaOrgData_AdminController::renderScopeSection()) wird
-    * je nach Flag "schemaOrgData_delete_{scope}" deleteConfig() oder
     * saveConfig() aufgerufen.
     *
     * Ist "schemaOrgData_import_action" gesetzt, wird stattdessen
     * ausschließlich der Import verarbeitet (siehe handleImportAction())
-    * - kein saveConfig()/deleteConfig() in diesem Request, auch wenn
+    * - kein saveConfig() in diesem Request, auch wenn
     * das Formular zusätzlich Felddaten der aktiven Sektion mitsendet.
     *
     * Wird von renderAdminPage() aufgerufen, bevor das Formular
@@ -120,9 +118,7 @@ class SchemaOrgData_AdminRequestHandler {
             $globalData = (isset($scopes['global']) and is_array($scopes['global']))
                 ? $scopes['global'] : [];
 
-            $result = !empty($_POST['schemaOrgData_delete_global'])
-                ? $scopeResolver->deleteConfig($settings, 'global', $lang)
-                : $configSaveService->saveConfig('global', $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
+            $result = $configSaveService->saveConfig('global', $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
 
             $success = $success && $result['success'];
             $processed[] = ['scope' => 'global', 'cat' => null, 'page' => null, 'result' => $result];
@@ -139,9 +135,7 @@ class SchemaOrgData_AdminRequestHandler {
                 continue;
             }
 
-            $result = !empty($_POST['schemaOrgData_delete_'.$scope])
-                ? $scopeResolver->deleteConfig($settings, $scope, $lang)
-                : $configSaveService->saveConfig($scope, $scopes[$scope], $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
+            $result = $configSaveService->saveConfig($scope, $scopes[$scope], $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
 
             $success = $success && $result['success'];
             $processed[] = [
@@ -157,8 +151,9 @@ class SchemaOrgData_AdminRequestHandler {
 
         // Nur bei mehr als einer verarbeiteten Ebene wird das Label
         // vorangestellt - im Regelfall ist die Zuordnung eindeutig und ein
-        // Präfix wäre nur Ballast. deleteConfig() liefert kein "notices"
-        // (ein Löschvorgang bereinigt nichts), deshalb der Rückfall.
+        // Präfix wäre nur Ballast. Der Rückfall auf [] beim Lesen von
+        // "notices" bleibt als Schutz gegen ein Ergebnis-Array ohne diesen
+        // Schlüssel stehen.
         $labelPerScope = (count($processed) > 1);
 
         foreach($processed as $entry) {

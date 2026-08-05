@@ -314,40 +314,6 @@ class SchemaOrgData_ScopeResolver {
 
     /***************************************************************
     *
-    * Löscht den settings-Key einer Geltungsebene vollständig - damit
-    * entfallen sowohl die Schema-Type-Konfiguration als auch die
-    * Meta-Daten (_meta, existing_jsonld/jsonld_mode) dieser Ebene.
-    *
-    * @param mixed $settings moziloCMS-Settings-API ($this->settings)
-    * @param string $scope 'global' | 'category' | 'page'
-    * @param Language $lang liefert den Meldungstext eines
-    *        fehlgeschlagenen Schreibzugriffs
-    * @return array{success: bool, errors: string[]}
-    *
-    ***************************************************************/
-    public function deleteConfig($settings, string $scope, Language $lang): array {
-        [$cat, $page] = $this->resolveScopeIdentifiers($scope);
-        $key = $this->getScopeSettingsKey($scope, $cat, $page);
-
-        if ($key === null) {
-            return ['success' => false, 'errors' => []];
-        }
-
-        // Der Kern liefert bei delete() auch dann false, wenn der Schlüssel
-        // gar nicht existierte - ein Fehlschlag ist deshalb nur nach der
-        // keyExists()-Vorprüfung als solcher zu werten. Misserfolg
-        // signalisiert der Kern per Rückgabewert, nicht per Exception.
-        if ($settings->keyExists($key) and $settings->delete($key) === false) {
-            return ['success' => false, 'errors' => [
-                $lang->getLanguageValue('error_config_write_failed')
-            ]];
-        }
-
-        return ['success' => true, 'errors' => []];
-    }
-
-    /***************************************************************
-    *
     * Prüft, ob für $selectedType bereits auf einer allgemeineren
     * Ebene (Global bzw. Global+Kategorie) eine Konfiguration
     * existiert. Ist dies der Fall, erbt diese Ebene leere Felder von

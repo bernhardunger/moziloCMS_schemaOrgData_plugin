@@ -15,7 +15,6 @@ use PHPUnit\Framework\TestCase;
 *   - loadScopeConfig(): $settings wird als Parameter genutzt, kein
 *     Objektzustand
 *   - loadScopeMeta()/saveScopeMeta(): Defaults, Merge, Round-Trip
-*   - deleteConfig(): existierender/fehlender Key, ungültiger Scope
 *   - detectTypeCollision(): Kollisionen je Geltungsebene
 *
 ***************************************************************/
@@ -538,46 +537,6 @@ final class ScopeResolverTest extends TestCase {
         $meta = $this->resolver()->loadScopeMeta($settings, 'global');
 
         $this->assertSame([], $meta['existing_jsonld_blocks']);
-    }
-
-    // deleteConfig() -------------------------------------------------------------
-
-    function testDeleteConfigLoeschtExistierendenKey(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', ['LocalBusiness' => ['name' => 'Muster GmbH']]);
-
-        $result = $this->resolver()->deleteConfig($settings, 'global', $this->adminLang());
-
-        $this->assertSame(['success' => true, 'errors' => []], $result);
-        $this->assertFalse($settings->keyExists('config_global'));
-    }
-
-    function testDeleteConfigFehlenderKeyLiefertErfolgOhneFehler(): void {
-        $settings = new \InMemorySettings();
-
-        $result = $this->resolver()->deleteConfig($settings, 'global', $this->adminLang());
-
-        $this->assertSame(['success' => true, 'errors' => []], $result);
-    }
-
-    function testDeleteConfigMeldetFehlschlagWennSettingsNichtLoescht(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', ['LocalBusiness' => ['name' => 'Muster GmbH']]);
-        $settings->failWrites();
-
-        $result = $this->resolver()->deleteConfig($settings, 'global', $this->adminLang());
-
-        $this->assertFalse($result['success']);
-        $this->assertNotEmpty($result['errors']);
-        $this->assertTrue($settings->keyExists('config_global'));
-    }
-
-    function testDeleteConfigUngueltigerScopeLiefertMisserfolg(): void {
-        $settings = new \InMemorySettings();
-
-        $result = $this->resolver()->deleteConfig($settings, 'category', $this->adminLang());
-
-        $this->assertSame(['success' => false, 'errors' => []], $result);
     }
 
     // detectTypeCollision() -------------------------------------------------------
