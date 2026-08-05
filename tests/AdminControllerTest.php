@@ -1586,4 +1586,180 @@ final class AdminControllerTest extends TestCase {
 
         $this->assertDoesNotMatchRegularExpression('/\son(click|change|submit|keyup|input)=/i', $html);
     }
+
+    // -----------------------------------------------------------
+    // Schlüsselbildung im Renderpfad: Bezeichner mit Punkt
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Regressionstest: renderScopeSection() bildete den Settings-
+    * Schlüssel aus den ROHEN Bezeichnern von get_CatArray()/
+    * get_PageArray(), während Speicherpfad, Import und Frontend
+    * sanitieren. mo_rawurlencode() des Kerns lässt den Punkt
+    * unkodiert - für eine Kategorie wie "Dr.%20Meier" liefen beide
+    * Formen deshalb auseinander (gespeichert unter "config_cat_
+    * Dr%20Meier", gelesen als "config_cat_Dr.%20Meier"), und die
+    * Admin-Maske zeigte die vorhandene Konfiguration leer.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testKategorieMitPunktZeigtGespeicherteKonfiguration(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => 'false']);
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        global $CatPage;
+        $rawCat = 'Dr.%20Meier';
+        $CatPage = new FakeCatPageWithPages([$rawCat]);
+
+        // Der erwartete Schlüssel wird über sanitizeScopeIdentifier()
+        // gebildet statt als Literal hingeschrieben: geprüft wird das
+        // Zusammenspiel von Schreib- und Lesepfad, nicht die
+        // Sanitizing-Regel selbst.
+        $safeCat = $this->scopeResolver()->sanitizeScopeIdentifier($rawCat);
+        $settings = new \InMemorySettings();
+        $settings->set('config_cat_' . $safeCat, ['LocalBusiness' => ['name' => 'Kanzlei Dr Meier']]);
+
+        $html = $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+
+        $this->assertStringContainsString('Kanzlei Dr Meier', $html);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testSeiteMitPunktZeigtGespeicherteKonfiguration(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => 'false']);
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        global $CatPage;
+        $rawCat  = 'Kanzlei.Meier';
+        $rawPage = 'Dr.%20Meier';
+        $CatPage = new FakeCatPageWithPages([$rawCat], [$rawCat => [$rawPage]]);
+
+        $scopeResolver = $this->scopeResolver();
+        $safeCat  = $scopeResolver->sanitizeScopeIdentifier($rawCat);
+        $safePage = $scopeResolver->sanitizeScopeIdentifier($rawPage);
+        $settings = new \InMemorySettings();
+        $settings->set(
+            'config_page_' . $safeCat . '_' . $safePage,
+            ['Article' => ['headline' => 'Sprechstunde Dr Meier']]
+        );
+
+        $html = $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+
+        $this->assertStringContainsString('Sprechstunde Dr Meier', $html);
+    }
+
+    /***************************************************************
+    *
+    * Der Hinweis auf einen bereits vorhandenen JSON-LD-Block liest
+    * die Scope-Meta über denselben Schlüssel wie die Konfiguration.
+    * Der Seiteninhalt der Fixture trägt denselben Block, den die
+    * Vorbelegung beschreibt - damit lässt der Schreib-Guard in
+    * renderAdminPage() die vorbelegte Meta unangetastet und der Test
+    * prüft ausschließlich den Lesepfad.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testHinweisAufVorhandenesJsonLdErscheintFuerSeiteMitPunkt(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => 'false']);
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        global $CatPage;
+        $rawCat  = 'Kanzlei.Meier';
+        $rawPage = 'Dr.%20Meier';
+        $block   = '{"@context":"https://schema.org","@type":"Article"}';
+        $CatPage = new FakeCatPageWithPages(
+            [$rawCat],
+            [$rawCat => [$rawPage]],
+            [$rawCat => [$rawPage => '<script type="application/ld+json">' . $block . '</script>']]
+        );
+
+        $scopeResolver = $this->scopeResolver();
+        $safeCat  = $scopeResolver->sanitizeScopeIdentifier($rawCat);
+        $safePage = $scopeResolver->sanitizeScopeIdentifier($rawPage);
+        $settings = new \InMemorySettings();
+        $settings->set('config_page_' . $safeCat . '_' . $safePage, [
+            '_meta' => [
+                'existing_jsonld' => true,
+                'existing_jsonld_content' => $block,
+                'existing_jsonld_blocks' => [$block],
+            ],
+        ]);
+
+        $html = $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+
+        $this->assertStringContainsString(
+            $this->adminLang()->getLanguageHtml('notice_existing_jsonld_title_page'),
+            $html
+        );
+    }
+
+    /***************************************************************
+    *
+    * Positivkontrolle zu den drei Punkt-Tests oben: ein punktfreier
+    * Kategoriebezeichner, dessen sanitierte und rohe Form identisch
+    * sind, muss weiterhin seine gespeicherte Konfiguration zeigen.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testKategorieOhnePunktZeigtGespeicherteKonfiguration(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => 'false']);
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        global $CatPage;
+        $rawCat = 'ueber-uns';
+        $CatPage = new FakeCatPageWithPages([$rawCat]);
+
+        $safeCat = $this->scopeResolver()->sanitizeScopeIdentifier($rawCat);
+        $settings = new \InMemorySettings();
+        $settings->set('config_cat_' . $safeCat, ['LocalBusiness' => ['name' => 'Filiale Nord']]);
+
+        $html = $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+
+        $this->assertStringContainsString('Filiale Nord', $html);
+    }
 }
