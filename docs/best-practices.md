@@ -129,6 +129,7 @@ insbesondere nach:
   [Organisations-Identität](use-cases/organization-identity.md))
 - Änderungen am Layout-Template (`template.html`), die den
   `{schemaOrgData}`-Platzhalter betreffen könnten
+- Einfügen oder Entfernen eines fremden JSON-LD-Blocks im Inhalt einer Seite
 
 <a id="pflege-einplanen"></a>
 ## Pflege einplanen
@@ -143,7 +144,7 @@ Aktualisierung der jeweiligen Seite mitprüfen, statt sie als
 ## Migration von bestehendem JSON-LD
 
 Wird beim Umstieg auf das Plugin bereits vorhandenes JSON-LD im
-Layout-Template erkannt, empfiehlt sich die in
+Layout-Template oder im Inhalt einer Seite erkannt, empfiehlt sich die in
 [import.md](import.md) beschriebene Reihenfolge: zunächst importieren und
 im Formular prüfen, erst danach den alten Block entfernen und auf
 „Überschreiben" umstellen — nie beides gleichzeitig ohne Zwischenschritt.
