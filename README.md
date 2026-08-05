@@ -147,7 +147,7 @@ Stelle des Platzhalters:
 - Öffnungszeiten-Widget (inkl. optionalem zweitem Zeitraum je Wochentag, z. B. für Mittagspausen)
 - Generisches `PostalAddress`-Schema nach schema.org (international einsetzbar)
 - **Erweiterungsfeld** (JSON-Textarea) für zusätzliche Properties mit Live-Validierung
-- **Erkennung vorhandener JSON-LD-Blöcke** im Layout-Template, wahlweise Beibehalten oder Überschreiben — plus **Import-Button je erkanntem Block** zur direkten Übernahme ins Formular
+- **Erkennung vorhandener JSON-LD-Blöcke** im Layout-Template und im Seiteninhalt, wahlweise Beibehalten oder Überschreiben — plus **Import-Button je erkanntem Block** zur direkten Übernahme ins Formular
 - **Debug-Modus**: erzeugte JSON-LD-Blöcke im Frontend als Pop-up anzeigen (zum Abgleich mit validator.schema.org, siehe [Erste Konfiguration](#erste-konfiguration))
 - Mehrsprachige Admin-Oberfläche und Frontend-Ausgabe (initial Deutsch und Englisch)
 
@@ -345,12 +345,14 @@ vorhandenen Person oder als Neuanlage samt Organisations-Relation.
 ### Vorhandenes JSON-LD und Import
 
 Erkennt das Plugin beim Öffnen der Plugin-Verwaltung ein bereits vorhandenes
-`<script type="application/ld+json">` im Layout-Template, wird dem Benutzer
-im Admin-Bereich ein Hinweis angezeigt. Ein Block im Layout gilt layoutweit
-und wird deshalb dem Global-Scope zugeordnet; der Inhalt einzelner Seiten
-wird nicht geprüft. Der Nutzer wählt dann, ob das Plugin diesen Block
-**beibehält** (kein eigenes JSON-LD) oder ihn per eigener Konfiguration
-**überschreibt** — ein automatischer Merge findet nicht statt.
+`<script type="application/ld+json">`, wird dem Benutzer im Admin-Bereich ein
+Hinweis angezeigt. Geprüft werden zwei Quellen: das Layout-Template und der
+Inhalt jeder einzelnen Seite. Ein Block im Layout gilt layoutweit und wird
+deshalb dem Global-Scope zugeordnet, ein Block im Seiteninhalt der jeweiligen
+Seite. Für Kategorien gibt es keine eigene Quelle und deshalb keinen eigenen
+Hinweis. Der Nutzer wählt dann, ob das Plugin diesen Block **beibehält**
+(kein eigenes JSON-LD) oder ihn per eigener Konfiguration **überschreibt** —
+ein automatischer Merge findet nicht statt.
 
 Für jeden erkannten Block zeigt das Plugin eine eigene Vorschau samt
 **Import-Button** — ein Klick übernimmt genau diesen Block direkt ins

@@ -80,7 +80,8 @@ Frontend-Kontext ist `Properties::set()` ein No-Op auf Dateiebene — ein
 `set()`-Aufruf dort wirkt nur virtuell für die laufende Anfrage, ohne die
 Datei zu verändern. Das Plugin nutzt im Frontend deshalb keinen
 Schreibpfad: `SchemaOrgData_FrontendRenderer::renderFrontend()` wertet die
-Kollisionserkennung des Layout-Templates live aus, statt sie zu speichern.
+Kollisionserkennung von Layout-Template und Seiteninhalt live aus, statt sie
+zu speichern.
 Geschrieben wird sie ausschließlich beim Aufbau der
 Plugin-Verwaltungsseite (`SchemaOrgData_AdminController::renderAdminPage()`,
 mit Schreib-Guard gegen unnötige Schreibvorgänge).
@@ -218,8 +219,8 @@ Details zur Deklaration in [schema-extending.md](schema-extending.md).
 array` löscht den gesamten Settings-Key einer Ebene — damit entfallen
 sowohl die Type-Konfiguration als auch `_meta`. Für den Global-Scope wird
 die Kollisionserkennung beim nächsten Aufbau der Plugin-Verwaltungsseite
-neu ermittelt; auf Kategorie- und Seitenebene entfällt sie ersatzlos, weil
-sie dort nicht erhoben wird. Ausgelöst über die
+neu ermittelt, auf Seitenebene ebenso; auf Kategorieebene entfällt sie
+ersatzlos, weil sie dort nicht erhoben wird. Ausgelöst über die
 Formular-Checkbox `schemaOrgData_delete_<scope>`
 (`SchemaOrgData_AdminRequestHandler::handlePostRequest()`).
 
