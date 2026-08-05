@@ -28,10 +28,11 @@ class SchemaOrgData_CollisionDetector {
     * Extrahiert alle JSON-LD-Blöcke aus einem HTML-String und gibt
     * deren innere JSON-Texte zurück (ohne <script>-Tags).
     *
-    * Gemeinsame Hilfsfunktion beider Extraktionswege
+    * Gemeinsame Hilfsfunktion aller Extraktionswege
     * (extractExistingJsonLdBlocksFromTemplate() für das im Frontend
     * aktiv geladene Template, extractExistingJsonLdBlocksFromTemplateAdmin()
-    * für die Layout-Templates im Admin) sowie für die Inhaltsspeicherung
+    * für die Layout-Templates im Admin, extractExistingJsonLdBlocksFromPage()
+    * für den Seiteninhalt) sowie für die Inhaltsspeicherung
     * (existing_jsonld_content, siehe loadScopeMeta()/saveScopeMeta()).
     * Kein Absturz bei malformed HTML — preg_match_all gibt im
     * Fehlerfall false zurück, was als leeres Array behandelt wird.
@@ -133,6 +134,50 @@ class SchemaOrgData_CollisionDetector {
         }
 
         return $allBlocks;
+    }
+
+    /***************************************************************
+    *
+    * Liest den Rohinhalt einer Inhaltsseite über den moziloCMS-Kern
+    * und gibt alle darin enthaltenen JSON-LD-Blöcke zurück.
+    *
+    * Es wird bewusst kein Pfad gebildet: CatPageClass::get_PageContent()
+    * nimmt genau die Schlüssel entgegen, die get_CatArray()/get_PageArray()
+    * liefern, und schlägt sie intern im CatPageArray nach - die verarbeitete
+    * Menge ist damit die Verzeichnisaufzählung selbst und wirkt als
+    * Whitelist gegen Path-Traversal. Endungs- und Pfadbildung übernimmt
+    * der Kern.
+    *
+    * $cat und $page sind in der Schlüsselform des Kerns zu übergeben,
+    * nicht sanitiert - sanitizeScopeIdentifier() entfernt unter anderem
+    * den Punkt, den die URL-Kodierung des Kerns stehen lässt, und ein so
+    * bereinigter Bezeichner würde im CatPageArray nicht gefunden.
+    *
+    * Fail-safe: Fehlt das Kernobjekt, die Methode oder ein Bezeichner,
+    * ist das Ergebnis ein leeres Array. get_PageContent() liefert für
+    * geschützte Seiten und Link-Typen false statt eines Strings; auch
+    * das ergibt ein leeres Array.
+    *
+    * @param mixed $catPage moziloCMS-CatPage-Objekt (entspricht $CatPage),
+    *                       bewusst kein Type-Hint - kompatibel zu realem
+    *                       Objekt und Test-Fixture
+    * @param string $cat Kategorie in Kernschlüsselform
+    * @param string $page Seite in Kernschlüsselform
+    * @return string[] innere JSON-Texte aller gefundenen Blöcke (leer = keiner)
+    *
+    ***************************************************************/
+    public function extractExistingJsonLdBlocksFromPage($catPage, string $cat, string $page): array {
+        if (!isset($catPage) || !is_object($catPage)
+            || !method_exists($catPage, 'get_PageContent')) {
+            return [];
+        }
+        if ($cat === '' || $page === '') {
+            return [];
+        }
+
+        $content = $catPage->get_PageContent($cat, $page);
+
+        return is_string($content) ? $this->extractExistingJsonLdBlocks($content) : [];
     }
 
     /***************************************************************

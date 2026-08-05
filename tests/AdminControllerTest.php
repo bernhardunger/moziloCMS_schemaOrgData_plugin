@@ -47,7 +47,7 @@ final class AdminControllerTest extends TestCase {
     * referenziert; in
     * #[RunInSeparateProcess]-isolierten Prozessen (siehe
     * testFailedCategorySaveWithSpecialCharsRetainsPostValuesInActiveSection(),
-    * testTemplateJsonLdIsPersistedOnlyForGlobalScope()) greift dort nur
+    * testTemplateJsonLdWirdNurDemGlobalScopeZugeordnet()) greift dort nur
     * der Composer-Autoloader, der die Klasse mangels PSR-4-Konformität
     * nicht findet - deshalb hier bei Bedarf explizit nachladen.
     *
@@ -848,7 +848,7 @@ final class AdminControllerTest extends TestCase {
     ***************************************************************/
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
-    function testTemplateJsonLdIsPersistedOnlyForGlobalScope(): void {
+    function testTemplateJsonLdWirdNurDemGlobalScopeZugeordnet(): void {
         define('ADMIN_DIR_NAME', 'admin');
         define('PLUGINADMIN', 'schemaOrgData');
         define('ACTION', 'plugin_admin');
@@ -869,7 +869,12 @@ final class AdminControllerTest extends TestCase {
 
         global $CatPage;
         $cat = 'unterseite';
-        $CatPage = new FakeCatPageWithPages([$cat]);
+        $page = 'ohne-block';
+        $CatPage = new FakeCatPageWithPages(
+            [$cat],
+            [$cat => [$page]],
+            [$cat => [$page => '<p>Fließtext ohne JSON-LD.</p>']]
+        );
 
         $settings = new \InMemorySettings();
         $_POST['schemaOrgData_cat'] = $cat;
@@ -886,6 +891,176 @@ final class AdminControllerTest extends TestCase {
 
         $this->assertTrue($globalMeta['existing_jsonld']);
         $this->assertFalse($categoryMeta['existing_jsonld']);
+        // Der Layout-Treffer darf auch nicht in den Seiten-Scope
+        // durchschlagen: Die Seite trägt selbst keinen Block, also
+        // entsteht für sie überhaupt kein Settings-Schlüssel.
+        $this->assertFalse($settings->keyExists('config_page_' . $cat . '_' . $page));
+    }
+
+    /***************************************************************
+    *
+    * Ein Block im Seiteninhalt gilt für genau diese Seite und wird
+    * deshalb dem Seiten-Scope zugeordnet.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testSeiteninhaltJsonLdWirdDemSeitenScopeZugeordnet(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => 'false']);
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        global $CatPage;
+        $cat  = 'aktuelles';
+        $page = 'mit-block';
+        $json = '{"@context":"https://schema.org","@type":"Article"}';
+        $CatPage = new FakeCatPageWithPages(
+            [$cat],
+            [$cat => [$page]],
+            [$cat => [$page => '<p>Text</p><script type="application/ld+json">'.$json.'</script>']]
+        );
+
+        $settings = new \InMemorySettings();
+
+        $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+
+        $pageMeta = $this->scopeResolver()->loadScopeMeta($settings, 'page', $cat, $page);
+
+        $this->assertTrue($pageMeta['existing_jsonld']);
+        $this->assertSame([$json], $pageMeta['existing_jsonld_blocks']);
+        $this->assertSame($json, $pageMeta['existing_jsonld_content']);
+    }
+
+    /***************************************************************
+    *
+    * Schreib-Guard: Für eine Seite ohne Block entsteht überhaupt kein
+    * Scope-Schlüssel - sonst legte jeder Admin-Load für jede Seite
+    * einen config_page_*-Eintrag mit _meta-Block an. Geprüft wird
+    * bewusst auf keyExists() statt auf existing_jsonld === false:
+    * loadScopeMeta() liefert für einen fehlenden Schlüssel ohnehin
+    * Defaults, der Test wäre sonst aus dem falschen Grund grün.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testSeiteOhneBlockErhaeltKeinenScopeSchluessel(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => 'false']);
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        global $CatPage;
+        $cat  = 'aktuelles';
+        $page = 'ohne-block';
+        $CatPage = new FakeCatPageWithPages(
+            [$cat],
+            [$cat => [$page]],
+            [$cat => [$page => '<p>Fließtext ohne JSON-LD.</p>']]
+        );
+
+        $settings = new \InMemorySettings();
+
+        $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+
+        $this->assertFalse($settings->keyExists('config_page_' . $cat . '_' . $page));
+    }
+
+    /***************************************************************
+    *
+    * Geschützte Seiten und Link-Typen liefern im Kern false statt
+    * eines Strings (in der Fixture: kein Eintrag in $contents). Das
+    * darf weder einen Fehler auslösen noch einen Scope-Schlüssel
+    * erzeugen.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testGeschuetzteSeiteErzeugtKeinenScopeSchluessel(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => 'false']);
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        global $CatPage;
+        $cat  = 'intern';
+        $page = 'geschuetzt';
+        $CatPage = new FakeCatPageWithPages([$cat], [$cat => [$page]]);
+
+        $settings = new \InMemorySettings();
+
+        $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+
+        $this->assertFalse($settings->keyExists('config_page_' . $cat . '_' . $page));
+    }
+
+    /***************************************************************
+    *
+    * Der Admin rendert alle Seiten aller Kategorien vor. Die
+    * Vorschau-Dialog-IDs müssen deshalb je Seite verschieden sein -
+    * eine rein scope-basierte ID käme mehrfach im Dokument vor und der
+    * Öffner träfe die erste, typischerweise ausgeblendete Sektion.
+    *
+    ***************************************************************/
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    function testDialogIdsZweierSeitenMitBlockSindVerschieden(): void {
+        define('ADMIN_DIR_NAME', 'admin');
+        define('PLUGINADMIN', 'schemaOrgData');
+        define('ACTION', 'plugin_admin');
+        define('EXT_PAGE', '.txt.php');
+        define('EXT_HIDDEN', '.hid.php');
+
+        $GLOBALS['CMS_CONF'] = new \MockConf(['cmslanguage' => 'de', 'cmslayout' => 'false']);
+        $GLOBALS['TEMPLATE_FILE'] = '';
+
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        global $CatPage;
+        $cat = 'aktuelles';
+        $block = '<script type="application/ld+json">{"@type":"Article"}</script>';
+        $CatPage = new FakeCatPageWithPages(
+            [$cat],
+            [$cat => ['erste', 'zweite']],
+            [$cat => ['erste' => $block, 'zweite' => $block]]
+        );
+
+        $settings = new \InMemorySettings();
+
+        $html = $this->callRenderAdminPage($settings);
+
+        unset($CatPage);
+
+        // Gezählt wird das id-Attribut, nicht der bloße Bezeichner: Der
+        // Wert steht zusätzlich am Öffner (data-dialog) und am
+        // Schließen-Button (data-dialog-close), als DOM-ID darf er aber
+        // genau einmal vorkommen.
+        $this->assertSame(1, substr_count($html, 'id="schemaOrgData-preview-dialog-page_' . $cat . '_erste-0"'));
+        $this->assertSame(1, substr_count($html, 'id="schemaOrgData-preview-dialog-page_' . $cat . '_zweite-0"'));
     }
 
     /***************************************************************

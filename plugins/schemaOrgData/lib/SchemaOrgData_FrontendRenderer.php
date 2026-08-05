@@ -105,6 +105,19 @@ class SchemaOrgData_FrontendRenderer {
             $context->collisionDetector->extractExistingJsonLdBlocksFromTemplate((string) ($TEMPLATE_FILE ?? ''))));
         $hasJsonLdInTemplate = !empty($templateBlocks);
 
+        // Seiteninhalts-Kollisionserkennung, symmetrisch zum Layout-Scan:
+        // Der Seiten-Scope entscheidet gegen den Live-Zustand seines
+        // Inhalts, damit eine entfernte Fremdeinbindung sofort wirkt statt
+        // erst beim nächsten Öffnen der Plugin-Verwaltung.
+        // CAT_REQUEST/PAGE_REQUEST gehen roh in die Erkennung - der Kern
+        // schlägt sie im CatPageArray nach. Die sanitierten $cat/$page oben
+        // dienen ausschließlich der Bildung des Settings-Schlüssels.
+        $hasJsonLdInPageContent = $context->collisionDetector->extractExistingJsonLdBlocksFromPage(
+            $GLOBALS['CatPage'] ?? null,
+            (defined('CAT_REQUEST') and CAT_REQUEST) ? (string) CAT_REQUEST : '',
+            (defined('PAGE_REQUEST') and PAGE_REQUEST) ? (string) PAGE_REQUEST : ''
+        ) !== [];
+
         // jsonld_mode prüfen: wurde bereits vorhandenes JSON-LD erkannt
         // und für diese Ebene "Vorhandenes beibehalten" gewählt (Standard,
         // solange der Admin keine Wahl getroffen hat), wird die eigene
@@ -123,24 +136,20 @@ class SchemaOrgData_FrontendRenderer {
 
             $meta = $context->scopeResolver->loadScopeMeta($context->settings, $scope, ...$scopeArgs);
 
-            // Nur der Global-Scope entscheidet gegen das Live-Ergebnis: Sein
-            // Signal ist der Layout-Treffer, der hier unmittelbar vorliegt und
-            // sich damit nicht von einer Layout-Änderung überholen lässt.
-            // Kategorie und Seite bleiben beim gespeicherten Erkennungsflag —
-            // ihr Signal stammt aus dem Seiteninhalt, den das Frontend nicht in
-            // der Hand hat: Der Platzhalter-Parameter $value trägt den
-            // Seiteninhalt nicht, er ist für den parameterlosen
-            // {schemaOrgData} der Leerstring. Die Nutzerentscheidung
-            // jsonld_mode kommt auf allen drei Ebenen aus dem gespeicherten
-            // Meta (siehe loadScopeMeta()). Für Kategorie und Seite
-            // schreibt dieses Erkennungsflag kein Pfad: Der Admin-Scan
-            // erfasst allein das Layout-Template und damit nur den
-            // Global-Scope, das Frontend schreibt gar nicht. Der Zweig
-            // wertet dort also einen Bestand aus, der auf regulärem Weg
-            // nicht entsteht; er bleibt erhalten, weil der Admin-Hinweis
-            // bei gesetztem Flag die Modus-Auswahl einblendet, über die
-            // sich die Unterdrückung abschalten lässt.
-            $hasExistingJsonLd = $scope === 'global' ? $hasJsonLdInTemplate : $meta['existing_jsonld'];
+            // Die Nutzerentscheidung jsonld_mode kommt auf allen drei Ebenen
+            // unabhängig von der Erkennung aus dem gespeicherten
+            // Meta (siehe loadScopeMeta()). Global und Seite entscheiden
+            // gegen den Live-Zustand ihrer jeweiligen Quelle - Layout-Datei
+            // beziehungsweise Seiteninhalt. Die Kategorie hat keine eigene
+            // Quelle und bleibt beim gespeicherten Flag; dort entsteht auf
+            // regulärem Weg kein gesetzter Bestand, der Zweig bleibt als
+            // Absicherung für von Hand bearbeitete Bestände und ist über die
+            // Modus-Auswahl abschaltbar.
+            $hasExistingJsonLd = match($scope) {
+                'global' => $hasJsonLdInTemplate,
+                'page'   => $hasJsonLdInPageContent,
+                default  => $meta['existing_jsonld'],
+            };
 
             if($hasExistingJsonLd and ($meta['jsonld_mode'] ?? 'override') === 'keep') {
                 if($scope === 'global') {
