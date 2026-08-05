@@ -309,6 +309,88 @@ final class CollisionDetectorTest extends TestCase {
     }
 
     // ---------------------------------------------------------------------------
+    // Tests für extractExistingJsonLdBlocksFromPage()
+    // ---------------------------------------------------------------------------
+
+    private function ensureFakeCatPageWithPagesLoaded(): void {
+        if (!class_exists(FakeCatPageWithPages::class)) {
+            require_once __DIR__ . '/Fixtures/FakeCatPageWithPages.php';
+        }
+    }
+
+    function testComponentExtractFromPageReturnsInnerJsonTextOfBlockInPageContent(): void {
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        $json = '{"@context":"https://schema.org","@type":"Article"}';
+        $catPage = new FakeCatPageWithPages(
+            ['kategorie'],
+            ['kategorie' => ['seite']],
+            ['kategorie' => ['seite' => '<p>Text</p><script type="application/ld+json">'.$json.'</script>']]
+        );
+
+        $blocks = (new \SchemaOrgData_CollisionDetector())
+            ->extractExistingJsonLdBlocksFromPage($catPage, 'kategorie', 'seite');
+
+        $this->assertCount(1, $blocks);
+        $this->assertSame($json, $blocks[0]);
+    }
+
+    function testComponentExtractFromPageReturnsEmptyArrayForPageContentWithoutBlock(): void {
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        $catPage = new FakeCatPageWithPages(
+            ['kategorie'],
+            ['kategorie' => ['seite']],
+            ['kategorie' => ['seite' => '<p>Nur Fließtext ohne JSON-LD.</p>']]
+        );
+
+        $this->assertSame([], (new \SchemaOrgData_CollisionDetector())
+            ->extractExistingJsonLdBlocksFromPage($catPage, 'kategorie', 'seite'));
+    }
+
+    function testComponentExtractFromPageReturnsEmptyArrayWhenCoreReturnsFalse(): void {
+        $this->ensureFakeCatPageWithPagesLoaded();
+
+        // Geschützte Seiten und Link-Typen liefern im Kern false statt
+        // eines Strings - die Fixture bildet das über den fehlenden
+        // $contents-Eintrag ab. Ohne den is_string()-Guard wäre das ein
+        // TypeError in extractExistingJsonLdBlocks().
+        $catPage = new FakeCatPageWithPages(['kategorie'], ['kategorie' => ['geschuetzt']]);
+
+        $this->assertSame([], (new \SchemaOrgData_CollisionDetector())
+            ->extractExistingJsonLdBlocksFromPage($catPage, 'kategorie', 'geschuetzt'));
+    }
+
+    function testComponentExtractFromPageReturnsEmptyArrayWithoutUsableCatPageObject(): void {
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromPage(null, 'kategorie', 'seite'));
+
+        $withoutMethod = new class {
+            function get_CatArray(): array { return []; }
+        };
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromPage($withoutMethod, 'kategorie', 'seite'));
+    }
+
+    function testComponentExtractFromPageReturnsEmptyArrayForEmptyIdentifiersWithoutCoreCall(): void {
+        // Zählt die Kernaufrufe mit: Bei leerem Bezeichner greift der Guard
+        // vor dem Zugriff, get_PageContent() wird gar nicht erst gerufen.
+        $catPage = new class {
+            public int $calls = 0;
+            function get_PageContent(string $cat, string $page) {
+                $this->calls++;
+                return '<script type="application/ld+json">{"@type":"Article"}</script>';
+            }
+        };
+
+        $detector = new \SchemaOrgData_CollisionDetector();
+
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromPage($catPage, '', 'seite'));
+        $this->assertSame([], $detector->extractExistingJsonLdBlocksFromPage($catPage, 'kategorie', ''));
+        $this->assertSame(0, $catPage->calls);
+    }
+
+    // ---------------------------------------------------------------------------
     // Tests für detectPluginPlaceholderInTemplateAdmin()
     //
     // Rückgabewert keine bool, sondern eine der

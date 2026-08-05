@@ -178,7 +178,7 @@ class SchemaOrgData_AdminController {
 
         $html .= $adminPageRenderer->renderInfoBlock($scope, $lang);
 
-        $html .= $adminPageRenderer->renderExistingJsonLdNotice($scope, $cat, $page, $lang, $scopeResolver, $settings);
+        $html .= $adminPageRenderer->renderExistingJsonLdNotice($scope, $cat, $page, $lang, $scopeResolver, $settings, $idPrefix);
 
         if ($selectedType !== null) {
             $html .= $adminPageRenderer->renderCollisionNotice($scope, $cat, $page, $selectedType, $lang, $scopeResolver, $settings);
@@ -688,6 +688,41 @@ class SchemaOrgData_AdminController {
                 foreach ($pages as $page) {
                     $safePage   = $scopeResolver->sanitizeScopeIdentifier($page);
                     $pageActive = ($safeCat === $selectedCat && $safePage === $selectedPage);
+
+                    // Seiteninhalts-Kollisionserkennung: Ein Block im
+                    // Seiteninhalt gilt für genau diese Seite und wird
+                    // deshalb dem Seiten-Scope zugeordnet - anders als der
+                    // layoutweit gültige Template-Treffer oben.
+                    // Gelesen wird mit dem rohen Bezeichner (der Kern
+                    // schlägt ihn im CatPageArray nach), geschrieben mit dem
+                    // sanitierten: So bildet jeder andere Schreib- und
+                    // Lesepfad den Settings-Schlüssel, ein roher Schlüssel
+                    // hier bliebe ungelesen.
+                    // Reihenfolge wie im Global-Pfad: erst schreiben, dann
+                    // rendern, damit renderExistingJsonLdNotice() das frisch
+                    // gesetzte Flag sieht.
+                    $pageBlocks = array_values(array_map('trim',
+                        $collisionDetector->extractExistingJsonLdBlocksFromPage($CatPage, $cat, $page)));
+                    $pageHasJsonLd = !empty($pageBlocks);
+                    $pageJsonLdContent = implode("\n\n", $pageBlocks);
+
+                    // Schreib-Guard wie im Global-Pfad, hier zusätzlich mit
+                    // Gewicht: Ohne ihn entstünde bei jedem Admin-Load für
+                    // jede Seite ein config_page_*-Schlüssel mit _meta-Block.
+                    // Mit Guard entsteht er nur für Seiten, die tatsächlich
+                    // einen Block tragen.
+                    $metaPage = $scopeResolver->loadScopeMeta($settings, 'page', $safeCat, $safePage);
+                    if (
+                        $metaPage['existing_jsonld'] !== $pageHasJsonLd
+                        || $metaPage['existing_jsonld_content'] !== $pageJsonLdContent
+                        || $metaPage['existing_jsonld_blocks'] !== $pageBlocks
+                    ) {
+                        $scopeResolver->saveScopeMeta($settings, 'page', [
+                            'existing_jsonld' => $pageHasJsonLd,
+                            'existing_jsonld_content' => $pageJsonLdContent,
+                            'existing_jsonld_blocks' => $pageBlocks,
+                        ], $safeCat, $safePage);
+                    }
                     $html .= $this->renderScopeSection(
                         'page',
                         $cat,

@@ -322,9 +322,11 @@ class SchemaOrgData_AdminPageRenderer {
         ?string $page,
         Language $lang,
         SchemaOrgData_ScopeResolver $scopeResolver,
-        $settings
+        $settings,
+        ?string $idPrefix = null
     ): string {
         $meta = $scopeResolver->loadScopeMeta($settings, $scope, $cat, $page);
+        $idPrefix = $idPrefix ?? $scope;
 
         if(!$meta['existing_jsonld']) {
             return '';
@@ -333,10 +335,18 @@ class SchemaOrgData_AdminPageRenderer {
         $fieldName = 'schemaOrgData_jsonld_mode_'.$scope;
         $options = ['keep' => 'option_keep_existing_jsonld', 'override' => 'option_override_existing_jsonld'];
 
-        // Im Global-Scope stammt ein erkannter Block aus dem Layout-Template,
-        // nicht "von dieser Seite" - eigener Titel-Schlüssel analog zu
-        // renderInfoBlock() (siehe README.md, "Vorhandenes JSON-LD und Import").
-        $titleKey = ($scope === 'global') ? 'notice_existing_jsonld_title_global' : 'notice_existing_jsonld_title';
+        // Je Geltungsbereich eine eigene Herkunft: Global meldet den
+        // layoutweit gültigen Template-Treffer, die Seite den Treffer im
+        // eigenen Inhalt. Der generische Schlüssel trägt den Kategorie-Scope,
+        // in dem konstruktionsbedingt kein Erkennungssignal entsteht - er
+        // bleibt als Absicherung für von Hand bearbeitete oder migrierte
+        // Bestände und verhindert, dass ein fehlender Schlüssel als roher
+        // Schlüsselname in der Oberfläche erscheint.
+        $titleKey = match($scope) {
+            'global' => 'notice_existing_jsonld_title_global',
+            'page'   => 'notice_existing_jsonld_title_page',
+            default  => 'notice_existing_jsonld_title',
+        };
 
         $html  = '<div class="schemaOrgData-jsonld-notice">'."\n";
         $html .= '<p class="schemaOrgData-jsonld-notice__title"><strong>'.$lang->getLanguageHtml($titleKey).'</strong></p>'."\n";
@@ -381,7 +391,11 @@ class SchemaOrgData_AdminPageRenderer {
                     : $rawContent;
                 $escapedPretty = htmlspecialchars($prettyContent, ENT_QUOTES, CHARSET);
 
-                $dialogId = 'schemaOrgData-preview-dialog-'.$scope.'-'.$i;
+                // $idPrefix statt $scope: Der Admin rendert alle Seiten aller
+                // Kategorien vor, eine rein scope-basierte ID käme mehrfach im
+                // Dokument vor und der Öffner träfe die erste - typischerweise
+                // in einer ausgeblendeten Sektion.
+                $dialogId = 'schemaOrgData-preview-dialog-'.$idPrefix.'-'.$i;
 
                 if($blockCount > 1) {
                     $html .= '<p class="schemaOrgData-jsonld-block-heading"><strong>'

@@ -1,6 +1,6 @@
 # schemaOrgData — moziloCMS Plugin
 
-![Version](https://img.shields.io/badge/version-0.11.44--beta-blue)
+![Version](https://img.shields.io/badge/version-0.11.45--beta-blue)
 ![PHP](https://img.shields.io/badge/PHP-8.1%2B-777bb4)
 ![moziloCMS](https://img.shields.io/badge/moziloCMS-3.0.4%2B-orange)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green)](https://www.gnu.org/licenses/gpl-3.0)

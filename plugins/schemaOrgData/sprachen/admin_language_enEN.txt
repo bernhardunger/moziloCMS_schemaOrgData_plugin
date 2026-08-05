@@ -177,7 +177,8 @@ notice_value_dropped = Field "{PARAM1}": The value was not saved.
 notice_extension_property_dropped = Field "{PARAM1}": The entry from the extension field was not applied - this property is handled by the form.
 error_config_write_failed = The configuration file could not be written. Please check write permissions on the conf/ directory.
 
-notice_existing_jsonld_title = A JSON-LD block was already found on this page.
+notice_existing_jsonld_title = A JSON-LD block was already found for this scope.
+notice_existing_jsonld_title_page = A JSON-LD block was already found in the content of this page.
 notice_existing_jsonld_title_global = A JSON-LD block was already found in the layout template.
 notice_existing_jsonld_text = Please choose how the plugin should proceed.
 notice_existing_jsonld_template = A JSON-LD block was found in the website template. To switch to the plugin configuration, the block must be removed manually from template.html. No automatic merge will be performed.
