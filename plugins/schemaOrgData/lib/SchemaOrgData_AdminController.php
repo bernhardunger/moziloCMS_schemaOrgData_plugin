@@ -97,7 +97,21 @@ class SchemaOrgData_AdminController {
         $personSuggestionService = $context->personSuggestionService;
 
         $idPrefix = $idPrefix ?? $scope;
-        $config = $scopeResolver->loadScopeConfig($settings, $scope, $cat, $page);
+
+        // Settings-Schlüssel ausschließlich aus sanitierten Bezeichnern
+        // bilden. $cat/$page kommen roh aus get_CatArray()/get_PageArray();
+        // Speicherpfad, Import und Frontend sanitieren dagegen bereits.
+        // mo_rawurlencode() des Kerns lässt den Punkt unkodiert, ein
+        // Bezeichner wie "Dr.%20Meier" erreicht die Schlüsselbildung also
+        // mit Punkt - ohne Sanitizing entstünde hier ein anderer Schlüssel
+        // als beim Speichern, und die Sektion bliebe leer.
+        // Roh bleiben die Bezeichner überall dort, wo nicht der Schlüssel,
+        // sondern der Name gemeint ist: Anzeige, data-scope-*-Attribute und
+        // der Seiteninhalts-Zugriff über den Kern.
+        $keyCat  = $cat !== null ? $scopeResolver->sanitizeScopeIdentifier($cat) : null;
+        $keyPage = $page !== null ? $scopeResolver->sanitizeScopeIdentifier($page) : null;
+
+        $config = $scopeResolver->loadScopeConfig($settings, $scope, $keyCat, $keyPage);
 
         // Bei fehlgeschlagenem Speichern: die aktive Sektion mit den
         // POST-Daten statt mit dem gespeicherten Konfigurations-Stand
@@ -178,10 +192,10 @@ class SchemaOrgData_AdminController {
 
         $html .= $adminPageRenderer->renderInfoBlock($scope, $lang);
 
-        $html .= $adminPageRenderer->renderExistingJsonLdNotice($scope, $cat, $page, $lang, $scopeResolver, $settings, $idPrefix);
+        $html .= $adminPageRenderer->renderExistingJsonLdNotice($scope, $keyCat, $keyPage, $lang, $scopeResolver, $settings, $idPrefix);
 
         if ($selectedType !== null) {
-            $html .= $adminPageRenderer->renderCollisionNotice($scope, $cat, $page, $selectedType, $lang, $scopeResolver, $settings);
+            $html .= $adminPageRenderer->renderCollisionNotice($scope, $keyCat, $keyPage, $selectedType, $lang, $scopeResolver, $settings);
         }
 
         $html .= '<div class="c-content schemaOrgData-field-row schemaOrgData-type-selector-row">'
@@ -235,7 +249,7 @@ class SchemaOrgData_AdminController {
             }
 
             $typeIdPrefix = $idPrefix . '_' . $type;
-            $inheritable = $configSaveService->resolveInheritableFields($scope, $cat, $page, $type, $lang, $scopeResolver, $settings, $adminPageRenderer);
+            $inheritable = $configSaveService->resolveInheritableFields($scope, $keyCat, $keyPage, $type, $lang, $scopeResolver, $settings, $adminPageRenderer);
 
             $html .= '<div class="schemaOrgData-type-fields" data-schema-type="' . htmlspecialchars($type, ENT_QUOTES, CHARSET) . '"' . $display . '>' . "\n";
             $html .= $formRenderer->renderTypeFields(

@@ -56,11 +56,22 @@ Jeder Bezeichner läuft vor Verwendung durch
 `preg_replace('/[^a-zA-Z0-9_\-%]/', '', $value)`. Erlaubt bleiben
 Buchstaben, Ziffern, Bindestrich, Unterstrich sowie `%` (moziloCMS
 URL-kodiert Bezeichner mit Sonderzeichen); Path-Traversal-Zeichen
-(`.`, `/`, `\`, NUL) werden entfernt. Das schützt sowohl vor
-Path-Traversal in Settings-Keys als auch — da Lese- (`renderFrontend()`)
-und Schreibpfad (`renderAdminPage()`/`saveConfig()`) identisch sanitieren
-— vor einem Auseinanderlaufen von Lese- und Schreib-Key für dieselbe
-Kategorie/Seite.
+(`.`, `/`, `\`, NUL) werden entfernt.
+
+Das schützt vor Path-Traversal in Settings-Keys und hält zugleich Lese-
+und Schreib-Key für dieselbe Kategorie/Seite zusammen: **Jeder Pfad, der
+einen Settings-Key bildet, sanitiert** — der Frontend-Lesepfad
+(`renderFrontend()`), der Speicherpfad (`renderAdminPage()`/`saveConfig()`),
+der Import (`handleImportAction()`) und die Sektionsanzeige im Admin
+(`renderScopeSection()`). Das ist nicht redundant, sondern notwendig:
+`mo_rawurlencode()` lässt den Punkt unkodiert, ein Bezeichner wie
+`Dr.%20Meier` erreicht die Schlüsselbildung also mit Punkt, und
+`sanitizeScopeIdentifier()` entfernt ihn. Sanitierte nur ein Teil der
+Pfade, entstünden für eine solche Kategorie zwei verschiedene Schlüssel.
+Die **rohen** Bezeichner bleiben dort in Gebrauch, wo nicht der Schlüssel,
+sondern der Name gemeint ist: in der Anzeige (`buildScopeLabel()`), in den
+`data-scope-*`-Attributen und beim Lesen des Seiteninhalts über den Kern
+(`get_PageContent()`), der seine eigene Schlüsselform erwartet.
 
 ## Physischer Speicherort: `plugin.conf.php`
 

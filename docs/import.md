@@ -96,8 +96,8 @@ Meta-Daten aus einer Version vor dem serverseitigen Pro-Block-Import
 Schreib-Guard verhindert unnötige Schreibvorgänge: `saveScopeMeta()` wird
 nur aufgerufen, wenn sich Flag, Inhalt oder Blockliste seit dem letzten
 Laden geändert haben — sonst würde jeder Admin-Seitenaufruf ein
-`file_put_contents()` auf `plugin.conf.php` auslösen. Auf Seitenebene trägt
-derselbe Guard zusätzlich, dass für Seiten ohne Block gar kein
+`file_put_contents()` auf `plugin.conf.php` auslösen. Auf Seitenebene sorgt
+derselbe Guard zusätzlich dafür, dass für Seiten ohne Block gar kein
 Settings-Schlüssel entsteht.
 
 ### `keep`/`override` und die Wirkung auf die eigene Ausgabe
