@@ -93,7 +93,7 @@ class Properties {
 /***************************************************************
 *
 * In-Memory-Ersatz für $this->settings (moziloCMS-Properties-API)
-* in Tests, die saveConfig()/deleteConfig() o. ä. isoliert von der
+* in Tests, die saveConfig() o. ä. isoliert von der
 * echten plugin.conf.php ausführen wollen (siehe PersistenceTest,
 * JsonLdOutputTest).
 *

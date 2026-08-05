@@ -138,20 +138,6 @@ final class AdminRequestHandlerTest extends TestCase {
         $this->assertTrue($settings->keyExists('config_global'));
     }
 
-    function testHandlePostRequestLoeschtBeiDeleteFlag(): void {
-        $settings = new \InMemorySettings();
-        $settings->set('config_global', ['LocalBusiness' => ['name' => 'Muster GmbH']]);
-        $_POST['schemaOrgData'] = ['global' => []];
-        $_POST['schemaOrgData_delete_global'] = '1';
-        $_POST['schemaOrgData_cat'] = '';
-        $_POST['schemaOrgData_page'] = '';
-
-        $result = $this->callHandlePostRequest($settings);
-
-        $this->assertTrue($result['success']);
-        $this->assertFalse($settings->keyExists('config_global'));
-    }
-
     /***************************************************************
     *
     * Manipulierter POST: skalarer Scope-Wert statt Array. Der

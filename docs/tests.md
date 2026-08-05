@@ -129,7 +129,7 @@ getestet werden können:
   auch das reale `plugin.conf.php`-Format ab (siehe
   [configuration.md](configuration.md)).
 - **`class InMemorySettings`** — Alternative zu `Properties` für Tests,
-  die `saveConfig()`/`deleteConfig()` isoliert von einer echten
+  die `saveConfig()` isoliert von einer echten
   `plugin.conf.php`-Datei ausführen wollen; implementiert dieselben vier
   Methoden (`get()`, `set()`, `keyExists()`, `delete()`), ohne
   gemeinsames Interface — `$settings`-Parameter in den `lib/`-Klassen

@@ -224,17 +224,6 @@ saveConfig()` weist eine dennoch übermittelte Auswahl serverseitig mit
 `error_family_type_mismatch` zurück (Schutz gegen Formular-Manipulation).
 Details zur Deklaration in [schema-extending.md](schema-extending.md).
 
-## Löschen einer Konfiguration
-
-`SchemaOrgData_ScopeResolver::deleteConfig($settings, string $scope):
-array` löscht den gesamten Settings-Key einer Ebene — damit entfallen
-sowohl die Type-Konfiguration als auch `_meta`. Für den Global-Scope wird
-die Kollisionserkennung beim nächsten Aufbau der Plugin-Verwaltungsseite
-neu ermittelt, auf Seitenebene ebenso; auf Kategorieebene entfällt sie
-ersatzlos, weil sie dort nicht erhoben wird. Ausgelöst über die
-Formular-Checkbox `schemaOrgData_delete_<scope>`
-(`SchemaOrgData_AdminRequestHandler::handlePostRequest()`).
-
 ## Siehe auch
 
 - [../README.md](../README.md) — Nutzersicht auf Geltungsbereiche, Vererbung, Ausschlussliste

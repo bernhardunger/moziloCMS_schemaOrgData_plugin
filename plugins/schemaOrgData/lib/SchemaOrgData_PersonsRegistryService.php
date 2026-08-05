@@ -422,8 +422,7 @@ class SchemaOrgData_PersonsRegistryService {
     /***************************************************************
     *
     * Löscht eine Person aus der Registry. Idempotent - ein bereits
-    * nicht (mehr) vorhandener Slug ist kein Fehler (analog
-    * SchemaOrgData_ScopeResolver::deleteConfig()).
+    * nicht (mehr) vorhandener Slug ist kein Fehler.
     *
     * Eine in den Organisations-Relationen verlinkte Person wird NICHT
     * gelöscht: die Meldung nennt die betroffenen Rollen, die Registry

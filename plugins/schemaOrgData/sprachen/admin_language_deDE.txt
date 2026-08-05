@@ -175,7 +175,7 @@ notice_save_adjustments = Beim Speichern wurden Eingaben angepasst:
 notice_value_cleaned = Feld „{PARAM1}“: HTML-Auszeichnung wurde entfernt.
 notice_value_dropped = Feld „{PARAM1}“: Der Wert wurde nicht übernommen.
 notice_extension_property_dropped = Feld „{PARAM1}“: Der Eintrag aus dem Erweiterungsfeld wurde nicht übernommen - dieses Property führt das Formular.
-error_config_write_failed = Die Konfigurationsdatei konnte nicht geschrieben werden. Bitte Schreibrechte auf das conf/-Verzeichnis prüfen.
+error_config_write_failed = Die Konfigurationsdatei konnte nicht geschrieben werden. Bitte Schreibrechte auf plugins/schemaOrgData/plugin.conf.php prüfen.
 
 notice_existing_jsonld_title = Für diesen Geltungsbereich wurde bereits ein JSON-LD-Block gefunden.
 notice_existing_jsonld_title_page = Im Inhalt dieser Seite wurde bereits ein JSON-LD-Block gefunden.
