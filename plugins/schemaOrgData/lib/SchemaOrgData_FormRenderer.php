@@ -188,6 +188,15 @@ class SchemaOrgData_FormRenderer {
     * Schema für das jeweilige Feld einen Sprachschlüssel in
     * ui:literalFieldPlaceholders hinterlegt.
     *
+    * ui:literalFieldLabels ist eine Reserve, kein gepflegter Bestand:
+    * Der Schlüssel ordnet einem Literal-Feld einen eigenen
+    * Sprachschlüssel zu, wird von keinem produktiven Schema gesetzt und
+    * ist daher unerprobt. Ohne ihn greift der Fallback 'label_'.$lf, der
+    * aus dem Schema-Feldnamen einen Sprachschlüssel bildet - für die
+    * drei heutigen Literal-Felder ist das label_name. Ein künftiges
+    * ui:literalFields-Feld ohne passenden label_<feldname>-Eintrag zeigt
+    * im Formular den Platzhaltertext des Kerns statt eines Labels.
+    *
     * @param string $scope  Geltungsbereich (global/category/page)
     * @param string $name   Property-Name im Schema
     * @param array<string, mixed> $fieldSchema Schema-Definition der Property -

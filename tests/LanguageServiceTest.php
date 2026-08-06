@@ -87,6 +87,29 @@ final class LanguageServiceTest extends TestCase {
         $this->assertSame('Monday', $lang->getLanguageValue('weekday_monday'));
     }
 
+    // B4-06: Beide Ladefunktionen bauen aus dem Locale einen Dateipfad und
+    // lassen nur die Werteseite der prefixMap durch. Der Language-Mock in
+    // bootstrap.php fällt für eine fehlende Datei auf ein leeres
+    // Properties-Objekt zurück, der Kern dagegen auf deDE - geprüft wird
+    // hier also der Guard, nicht das Fallback-Verhalten des Kerns.
+    function testLoadAdminLanguageFileFaelltBeiUnbekanntemLocaleAufDeDeZurueck(): void {
+        $lang = $this->service()->loadAdminLanguageFile($this->pluginSelfDir(), 'frFR');
+
+        $this->assertSame('Einstellungen', $lang->getLanguageValue('admin_button'));
+    }
+
+    function testLoadAdminLanguageFileFaelltBeiLocaleMitPfadanteilAufDeDeZurueck(): void {
+        $lang = $this->service()->loadAdminLanguageFile($this->pluginSelfDir(), '../../../etc/passwd');
+
+        $this->assertSame('Einstellungen', $lang->getLanguageValue('admin_button'));
+    }
+
+    function testLoadCmsLanguageFileFaelltBeiUnbekanntemLocaleAufDeDeZurueck(): void {
+        $lang = $this->service()->loadCmsLanguageFile($this->pluginSelfDir(), 'frFR');
+
+        $this->assertSame('Montag', $lang->getLanguageValue('weekday_monday'));
+    }
+
     // Facade-Methode loadAdminLanguage() (index.php): Cache-Guard für
     // $admin_lang (nur beim ersten Aufruf instanziiert) und
     // Seiteneffekt $pluginLang (bei jedem Aufruf neu aus $ADMIN_CONF

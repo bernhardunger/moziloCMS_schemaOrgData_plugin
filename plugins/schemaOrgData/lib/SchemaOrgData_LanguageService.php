@@ -46,6 +46,23 @@ class SchemaOrgData_LanguageService {
 
     /***************************************************************
     *
+    * Lässt nur die als Werteseite von $prefixMap bekannten Locales
+    * durch und fällt sonst auf DEFAULT_LANGUAGE zurück. Die beiden
+    * Ladefunktionen bauen aus dem Parameter einen Dateipfad; ohne
+    * diesen Guard trüge ein Aufrufer, der den Wert nicht aus
+    * resolvePluginLanguage() bezieht, Pfadanteile hinein. Damit ist der
+    * Kontrakt derselbe wie bei SchemaOrgData_SchemaRepository::loadSchema(),
+    * das den Type-Namen ebenfalls gegen den Bestand prüft statt ihn
+    * still zu normalisieren. Kein Verhaltensunterschied für die
+    * heutigen Aufrufer.
+    *
+    ***************************************************************/
+    private function normalizeLocale(string $locale): string {
+        return in_array($locale, $this->prefixMap, true) ? $locale : $this->defaultLanguage;
+    }
+
+    /***************************************************************
+    *
     * Instanziiert das Sprachobjekt für die Admin-UI
     * (sprachen/admin_language_{locale}.txt). Zustandslos - Caching
     * und $pluginLang-Seiteneffekt bleiben auf der Fassade.
@@ -55,7 +72,7 @@ class SchemaOrgData_LanguageService {
     *
     ***************************************************************/
     public function loadAdminLanguageFile(string $pluginSelfDir, string $locale): Language {
-        return new Language($pluginSelfDir.'sprachen/admin_language_'.$locale.'.txt');
+        return new Language($pluginSelfDir.'sprachen/admin_language_'.$this->normalizeLocale($locale).'.txt');
     }
 
     /***************************************************************
@@ -71,6 +88,6 @@ class SchemaOrgData_LanguageService {
     *
     ***************************************************************/
     public function loadCmsLanguageFile(string $pluginSelfDir, string $locale): Language {
-        return new Language($pluginSelfDir.'sprachen/cms_language_'.$locale.'.txt');
+        return new Language($pluginSelfDir.'sprachen/cms_language_'.$this->normalizeLocale($locale).'.txt');
     }
 }
