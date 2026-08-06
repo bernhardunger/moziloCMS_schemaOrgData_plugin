@@ -272,10 +272,18 @@ describe('Scope-Selektor (initScopeSelector)', function () {
         it('behandelt ein defektes data-pages als leere Map, ohne zu scheitern', function () {
             setup(buildAdminPage({ active: 'cat', pagesJson: '{kein gültiges JSON' }));
 
+            // Ohne den Spy schriebe der Diagnosezweig bei jedem Lauf in die
+            // Testausgabe; setup() initialisiert nicht selbst, der Aufruf
+            // unten ist der einzige.
+            var warnSpy = jest.spyOn(console, 'warn').mockImplementation(function () {});
+
             expect(function () { validator.initScopeSelector(); }).not.toThrow();
 
             expect(optionValues(pageSelect())).toEqual(['']);
             expect(pageSelect().style.display).toBe('');
+            expect(warnSpy).toHaveBeenCalledTimes(1);
+
+            warnSpy.mockRestore();
         });
     });
 

@@ -334,6 +334,29 @@
     }
 
     /**
+     * Setzt den Platzhalter {PARAM1} eines lokalisierten Textes durch
+     * einen Wert. Spiegelt Language::getLanguageValue() des moziloCMS-
+     * Kerns, das str_replace() verwendet: alle Fundstellen werden
+     * ersetzt, und der eingesetzte Wert gilt als Literal.
+     * String.replace() mit einem String-Muster leistet beides nicht - es
+     * trifft nur die erste Fundstelle und liest $&, $`, $' und $$ im
+     * zweiten Parameter als Ersetzungsmuster. Eingesetzt werden hier
+     * durchweg frei gewählte Nutzerwerte (Personenname, Bereichslabel,
+     * Property-Name), in denen solche Zeichenfolgen vorkommen können.
+     *
+     * String(value) hält die Ausgabe für einen fehlenden Wert bei der
+     * bisherigen Form ("null"/"undefined"): join() setzt ein undefined
+     * andernfalls als Standardtrenner "," ein.
+     *
+     * @param {string} template
+     * @param {string} value
+     * @returns {string}
+     */
+    function applyMessageParam(template, value) {
+        return template.split('{PARAM1}').join(String(value));
+    }
+
+    /**
      * Validiert eine Postleitzahl. Nur für countryCode === "DE"
      * relevant (siehe index.php, validatePostalCode()).
      *
@@ -562,7 +585,7 @@
             return;
         }
 
-        var message = (getMessages().personSlugCollision || '').replace('{PARAM1}', matchedRow.getAttribute('data-slug-name'));
+        var message = applyMessageParam(getMessages().personSlugCollision || '', matchedRow.getAttribute('data-slug-name'));
         showFieldFeedback(slugInput, slugInput.id + '_feedback', { status: 'error', message: message }, onlyClearErrors);
     }
 
@@ -1450,7 +1473,7 @@
         }
 
         var template = getMessages().unsavedChanges || '';
-        notice.textContent = template.replace('{PARAM1}', sectionLabel);
+        notice.textContent = applyMessageParam(template, sectionLabel);
     }
 
     /**
@@ -1492,6 +1515,12 @@
         try {
             pagesByCat = JSON.parse(pageSelect.getAttribute('data-pages') || '{}');
         } catch (e) {
+            // Ohne Meldung bliebe nur das Ausfallbild: ein leeres zweites
+            // Auswahlfeld, das sich nicht von einer Kategorie ohne Seiten
+            // unterscheiden lässt. Eine UI-Meldung wäre für diesen Fall
+            // überzogen - die Map entsteht serverseitig per json_encode()
+            // und ist im Normalbetrieb wohlgeformt.
+            console.warn('schemaOrgData: data-pages konnte nicht als JSON gelesen werden - die Seitenauswahl bleibt leer.', e);
             pagesByCat = {};
         }
 
@@ -1741,10 +1770,10 @@
             var value = result.data ? result.data[property] : undefined;
             if (isPersonSuggestionCandidate(property, value)) {
                 appendFeedbackSpan('info', 'ℹ️ '
-                    + (getMessages().personSuggestionCandidate || property).replace('{PARAM1}', property));
+                    + applyMessageParam(getMessages().personSuggestionCandidate || property, property));
             } else {
                 appendFeedbackSpan('warning', '⚠️ '
-                    + (getMessages().unknownProperty || property).replace('{PARAM1}', property));
+                    + applyMessageParam(getMessages().unknownProperty || property, property));
             }
         });
 
@@ -2089,6 +2118,7 @@
         validateEventDateInput: validateEventDateInput,
         isEventDateInPast: isEventDateInPast,
         showExtensionFeedback: showExtensionFeedback,
+        applyMessageParam: applyMessageParam,
         initScopeSelector: initScopeSelector,
         initTypeSwitcher: initTypeSwitcher,
         initExcludedCatsSelectAll: initExcludedCatsSelectAll,

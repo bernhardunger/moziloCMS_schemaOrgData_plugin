@@ -66,6 +66,18 @@ describe('Personen-Registry - Slug-Live-Kollisionsprüfung (runPersonSlugValidat
         expect(feedbackFor(ID.slug).textContent).toContain('Max Mustermann');
     });
 
+    // Regression zu B5-06: String.replace() las das $& im Namen als
+    // Ersetzungsmuster und setzte den Treffer "{PARAM1}" selbst ein.
+    test('ein Personenname mit $& erscheint literal in der Kollisionsmeldung (B5-06)', function () {
+        setup([{ slug: 'max', name: 'Max $& Mustermann' }]);
+
+        setValue(ID.slug, 'Max');
+        fire(document.getElementById(ID.slug), 'blur');
+
+        expect(feedbackFor(ID.slug).textContent).toContain('Max $& Mustermann');
+        expect(feedbackFor(ID.slug).textContent).not.toContain('{PARAM1}');
+    });
+
     test('Kollision bei aus dem Namen abgeleitetem Slug (leeres Slug-Feld) wird am Slug-Feld gemeldet', function () {
         setup([{ slug: 'max-mustermann', name: 'Max Mustermann' }]);
 
