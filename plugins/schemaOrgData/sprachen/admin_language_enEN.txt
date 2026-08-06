@@ -51,6 +51,8 @@ label_recipient = Recipient (Organisation)
 label_organizer = Organizer
 placeholder_organizer_name = e.g. Musterstadt Cultural Association
 placeholder_author_name = e.g. Max Mustermann
+placeholder_date = DD.MM.YYYY
+placeholder_date_time = DD.MM.YYYY HH:MM
 label_publisher = Publisher (Organisation)
 
 label_name = Name
@@ -62,7 +64,6 @@ label_image = Image URL
 label_logo = Logo URL
 label_legal_name = Legal Name
 label_nonprofit_status = Non-profit status (legal form)
-label_job_title = Job Title
 label_in_language = Language (e.g. en-US)
 label_headline = Headline
 label_author = Author
@@ -126,8 +127,6 @@ hint_opening_hours = Please use 24-hour format (e.g. 09:00, 18:00). Opening hour
 label_faq_entries = Questions & Answers
 label_faq_question = Question
 label_faq_answer = Answer
-label_faq_add_entry = Add question
-label_faq_remove_entry = Remove
 
 label_extension_field = Additional Properties (JSON)
 description_extension_field = Additional schema.org properties as a JSON object. Merged with the form fields on save, form fields take precedence.
@@ -141,7 +140,6 @@ tooltip_inherited_from = Inherited from: {PARAM1}
 
 error_json_invalid = The entered JSON is invalid.
 error_json_not_object = The extension field expects a JSON object in curly braces, not a list.
-error_json_syntax = JSON syntax error at line {PARAM1}, column {PARAM2}
 warning_unknown_property = Unknown property "{PARAM1}" will be saved but is not defined in the schema.
 warning_extension_schema_unavailable = The schema could not be loaded - only the JSON syntax was checked.
 hint_extension_person_candidate = Property "{PARAM1}" is recognized as a person — after saving, it can be added to the persons registry.

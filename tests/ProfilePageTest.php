@@ -161,14 +161,15 @@ final class ProfilePageTest extends TestCase {
         $this->assertFalse((bool) ($mainEntity['ui:allowLiteral'] ?? true));
     }
 
-    function testDateFieldsAreOptionalDateTimeWithGermanPlaceholder(): void {
+    function testDateFieldsAreOptionalDateTimeWithLocalizedPlaceholderKey(): void {
         $schema = $this->profilePageSchema();
 
         foreach(['dateCreated', 'dateModified'] as $name) {
             $field = $schema['properties'][$name];
             $this->assertSame('date-time', $field['format'], $name.' muss format date-time verwenden');
             $this->assertFalse((bool) ($field['ui:required'] ?? false), $name.' ist optional (F4)');
-            $this->assertSame('TT.MM.YYYY', $field['ui:placeholder']);
+            $this->assertSame('placeholder_date', $field['ui:placeholderKey'] ?? null, $name.' fuehrt den Sprachschluessel statt eines literalen Platzhalters');
+            $this->assertArrayNotHasKey('ui:placeholder', $field, $name.' darf keinen literalen Platzhalter mehr fuehren');
         }
     }
 

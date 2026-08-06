@@ -1254,6 +1254,16 @@ class SchemaOrgData_FormRenderer {
                 .'</fieldset>'."\n";
         }
 
+        // Formatanleitende Platzhalter stehen als Sprachschlüssel im Schema
+        // (ui:placeholderKey) statt literal, damit sie der Admin-Sprache
+        // folgen. Aufgelöst wird hier statt in den Widgets: die nehmen kein
+        // Language-Objekt entgegen. Die Zuweisung steht bewusst vor der
+        // Vererbungsanzeige, deren Platzhalter den Formathinweis
+        // überschreiben soll, nicht umgekehrt.
+        if(isset($fieldSchema['ui:placeholderKey'])) {
+            $fieldSchema['ui:placeholder'] = $lang->getLanguageValue((string) $fieldSchema['ui:placeholderKey']);
+        }
+
         // Placeholder + "ü"-Badge für ein leeres Feld, dessen Wert von einer
         // übergeordneten Ebene geerbt würde (siehe Task 1,
         // resolveInheritableFields()) - das Feld selbst bleibt leer.
