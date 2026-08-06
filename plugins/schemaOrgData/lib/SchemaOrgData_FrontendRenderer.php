@@ -317,6 +317,12 @@ class SchemaOrgData_FrontendRenderer {
     * location/jobLocation) und id_reference(_or_literal)-Auflösung
     * (z. B. Event.organizer), statt der rohen {"_mode": ...}-Repräsentation.
     *
+    * Die sichtbaren Texte des Widgets stehen bewusst literal im erzeugten
+    * JavaScript und laufen nicht über die Sprachdateien: Das Widget ist ein
+    * Entwickler-Werkzeug hinter dem debug_output-Schalter, und die
+    * Pluralbildung des Block-Zählers ist sprachstrukturell an das Deutsche
+    * gebunden - bloßes Auslagern der Zeichenketten löste sie nicht auf.
+    *
     * @param array<int, array{scope: string, type: string, data: array<string, mixed>, id: string}> $blocks
     *              je Block Scope ('global'|'cat_x'|'page_x_y'), Type, Properties und @id-Anker
     * @param string[] $suppressedIdTargets siehe buildJsonLdScript()

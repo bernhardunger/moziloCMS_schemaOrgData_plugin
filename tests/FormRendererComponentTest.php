@@ -977,6 +977,31 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertStringNotContainsString('2026-09-15T19:00:00', $html);
     }
 
+    function testEventStartDateFuehrtPlaceholderKeyStattLiteralemPlatzhalter(): void {
+        $startDate = $this->eventSchema()['properties']['startDate'];
+
+        $this->assertSame('placeholder_date_time', $startDate['ui:placeholderKey']);
+        $this->assertArrayNotHasKey('ui:placeholder', $startDate);
+    }
+
+    function testRenderFieldLoestPlaceholderKeyDesEventStartDateAuf(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $schema = $this->eventSchema();
+        $lang = $this->adminLang();
+
+        $html = $renderer->renderField(
+            'page', 'startDate', $schema['properties']['startDate'], '', $schema, [], null, null, null,
+            $lang, $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+
+        $this->assertStringContainsString(
+            'placeholder="'.htmlspecialchars($lang->getLanguageValue('placeholder_date_time'), ENT_QUOTES, CHARSET).'"',
+            $html
+        );
+        $this->assertStringNotContainsString('placeholderKey', $html);
+    }
+
     // -----------------------------------------------------------
     // renderField() - date-time-Redisplay Article.datePublished /
     // renderSelectWidget() - JobPosting.employmentType-Labels

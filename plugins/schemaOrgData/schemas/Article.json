@@ -49,7 +49,7 @@
       "format": "date-time",
       "ui:widget": "text",
       "ui:label": "label_date_published",
-      "ui:placeholder": "TT.MM.YYYY",
+      "ui:placeholderKey": "placeholder_date",
       "ui:required": false
     },
     "dateModified": {
@@ -57,7 +57,7 @@
       "format": "date-time",
       "ui:widget": "text",
       "ui:label": "label_date_modified",
-      "ui:placeholder": "TT.MM.YYYY",
+      "ui:placeholderKey": "placeholder_date",
       "ui:required": false
     },
     "url": {

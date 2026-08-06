@@ -51,6 +51,8 @@ label_recipient = Empfänger (Organisation)
 label_organizer = Veranstalter
 placeholder_organizer_name = z. B. Kulturverein Musterstadt e. V.
 placeholder_author_name = z. B. Max Mustermann
+placeholder_date = TT.MM.YYYY
+placeholder_date_time = TT.MM.YYYY HH:MM
 label_publisher = Herausgeber (Organisation)
 
 label_name = Name
@@ -62,7 +64,6 @@ label_image = Bild-URL
 label_logo = Logo-URL
 label_legal_name = Rechtlicher Name
 label_nonprofit_status = Gemeinnütziger Status (Rechtsform)
-label_job_title = Position / Berufsbezeichnung
 label_in_language = Sprache (z. B. de-DE)
 label_headline = Überschrift
 label_author = Autor
@@ -126,8 +127,6 @@ hint_opening_hours = Bitte im 24-Stunden-Format eingeben (z. B. 09:00, 18:00). Z
 label_faq_entries = Fragen & Antworten
 label_faq_question = Frage
 label_faq_answer = Antwort
-label_faq_add_entry = Frage hinzufügen
-label_faq_remove_entry = Entfernen
 
 label_extension_field = Erweiterte Properties (JSON)
 description_extension_field = Zusätzliche schema.org-Properties als JSON-Objekt. Werden beim Speichern mit den Formularfeldern zusammengeführt, das Formular hat Vorrang.
@@ -141,7 +140,6 @@ tooltip_inherited_from = Übernommen von: {PARAM1}
 
 error_json_invalid = Das eingegebene JSON ist ungültig.
 error_json_not_object = Das Erweiterungsfeld erwartet ein JSON-Objekt mit geschweiften Klammern, keine Liste.
-error_json_syntax = JSON-Syntaxfehler in Zeile {PARAM1}, Spalte {PARAM2}
 warning_unknown_property = Unbekannte Property "{PARAM1}" wird übernommen, ist aber im Schema nicht definiert.
 warning_extension_schema_unavailable = Das Schema konnte nicht geladen werden - nur die JSON-Syntax wurde geprüft.
 hint_extension_person_candidate = Die Property "{PARAM1}" wird als Person erkannt — nach dem Speichern kann sie in die Personen-Registry übernommen werden.

@@ -25,7 +25,7 @@
       "format": "date-time",
       "ui:widget": "text",
       "ui:label": "label_start_date",
-      "ui:placeholder": "TT.MM.YYYY HH:MM",
+      "ui:placeholderKey": "placeholder_date_time",
       "ui:required": true
     },
     "endDate": {
@@ -33,7 +33,7 @@
       "format": "date-time",
       "ui:widget": "text",
       "ui:label": "label_end_date",
-      "ui:placeholder": "TT.MM.YYYY HH:MM",
+      "ui:placeholderKey": "placeholder_date_time",
       "ui:required": false
     },
     "eventAttendanceMode": {
