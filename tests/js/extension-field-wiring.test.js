@@ -117,6 +117,21 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
         expect(feedback.textContent).toContain('UNBEKANNTE_PROPERTY foo');
     });
 
+    // Regression zu B5-06: String.replace() las das $& im Property-Namen als
+    // Ersetzungsmuster und setzte den Treffer "{PARAM1}" selbst ein.
+    test('ein Property-Name mit $& erscheint literal in der Warnung (B5-06)', async function () {
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
+        validator.initAdminForm();
+        await flushPromises();
+
+        document.getElementById(GLOBAL_ID).value = '{"$&": "bar"}';
+        fire(document.getElementById(GLOBAL_ID), 'blur');
+
+        var feedback = feedbackFor(GLOBAL_ID);
+        expect(feedback.textContent).toContain('UNBEKANNTE_PROPERTY $&');
+        expect(feedback.textContent).not.toContain('{PARAM1}');
+    });
+
     test('gültige, bekannte Properties erzeugen genau ein OK-Feedback (Klasse schemaOrgData-feedback--ok)', async function () {
         document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
         validator.initAdminForm();

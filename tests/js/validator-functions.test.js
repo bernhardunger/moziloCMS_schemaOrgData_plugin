@@ -207,6 +207,31 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
         });
     });
 
+    // Regression zu B5-06: applyMessageParam() spiegelt str_replace() aus
+    // Language::getLanguageValue() - global und literal.
+    describe('applyMessageParam()', function () {
+        test('ersetzt alle Fundstellen von {PARAM1}, nicht nur die erste', function () {
+            expect(validator.applyMessageParam('a {PARAM1} b {PARAM1} c', 'X'))
+                .toBe('a X b X c');
+        });
+
+        test('$&, $` , $\' und $$ im Wert werden literal eingesetzt', function () {
+            expect(validator.applyMessageParam('vor {PARAM1} nach', '$&')).toBe('vor $& nach');
+            expect(validator.applyMessageParam('vor {PARAM1} nach', '$`')).toBe('vor $` nach');
+            expect(validator.applyMessageParam('vor {PARAM1} nach', '$\'')).toBe('vor $\' nach');
+            expect(validator.applyMessageParam('vor {PARAM1} nach', '$$')).toBe('vor $$ nach');
+        });
+
+        test('ein Text ohne Platzhalter bleibt unverändert', function () {
+            expect(validator.applyMessageParam('ohne Platzhalter', 'X')).toBe('ohne Platzhalter');
+        });
+
+        test('ein fehlender Wert erscheint als Text, nicht als Trennzeichen', function () {
+            expect(validator.applyMessageParam('vor {PARAM1} nach', null)).toBe('vor null nach');
+            expect(validator.applyMessageParam('vor {PARAM1} nach', undefined)).toBe('vor undefined nach');
+        });
+    });
+
     describe('validateEmail()', function () {
         test('gültige E-Mail-Adresse', function () {
             expect(validator.validateEmail('info@example.com').status).toBe('ok');
