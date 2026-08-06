@@ -20,6 +20,14 @@
 ***************************************************************/
 class SchemaOrgData_ScopeResolver {
 
+    /**
+     * Schlüssel einer Scope-Konfiguration, die keine Schema-Types sind,
+     * sondern Verwaltungsdaten der Ebene. Sie werden vor jeder
+     * Typ-Auflösung abgezogen (stripManagementKeys()). Ein neuer
+     * Verwaltungsschlüssel wird ausschließlich hier ergänzt.
+     */
+    public const MANAGEMENT_KEYS = ['_meta', 'excluded_cats', 'debug_output', 'org_relations'];
+
     /***************************************************************
     *
     * Liefert den settings-Schlüssel für eine Geltungsebene.
@@ -196,6 +204,30 @@ class SchemaOrgData_ScopeResolver {
         }
         $data = $settings->get($key);
         return is_array($data) ? $data : [];
+    }
+
+    /***************************************************************
+    *
+    * Zieht die Verwaltungsschlüssel (MANAGEMENT_KEYS) von der
+    * Konfiguration einer einzelnen Geltungsebene ab. Übrig bleiben
+    * ausschließlich Schema-Type-Konfigurationen - der Bestand, mit dem
+    * Typ-Auflösung und Emission arbeiten.
+    *
+    * Arbeitet auf der Konfiguration einer Ebene, nicht auf der
+    * Ebenen-Sammlung: der Dangling-Reference-Guard hält nur die globale
+    * Ebene in der Hand, der Frontend-Renderpfad iteriert über alle drei.
+    *
+    * @param array<string, mixed> $config Bestand einer Ebene, z. B. Ergebnis
+    *        von loadScopeConfig()
+    * @return array<string, mixed> derselbe Bestand ohne Verwaltungsschlüssel
+    *
+    ***************************************************************/
+    public function stripManagementKeys(array $config): array {
+        foreach(self::MANAGEMENT_KEYS as $key) {
+            unset($config[$key]);
+        }
+
+        return $config;
     }
 
     /***************************************************************

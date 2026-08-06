@@ -91,10 +91,11 @@ class SchemaOrgData_FrontendRenderer {
         // der LocalBusiness-Familie bzw. zwischen Organization/NGO).
         $orgRelations = is_array($scopeConfigs['global']['org_relations'] ?? null) ? $scopeConfigs['global']['org_relations'] : [];
 
-        // Verwaltungsdaten (_meta, excluded_cats, debug_output, org_relations)
-        // entfernen - übrig bleiben je Ebene nur noch die Schema-Type-Konfigurationen.
+        // Verwaltungsdaten entfernen - übrig bleiben je Ebene nur noch die
+        // Schema-Type-Konfigurationen. Welche Schlüssel dazu zählen, führt
+        // SchemaOrgData_ScopeResolver::MANAGEMENT_KEYS an einer Stelle.
         foreach($scopeConfigs as $scope => $config) {
-            unset($scopeConfigs[$scope]['_meta'], $scopeConfigs[$scope]['excluded_cats'], $scopeConfigs[$scope]['debug_output'], $scopeConfigs[$scope]['org_relations']);
+            $scopeConfigs[$scope] = $context->scopeResolver->stripManagementKeys($config);
         }
 
         // Kollisionserkennung des Layout-Templates, ausgewertet bevor über die

@@ -121,11 +121,13 @@ class SchemaOrgData_SchemaRepository {
     /***************************************************************
     *
     * Ermittelt den aktiven Schema-Type einer Scope-Konfiguration
-    * (erster Array-Schlüssel, der ein bekanntes Schema referenziert -
-    * reservierte Schlüssel wie "_meta"/"excluded_cats"/"debug_output"
-    * werden übersprungen). Wird u. a. für die LocalBusiness-Familie-
-    * Einschränkung verwendet, um den bei Global konfigurierten Type
-    * zu ermitteln.
+    * (erster Array-Schlüssel, der ein bekanntes Schema referenziert).
+    * Die Verwaltungsschlüssel einer Ebene
+    * (SchemaOrgData_ScopeResolver::MANAGEMENT_KEYS) fallen dabei ohne
+    * eigene Prüfung heraus, weil loadSchema() für sie null liefert -
+    * die Methode führt bewusst keine zweite Liste. Wird u. a. für die
+    * LocalBusiness-Familie-Einschränkung verwendet, um den bei Global
+    * konfigurierten Type zu ermitteln.
     *
     * @param array<string, mixed> $scopeConfig z. B. Ergebnis von
     *        SchemaOrgData_ScopeResolver::loadScopeConfig()
