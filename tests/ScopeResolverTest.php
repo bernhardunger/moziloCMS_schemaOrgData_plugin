@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 *     Objektzustand
 *   - loadScopeMeta()/saveScopeMeta(): Defaults, Merge, Round-Trip
 *   - detectTypeCollision(): Kollisionen je Geltungsebene
+*   - stripManagementKeys(): Abzug der Verwaltungsschlüssel einer Ebene
 *
 ***************************************************************/
 final class ScopeResolverTest extends TestCase {
@@ -176,20 +177,17 @@ final class ScopeResolverTest extends TestCase {
     /***************************************************************
     *
     * Bildet den Verwaltungsschlüssel-Abzug aus
-    * SchemaOrgData_FrontendRenderer::renderFrontend() nach: _meta,
-    * excluded_cats, debug_output und org_relations sind keine
-    * Schema-Types und werden vor der Typ-Auflösung entfernt. Erst
-    * dadurch wird ein nur mit _meta gespeicherter Geltungsbereich zu
-    * dem leeren Array, das resolveTypeInheritance() zu sehen bekommt -
-    * die beiden Hälften stoßen sonst in keinem Test aneinander.
+    * SchemaOrgData_FrontendRenderer::renderFrontend() nach, das dort
+    * je Ebene über SchemaOrgData_ScopeResolver::stripManagementKeys()
+    * läuft. Erst dadurch wird ein nur mit _meta gespeicherter
+    * Geltungsbereich zu dem leeren Array, das resolveTypeInheritance()
+    * zu sehen bekommt - die beiden Hälften stoßen sonst in keinem Test
+    * aneinander.
     *
     ***************************************************************/
     private function stripManagementKeys(array $scopeConfigs): array {
         foreach($scopeConfigs as $scope => $config) {
-            unset(
-                $scopeConfigs[$scope]['_meta'], $scopeConfigs[$scope]['excluded_cats'],
-                $scopeConfigs[$scope]['debug_output'], $scopeConfigs[$scope]['org_relations']
-            );
+            $scopeConfigs[$scope] = $this->resolver()->stripManagementKeys($config);
         }
 
         return $scopeConfigs;
@@ -574,6 +572,45 @@ final class ScopeResolverTest extends TestCase {
         $result = $this->resolver()->detectTypeCollision($settings, 'page', 'kat', 'seite', 'LocalBusiness');
 
         $this->assertSame(['global', 'category'], $result);
+    }
+
+    // stripManagementKeys() ---------------------------------------------------
+
+    function testStripManagementKeysEntferntAlleVerwaltungsschluesselUndBehaeltTypes(): void {
+        $config = [
+            '_meta'         => ['existing_jsonld' => true, 'jsonld_mode' => 'keep'],
+            'LocalBusiness' => ['name' => 'Steuerkanzlei', 'telephone' => '+498912345678'],
+            'excluded_cats' => 'impressum,datenschutz',
+            'debug_output'  => true,
+            'WebSite'       => ['name' => 'Kanzlei-Website'],
+            'org_relations' => [['person' => 'max-muster', 'role' => 'founder']],
+        ];
+
+        $result = $this->resolver()->stripManagementKeys($config);
+
+        $this->assertSame([
+            'LocalBusiness' => ['name' => 'Steuerkanzlei', 'telephone' => '+498912345678'],
+            'WebSite'       => ['name' => 'Kanzlei-Website'],
+        ], $result);
+    }
+
+    function testStripManagementKeysOhneVerwaltungsschluesselIstNoOp(): void {
+        $config = [
+            'LocalBusiness' => ['name' => 'Steuerkanzlei'],
+            'WebSite'       => ['name' => 'Kanzlei-Website'],
+        ];
+
+        $this->assertSame($config, $this->resolver()->stripManagementKeys($config));
+    }
+
+    function testManagementKeysFuehrtGenauDieVierVerwaltungsschluessel(): void {
+        // Bewusster Änderungsdetektor: ein fünfter Verwaltungsschlüssel soll
+        // diesen Test brechen, damit die Ergänzung eine bewusste Entscheidung
+        // bleibt statt eines stillen Nebeneffekts.
+        $this->assertSame(
+            ['_meta', 'excluded_cats', 'debug_output', 'org_relations'],
+            \SchemaOrgData_ScopeResolver::MANAGEMENT_KEYS
+        );
     }
 
 }

@@ -336,7 +336,7 @@ class SchemaOrgData_IdReferenceService {
             // Aus der globalen Konfiguration den Type mit dem passenden
             // ui:idFragment laden und als Stub mit @type, @id und name einfügen.
             $globalConfig = $scopeResolver->loadScopeConfig($settings, 'global');
-            unset($globalConfig['_meta'], $globalConfig['excluded_cats'], $globalConfig['debug_output']);
+            $globalConfig = $scopeResolver->stripManagementKeys($globalConfig);
 
             foreach($globalConfig as $globalType => $globalData) {
                 $schema = $schemaRepo->loadSchema($pluginSelfDir, $globalType);
