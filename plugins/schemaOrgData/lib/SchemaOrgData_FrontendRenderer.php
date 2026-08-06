@@ -178,6 +178,17 @@ class SchemaOrgData_FrontendRenderer {
         // Scope mit passendem ui:idFragment als ausreichenden Trägerknoten
         // zu werten (sonst würde ein Kategorie-/Seiten-Type mit demselben
         // Fragment fälschlich als Träger akzeptiert).
+        //
+        // Der Vor-Check läuft bewusst vor applyDanglingReferenceGuard().
+        // Dessen Vollunterdrückung könnte einen Organisations-Knoten
+        // nachträglich entfernen, ohne dass $orgNodePresent das noch
+        // erfährt - org_relations bliebe dann beitragsberechtigt, ohne
+        // Trägerknoten. Erreichbar wäre das erst mit einem
+        // Organisations-Schema, das eine Personen-Referenz als
+        // ui:required deklariert; keines der Schemata mit
+        // ui:idFragment "organization" tut das. Die Gegenrichtung ist
+        // unkritisch: eine Stub-Einfügung kann $orgNodePresent nur
+        // nachträglich wahr machen.
         $orgNodePresent = false;
         foreach(array_keys($scopeConfigs['global'] ?? []) as $type) {
             $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
