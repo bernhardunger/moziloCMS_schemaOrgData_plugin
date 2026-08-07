@@ -196,6 +196,14 @@
      * SchemaOrgData_PersonSuggestionService::detectSuggestions() in Sync
      * bleiben (Property-Whitelist + "@type": "Person" als einzelnes Objekt).
      *
+     * Prüft ausschließlich die Form, nicht den Kontext. Ob an der
+     * Fundstelle überhaupt ein Vorschlag möglich ist, entscheidet der
+     * Aufrufer anhand des Attributs data-person-suggestions am
+     * Erweiterungsfeld (siehe showExtensionFeedback() und
+     * initExtensionFieldValidation()) - ohne dieses Gatter erschiene der
+     * Info-Hinweis in jedem Erweiterungsfeld, auch dort, wo die
+     * Serverseite keinen Vorschlag anbietet.
+     *
      * @param {string} property
      * @param {*} value
      * @returns {boolean}
@@ -1741,8 +1749,15 @@
      *        stumm ausgefallen (schema === null), ohne diesen Parameter
      *        würde ein leeres unknownProperties/formatErrors fälschlich
      *        als grünes "✅" gewertet.
+     * @param {boolean} [personSuggestionContext] true, wenn das
+     *        Erweiterungsfeld im globalen Geltungsbereich eines
+     *        Organisations-Identity-Types steht (Attribut
+     *        data-person-suggestions, siehe initExtensionFieldValidation()) -
+     *        nur dann tritt der Info-Hinweis an die Stelle der
+     *        Unbekannt-Warnung. Fehlt der Parameter, bleibt es bei der
+     *        Warnung, dem restriktiveren der beiden Fälle.
      */
-    function showExtensionFeedback(feedback, result, schemaLoadFailed) {
+    function showExtensionFeedback(feedback, result, schemaLoadFailed, personSuggestionContext) {
         while (feedback.firstChild) {
             feedback.removeChild(feedback.firstChild);
         }
@@ -1768,7 +1783,7 @@
 
         result.unknownProperties.forEach(function (property) {
             var value = result.data ? result.data[property] : undefined;
-            if (isPersonSuggestionCandidate(property, value)) {
+            if (personSuggestionContext && isPersonSuggestionCandidate(property, value)) {
                 appendFeedbackSpan('info', 'ℹ️ '
                     + applyMessageParam(getMessages().personSuggestionCandidate || property, property));
             } else {
@@ -1814,11 +1829,14 @@
                 var schema = null;
                 var schemaLoadFailed = false;
                 var schemaUrl = textarea.getAttribute('data-schema-url');
+                // Anwesenheit genügt, das Attribut trägt keinen Wert (siehe
+                // SchemaOrgData_FormRenderer::renderExtensionFieldWidget()).
+                var personSuggestionContext = textarea.hasAttribute('data-person-suggestions');
 
                 var validate = function () {
                     var feedback = document.getElementById(textarea.id + '_feedback');
                     if (feedback) {
-                        showExtensionFeedback(feedback, validateExtensionField(textarea.value, schema), schemaLoadFailed);
+                        showExtensionFeedback(feedback, validateExtensionField(textarea.value, schema), schemaLoadFailed, personSuggestionContext);
                     }
                 };
 
