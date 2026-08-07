@@ -797,32 +797,9 @@ class SchemaOrgData_AdminController {
         // ausgelagerten Skriptdatei, und schwer zu bemerken, weil die
         // Einbindung im PHP-Quelltext weiterhin extern aussieht. Die direkte
         // Ausgabe samt Cache-Buster bleibt deshalb.
-        $html .= '<script src="' . $pluginSelfUrl . 'js/ajv.min.js?v=' . $this->resolveAssetCacheBuster($pluginSelfDir, 'js/ajv.min.js') . '"></script>' . "\n";
-        $html .= '<script src="' . $pluginSelfUrl . 'js/validator.js?v=' . $this->resolveAssetCacheBuster($pluginSelfDir, 'js/validator.js') . '"></script>' . "\n";
+        $html .= '<script src="' . $pluginSelfUrl . 'js/ajv.min.js?v=' . $context->urlHelper->resolveAssetCacheBuster($pluginSelfDir, 'js/ajv.min.js') . '"></script>' . "\n";
+        $html .= '<script src="' . $pluginSelfUrl . 'js/validator.js?v=' . $context->urlHelper->resolveAssetCacheBuster($pluginSelfDir, 'js/validator.js') . '"></script>' . "\n";
 
         return $html;
-    }
-
-    /***************************************************************
-     *
-     * Cache-Busting-Query-Parameter für ein ausgeliefertes JS-Asset
-     * (js/ajv.min.js, js/validator.js): liefert filemtime() der
-     * tatsächlich auf dem Server liegenden Datei, damit ein Browser
-     * nach jedem Deployment (FTP-Upload, ZIP-Install) automatisch die
-     * neue Fassung nachlädt statt eine bereits gecachte, veraltete
-     * Version weiterzuverwenden - ohne diesen Parameter blieben
-     * <script src="...js/validator.js">-Requests ohne jedes
-     * Cache-Invalidierungssignal (Root Cause eines RC-Bugs, bei dem
-     * eine neue Live-Validierung im Browser nicht ankam, obwohl PHP-
-     * und Jest-Tests bereits grün waren). Fallback "0", falls die
-     * Datei nicht lesbar ist (z. B. isoliertes Testfixture).
-     *
-     * @param string $pluginSelfDir Basis-Verzeichnis des Plugins (PLUGIN_SELF_DIR)
-     * @param string $relativeAssetPath Pfad relativ zu $pluginSelfDir, z. B. "js/validator.js"
-     *
-     ***************************************************************/
-    private function resolveAssetCacheBuster(string $pluginSelfDir, string $relativeAssetPath): string {
-        $mtime = @filemtime($pluginSelfDir . $relativeAssetPath);
-        return $mtime !== false ? (string) $mtime : '0';
     }
 }

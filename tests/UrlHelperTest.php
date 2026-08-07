@@ -163,4 +163,25 @@ final class UrlHelperTest extends TestCase {
 
         $this->assertSame(\BASE_DIR.\CONTENT_FILES_DIR_NAME.'/', $result);
     }
+
+    // resolveAssetCacheBuster() (Cache-Busting der ausgelieferten JS-Assets,
+    // aufgerufen von SchemaOrgData_AdminController::renderAdminPage()) -------
+
+    private function pluginSelfDir(): string {
+        return \BASE_DIR.'plugins/schemaOrgData/';
+    }
+
+    function testResolveAssetCacheBusterLiefertFilemtimeDerDatei(): void {
+        $expected = (string) filemtime($this->pluginSelfDir().'js/validator.js');
+
+        $result = $this->helper()->resolveAssetCacheBuster($this->pluginSelfDir(), 'js/validator.js');
+
+        $this->assertSame($expected, $result);
+    }
+
+    function testResolveAssetCacheBusterLiefertNullStringBeiFehlenderDatei(): void {
+        $result = $this->helper()->resolveAssetCacheBuster($this->pluginSelfDir(), 'js/gibt-es-nicht.js');
+
+        $this->assertSame('0', $result);
+    }
 }
