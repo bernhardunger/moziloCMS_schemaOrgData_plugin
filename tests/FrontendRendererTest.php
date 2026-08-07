@@ -27,6 +27,10 @@ use PHPUnit\Framework\TestCase;
 ***************************************************************/
 final class FrontendRendererTest extends TestCase {
 
+    // Muster des JSON-Datenblocks, den buildDebugWidget() ausgibt und
+    // js/debug-widget.js liest.
+    private const DEBUG_DATA_PATTERN = '#<script type="application/json" id="schemaOrgData-debug-data">\n(\{.*\})\n</script>#s';
+
     private string $pluginDir;
 
     protected function setUp(): void {
@@ -288,15 +292,15 @@ final class FrontendRendererTest extends TestCase {
 
         $output = $this->callRenderFrontend('', $settings);
 
-        $this->assertStringContainsString('schemaOrgData-debug-trigger', $output);
-        $this->assertStringContainsString('schemaOrgData-debug-dialog', $output);
+        $this->assertStringContainsString('id="schemaOrgData-debug-data"', $output);
+        $this->assertStringContainsString('js/debug-widget.js?v=', $output);
     }
 
     function testRenderFrontendOhneDebugOutputKeinDebugWidget(): void {
         $settings = new \InMemorySettings();
         $settings->set('config_global', ['LocalBusiness' => $this->validLocalBusinessConfig()]);
 
-        $this->assertStringNotContainsString('schemaOrgData-debug-trigger', $this->callRenderFrontend('', $settings));
+        $this->assertStringNotContainsString('schemaOrgData-debug-data', $this->callRenderFrontend('', $settings));
     }
 
     // -----------------------------------------------------------
@@ -401,13 +405,13 @@ final class FrontendRendererTest extends TestCase {
     // buildDebugWidget()
     //
     // Das Widget-Markup (Trigger-Button, <dialog>, Vorschau-Blöcke) wird
-    // seit dem <head>-Validitäts-Fix nicht mehr als statisches HTML
-    // zurückgegeben, sondern als JSON-Nutzlast in den einzigen
-    // <script>-Block eingebettet und erst zur Laufzeit per JS aufgebaut
-    // (siehe README.md, Abschnitt "JSON-LD-Ausgabe"). Die folgenden Tests
-    // extrahieren die Nutzlast (schemaOrgDataDebugData = {...};) und
-    // prüfen sie strukturiert per json_decode(), statt <button>/<dialog>/
-    // <pre>-Tags direkt im Rückgabewert zu suchen.
+    // nicht als statisches HTML zurückgegeben, sondern als JSON-Nutzlast
+    // in einen <script type="application/json">-Block gelegt und von
+    // js/debug-widget.js zur Laufzeit aufgebaut (siehe README.md,
+    // Abschnitt "JSON-LD-Ausgabe"). Die folgenden Tests extrahieren die
+    // Nutzlast aus diesem Datenblock und prüfen sie strukturiert per
+    // json_decode(), statt <button>/<dialog>/<pre>-Tags direkt im
+    // Rückgabewert zu suchen.
     // -----------------------------------------------------------
 
     private function debugBlock(string $scope, string $type, array $data, string $id = ''): array {
@@ -417,16 +421,17 @@ final class FrontendRendererTest extends TestCase {
     private function buildDebugWidget(array $blocks, array $suppressedIdTargets = []): string {
         return $this->renderer()->buildDebugWidget(
             $blocks, $this->jsonLdBuilder(), $this->schemaRepository(),
-            $this->urlHelper(), $this->pluginDir, $suppressedIdTargets
+            $this->urlHelper(), $this->pluginDir, $suppressedIdTargets,
+            null, 'http://localhost/plugins/schemaOrgData/'
         );
     }
 
     private function extractDebugPayload(string $html): array {
         $this->assertMatchesRegularExpression(
-            '#var schemaOrgDataDebugData = (\{.*\});\n#s', $html,
-            'Erwartete schemaOrgDataDebugData-Zuweisung nicht im <script>-Block gefunden.'
+            self::DEBUG_DATA_PATTERN, $html,
+            'Erwarteten JSON-Datenblock des Debug-Widgets nicht gefunden.'
         );
-        preg_match('#var schemaOrgDataDebugData = (\{.*\});\n#s', $html, $matches);
+        preg_match(self::DEBUG_DATA_PATTERN, $html, $matches);
 
         return json_decode($matches[1], true);
     }
@@ -450,13 +455,18 @@ final class FrontendRendererTest extends TestCase {
         $this->assertStringNotContainsString('<dialog', $withoutScripts);
     }
 
-    function testBuildDebugWidgetGibtAusschliesslichEinenScriptBlockZurueck(): void {
+    function testBuildDebugWidgetGibtGenauZweiScriptBloeckeZurueck(): void {
         $html = trim($this->buildDebugWidget(
             [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
         ));
 
-        $this->assertMatchesRegularExpression('#^<script>.*</script>$#s', $html);
-        $this->assertSame(1, substr_count($html, '<script>'));
+        // Kein nackter <script>-Block mehr: der erste trägt die Nutzlast
+        // als application/json, der zweite bindet das Widget-Skript ein.
+        $this->assertSame(0, substr_count($html, '<script>'));
+        $this->assertSame(1, substr_count($html, '<script type="application/json" id="schemaOrgData-debug-data">'));
+        $this->assertSame(1, substr_count($html, '<script src="'));
+        $this->assertSame(2, substr_count($html, '</script>'));
+        $this->assertMatchesRegularExpression('#^<script type="application/json".*</script>$#s', $html);
     }
 
     function testBuildDebugWidgetSingularBeiEinemBlock(): void {
@@ -520,57 +530,6 @@ final class FrontendRendererTest extends TestCase {
         $this->assertStringNotContainsString('"description"', $payload['blocks'][0]['json']);
     }
 
-    function testBuildDebugWidgetEnthaeltValidatorLink(): void {
-        $html = $this->buildDebugWidget(
-            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
-        );
-
-        $this->assertStringContainsString('validatorLink.href = "https://validator.schema.org"', $html);
-    }
-
-    /***************************************************************
-    *
-    * Regressionstest gegen einen False-Success beim "JSON kopieren"-
-    * Button: fallbackCopy() muss den tatsächlichen execCommand("copy")-
-    * Erfolg zurückgeben, der Click-Handler darf "Kopiert!" nur bei
-    * echtem Erfolg anzeigen statt unconditional.
-    *
-    ***************************************************************/
-    function testBuildDebugWidgetCopyButtonPrueftFallbackCopyErfolg(): void {
-        $html = $this->buildDebugWidget(
-            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
-        );
-
-        $this->assertStringContainsString('return success;', $html);
-        $this->assertStringContainsString('function fail(){', $html);
-        $this->assertStringContainsString(
-            'if(fallbackCopy(text)){ ok(); }else{ fail(); }', $html
-        );
-    }
-
-    /***************************************************************
-    *
-    * Regressionstest gegen einen zweiten, unabhängigen False-Success beim
-    * "JSON kopieren"-Button: dialog.showModal() macht den restlichen DOM
-    * inert, eine an document.body gehängte Hilfs-Textarea läge damit im
-    * inerten Teilbaum - focus()/select() liefen dort ins Leere, während
-    * execCommand("copy") trotzdem true zurückgibt (kopiert die leere
-    * Selection). fallbackCopy() muss die Textarea daher innerhalb des
-    * Dialogs selbst einhängen. Reine String-Prüfung des Einhängepunkts -
-    * die Inert-Semantik von showModal() bildet auch dieser Test nicht ab.
-    *
-    ***************************************************************/
-    function testBuildDebugWidgetFallbackCopyHaengtTextareaInDialogEin(): void {
-        $html = $this->buildDebugWidget(
-            [$this->debugBlock('global', 'LocalBusiness', ['name' => 'Beispiel GmbH'])]
-        );
-
-        $this->assertStringContainsString('dialog.appendChild(ta)', $html);
-        $this->assertStringContainsString('dialog.removeChild(ta)', $html);
-        $this->assertStringNotContainsString('document.body.appendChild(ta)', $html);
-        $this->assertStringNotContainsString('document.body.removeChild(ta)', $html);
-    }
-
     function testBuildDebugWidgetJsonHexTagBleibtByteIdentischZuBuildJsonLdScript(): void {
         $payload = '</script><script>alert(1)</script>';
         $data = ['name' => $payload];
@@ -580,7 +539,7 @@ final class FrontendRendererTest extends TestCase {
         );
 
         // Kein literales </script> irgendwo im Rückgabewert - würde sonst
-        // den umgebenden <script>-Block der Seite aufbrechen. JSON_HEX_TAG
+        // den JSON-Datenblock der Seite aufbrechen. JSON_HEX_TAG
         // greift hier identisch wie in buildJsonLdScript().
         $this->assertStringNotContainsString('</script><script>alert', $html);
 

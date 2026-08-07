@@ -6,7 +6,8 @@ var path = require('path');
 var PLUGIN_JS_DIR = path.join(__dirname, '..', '..', '..', 'plugins', 'schemaOrgData', 'js');
 
 /**
- * Lädt eine der Plugin-JS-Dateien (validator.js, ajv.min.js) in den
+ * Lädt eine der Plugin-JS-Dateien (validator.js, ajv.min.js,
+ * debug-widget.js) in den
  * jsdom-Fenster-Kontext. Der Function-Konstruktor statt eval() ist hier
  * bewusst gewählt: eval() innerhalb dieser CommonJS-Testdatei hätte
  * Zugriff auf die lokalen "module"/"exports"-Variablen des Jest-Modul-
@@ -32,4 +33,13 @@ function loadValidator() {
     return window.schemaOrgDataValidator;
 }
 
-module.exports = { loadAjv: loadAjv, loadValidator: loadValidator };
+function loadDebugWidget() {
+    loadScriptIntoWindow('debug-widget.js');
+    return window.schemaOrgDataDebugWidget;
+}
+
+module.exports = {
+    loadAjv: loadAjv,
+    loadValidator: loadValidator,
+    loadDebugWidget: loadDebugWidget
+};

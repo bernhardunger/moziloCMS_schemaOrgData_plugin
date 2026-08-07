@@ -30,6 +30,10 @@ use PHPUnit\Framework\TestCase;
 ***************************************************************/
 final class JsonLdOutputTest extends TestCase {
 
+    // Muster des JSON-Datenblocks, den buildDebugWidget() ausgibt und
+    // js/debug-widget.js liest.
+    private const DEBUG_DATA_PATTERN = '#<script type="application/json" id="schemaOrgData-debug-data">\n(\{.*\})\n</script>#s';
+
     private string $pluginDir;
     private \InMemorySettings $settings;
 
@@ -555,8 +559,8 @@ final class JsonLdOutputTest extends TestCase {
 
         $output = $plugin->getContent('');
 
-        $this->assertStringNotContainsString('schemaOrgData-debug-dialog', $output);
-        $this->assertStringNotContainsString('schemaOrgData-debug-trigger', $output);
+        $this->assertStringNotContainsString('id="schemaOrgData-debug-data"', $output);
+        $this->assertStringNotContainsString('js/debug-widget.js', $output);
     }
 
     function testDebugOutputTrueProducesDebugWidget(): void {
@@ -580,24 +584,24 @@ final class JsonLdOutputTest extends TestCase {
 
         $output = $plugin->getContent('');
 
-        $this->assertStringContainsString('schemaOrgData-debug-dialog', $output);
-        $this->assertStringContainsString('schemaOrgData-debug-trigger', $output);
+        $this->assertStringContainsString('id="schemaOrgData-debug-data"', $output);
+        $this->assertStringContainsString('js/debug-widget.js?v=', $output);
     }
 
     /***************************************************************
     *
     * Das Debug-Widget-Markup (Trigger-Button, <dialog>, Vorschau-
-    * Blöcke) wird nicht mehr als statisches HTML zurückgegeben, sondern
-    * als JSON-Nutzlast in den einzigen <script>-Block eingebettet und
-    * erst zur Laufzeit per JS aufgebaut (siehe README.md, Abschnitt
-    * "JSON-LD-Ausgabe") - Scope/Type/formatiertes JSON werden daher aus
-    * der eingebetteten schemaOrgDataDebugData-Nutzlast extrahiert statt
-    * als rohes HTML im Gesamtoutput gesucht.
+    * Blöcke) wird nicht als statisches HTML zurückgegeben, sondern als
+    * JSON-Nutzlast in einen <script type="application/json">-Block gelegt
+    * und von js/debug-widget.js zur Laufzeit aufgebaut (siehe README.md,
+    * Abschnitt "JSON-LD-Ausgabe") - Scope/Type/formatiertes JSON werden
+    * daher aus diesem Datenblock extrahiert statt als rohes HTML im
+    * Gesamtoutput gesucht.
     *
     ***************************************************************/
     private function extractDebugPayloadFromOutput(string $output): array {
-        preg_match('#var schemaOrgDataDebugData = (\{.*\});\n#s', $output, $matches);
-        $this->assertNotEmpty($matches, 'Erwartete schemaOrgDataDebugData-Zuweisung nicht im Output gefunden.');
+        preg_match(self::DEBUG_DATA_PATTERN, $output, $matches);
+        $this->assertNotEmpty($matches, 'Erwarteten JSON-Datenblock des Debug-Widgets nicht im Output gefunden.');
 
         return json_decode($matches[1], true);
     }
@@ -654,30 +658,6 @@ final class JsonLdOutputTest extends TestCase {
         $this->assertStringContainsString('"@context"', $json);
         $this->assertStringContainsString('"@type": "LocalBusiness"', $json);
         $this->assertStringContainsString('"name": "Beispiel GmbH"', $json);
-    }
-
-    function testDebugWidgetContainsValidatorLink(): void {
-        $plugin = $this->createPlugin();
-        $postData = $this->validLocalBusinessData();
-        $postData['debug_output'] = '1';
-        (new \SchemaOrgData_ConfigSaveService())->saveConfig(
-            'global',
-            $postData,
-            $this->settings,
-            callPluginMethod($plugin, 'loadAdminLanguage', []),
-            new \SchemaOrgData_ScopeResolver(),
-            new \SchemaOrgData_SchemaRepository(),
-            $plugin->PLUGIN_SELF_DIR,
-            new \SchemaOrgData_Validator(),
-            new \SchemaOrgData_OpeningHoursHelper(),
-            new \SchemaOrgData_AdminPageRenderer(),
-            new \SchemaOrgData_PersonsRegistryService(),
-            new \SchemaOrgData_OrgRelationsService()
-        );
-
-        $output = $plugin->getContent('');
-
-        $this->assertStringContainsString('validatorLink.href = "https://validator.schema.org"', $output);
     }
 
     /***************************************************************

@@ -27,6 +27,10 @@ final class SchemaOrgData_FrontendRequestContext {
     * @param SchemaOrgData_OpeningHoursHelper|null $openingHoursHelper wird von
     *              buildJsonLdScript() für den ui:emitAs-Zweig benötigt; optional,
     *              damit bestehende Konstruktionsaufrufe unverändert bleiben
+    * @param string $pluginSelfUrl absolute Basis-URL des Plugin-Ordners
+    *              (PLUGIN_SELF_URL) als Präfix des src-Attributs ausgelieferter
+    *              JS-Assets; der Default hält die Signatur nach einem
+    *              optionalen Parameter legal, produktiv setzen ihn alle Aufrufer
     *
     ***************************************************************/
     public function __construct(
@@ -40,7 +44,8 @@ final class SchemaOrgData_FrontendRequestContext {
         public readonly SchemaOrgData_UrlHelper $urlHelper,
         public readonly SchemaOrgData_PersonsRegistryService $personsRegistryService,
         public readonly SchemaOrgData_OrgRelationsService $orgRelationsService,
-        public readonly ?SchemaOrgData_OpeningHoursHelper $openingHoursHelper = null
+        public readonly ?SchemaOrgData_OpeningHoursHelper $openingHoursHelper = null,
+        public readonly string $pluginSelfUrl = ''
     ) {
     }
 }

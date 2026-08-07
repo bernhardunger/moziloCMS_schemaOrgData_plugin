@@ -2,7 +2,7 @@
   "name": "schemaorgdata-js-tests",
   "version": "1.0.0",
   "private": true,
-  "description": "Jest-Testsuite für plugins/schemaOrgData/js/validator.js",
+  "description": "Jest-Testsuite für die Skripte in plugins/schemaOrgData/js/",
   "scripts": {
     "test": "jest"
   },
