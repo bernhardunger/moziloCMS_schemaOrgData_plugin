@@ -293,6 +293,25 @@ class SchemaOrgData_ScopeResolver {
     * über den regulären Speicherweg des Formulars
     * (SchemaOrgData_ConfigSaveService::saveConfig()).
     *
+    * Der Schreibzugriff legt den Settings-Schlüssel der Ebene an, falls
+    * er noch nicht existiert. Dadurch kann ein Scope entstehen, der
+    * ausschließlich _meta führt und keinen Schema-Type - am häufigsten
+    * beim ersten Öffnen der Plugin-Verwaltung, wenn das Layout-Template
+    * bereits einen JSON-LD-Block enthält. Ein POST ist dafür nicht nötig:
+    * Der Schreib-Guard des Admin-Renderpfads hängt allein am Vergleich
+    * der Erkennung mit dem gespeicherten Stand. Dasselbe Ergebnis ist
+    * über den regulären Speicherweg mit der Auswahl "- kein Schema -"
+    * erreichbar und dort ausdrücklich beabsichtigt.
+    *
+    * Dieser Zustand bleibt für die Emission folgenlos und wird deshalb
+    * bewusst nicht verhindert: stripManagementKeys() zieht _meta als
+    * Verwaltungsschlüssel ab, übrig bleibt ein leerer Bestand, und die
+    * Type-Schleife in SchemaOrgData_FrontendRenderer::renderFrontend()
+    * läuft dann kein einziges Mal. Es entsteht kein leerer
+    * JSON-LD-Block, auch nicht bei jsonld_mode "override" - der Scope
+    * ist dort zwar nicht unterdrückt, hat aber nichts auszugeben. Ein
+    * verschärfter Schreib-Guard wäre Aufwand ohne Wirkung.
+    *
     * @param mixed $settings moziloCMS-Settings-API ($this->settings)
     * @param string $scope 'global' | 'category' | 'page'
     * @param array<string, mixed> $meta Teilmenge der Meta-Schlüssel, z. B. ['existing_jsonld' => true]

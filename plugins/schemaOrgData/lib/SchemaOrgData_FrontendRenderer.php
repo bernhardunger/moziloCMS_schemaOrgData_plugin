@@ -400,7 +400,7 @@ class SchemaOrgData_FrontendRenderer {
         // Der "json"-Wert je Block ist durch buildJsonLdScript() intern
         // bereits so kodiert - diese zweite Kodierschicht escaped dabei
         // lediglich den darin enthaltenen Backslash der Escape-Sequenz
-        // erneut (\uXXXX -> \\uXXXX im Skript-Text); JSON.parse() löst das
+        // erneut (\uXXXX -> \\uXXXX im Datenblock); JSON.parse() löst das
         // beim Einlesen wieder zur ursprünglichen Zeichenkette auf, das
         // Laufzeitergebnis bleibt byte-identisch.
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_HEX_TAG);
