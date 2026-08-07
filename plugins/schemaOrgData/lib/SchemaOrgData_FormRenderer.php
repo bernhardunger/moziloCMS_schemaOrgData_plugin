@@ -1009,19 +1009,33 @@ class SchemaOrgData_FormRenderer {
     * @param string|null $idPrefix Präfix für HTML-IDs (Fallback: $scope)
     * @param Language $lang für Labels/Hinweise
     * @param string $pluginSelfUrl Basis-URL des Plugin-Ordners (ersetzt $this->PLUGIN_SELF_URL)
+    * @param bool $personSuggestionContext true, wenn dieses Erweiterungsfeld
+    *        im globalen Geltungsbereich eines Organisations-Identity-Types
+    *        ("ui:idFragment": "organization") steht - nur dort bietet die
+    *        Serverseite eine Übernahme in die Personen-Registry an, und nur
+    *        dort darf js/validator.js den Info-Hinweis an die Stelle der
+    *        Unbekannt-Warnung setzen (siehe README.md, Abschnitt
+    *        "Erweiterungsfeld"). Gebildet wird die Bedingung in
+    *        renderTypeFields(), das beide Werte bereits führt.
     *
     ***************************************************************/
-    public function renderExtensionFieldWidget(string $scope, string $type, string $extensionJson, ?string $idPrefix, Language $lang, string $pluginSelfUrl): string {
+    public function renderExtensionFieldWidget(string $scope, string $type, string $extensionJson, ?string $idPrefix, Language $lang, string $pluginSelfUrl, bool $personSuggestionContext = false): string {
         $idPrefix = $idPrefix ?? $scope;
         $fieldId = 'schemaOrgData_'.$idPrefix.'_extension';
         $fieldName = 'schemaOrgData['.$scope.'][extension]['.$type.']';
         $schemaUrl = $pluginSelfUrl.'schemas/'.$type.'.json';
 
+        // Die Anwesenheit des Attributs ist die Aussage, es trägt keinen Wert -
+        // Muster der booleschen HTML-Attribute (disabled/required). Damit gibt
+        // es über die Grenze PHP/JS kein Literal, dessen Wert synchron gehalten
+        // werden müsste; js/validator.js liest hasAttribute().
+        $suggestionAttr = $personSuggestionContext ? ' data-person-suggestions' : '';
+
         $html = '<fieldset class="schemaOrgData-fieldset">'."\n";
         $html .= '<legend>'.$lang->getLanguageHtml('label_extension_field').'</legend>'."\n";
         $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('description_extension_field').'</p>'."\n";
         $html .= '<textarea id="'.$fieldId.'" name="'.$fieldName.'" class="mo-input-text schemaOrgData-wide-textarea schemaOrgData-extension-field" '
-            .'rows="12" data-schema-url="'.htmlspecialchars($schemaUrl, ENT_QUOTES, CHARSET).'">'
+            .'rows="12" data-schema-url="'.htmlspecialchars($schemaUrl, ENT_QUOTES, CHARSET).'"'.$suggestionAttr.'>'
             .htmlspecialchars($extensionJson, ENT_QUOTES, CHARSET).'</textarea>'."\n";
         $html .= '<div id="'.$fieldId.'_feedback" class="schemaOrgData-extension-feedback"></div>'."\n";
         $html .= '</fieldset>'."\n";
@@ -1368,7 +1382,14 @@ class SchemaOrgData_FormRenderer {
             );
         }
 
-        $html .= $this->renderExtensionFieldWidget($scope, $type, $extensionJson, $idPrefix, $lang, $pluginSelfUrl);
+        // Spiegelt die Bedingung, unter der die Admin-Seite den
+        // Übernahme-Vorschlag überhaupt anbietet: globaler Geltungsbereich und
+        // Organisations-Identity-Type. Beide Werte liegen hier bereits als
+        // Parameter vor, deshalb bleibt der Aufrufer unberührt. Ändert sich die
+        // Bedingung dort, gehört sie hier mitgeändert.
+        $personSuggestionContext = ($scope === 'global' and ($schema['ui:idFragment'] ?? '') === 'organization');
+
+        $html .= $this->renderExtensionFieldWidget($scope, $type, $extensionJson, $idPrefix, $lang, $pluginSelfUrl, $personSuggestionContext);
 
         return $html;
     }

@@ -396,6 +396,33 @@ final class FormRendererComponentTest extends TestCase {
         $this->assertStringContainsString('rows="12"', $html);
     }
 
+    /***************************************************************
+    *
+    * B5-10: Der Info-Hinweis "kann in die Personen-Registry übernommen
+    * werden" darf clientseitig nur dort erscheinen, wo die Serverseite
+    * den Vorschlag auch anbietet. Der Kontext reist als
+    * data-person-suggestions am Erweiterungsfeld - Anwesenheit ist die
+    * Aussage, das Attribut trägt keinen Wert.
+    *
+    ***************************************************************/
+    function testRenderExtensionFieldWidgetSetztPersonSuggestionsAttributImKontext(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $html = $renderer->renderExtensionFieldWidget(
+            'global', 'LocalBusiness', '', null, $this->adminLang(), 'https://example.com/plugins/schemaOrgData/', true,
+        );
+
+        $this->assertStringContainsString(' data-person-suggestions>', $html);
+    }
+
+    function testRenderExtensionFieldWidgetOhneKontextOhnePersonSuggestionsAttribut(): void {
+        $renderer = new \SchemaOrgData_FormRenderer();
+        $html = $renderer->renderExtensionFieldWidget(
+            'global', 'LocalBusiness', '', null, $this->adminLang(), 'https://example.com/plugins/schemaOrgData/',
+        );
+
+        $this->assertStringNotContainsString('data-person-suggestions', $html);
+    }
+
     // -----------------------------------------------------------
     // buildValidationAttrs()
     // -----------------------------------------------------------
@@ -758,6 +785,59 @@ final class FormRendererComponentTest extends TestCase {
         );
 
         $this->assertStringNotContainsString('schemaOrgData-required-legend', $html);
+    }
+
+    /***************************************************************
+    *
+    * B5-10: renderTypeFields() bildet den Kontext aus $scope und
+    * ui:idFragment selbst und reicht ihn an das Erweiterungsfeld durch -
+    * die Bedingung spiegelt die der Admin-Seite. Geprüft wird mit einem
+    * handgebauten Schema statt mit einem ausgelieferten, damit der Test
+    * nicht an der ui:idFragment-Belegung einer Schema-Datei hängt.
+    *
+    ***************************************************************/
+    private function orgIdentitySchema(bool $withIdFragment): array {
+        $schema = [
+            'properties' => [
+                'name' => ['type' => 'string', 'ui:widget' => 'text', 'ui:label' => 'label_name'],
+            ],
+        ];
+        if($withIdFragment) {
+            $schema['ui:idFragment'] = 'organization';
+        }
+
+        return $schema;
+    }
+
+    private function renderTypeFieldsForScope(string $scope, array $schema): string {
+        return (new \SchemaOrgData_FormRenderer())->renderTypeFields(
+            $scope, 'TestType', $schema, [], null, null,
+            ['data' => [], 'originLabel' => []], new \SchemaOrgData_DataSplitHelper(), $this->adminLang(),
+            $this->schemaRepository(), new \SchemaOrgData_UrlHelper(), 'deDE', 'https://example.com/plugins/schemaOrgData/',
+            new \SchemaOrgData_OpeningHoursHelper(), new \SchemaOrgData_Validator(), $this->weekdayLang(), [],
+        );
+    }
+
+    function testRenderTypeFieldsSetztPersonSuggestionsAttributFuerGlobalenOrganisationsType(): void {
+        $html = $this->renderTypeFieldsForScope('global', $this->orgIdentitySchema(true));
+
+        $this->assertStringContainsString(' data-person-suggestions>', $html);
+    }
+
+    function testRenderTypeFieldsOhnePersonSuggestionsAttributAusserhalbDesGlobalenScopes(): void {
+        foreach(['category', 'page'] as $scope) {
+            $this->assertStringNotContainsString(
+                'data-person-suggestions',
+                $this->renderTypeFieldsForScope($scope, $this->orgIdentitySchema(true)),
+                'Geltungsbereich '.$scope,
+            );
+        }
+    }
+
+    function testRenderTypeFieldsOhnePersonSuggestionsAttributOhneOrganisationsIdentitaet(): void {
+        $html = $this->renderTypeFieldsForScope('global', $this->orgIdentitySchema(false));
+
+        $this->assertStringNotContainsString('data-person-suggestions', $html);
     }
 
     // -----------------------------------------------------------

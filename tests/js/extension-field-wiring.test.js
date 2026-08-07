@@ -12,13 +12,18 @@ var adminContainer = require('./helpers/admin-container');
  *
  * @param {string} fieldId z. B. "schemaOrgData_global_extension"
  * @param {string} schemaUrl
+ * @param {boolean} [personSuggestionContext] setzt data-person-suggestions,
+ *        das Gegenstück zum Kontext-Parameter von
+ *        renderExtensionFieldWidget() (B5-10). Anwesenheit ist die Aussage,
+ *        das Attribut trägt keinen Wert.
  * @returns {string}
  */
-function buildExtensionFieldFixture(fieldId, schemaUrl) {
+function buildExtensionFieldFixture(fieldId, schemaUrl, personSuggestionContext) {
     return ''
         + '<textarea id="' + fieldId + '" name="schemaOrgData[x][extension][Type]" '
         + 'class="mo-input-text schemaOrgData-extension-field" rows="12" '
-        + 'data-schema-url="' + schemaUrl + '"></textarea>'
+        + 'data-schema-url="' + schemaUrl + '"'
+        + (personSuggestionContext ? ' data-person-suggestions' : '') + '></textarea>'
         + '<div id="' + fieldId + '_feedback" class="schemaOrgData-extension-feedback"></div>';
 }
 
@@ -157,8 +162,8 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
         expect(feedback.querySelector('.schemaOrgData-feedback--error')).not.toBeNull();
     });
 
-    test('ein Personen-Suggestion-Kandidat (employee mit @type Person) erhält Info- statt Warnung-Feedback', async function () {
-        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
+    test('ein Personen-Suggestion-Kandidat (employee mit @type Person) erhält im Kontext Info- statt Warnung-Feedback', async function () {
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json', true));
         validator.initAdminForm();
         await flushPromises();
 
@@ -171,12 +176,33 @@ describe('Erweiterungsfeld - DOM-Wiring (initExtensionFieldValidation)', functio
         expect(feedback.textContent).toContain('PERSONEN_KANDIDAT employee');
     });
 
+    // Im Kontext gerendert, damit die Warnung an der Form scheitert und nicht
+    // schon am fehlenden Kontext (B5-10) - sonst prüfte der Test seinen
+    // eigenen Gegenstand nicht mehr.
     test('ein Array unter employee bleibt eine gewöhnliche Unbekannt-Warnung (kein Personen-Suggestion-Kandidat)', async function () {
-        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json', true));
         validator.initAdminForm();
         await flushPromises();
 
         document.getElementById(GLOBAL_ID).value = '{"employee": [{"@type": "Person", "name": "Julia Weber"}]}';
+        fire(document.getElementById(GLOBAL_ID), 'blur');
+
+        var feedback = feedbackFor(GLOBAL_ID);
+        expect(feedback.querySelector('.schemaOrgData-feedback--warning')).not.toBeNull();
+        expect(feedback.querySelector('.schemaOrgData-feedback--info')).toBeNull();
+        expect(feedback.textContent).toContain('UNBEKANNTE_PROPERTY employee');
+    });
+
+    // B5-10: Ohne data-person-suggestions am Feld ist der Info-Hinweis falsch -
+    // die Serverseite sucht Übernahme-Kandidaten ausschließlich im globalen
+    // Geltungsbereich eines Organisations-Identity-Types. Dieselbe Eingabe wie
+    // im Kontext-Test darüber, nur ohne das Attribut.
+    test('ohne data-person-suggestions erhält dasselbe Personen-Literal die gewöhnliche Unbekannt-Warnung statt des Info-Hinweises (B5-10)', async function () {
+        document.body.innerHTML = adminFixture(buildExtensionFieldFixture(GLOBAL_ID, '/schemas/SchemaA.json'));
+        validator.initAdminForm();
+        await flushPromises();
+
+        document.getElementById(GLOBAL_ID).value = '{"employee": {"@type": "Person", "name": "Julia Weber"}}';
         fire(document.getElementById(GLOBAL_ID), 'blur');
 
         var feedback = feedbackFor(GLOBAL_ID);
