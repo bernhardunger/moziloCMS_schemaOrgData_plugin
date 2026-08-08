@@ -115,6 +115,48 @@ steht, entspricht nicht dem sichtbaren Inhalt.
 Möglichkeit auch tatsächlich anbietet. Siehe
 [DonateAction](use-cases/donate-action.md).
 
+<a id="smiley-kuerzel"></a>
+## Smiley-Kürzel in Textfeldern meiden
+
+moziloCMS ersetzt in der **gesamten** Frontend-Ausgabe die Kürzel aus
+`cms/smileys/smileys.txt` durch HTML-Entities — auch innerhalb des
+ausgelieferten `application/ld+json`-Blocks. Im sichtbaren Seitentext wird
+daraus ein Emoji, im JSON-LD nicht: Entities im Inhalt eines
+`script`-Blocks werden nicht dekodiert. Ein `:lol:` in einem
+Beschreibungstext erreicht Suchmaschinen deshalb als wörtliches
+`&#128516;` — sichtbarer Inhalt und Markup weichen voneinander ab, und
+genau das widerspricht der Grundregel oben.
+
+Die zwanzig Kürzel der Standardliste:
+
+```
+:baeh: :guck: :heul: :loudly crying: :hmpf:
+:irre: :lach: :lol: :narf: :nerd:
+:rofl: :roll: :schock: :traurig: :zwinker:
+:devil: :screaming: :sleeping: :grimacing: :pray:
+```
+
+`:loudly crying:` enthält als einziges ein Leerzeichen und kann damit auch
+unbeabsichtigt im Fließtext entstehen, nicht nur als ein Wort zwischen zwei
+Doppelpunkten.
+
+**Die Liste ist erweiterbar** — sie steht als Datei im moziloCMS-Kern. Alle
+zwanzig Standardeinträge setzen ausschließlich numerische HTML-Entities ein
+und kein Markup; deshalb bleibt das JSON-LD trotz verfälschtem Feldwert
+gültig. Ein selbst nachgetragener Eintrag, der stattdessen ein `<img>`-Tag
+einsetzt, würde den JSON-LD-Block zerstören.
+
+**Nicht betroffen ist der gespeicherte Wert.** Die Ersetzung greift erst
+beim Ausliefern der Seite, nicht beim Speichern: Das Admin-Formular zeigt
+weiterhin genau das, was eingegeben wurde, und ein Export enthält den
+Originaltext.
+
+**Richtig:** In Feldern, deren Inhalt im JSON-LD landet, auf
+Doppelpunkt-Kürzel verzichten — wo ein Emoji gewünscht ist, das Zeichen
+selbst eintippen. Serverweit abschalten lässt sich die Ersetzung mit
+`replaceemoticons = false` in `cms/conf/main.conf.php`; das wirkt dann auf
+die ganze Website, auch auf den sichtbaren Seiteninhalt.
+
 ## Nach jeder Änderung prüfen
 
 **Debug-Modus** aktivieren (siehe
