@@ -45,6 +45,16 @@ damit verhindert, dass ein Feldwert wie `</script><script>…` aus dem
 umgebenden `<script>`-Block ausbricht (Stored-XSS-Schutz, siehe auch
 [../README.md](../README.md), Abschnitt „Sicherheit").
 
+**Was `JSON_HEX_TAG` nicht abdeckt:** Der moziloCMS-Kern ersetzt die
+Smiley-Kürzel aus `cms/smileys/smileys.txt` im fertigen `$HTML` — ohne
+Bereichsbegrenzung, also auch innerhalb des bereits erzeugten
+`ld+json`-Blocks. Die Flagge kann das strukturell nicht auffangen: Sie wirkt
+beim Kodieren, die Ersetzung läuft danach. Ein Guard im Emissionspfad ist
+daher der falsche Ort für eine Gegenmaßnahme. Gültig bleibt das JSON nur,
+weil die Standardliste ausschließlich numerische HTML-Entities einsetzt; die
+Konsequenz für die Datenpflege steht in
+[best-practices.md](best-practices.md#smiley-kuerzel).
+
 Ausgabe: `<script type="application/ld+json">\n{...}\n</script>\n`.
 
 <a id="id-mechanismus"></a>
