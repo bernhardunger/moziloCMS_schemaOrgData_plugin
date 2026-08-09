@@ -360,6 +360,12 @@ class SchemaOrgData_JsonLdBuilder {
         // und verhindert so den Ausbruch aus dem <script>-Block (Stored XSS).
         $json = json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_HEX_TAG);
         if($json === false) {
+            // Der Leerstring ist der bewusste Rückgabewert: ein halb
+            // kodierter Block wäre schlimmer als kein Block. Ohne das Log
+            // verschwindet der Knoten allerdings spurlos aus der Seite -
+            // Auslöser ist in der Regel eine ungültige UTF-8-Bytefolge in
+            // einem Feldwert.
+            error_log('schemaOrgData: json_encode() fehlgeschlagen (Type "'.$type.'", Anker "'.$nodeId.'"): '.json_last_error_msg().' - Block wird nicht ausgegeben');
             return '';
         }
 
