@@ -601,4 +601,40 @@ final class FrontendRendererTest extends TestCase {
             $_SERVER = $serverBackup;
         }
     }
+
+    /***************************************************************
+    *
+    * Ungültiges UTF-8 in einem Feldwert lässt json_encode() in
+    * buildJsonLdScript() scheitern; der Block kommt von dort als
+    * Leerstring zurück. Die Vorschau zeigt dann keine wortlos leere Box
+    * unter einem Titel, sondern benennt den Grund.
+    *
+    ***************************************************************/
+    function testBuildDebugWidgetBenenntNichtKodierbarenBlockStattLeererVorschau(): void {
+        $payload = $this->extractDebugPayload($this->buildDebugWidget(
+            [$this->debugBlock('global', 'LocalBusiness', ['name' => "Ungültig \xB1\x31"])]
+        ));
+
+        $this->assertCount(1, $payload['blocks']);
+        $this->assertSame('LocalBusiness', $payload['blocks'][0]['type']);
+        $this->assertStringContainsString('Vorschau nicht darstellbar', $payload['blocks'][0]['json']);
+    }
+
+    /***************************************************************
+    *
+    * Ungültiges UTF-8 im Type erreicht die äußere Kodierung der Nutzlast:
+    * Der Type steht dort unabhängig von der Block-Vorschau. Ohne
+    * Ersatz-Nutzlast käme der Datenblock leer heraus, und
+    * js/debug-widget.js baute stillschweigend nichts auf.
+    *
+    ***************************************************************/
+    function testBuildDebugWidgetLiefertErsatzNutzlastWennDieNutzlastNichtKodierbarIst(): void {
+        $payload = $this->extractDebugPayload($this->buildDebugWidget(
+            [$this->debugBlock('global', "Ungültig \xB1\x31", ['name' => 'Beispiel GmbH'])]
+        ));
+
+        $this->assertSame('Vorschau nicht darstellbar', $payload['label']);
+        $this->assertCount(1, $payload['blocks']);
+        $this->assertSame('Fehler', $payload['blocks'][0]['type']);
+    }
 }

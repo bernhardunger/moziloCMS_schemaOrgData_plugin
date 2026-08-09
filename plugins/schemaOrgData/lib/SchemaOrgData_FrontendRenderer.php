@@ -380,10 +380,23 @@ class SchemaOrgData_FrontendRenderer {
             );
             preg_match('#<script type="application/ld\+json">\n(.*)\n</script>#s', $script, $scriptMatches);
 
+            // Ein leeres Extraktionsergebnis kann nur aus einem
+            // fehlgeschlagenen json_encode() in buildJsonLdScript() stammen:
+            // Gelingt die Kodierung, trägt der Block immer mindestens
+            // @context und @type. Statt einer wortlos leeren Vorschau-Box
+            // unter einem Titel steht deshalb der Grund im Vorschautext -
+            // protokolliert ist der Fehlschlag bereits an seiner
+            // Entstehungsstelle, ein zweites Log wäre dieselbe Meldung
+            // doppelt.
+            $preview = $scriptMatches[1] ?? '';
+            if($preview === '') {
+                $preview = 'Vorschau nicht darstellbar: Dieser Block ließ sich nicht als JSON kodieren. Einzelheiten stehen im PHP-Fehlerlog.';
+            }
+
             $blockData[] = [
                 'scope' => $scope,
                 'type'  => $type,
-                'json'  => $scriptMatches[1] ?? '',
+                'json'  => $preview,
             ];
         }
 
@@ -404,6 +417,23 @@ class SchemaOrgData_FrontendRenderer {
         // beim Einlesen wieder zur ursprünglichen Zeichenkette auf, das
         // Laufzeitergebnis bleibt byte-identisch.
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_HEX_TAG);
+        if($json === false) {
+            // Ohne Guard gerät false in die Konkatenation und der Datenblock
+            // kommt leer heraus - js/debug-widget.js findet sein Element dann,
+            // parst Leerinhalt und baut wortlos nichts auf. Die Ersatz-Nutzlast
+            // hält die Bauform des Blocks ein und besteht ausschließlich aus
+            // Literalen dieser Datei, kann also selbst nicht an ungültigem
+            // UTF-8 scheitern.
+            error_log('schemaOrgData: json_encode() der Debug-Nutzlast fehlgeschlagen: '.json_last_error_msg().' - Ersatz-Nutzlast wird ausgeliefert');
+            $json = (string) json_encode([
+                'label'  => 'Vorschau nicht darstellbar',
+                'blocks' => [[
+                    'scope' => 'schemaOrgData',
+                    'type'  => 'Fehler',
+                    'json'  => 'Die Debug-Nutzlast ließ sich nicht als JSON kodieren. Einzelheiten stehen im PHP-Fehlerlog.',
+                ]],
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_HEX_TAG);
+        }
 
         $cacheBuster = $urlHelper->resolveAssetCacheBuster($pluginSelfDir, 'js/debug-widget.js');
 
