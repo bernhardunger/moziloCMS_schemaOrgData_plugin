@@ -8,9 +8,11 @@ ab — z. B. Jahreshauptversammlung, Vortrag, Messeauftritt, Konzert.
 | Feld | schema.org Property | Widget / Format |
 |---|---|---|
 | Name | `name` | Textfeld |
-| Beschreibung | `description` | Textfeld |
+| Beschreibung | `description` | Textbereich |
 | Beginn | `startDate` | deutsches Datumsformat `TT.MM.YYYY HH:MM`, siehe [Formularvalidierung](../validation.md) |
 | Ende | `endDate` | wie `startDate`, muss nach `startDate` liegen |
+| Teilnahmeform | `eventAttendanceMode` | Auswahlliste: vor Ort, online, hybrid — optional |
+| Status | `eventStatus` | Auswahlliste: wie geplant, abgesagt, verschoben, ins Internet verlegt — optional |
 | Ort | `location` | verschachteltes `Place`-Objekt mit `PostalAddress` |
 | Veranstalter | `organizer` | Widget `id_reference_or_literal`, siehe [widgets.md](../widgets.md) |
 
@@ -36,9 +38,13 @@ ab — z. B. Jahreshauptversammlung, Vortrag, Messeauftritt, Konzert.
 
 ## Veranstalter (`organizer`)
 
-`organizer` nutzt das Widget `id_reference_or_literal` — Referenz auf eine
-global konfigurierte **Person**/**NGO** oder Direkteingabe von Name und
-Rolle. Details zu beiden Modi stehen in [widgets.md](../widgets.md).
+`organizer` nutzt das Widget `id_reference_or_literal`. Im
+Referenz-Modus bietet das Dropdown die global konfigurierte
+Organisations-Identität (**NGO**, **Organization** oder ein
+**LocalBusiness**-Typ) sowie jede aktive Person der Personen-Registry an.
+Der Literal-Modus stellt ein einzelnes Namensfeld bereit; der eingetragene
+Wert wird als eingebettetes **Organization**-Objekt ausgegeben. Details zu
+beiden Modi stehen in [widgets.md](../widgets.md).
 
 ## Vollständiges Beispiel
 
@@ -62,7 +68,7 @@ Rolle. Details zu beiden Modi stehen in [widgets.md](../widgets.md).
       "addressCountry": "DE"
     }
   },
-  "organizer": { "@id": "https://www.example.org/#person" }
+  "organizer": { "@id": "https://www.example.org/#person-maria-beispiel" }
 }
 </script>
 ```

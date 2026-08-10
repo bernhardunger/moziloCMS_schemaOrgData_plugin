@@ -45,12 +45,15 @@ Jede Property in `properties` kombiniert Standard-JSON-Schema-Attribute
 | `ui:widget` | Widget-Typ, siehe Tabelle unten. Fehlt es, rendert `renderField()` ein einfaches Textfeld (`text`). |
 | `ui:label` | Sprachschlüssel für das Feld-Label (`$admin_lang->getLanguageValue()`) |
 | `ui:required` | `true`/`false` — steuert Pflichtfeld-Badge, Live-Validierung und serverseitige Prüfung. Muss zum Vorkommen der Property in der Top-Level-`required`-Liste passen. |
-| `ui:placeholder` | Platzhaltertext im Eingabefeld |
+| `ui:placeholder` | Platzhaltertext im Eingabefeld, literal im Schema hinterlegt |
+| `ui:placeholderKey` | Sprachschlüssel für den Platzhaltertext statt Literaltext (Alternative zu `ui:placeholder`); in Gebrauch an den Datumsfeldern |
 | `ui:options` | flache Liste erlaubter Werte für `select` (Alternative zu `enum`) |
 | `ui:enumLabels` | `{ "deDE": { wert: label, … }, "enEN": { … } }` — sprachabhängige Anzeigenamen für `enum`-Werte |
 | `ui:days` / `ui:dayLabelKeys` | nur `opening_hours`-Widget, siehe unten |
 | `ui:literalFields` / `ui:literalFieldLabels` / `ui:literalFieldPlaceholders` / `ui:literalType` | nur `id_reference_or_literal`-Widget, siehe unten |
+| `ui:referenceTargets` / `ui:allowLiteral` | nur `id_reference_or_literal`-Widget: schränken die Referenz-Ziele ein bzw. schalten den Literal-Modus ab, siehe unten |
 | `ui:idTarget` | nur `id_reference`-Widget, siehe unten |
+| `ui:emitAs` | verlagert den Wert bei der Emission in einen verschachtelten Knoten, statt ihn direkt als Property auszugeben; Objekt aus `property` (Ziel-Property am Type-Knoten), `wrapperType` (`@type` des Zwischenknotens), `as` (Property darin) und `itemType` (`@type` je Eintrag). In Gebrauch für `openingHours`: Ausgabe als `location` → `Place` → `openingHoursSpecification` → `OpeningHoursSpecification` |
 
 `format: "uri"`, `format: "email"` und `format: "date-time"` lösen in
 `SchemaOrgData_Validator::validateFormData()`/`renderFieldFeedback()`
@@ -117,10 +120,20 @@ Types (z. B. **Organization**, **NGO**). Zur Ausgabezeit fügt
 `ui:literalFieldLabels`/`ui:literalFieldPlaceholders` ordnen ihnen optional
 eigene Sprachschlüssel zu (Default: `label_<feldname>`), `ui:literalType`
 liefert das `@type` des eingebetteten Literal-Objekts. Das Dropdown im
-Referenz-Modus füllt sich automatisch aus allen global konfigurierten
-Types mit `ui:idFragment` (`SchemaOrgData_IdReferenceService::
+Referenz-Modus füllt sich automatisch: aus allen global konfigurierten
+Types mit `ui:idFragment` **und** aus allen aktiven Personen der
+Personen-Registry (`SchemaOrgData_IdReferenceService::
 resolveAvailableGlobalFragments()`) — auch hier ist keine PHP-Änderung
 nötig, ein neuer Type mit `ui:idFragment` erscheint dort automatisch.
+
+Zwei optionale Schlüssel verengen diese Auswahl. `ui:referenceTargets`
+filtert sie nachträglich: Der Wert `["persons"]` blendet die
+`organization`-Fragmente aus, sodass nur die Registry-Personen übrig
+bleiben; fehlt der Schlüssel, bleibt die volle Liste erhalten.
+`ui:allowLiteral: false` entfernt den Literal-Modus samt Modus-Umschalter,
+das Feld wird zur reinen Referenz. Beides zusammen nutzt
+`ProfilePage.mainEntity` (siehe
+[use-cases/profilseite.md](use-cases/profilseite.md)).
 
 ## `@id`-Anker (`ui:idFragment`)
 
