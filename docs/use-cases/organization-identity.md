@@ -131,6 +131,7 @@ Plugin eine neue Registry-Person mit den Feldern aus dem Literal an
 `sameAs`) samt passender Organisations-Relation. In beiden Fällen wird die
 übernommene Property danach aus dem Erweiterungsfeld entfernt.
 
+<a id="basis-url"></a>
 ## Basis-URL
 
 Die absolute Basis-URL wird zur Ausgabezeit aus dem aktuellen Request

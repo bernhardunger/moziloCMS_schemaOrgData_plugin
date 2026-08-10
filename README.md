@@ -199,6 +199,8 @@ zeigt die [Google Search Gallery](https://developers.google.com/search/docs/appe
 - moziloCMS 3.0.4 oder höher
 - PHP 8.1+
 - Schreibzugriff auf den Plugin-Ordner (für `plugin.conf.php`, siehe [Installation](#installation))
+- Empfohlen: `.htaccess`-Weiterleitung auf genau eine Host-Variante, damit die
+  `@id`-Anker stabil bleiben (siehe [Basis-URL](docs/use-cases/organization-identity.md#basis-url))
 - Kein weiteres Plugin erforderlich
 - AJV.js wird lokal ausgeliefert (kein externes CDN)
 - Kompatibel mit `seo_urls`-Plugin (optional): kanonische URLs aus
