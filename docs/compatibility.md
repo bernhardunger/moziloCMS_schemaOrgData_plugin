@@ -15,6 +15,12 @@
   liegt in `plugins/schemaOrgData/plugin.conf.php` (siehe
   [configuration.md](configuration.md)); der Webserver-Prozess muss diese
   Datei anlegen und beschreiben können.
+- **Kanonischer Host (empfohlen).** Die `@id`-Basis-URL wird zur Ausgabezeit
+  aus dem aktuellen Request abgeleitet; ein eigenes Domain-Setting gibt es
+  nicht. Ohne `.htaccess`-Weiterleitung auf genau eine Host-Variante
+  (`http`/`https`, mit/ohne `www`) trägt derselbe Knoten je nach Aufruf
+  unterschiedliche `@id`-Werte — Details in
+  [use-cases/organization-identity.md](use-cases/organization-identity.md#basis-url).
 - **Kein weiteres Plugin erforderlich.** `schemaOrgData` ist vollständig
   eigenständig lauffähig.
 
