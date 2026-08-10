@@ -64,8 +64,9 @@ eigenständiger `Person`-Knoten (siehe
 ```
 
 `knowsAbout` erscheint im Person-Knoten unabhängig davon, über welchen der
-drei Referenz-Mechanismen (Artikel-Autor, `Event.organizer`, `ProfilePage.mainEntity`)
-die Person referenziert wurde (siehe
+vier Referenz-Mechanismen (Artikel-Autor, `Event.organizer`,
+`ProfilePage.mainEntity`, Organisations-Relationen) die Person
+referenziert wurde (siehe
 [organization-identity.md](organization-identity.md)).
 
 ## Verhalten bei gelöschter oder inaktiver Person

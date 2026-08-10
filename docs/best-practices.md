@@ -55,7 +55,7 @@ vollständigen, aber teilweise erfundenen Markup vorzuziehen.
 ## Global nur die Identität
 
 Auf globaler Ebene gehört hin, wer hinter der Website steht
-(**Organization**, **NGO**, **Person** oder ein **LocalBusiness**-Typ) sowie ggf.
+(**Organization**, **NGO** oder ein **LocalBusiness**-Typ) sowie ggf.
 **WebSite** — und zwar **genau eine** Organisations-Identität, nicht
 mehrere parallel. Innerhalb der `LocalBusiness`-Familie den **spezifischsten
 passenden Type** wählen (siehe
@@ -153,9 +153,11 @@ Originaltext.
 
 **Richtig:** In Feldern, deren Inhalt im JSON-LD landet, auf
 Doppelpunkt-Kürzel verzichten — wo ein Emoji gewünscht ist, das Zeichen
-selbst eintippen. Serverweit abschalten lässt sich die Ersetzung mit
-`replaceemoticons = false` in `cms/conf/main.conf.php`; das wirkt dann auf
-die ganze Website, auch auf den sichtbaren Seiteninhalt.
+selbst eintippen. Serverweit abschalten lässt sich die Ersetzung über die
+moziloCMS-Grundeinstellung `replaceemoticons` im Admin-Bereich; das wirkt
+dann auf die ganze Website, auch auf den sichtbaren Seiteninhalt. Die
+Einstellung wird nicht von Hand in einer Datei gepflegt — der Kern legt sie
+als serialisiertes PHP-Array in `cms/conf/main.conf.php` ab.
 
 ## Nach jeder Änderung prüfen
 

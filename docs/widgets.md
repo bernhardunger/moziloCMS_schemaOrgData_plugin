@@ -64,7 +64,9 @@ Für Properties, bei denen der Wert wahlweise ein bekannter globaler Knoten
 steht dieses Widget zur Verfügung. Der Nutzer wählt im Formular zwischen
 zwei Modi.
 
-**Schema-Deklaration:**
+**Schema-Deklaration** (konstruiertes Beispiel mit zwei Literal-Feldern,
+um die Mechanik zu zeigen; das reale `Event.organizer` führt nur `name` und
+`ui:literalType: "Organization"`):
 
 ```json
 "organizer": {
@@ -80,9 +82,11 @@ zwei Modi.
 
 ### a) Referenz-Modus — Verknüpfen mit globalem Knoten
 
-Das Dropdown listet automatisch alle aktuell im Global-Scope
-konfigurierten Typen, die ein `ui:idFragment` besitzen (z. B. **NGO**,
-**Person**). Gespeichert werden `_mode: "reference"` und
+Das Dropdown listet zwei Arten von Zielen: die aktuell im Global-Scope
+konfigurierten Typen mit `ui:idFragment` (**NGO**, **Organization** oder
+ein **LocalBusiness**-Typ — sie alle tragen das Fragment `organization`)
+sowie jede **aktive** Person der Personen-Registry mit ihrem Fragment
+`person-{slug}`. Gespeichert werden `_mode: "reference"` und
 `_fragment: "<fragment>"`. Zur Ausgabezeit emittiert das Plugin
 `{"@id": "<Basis-URL>#<fragment>"}` — exakt wie `id_reference`. Der
 Dangling-Reference-Guard (siehe unten) greift für den Referenz-Modus wie
@@ -92,7 +96,7 @@ gewohnt.
 {
   "@type": "Event",
   "name": "Jahreshauptversammlung",
-  "organizer": { "@id": "https://www.example.org/#person" }
+  "organizer": { "@id": "https://www.example.org/#person-maria-beispiel" }
 }
 ```
 
@@ -117,6 +121,33 @@ Plugin emittiert ein eingebettetes Objekt mit optionalem `@type` (aus
 Der zweite Modus ist sinnvoll, wenn der Organisator/Ansprechpartner nicht
 dauerhaft global gepflegt werden soll (z. B. wechselnde externe
 Veranstalter).
+
+### c) Eingeschränkte Varianten (`ui:referenceTargets`, `ui:allowLiteral`)
+
+Zwei optionale Schema-Schlüssel verengen das Widget.
+`ui:referenceTargets` filtert die Auswahl des Referenz-Modus: Der Wert
+`["persons"]` blendet die `organization`-Fragmente aus, sodass nur die
+aktiven Registry-Personen angeboten werden. Fehlt der Schlüssel, bleibt
+die volle Liste erhalten — bestehende Schemas müssen ihn nicht setzen.
+
+`ui:allowLiteral: false` entfernt den Literal-Modus samt
+Modus-Umschalter; das Feld wird zur reinen Referenz.
+
+Beides zusammen nutzt `ProfilePage.mainEntity`: Eine Profilseite soll
+ausschließlich auf eine Registry-Person verweisen, weder auf die
+Organisation noch auf eine frei eingetippte Person (siehe
+[use-cases/profilseite.md](use-cases/profilseite.md)).
+
+```json
+"mainEntity": {
+  "type": "object",
+  "ui:widget": "id_reference_or_literal",
+  "ui:label": "label_main_entity",
+  "ui:referenceTargets": ["persons"],
+  "ui:allowLiteral": false,
+  "ui:required": true
+}
+```
 
 ## Dangling-Reference-Guard
 

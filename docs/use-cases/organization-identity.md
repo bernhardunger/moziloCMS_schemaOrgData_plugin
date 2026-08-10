@@ -30,7 +30,7 @@ schema-statisch, sondern dynamisch aus dem Slug gebildet.
 | Fragment | Types / Quelle | Scope |
 |---|---|---|
 | `#organization` | `NGO`, `Organization`, `LocalBusiness`, `ProfessionalService`, `LegalService`, `MedicalBusiness`, `AccountingService` | Global |
-| `#person-{slug}` | Registry-Personen (`persons_registry`), ein Fragment je Slug | über Referenzierung (Artikel-Autor, `Event.organizer`, Organisations-Relationen) |
+| `#person-{slug}` | Registry-Personen (`persons_registry`), ein Fragment je Slug | über Referenzierung (Artikel-Autor, `Event.organizer`, `ProfilePage.mainEntity`, Organisations-Relationen) |
 
 Die LocalBusiness-Familie teilt sich mit **NGO**/**Organization** bewusst
 dasselbe Fragment (`organization`) — es geht um dieselbe Rolle
@@ -96,16 +96,17 @@ Themengebiet je Zeile) und wird bei jeder Personen-Emission mit
 ausgegeben, unabhängig davon, über welchen der drei Referenz-Mechanismen
 die Person referenziert wurde.
 
-Referenzierbar sind Registry-Personen über drei Mechanismen: die
+Referenzierbar sind Registry-Personen über vier Mechanismen: die
 Autoren-Auswahl von `Article.author` (neben Organisation-Referenz und
-Gast-Autor als Literal), `Event.organizer` sowie die
+Gast-Autor als Literal), `Event.organizer`, `ProfilePage.mainEntity`
+(ausschließlich Personen, siehe [profilseite.md](profilseite.md)) sowie die
 Organisations-Relationen (`founder`/`employee`/`member`, siehe
 [widgets.md](../widgets.md)). Nur **aktive** Personen erscheinen in den
 zugehörigen Auswahl-Dropdowns; eine bereits gespeicherte Referenz auf eine
 inzwischen inaktive Person bleibt bei Artikel-Autor und
 `Event.organizer` weiterhin sichtbar, wird aber in den
 Organisations-Relationen aus der Ausgabe gefiltert (Details:
-`CLAUDE.md`, Abschnitt „Personen-Registry").
+[Personen-Registry](../../README.md#personen-registry)).
 
 Ergänzend referenziert `Article.publisher` per `id_reference` auf
 `organization` — anders als `author` ohne Auswahlmodus, ausschließlich als
