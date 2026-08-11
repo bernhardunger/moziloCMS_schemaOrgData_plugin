@@ -31,7 +31,7 @@ Deutsch gehalten.
 |---|---|---|
 | PHPUnit-Unit-/Komponententests | Serverseitige Logik: Scope-Auflösung, JSON-LD-Erzeugung, Formular-Rendering, Validierung, Persistenz — je `lib/`-Klasse eigene Testdatei | `tests/*.php` |
 | PHPUnit-Feldvalidator-Tests | Je ein Test pro serverseitigem Feldvalidator (E-Mail, URL, Telefon, PLZ, Öffnungszeiten, Geo-Koordinaten) | `tests/Validation/` |
-| Jest-Tests | Clientseitige Live-Validierung (`js/validator.js`) in simulierter DOM-Umgebung | `tests/js/` |
+| Jest-Tests | Clientseitiges Verhalten: Live-Validierung (`js/validator.js`) und Debug-Widget (`js/debug-widget.js`) in simulierter DOM-Umgebung | `tests/js/` |
 | Playwright-Regressionstests | Browsergestützte End-to-End-Verifikation gegen eine reale moziloCMS-Installation | intern dokumentiert |
 
 Die ersten drei Testarten laufen automatisiert und ohne manuelles
@@ -50,7 +50,8 @@ ausführt.
 
 ### Jest (clientseitige Validierung)
 
-`js/validator.js` wird über `tests/js/` mit Jest getestet:
+`js/validator.js` und `js/debug-widget.js` werden über `tests/js/` mit Jest
+getestet:
 
 ```bash
 cd tests/js
@@ -97,12 +98,13 @@ abgedeckt.
 
 ## Jest: clientseitige Validierung
 
-`tests/js/` testet ausschließlich `js/validator.js` — die Logik, die im
-Formular Live-Feedback erzeugt, bevor ein Request überhaupt abgeschickt
-wird (siehe [validation.md](validation.md)). Die Testdateien sind nach
-Widget bzw. Funktionsgruppe benannt: eine Datei für die einzelnen
-Validierungsfunktionen, sowie je eine Datei für zusammengesetzte
-Widget-Interaktionen. Diese Tests laufen unabhängig von PHPUnit und
+`tests/js/` testet `js/validator.js` — die Logik, die im Formular
+Live-Feedback erzeugt, bevor ein Request überhaupt abgeschickt wird (siehe
+[validation.md](validation.md)) — sowie `js/debug-widget.js`, das die
+Debug-Vorschau im Frontend aufbaut. Die Testdateien sind nach Widget bzw.
+Funktionsgruppe benannt: eine Datei für die einzelnen
+Validierungsfunktionen, je eine Datei für zusammengesetzte
+Widget-Interaktionen und eine für das Debug-Widget. Diese Tests laufen unabhängig von PHPUnit und
 prüfen ausschließlich Browser-seitiges Verhalten — die serverseitige
 Gegenprüfung derselben Felder liegt in `tests/Validation/` bzw. den
 entsprechenden PHPUnit-Direkt-Tests.
