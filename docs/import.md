@@ -48,7 +48,7 @@ Galerie-Vollansicht rendert strukturell nie echten Seiteninhalt (eigenes
 Voll-Layout ohne `{CONTENT}`-Platzhalter), ein dort gefundener Block wäre
 für die reale Seiten-/Kategorie-Ausgabe irrelevant und würde sonst
 fälschlich mit dem realen Block aus `template.html` konkateniert (siehe
-auch [../README.md](../README.md), Abschnitt „Galerie-Vollansichten").
+auch [JSON-LD-Ausgabe im Detail](../README.md#json-ld-ausgabe-im-detail)).
 
 ### Platzhalter-Check
 
