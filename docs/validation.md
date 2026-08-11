@@ -17,12 +17,13 @@ Fehlermeldungen kommen aus den Sprachdateien
 |---|---|---|
 | `postalCode` | Regex `[0-9]{5}` | ja |
 | `telephone` | Normalisierung + E.164-Prüfung | nein |
-| `url`, `logo`, `hasMap`, `image` | URL-Format; `http://` ergibt HTTPS-Warnung (⚠️) | nein |
+| `url`, `logo`, `image` | URL-Format; `http://` ergibt HTTPS-Warnung (⚠️) | nein |
 | `email` | E-Mail-Format | nein |
 | `openingHours` | Format + Von-Zeit < Bis-Zeit (24-Stunden-Format) | nein |
 | `addressCountry` | Enum-Prüfung gegen die Länderliste | nein |
 | `geo` (Erweiterungsfeld) | numerisch + Wertebereich (Breite/Länge) | nein |
-| Datumsfelder (`startDate`, `endDate`, `datePosted`, `validThrough`) | ausschließlich deutsches Format `TT.MM.YYYY` (optional mit Uhrzeit `HH:MM`), kalendarische Gültigkeit | nein |
+| Datumsfelder — alle Felder mit `format: date-time` (`Article.datePublished`/`dateModified`, `Event.startDate`/`endDate`, `JobPosting.datePosted`/`validThrough`, `ProfilePage.dateCreated`/`dateModified`) | ausschließlich deutsches Format `TT.MM.YYYY` (optional mit Uhrzeit `HH:MM`), kalendarische Gültigkeit | nein |
+| Start-/End-Paare (`Event.startDate`/`endDate`, `JobPosting.datePosted`/`validThrough`) | zusätzlich Bereichsprüfung: das Ende darf nicht vor dem Beginn liegen | nein |
 
 ## Postleitzahl
 
@@ -51,7 +52,7 @@ die Eingabe mit Landesvorwahl, z. B. `+49 89 123456`.
 
 ## URL-Felder
 
-Betrifft `url`, `logo`, `hasMap`, `image` sowie beliebige URL-artige
+Betrifft `url`, `logo`, `image` sowie beliebige URL-artige
 Properties im Erweiterungsfeld:
 
 - `https://…` — ✅ OK
@@ -101,7 +102,7 @@ Zweistufig validiert, siehe
 2. Property-Whitelist-Prüfung gegen das aktive JSON-Schema — unbekannte
    Properties werden mit Hinweis markiert (⚠️ gelbe Warnung), aber nicht
    blockiert
-3. Format-Prüfung bekannter Properties (z. B. URL-Format für `hasMap`,
+3. Format-Prüfung bekannter Properties (z. B. URL-Format für `url`/`logo`,
    Wertebereich für `geo`-Koordinaten)
 
 **Server-seitig (PHP, beim Speichern):**
