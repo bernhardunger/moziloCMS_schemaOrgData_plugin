@@ -256,9 +256,9 @@ ihrer Seiten ist davon nicht betroffen.
 Neben den drei Geltungsbereichen gibt es einen vierten, eigenständigen
 Admin-Bereich: die **Personen-Registry**. Hier werden Personen (z. B.
 Mitarbeitende, Kanzlei-/Praxis-Inhaber, Vereinsvorstand) unabhängig von
-Global/Kategorie/Seite zentral gepflegt — Name, Titel, Position,
-Beschreibung, Profil-URL, Themengebiete (optional, mehrzeilig), Bild und
-Status (aktiv/inaktiv).
+Global/Kategorie/Seite zentral gepflegt — Name, Kurzkennung (Slug), Titel,
+Position, Beschreibung, Profil-URL, Profil-Links (`sameAs`), Themengebiete
+(optional, mehrzeilig), Bild, Sortierung und Status (aktiv/inaktiv).
 
 Registrierte Personen sind an mehreren Stellen im Plugin referenzierbar,
 ohne die Daten dort erneut einzugeben:
@@ -292,9 +292,9 @@ Pro Geltungsbereich wird ein eigener `<script>`-Block ausgegeben (Global +
 Kategorie + Seite = bis zu drei Blöcke). Leere Felder werden vor der
 Ausgabe entfernt; vollständig leere Knoten werden gar nicht ausgegeben.
 
-> 📄 Vertiefung (gallerytemplate-Sonderfall, Types nur auf Globalebene,
-> De-Dup-Verhalten (Duplikat-Vermeidung), weitere Ausgabe-Beispiele):
-> [docs/rendering.md](docs/rendering.md)
+> 📄 Vertiefung (De-Dup-Verhalten (Duplikat-Vermeidung), weitere
+> Ausgabe-Beispiele): [docs/rendering.md](docs/rendering.md); zum
+> gallerytemplate-Sonderfall: [docs/import.md](docs/import.md)
 
 <a id="adressschema-postaladdress"></a>
 ### Adressschema (PostalAddress)
