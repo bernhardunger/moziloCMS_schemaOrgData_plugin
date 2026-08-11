@@ -12,8 +12,8 @@ Organisation selbst.
 `mainEntity` verweist ausschließlich auf eine
 [Registry-Person](../../README.md#personen-registry) — anders als bei den
 übrigen `id_reference_or_literal`-Feldern (`Article.author`,
-`Event.organizer`) steht hier **weder** eine Organisation-Referenz **noch**
-Direkteingabe zur Verfügung. Ohne mindestens eine aktive Person in der
+`Event.organizer`, `JobPosting.hiringOrganization`) steht hier **weder** eine
+Organisation-Referenz **noch** Direkteingabe zur Verfügung. Ohne mindestens eine aktive Person in der
 Personen-Registry lässt sich `ProfilePage` nicht speichern (`mainEntity`
 ist Pflichtfeld).
 

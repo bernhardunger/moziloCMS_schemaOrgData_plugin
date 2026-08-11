@@ -7,10 +7,11 @@
 | Feld | schema.org Property | Widget / Format |
 |---|---|---|
 | Titel | `title` | Textfeld |
-| Beschreibung | `description` | Textfeld |
+| Beschreibung | `description` | Mehrzeiliges Textfeld (`textarea`) |
 | Veröffentlichungsdatum | `datePosted` | deutsches Datumsformat, siehe [Formularvalidierung](../validation.md) |
 | Ablaufdatum | `validThrough` | wie `datePosted` |
-| Beschäftigungsart | `employmentType` | Auswahl (z. B. `FULL_TIME`, `PART_TIME`) |
+| Beschäftigungsart | `employmentType` | Auswahl; gespeichert und ausgegeben wird die volle URI (z. B. `https://schema.org/FULL_TIME`) |
+| Link zur Stellenanzeige | `url` | Textfeld, optional |
 | Arbeitgeber | `hiringOrganization` | Widget `id_reference_or_literal`, siehe [widgets.md](../widgets.md) |
 | Einsatzort | `jobLocation` | Place-Widget wie `Event.location`, hier aber als Ganzes **pflichtig** |
 
@@ -41,7 +42,7 @@ ohne Einsatzort wird beim Speichern abgelehnt.
   "description": "Zur Verstärkung unseres Teams suchen wir zum nächstmöglichen Zeitpunkt …",
   "datePosted": "2026-07-01",
   "validThrough": "2026-09-30",
-  "employmentType": "FULL_TIME",
+  "employmentType": "https://schema.org/FULL_TIME",
   "hiringOrganization": { "@id": "https://www.beispiel-kanzlei.de/#organization" },
   "jobLocation": {
     "@type": "Place",

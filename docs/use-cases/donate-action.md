@@ -9,7 +9,7 @@ und Dangling-Reference-Guard.
 
 | Feld | schema.org Property | Widget / Format |
 |---|---|---|
-| Beschreibung | `description` | Textfeld |
+| Beschreibung | `description` | Mehrzeiliges Textfeld (`textarea`) |
 | Empfänger | `recipient` | Widget `id_reference`, Ziel: `#organization` |
 
 `recipient` ist im Formular keine editierbare Eingabe, sondern zeigt

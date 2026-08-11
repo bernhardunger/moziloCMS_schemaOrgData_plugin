@@ -50,11 +50,12 @@ Beide Zweige bauen zuerst ein **Context-Objekt** (`final class` mit
 ausschließlich `readonly`-Properties), das alle für den jeweiligen Zweig
 nötigen Kollaboratoren bündelt:
 
-- `SchemaOrgData_FrontendRequestContext` — bündelt 8 Kollaboratoren, u. a.
+- `SchemaOrgData_FrontendRequestContext` — bündelt 12 Kollaboratoren, u. a.
   `settings`, `scopeResolver`, `schemaRepository`, `urlHelper`.
-- `SchemaOrgData_AdminRequestContext` — bündelt 19 Kollaboratoren
-  (zusätzlich zu den Frontend-Kollaboratoren), u. a. `lang`,
-  `formRenderer`, `validator`, `configSaveService`.
+- `SchemaOrgData_AdminRequestContext` — bündelt 24 Kollaboratoren, u. a.
+  `lang`, `formRenderer`, `validator`, `configSaveService`; die
+  Frontend-Kollaboratoren sind darin überwiegend enthalten, nicht
+  zusätzlich gezählt.
 
 Der Platzhalter-Parameter (`$value`) ist bewusst **kein** Teil von
 `SchemaOrgData_FrontendRequestContext`: Er wird nicht ausgewertet und bleibt
@@ -73,6 +74,9 @@ nicht den Seiteninhalt.
 | `SchemaOrgData_ScopeResolver` | Kapselt die gesamte Geltungsbereichs-Logik: Settings-Key-Bildung (`getScopeSettingsKey()`), Bezeichner-Sanitizing (`sanitizeScopeIdentifier()`), Ermittlung der aktiven Kategorie/Seite (`resolveScopeIdentifiers()`), Laden/Speichern von Konfiguration und Meta-Daten (`loadScopeConfig()`, `loadScopeMeta()`, `saveScopeMeta()`), feldweise Vererbung (`mergeConfigs()`, `resolveTypeInheritance()`) und Type-Kollisionserkennung (`detectTypeCollision()`). Siehe [configuration.md](configuration.md). |
 | `SchemaOrgData_JsonLdBuilder` | Baut aus zusammengeführten Formulardaten den fertigen `<script type="application/ld+json">`-Block: HTML-Entity-Dekodierung, Leerfeld-Bereinigung, verschachtelte `PostalAddress`/`GeoCoordinates`/`Place`-Typisierung, `id_reference`/`id_reference_or_literal`-Auflösung, `@id`-Vergabe (`resolveNodeId()`, De-Dup-Guard). Siehe [rendering.md](rendering.md). |
 | `SchemaOrgData_IdReferenceService` | Ergänzt den `@id`-Mechanismus um zwei Dienste: verfügbare globale `@id`-Fragmente für das `id_reference_or_literal`-Dropdown (`resolveAvailableGlobalFragments()`) sowie den Dangling-Reference-Guard (`applyDanglingReferenceGuard()`), der hängende Verweise auf fehlende Zielknoten abfängt. Siehe [rendering.md](rendering.md). |
+| `SchemaOrgData_PersonsRegistryService` | Personen-Registry im Settings-Key `persons_registry`, orthogonal zum Scope-Modell (keine Vererbung, kein Eintrag im Type-Dropdown): Lesen (`loadRegistry()`, `getPerson()`, `slugExists()`), Slug-Bildung und -Sanitizing (`generateSlugSuggestion()`, `sanitizeSlugCandidate()`), Bereinigung und Validierung der Formularfelder (`sanitizePersonData()`, `validatePersonData()`), CRUD (`createPerson()`, `updatePerson()`, `deletePerson()`) sowie das `@id`-Fragment einer Person (`buildFragment()`). Der Slug ist nach Erstanlage unveränderlich. |
+| `SchemaOrgData_PersonSuggestionService` | Erkennt einzelne `Person`-Literale unter `employee`/`founder`/`member` im Erweiterungsfeld eines global konfigurierten Organisations-Identity-Types (`detectSuggestions()`), rendert den Übernahme-Hinweis (`renderSuggestionNotice()`) und führt die Übernahme aus (`acceptSuggestion()`): Verknüpfung per Namensgleichheit oder Neuanlage, passende Organisations-Relation, Entfernen der übernommenen Property. |
+| `SchemaOrgData_OrgRelationsService` | Organisations-Relationen (`founder`/`employee`/`member`) zwischen der globalen Identität und Registry-Personen, gespeichert als `org_relations` unabhängig vom aktiven Type: Bereinigung und Prüfung der Widget-Rohdaten (`sanitizeAndValidate()`) sowie die nach Rolle gruppierten `@id`-Referenzen für die Ausgabe (`buildOutputGroups()`, überspringt gelöschte und inaktive Personen). |
 | `SchemaOrgData_CollisionDetector` | Erkennt vorhandene `<script type="application/ld+json">`-Blöcke im Layout-Template, sowohl frontend- (`extractExistingJsonLdBlocksFromTemplate()`, live je Request) als auch admin-seitig (`extractExistingJsonLdBlocksFromTemplateAdmin()`, inkl. Draftmode), sowie im Seiteninhalt über den Kern (`extractExistingJsonLdBlocksFromPage()`, im Admin je Seite, im Frontend live für die aufgerufene Seite), und prüft, ob der Plugin-Platzhalter im Template steht und innerhalb `<head>` liegt (`detectPluginPlaceholderInTemplateAdmin()`). Siehe [import.md](import.md). |
 | `SchemaOrgData_OpeningHoursHelper` | Reine Array-/String-Transformationen für das Öffnungszeiten-Widget: Erkennung roher Pro-Tag-Werte (`isPerDayOpeningHoursValue()`), Parsen eines `openingHours`-Arrays in Von/Bis-Zeiten je Wochentag (`parseOpeningHours()`) und die Umkehrung (`buildOpeningHoursArray()`). |
 | `SchemaOrgData_DataSplitHelper` | Trennt gespeicherte bzw. importierte Properties eines Types anhand des aktiven Schemas in bekannte Formularfelder und unbekannte Erweiterungs-Properties (`splitDataForRendering()`) — gemeinsamer Mapper für `FormRenderer` und `ImportService`. |
@@ -84,6 +88,8 @@ nicht den Seiteninhalt.
 | `SchemaOrgData_AdminController` | Orchestriert eine einzelne Geltungsbereich-Sektion (`renderScopeSection()`) sowie die vollständige Admin-Seite (`renderAdminPage()`): POST-Verarbeitung anstoßen, alle Scopes vorrendern, Assets samt Cache-Busting einbinden. |
 | `SchemaOrgData_AdminPageRenderer` | Zustandslose, reine Anzeige-Bausteine der Admin-Seite: Admin-CSS (`getAdminCss()`), Info-Block, Scope-Label/-Selektor, Speichern-Button-Beschriftung, Speicher-Ergebnis-Hinweis, Hinweis auf vorhandenes/kollidierendes JSON-LD samt Import-UI (`renderExistingJsonLdNotice()`), Ausschlussliste, Platzhalter-Hinweis, Type-Auswahl. |
 | `SchemaOrgData_AdminRequestHandler` | POST/Actions-Dispatch: verteilt `$_POST['schemaOrgData']` je Geltungsebene an `ConfigSaveService::saveConfig()`, bzw. auf den Import-Pfad (`handleImportAction()`), wenn der Import-Button ausgelöst wurde. |
+| `SchemaOrgData_PersonsAdminRenderer` | Rendert den vierten Admin-Bereich (`renderPersonsSection()`): Personenliste, „Neue Person"-Formular und je ein Bearbeiten-Formular, alle vorgerendert und clientseitig umgeschaltet; nutzt die bestehenden `FormRenderer`-Widget-Bausteine. Liefert die Ansichts-IDs für die Umschaltung (`listViewId()`, `newViewId()`, `buildEditViewId()`). |
+| `SchemaOrgData_PersonsAdminRequestHandler` | POST-Dispatch der Personen-Registry (`handlePersonsPostRequest()`): wertet `schemaOrgData_persons_action` aus (`create`, `update:<slug>`, `delete:<slug>`) und delegiert an `SchemaOrgData_PersonsRegistryService`. Vom Scope-Formular getrennt und diesem im POST vorgeordnet. |
 | `SchemaOrgData_FrontendRenderer` | Orchestriert die Frontend-Ausgabepipeline: Scope-Konfiguration laden, Layout-Template und Seiteninhalt live auf fremdes JSON-LD prüfen, `excluded_cats`- und `jsonld_mode = 'keep'`-Filter, feldweise Vererbung, Dangling-Reference-Guard, JSON-LD-Blöcke ausgeben, optional Debug-Widget (`buildDebugWidget()`) anhängen. Schreibt selbst keine Meta-Daten. |
 | `SchemaOrgData_FrontendRequestContext` / `SchemaOrgData_AdminRequestContext` | Reine Daten-Objekte, bündeln die Laufzeit-Kollaboratoren für `renderFrontend()` bzw. `renderAdminPage()`/`renderScopeSection()`. |
 
@@ -94,7 +100,10 @@ Grobe Flughöhe:
 ```
 schemaOrgData::getContent()
   └─ AdminController::renderAdminPage()
-       ├─ POST vorhanden? → AdminRequestHandler::handlePostRequest()
+       ├─ Personen-Aktion im POST (schemaOrgData_persons_action)?
+       │    → PersonsAdminRequestHandler::handlePersonsPostRequest() (Vorrang,
+       │      die Scope-Verarbeitung entfällt in diesem Request)
+       ├─ sonst POST vorhanden? → AdminRequestHandler::handlePostRequest()
        │    (Import-Dispatch oder ConfigSaveService::saveConfig() je Geltungsebene)
        ├─ Kollisionserkennung im aktiven Template persistieren (Global-Scope)
        ├─ Kollisionserkennung im Seiteninhalt persistieren (je Seite, nur bei Fund)
