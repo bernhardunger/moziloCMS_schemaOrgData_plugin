@@ -50,16 +50,14 @@ E.164-Validierung greift (siehe [validation.md](validation.md)).
 
 ## Script-Breakout-Schutz (`JSON_HEX_TAG`)
 
-Jede Stelle, an der das Plugin JSON in einen `<script>`-Block einbettet,
-kodiert mit dem Flag `JSON_HEX_TAG`:
+Beide Stellen, an denen das Plugin JSON in einen `<script>`-Block
+einbettet, kodieren mit dem Flag `JSON_HEX_TAG`:
 
 - `SchemaOrgData_JsonLdBuilder::buildJsonLdScript()` — der eigentliche
   JSON-LD-Block im Frontend.
 - `SchemaOrgData_FrontendRenderer::buildDebugWidget()` — die
-  Debug-Vorschau-Nutzlast (`schemaOrgDataDebugData`).
-- `SchemaOrgData_AdminController::renderAdminPage()` — die an
-  `window.schemaOrgDataMessages` übergebenen, aus den Sprachdateien
-  stammenden Meldungstexte fürs Admin-JavaScript.
+  Debug-Vorschau-Nutzlast im `<script type="application/json">`-Block mit
+  der ID `schemaOrgData-debug-data`.
 
 `JSON_HEX_TAG` kodiert `<`/`>` in Feldwerten als Unicode-Escapes
 (`\u003C`/`\u003E`). Ein Feldwert wie `</script><script>alert(1)</script>`
@@ -67,6 +65,15 @@ kann den umgebenden `<script>`-Block dadurch nicht aufbrechen — das
 schließende `</script>`-Muster taucht im ausgelieferten HTML gar nicht
 mehr als solches auf. Betrifft strukturell jeden Formularwert, der ins
 JSON-LD wandert, nicht nur offensichtlich gefährliche Felder.
+
+Die lokalisierten Meldungstexte fürs Admin-JavaScript reisen dagegen nicht
+in einem `<script>`-Block, sondern als `data-messages`-Attribut des
+Formular-Containers `.schemaOrgData-admin`
+(`SchemaOrgData_AdminController::renderAdminPage()`, clientseitig gelesen in
+`js/validator.js`). Gehärtet wird dort nicht mit `JSON_HEX_TAG`, sondern mit
+`htmlspecialchars(..., ENT_QUOTES)` um das kodierte JSON — kodiert werden
+also genau die Zeichen, die einen Attributwert vorzeitig beenden oder
+eigenes Markup einschleusen könnten.
 
 ## Server-seitige Validierung ist maßgeblich
 
