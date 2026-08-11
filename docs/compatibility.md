@@ -9,8 +9,8 @@
 - **PHP 8.1+.** Das Plugin macht u. a. von `readonly`-Properties
   (`SchemaOrgData_FrontendRequestContext`, `SchemaOrgData_AdminRequestContext`,
   `SchemaOrgData_ValidationResult`, siehe [architecture.md](architecture.md))
-  und typisierten `match`-Ausdrücken Gebrauch — beides erfordert PHP 8.1
-  oder neuer.
+  Gebrauch — sie setzen PHP 8.1 voraus und bestimmen damit die Untergrenze.
+  Die ebenfalls genutzten `match`-Ausdrücke gibt es bereits seit PHP 8.0.
 - **Schreibzugriff auf den Plugin-Ordner.** Die gesamte Live-Konfiguration
   liegt in `plugins/schemaOrgData/plugin.conf.php` (siehe
   [configuration.md](configuration.md)); der Webserver-Prozess muss diese
@@ -48,7 +48,7 @@ moziloCMS 3.0 enthält bereits folgende Schema.org-Implementierungen als
 | Bereich | Core-Implementierung | Dieses Plugin |
 |---|---|---|
 | Seiteninhalt | `Article` (Wrapper, minimal) | `Article` als JSON-LD im `<head>` |
-| Bilder | `ImageObject` via `itemprop` | — |
+| Bilder | `itemprop="image"`/`itemprop="caption"` am Bild-Markup, ohne eigenen `itemtype` | — |
 | Breadcrumb | `BreadcrumbList` via Microdata | — |
 | Kontakt | `LocalBusiness` via Microdata im Body | `LocalBusiness` als JSON-LD im `<head>` |
 
@@ -121,7 +121,7 @@ eine reguläre Plugin-Installation.
 }
 ```
 
-Testet ausschließlich `js/validator.js` in einer simulierten
+Testet `js/validator.js` und `js/debug-widget.js` in einer simulierten
 DOM-Umgebung (`testEnvironment: "jsdom"`). `tests/js/node_modules/` wird
 nicht eingecheckt; `npm install` ist vor dem ersten Jest-Lauf notwendig
 (siehe [tests.md](tests.md)). Auch dieses Paket ist reine
