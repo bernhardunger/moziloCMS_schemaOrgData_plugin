@@ -175,7 +175,7 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
     describe('sanitizeSlugCandidateJs()', function () {
         test('entfernt unzulässige Zeichen und schreibt klein', function () {
             expect(validator.sanitizeSlugCandidateJs('Max Mustermann')).toBe('max-mustermann');
-            expect(validator.sanitizeSlugCandidateJs('A/b_c-1!')).toBe('ab_c-1');
+            expect(validator.sanitizeSlugCandidateJs('A/b_c-1!')).toBe('a-b_c-1');
         });
 
         test('wandelt Leerraum in Bindestriche statt ihn zu verkleben', function () {
@@ -187,23 +187,28 @@ describe('js/validator.js - reine Validierungsfunktionen', function () {
             expect(validator.sanitizeSlugCandidateJs('Jürgen Müller-Schön')).toBe('juergen-mueller-schoen');
         });
 
-        // Das geschützte Leerzeichen ist für PHP kein Leerraum: preg_replace('/\s+/')
-        // ohne /u trifft seine beiden UTF-8-Bytes nicht, der Zeichenfilter von
-        // SchemaOrgData_PersonsRegistryService::sanitizeSlugCandidate() löscht sie
-        // ersatzlos. Die ausgeschriebene ASCII-Leerraumklasse hier hält dagegen,
-        // dass String.replace(/\s+/) sie zu einem Bindestrich machen würde.
-        test('geschütztes Leerzeichen wird gelöscht, nicht zum Bindestrich', function () {
-            expect(validator.sanitizeSlugCandidateJs('max mustermann')).toBe('maxmustermann');
+        // Das geschützte Leerzeichen ist für PHP kein Leerraum, fällt aber
+        // beidseitig in die Klasse der unzulässigen Zeichen [^a-z0-9_] und
+        // trennt deshalb wie ein gewöhnliches Leerzeichen. Ein Sonderschritt
+        // für Leerraum existiert auf keiner der beiden Seiten mehr.
+        test('geschütztes Leerzeichen trennt wie ein gewöhnliches', function () {
+            expect(validator.sanitizeSlugCandidateJs('max' + String.fromCharCode(0x00a0) + 'mustermann')).toBe('max-mustermann');
             expect(validator.sanitizeSlugCandidateJs('max mustermann')).toBe('max-mustermann');
         });
 
         // Spiegelt SchemaOrgData_PersonsRegistryService::sanitizeSlugCandidate():
         // ohne alphanumerisches Zeichen gilt die Kennung als nicht angegeben,
         // sonst schlüge der Live-Fill einen Wert vor, den der Server ablehnt.
+        // "-_-" belegt, dass der Rand-Trim allein nicht genügt: er trägt nur
+        // Bindestriche ab, der Unterstrich bliebe als Slug stehen.
         test('reine Trennzeichenfolge gilt als nicht angegeben', function () {
             expect(validator.sanitizeSlugCandidateJs('Иван Петров')).toBe('');
             expect(validator.sanitizeSlugCandidateJs('-_-')).toBe('');
-            expect(validator.sanitizeSlugCandidateJs('-max-')).toBe('-max-');
+        });
+
+        test('Randbindestriche entfallen bei vorhandenem Inhalt', function () {
+            expect(validator.sanitizeSlugCandidateJs('-max-')).toBe('max');
+            expect(validator.generateSlugSuggestionJs('-max-')).toBe('max');
         });
     });
 

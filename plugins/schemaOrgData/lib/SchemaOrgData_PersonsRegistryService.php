@@ -91,7 +91,8 @@ class SchemaOrgData_PersonsRegistryService {
     * Muss vor der Kleinschreibung laufen: strtolower() arbeitet
     * ASCII-beschränkt und lässt "Ä"/"Ö"/"Ü" unangetastet - liefe die
     * Transliteration danach, bliebe aus "Ä" ein "Ae" stehen, dessen
-    * großes "A" der nachfolgende Zeichenfilter ersatzlos löscht.
+    * großes "A" der nachfolgende Zeichenfilter zu einem Bindestrich
+    * verkehrte ("Ärztin" ergäbe "erztin" statt "aerztin").
     *
     ***************************************************************/
     private function transliterateSlugInput(string $value): string {
@@ -104,10 +105,42 @@ class SchemaOrgData_PersonsRegistryService {
 
     /***************************************************************
     *
-    * Leitet aus einem Personennamen einen Slug-Vorschlag ab:
-    * Umlaut-Transliteration, Kleinschreibung, Leerzeichen/übrige
-    * Sonderzeichen → Bindestrich, führende/abschließende Bindestriche
-    * entfernt.
+    * Bildet die Zeichenregel eines Slugs ab und ist deren einzige
+    * Stelle: Zulässig sind lateinische Buchstaben, Ziffern,
+    * Bindestrich und Unterstrich, alles kleingeschrieben. Jede
+    * zusammenhängende Folge unzulässiger Zeichen wird zu genau einem
+    * Bindestrich, führende und abschließende Bindestriche entfallen.
+    *
+    * Beide öffentlichen Slug-Wege - generateSlugSuggestion() aus dem
+    * Namen und sanitizeSlugCandidate() aus einer Eingabe - teilen
+    * diese Methode und liefern deshalb für denselben Eingabetext
+    * denselben Slug. Eine je Weg gespiegelte Regel driftet
+    * auseinander, sobald einer von beiden angefasst wird.
+    *
+    * Die Transliteration läuft vor der Kleinschreibung, Begründung
+    * siehe transliterateSlugInput().
+    *
+    * Die abschließende Alphanumerik-Prüfung tritt neben den
+    * Rand-Trim, nicht an seine Stelle: Der Trim allein ließe "-_-"
+    * durch, weil der Unterstrich zum erlaubten Zeichenvorrat gehört
+    * und der Trim nur Bindestriche abträgt. Ein solcher Slug erzeugte
+    * dauerhaft das @id-Fragment "#person-_", denn der Slug ist nach
+    * Erstanlage unveränderlich.
+    *
+    ***************************************************************/
+    private function normalizeSlug(string $value): string {
+        $value = $this->transliterateSlugInput(trim($value));
+        $value = strtolower($value);
+        $value = (string) preg_replace('/[^a-z0-9_]+/', '-', $value);
+        $value = trim($value, '-');
+
+        return preg_match('/[a-z0-9]/', $value) === 1 ? $value : '';
+    }
+
+    /***************************************************************
+    *
+    * Leitet aus einem Personennamen einen Slug-Vorschlag ab. Die
+    * Zeichenregel steht in normalizeSlug().
     *
     * Der Zeichenvorrat eines Slugs ist bewusst auf ASCII beschränkt
     * (lateinische Buchstaben, Ziffern, Bindestrich, Unterstrich) -
@@ -122,50 +155,41 @@ class SchemaOrgData_PersonsRegistryService {
     *
     ***************************************************************/
     public function generateSlugSuggestion(string $name): string {
-        $value = $this->transliterateSlugInput(trim($name));
-        $value = strtolower($value);
-        $value = (string) preg_replace('/[^a-z0-9]+/', '-', $value);
-        return trim($value, '-');
+        return $this->normalizeSlug($name);
     }
 
     /***************************************************************
     *
-    * Bereinigt einen vom Nutzer eingegebenen/übernommenen Slug-Wert
-    * auf die zulässige Zeichenmenge (lateinische Buchstaben, Ziffern,
-    * Bindestrich, Unterstrich - Zeichenregel analog
-    * SchemaOrgData_ScopeResolver::sanitizeScopeIdentifier()), stets
-    * kleingeschrieben (Slugs sind rein technische Bezeichner, keine
-    * benutzersichtbaren Freitextwerte).
+    * Bereinigt einen vom Nutzer eingegebenen/übernommenen Slug-Wert.
+    * Die Zeichenregel steht in normalizeSlug(); weil beide Slug-Wege
+    * dieselbe Normalisierung teilen, liefert diese Methode für
+    * denselben Eingabetext denselben Slug wie
+    * generateSlugSuggestion() - welcher der beiden Wege den Wert
+    * erzeugt hat, ist am Ergebnis nicht mehr ablesbar. Zur bewussten
+    * ASCII-Beschränkung siehe dort.
     *
-    * Nutzt dieselbe Transliteration wie generateSlugSuggestion() und
-    * liefert für denselben Eingabetext denselben Slug - welcher der
-    * beiden Wege den Wert erzeugt hat, ist am Ergebnis nicht mehr
-    * ablesbar. Zur bewussten ASCII-Beschränkung siehe dort.
+    * Der Slug ist stets kleingeschrieben, denn er ist ein rein
+    * technischer Bezeichner, kein benutzersichtbarer Freitextwert.
+    * Allein der Zeichenvorrat (lateinische Buchstaben, Ziffern,
+    * Bindestrich, Unterstrich) ist analog
+    * SchemaOrgData_ScopeResolver::sanitizeScopeIdentifier() - dessen
+    * Ersetzungsregel ist eine andere: es erhält Großschreibung sowie
+    * "%" und tilgt Umlaute ersatzlos.
     *
-    * Bleibt nach dem Zeichenfilter kein einziges alphanumerisches
-    * Zeichen übrig, gilt die Kennung als nicht angegeben und der
-    * Rückgabewert ist der Leerstring. Ohne diese Bedingung passierte
-    * eine reine Trennzeichenfolge ("-", "--", "_", "-_-") die
-    * Leer-Prüfung des Aufrufers: aus einem von Hand eingetragenen
-    * "Иван Петров" entstünde der Slug "-" und damit dauerhaft das
-    * @id-Fragment "#person--", denn der Slug ist nach Erstanlage
+    * Bleibt kein einziges alphanumerisches Zeichen übrig, gilt die
+    * Kennung als nicht angegeben und der Rückgabewert ist der
+    * Leerstring. Ohne diese Bedingung passierte eine reine
+    * Trennzeichenfolge ("-", "--", "_", "-_-") die Leer-Prüfung des
+    * Aufrufers: aus einem von Hand eingetragenen "Иван Петров"
+    * entstünde ein Slug ohne lateinisches Zeichen und damit dauerhaft
+    * ein leeres @id-Fragment, denn der Slug ist nach Erstanlage
     * unveränderlich. Die Fehlermeldung bei leerer Kennung sagt zudem
     * zu, dass eine Kennung lateinische Buchstaben oder Ziffern
     * enthalten muss - eine Zusage, die der Code sonst nicht einhielte.
-    * Ein Rand-Trim genügte dafür nicht: er ließe "-_-" durch.
     *
     ***************************************************************/
     public function sanitizeSlugCandidate(string $value): string {
-        $value = $this->transliterateSlugInput(trim($value));
-        $value = strtolower($value);
-        // Leerraum wird vor dem Zeichenfilter in Bindestriche umgewandelt,
-        // damit ein manuell eingegebener Slug-Wert ("Max Mustermann") nicht
-        // zu einem verklebten "maxmustermann" wird, sondern zum erwarteten
-        // "max-mustermann" (analog generateSlugSuggestion()).
-        $value = (string) preg_replace('/\s+/', '-', $value);
-        $value = (string) preg_replace('/[^a-z0-9_\-]/', '', $value);
-
-        return preg_match('/[a-z0-9]/', $value) === 1 ? $value : '';
+        return $this->normalizeSlug($value);
     }
 
     /***************************************************************
