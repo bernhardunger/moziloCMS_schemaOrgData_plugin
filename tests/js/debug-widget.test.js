@@ -208,4 +208,68 @@ describe('Debug-Widget - Aufbau aus dem JSON-Datenblock (debug-widget.js)', func
 
         expect(document.querySelectorAll('textarea').length).toBe(0);
     });
+
+    // Die beiden folgenden Fälle stubben document.execCommand, das jsdom nicht
+    // kennt. Das afterEach entfernt es restlos und stellt echte Zeitgeber wieder
+    // her. Der bestehende Fehlschlag-Test steht in der Deklarationsreihenfolge
+    // davor und liefe auch ohne dieses Aufräumen grün - die Absicherung gilt
+    // dem nächsten Test, der hinter diesem Block entsteht: Ein
+    // zurückbleibendes Stub führte ihn auf den Erfolgspfad, obwohl er den
+    // Fehlschlag erwartet.
+    describe('Kopier-Fallback mit vorhandenem execCommand', function () {
+        afterEach(function () {
+            delete document.execCommand;
+            jest.useRealTimers();
+        });
+
+        // Der Einhängepunkt ist das Prüfobjekt, nicht das Aufräumen: Die
+        // Hilfs-Textarea muss während des Kopiervorgangs an dialog hängen, weil
+        // showModal() alles außerhalb des Dialogs inert macht - an document.body
+        // gehangen bliebe die Selection leer, während execCommand trotzdem true
+        // liefert. Das Elternelement ist deshalb im Moment des Aufrufs zu lesen;
+        // danach ist die Textarea entfernt und die Frage nicht mehr stellbar.
+        test('die Hilfs-Textarea hängt beim Kopieren an dialog, nicht an document.body', function () {
+            var elternId = null;
+            var imDokument = null;
+            document.execCommand = jest.fn(function () {
+                var ta = document.querySelector('textarea');
+                elternId = ta.parentNode.id;
+                imDokument = document.body.contains(ta);
+
+                return true;
+            });
+
+            setDataBlock(samplePayload());
+            widget.init();
+            click(document.getElementById('schemaOrgData-debug-copy-0'));
+
+            expect(document.execCommand).toHaveBeenCalledWith('copy');
+            expect(elternId).toBe('schemaOrgData-debug-dialog');
+            expect(imDokument).toBe(true);
+        });
+
+        // Erfolgspfad: Ohne navigator.clipboard nimmt der Handler den
+        // synchronen Fallback-Zweig, weshalb die Rückmeldung ohne Warten auf
+        // ein Promise ablesbar ist. Die Beschriftung kehrt nach 1500 ms zur
+        // ursprünglichen zurück - geprüft über falsche Zeitgeber, damit der
+        // Test nicht wartet.
+        test('gelungenes Kopieren meldet "Kopiert!" und stellt die Beschriftung zurück', function () {
+            jest.useFakeTimers();
+            document.execCommand = jest.fn(function () { return true; });
+
+            setDataBlock(samplePayload());
+            widget.init();
+
+            var copyBtn = document.getElementById('schemaOrgData-debug-copy-0');
+            expect(copyBtn.textContent).toBe('JSON kopieren');
+
+            click(copyBtn);
+
+            expect(copyBtn.textContent).toBe('Kopiert!');
+
+            jest.advanceTimersByTime(1500);
+
+            expect(copyBtn.textContent).toBe('JSON kopieren');
+        });
+    });
 });
