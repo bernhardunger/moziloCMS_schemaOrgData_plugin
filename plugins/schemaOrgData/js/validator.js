@@ -484,17 +484,24 @@
     }
 
     /**
-     * Bereinigt einen vom Nutzer eingegebenen Personen-Registry-Slug auf
-     * die zulässige Zeichenmenge - client-seitige Entsprechung von
-     * SchemaOrgData_PersonsRegistryService::sanitizeSlugCandidate(),
-     * siehe README.md, Abschnitt "Personen-Registry".
+     * Bildet die Zeichenregel eines Slugs ab und ist deren einzige
+     * Stelle - Entsprechung von
+     * SchemaOrgData_PersonsRegistryService::normalizeSlug(). Zulässig
+     * sind lateinische Buchstaben, Ziffern, Bindestrich und
+     * Unterstrich, alles kleingeschrieben; jede zusammenhängende Folge
+     * unzulässiger Zeichen wird zu genau einem Bindestrich, führende
+     * und abschließende Bindestriche entfallen.
      *
-     * Der Zeichenvorrat eines Slugs ist bewusst auf ASCII beschränkt -
-     * der Slug ist zugleich das @id-Fragment der Person und nach
-     * Erstanlage unveränderlich. Die Leerraumklasse ist deshalb
-     * ausgeschrieben statt \s: das unicode-bewusste \s träfe auch das
-     * geschützte Leerzeichen, das PHP-seitig kein Leerraum ist und vom
-     * Zeichenfilter ersatzlos gelöscht wird.
+     * Beide Slug-Wege - generateSlugSuggestionJs() aus dem Namen und
+     * sanitizeSlugCandidateJs() aus einer Eingabe - teilen diese
+     * Funktion und liefern deshalb für denselben Eingabetext denselben
+     * Slug. Eine je Weg gespiegelte Regel driftet auseinander, sobald
+     * einer von beiden angefasst wird.
+     *
+     * Der Zeichenvorrat ist bewusst auf ASCII beschränkt - der Slug ist
+     * zugleich das @id-Fragment der Person und nach Erstanlage
+     * unveränderlich. Die Transliteration läuft vor der
+     * Kleinschreibung, Begründung siehe transliterateSlugInputJs().
      *
      * String.trim() bleibt hier bewusst stehen, obwohl es
      * unicode-bewusster ist als das PHP-seitige trim(): ein am Rand
@@ -502,40 +509,53 @@
      * anschließend über den Zeichenfilter - das Ergebnis ist beidseitig
      * dasselbe.
      *
-     * Bleibt nach dem Zeichenfilter kein alphanumerisches Zeichen übrig,
-     * gilt die Kennung als nicht angegeben (Leerstring) - eine reine
-     * Trennzeichenfolge ist kein brauchbares @id-Fragment. Ohne diese
-     * Bedingung schlüge der Live-Fill für "Иван Петров" einen einzelnen
-     * Bindestrich vor, den der Server ablehnt.
+     * Die abschließende Alphanumerik-Prüfung tritt neben den Rand-Trim,
+     * nicht an seine Stelle: Der Trim allein ließe "-_-" durch, weil
+     * der Unterstrich zum erlaubten Zeichenvorrat gehört und der Trim
+     * nur Bindestriche abträgt. Ein solcher Slug erzeugte dauerhaft das
+     * @id-Fragment "#person-_"; die PHP-Gegenstelle prüft deshalb
+     * dasselbe, damit der Live-Vorschlag nicht etwas anderes anzeigt,
+     * als der Server speichert.
      *
      * @param {string} value
      * @returns {string}
      */
-    function sanitizeSlugCandidateJs(value) {
+    function normalizeSlugJs(value) {
         var result = transliterateSlugInputJs(String(value || '').trim());
         result = toAsciiLowerCaseJs(result);
-        result = result.replace(/[ \t\n\r\f\v]+/g, '-');
-        result = result.replace(/[^a-z0-9_\-]/g, '');
+        result = result.replace(/[^a-z0-9_]+/g, '-');
+        result = result.replace(/^-+|-+$/g, '');
 
         return /[a-z0-9]/.test(result) ? result : '';
     }
 
     /**
-     * Leitet aus einem Personennamen einen Slug-Vorschlag ab (Umlaut-
-     * Transliteration, Kleinschreibung) - client-seitige Entsprechung
-     * von SchemaOrgData_PersonsRegistryService::generateSlugSuggestion(),
-     * siehe README.md, Abschnitt "Personen-Registry". Zeichenvorrat und
-     * ASCII-Kleinschreibung wie bei sanitizeSlugCandidateJs(); beide
-     * Wege liefern für denselben Eingabetext denselben Slug.
+     * Bereinigt einen vom Nutzer eingegebenen Personen-Registry-Slug -
+     * client-seitige Entsprechung von
+     * SchemaOrgData_PersonsRegistryService::sanitizeSlugCandidate(),
+     * siehe README.md, Abschnitt "Personen-Registry". Die Zeichenregel
+     * steht in normalizeSlugJs().
+     *
+     * @param {string} value
+     * @returns {string}
+     */
+    function sanitizeSlugCandidateJs(value) {
+        return normalizeSlugJs(value);
+    }
+
+    /**
+     * Leitet aus einem Personennamen einen Slug-Vorschlag ab -
+     * client-seitige Entsprechung von
+     * SchemaOrgData_PersonsRegistryService::generateSlugSuggestion(),
+     * siehe README.md, Abschnitt "Personen-Registry". Die Zeichenregel
+     * steht in normalizeSlugJs(); beide Wege liefern für denselben
+     * Eingabetext denselben Slug.
      *
      * @param {string} name
      * @returns {string}
      */
     function generateSlugSuggestionJs(name) {
-        var result = transliterateSlugInputJs(String(name || '').trim());
-        result = toAsciiLowerCaseJs(result);
-        result = result.replace(/[^a-z0-9]+/g, '-');
-        return result.replace(/^-+|-+$/g, '');
+        return normalizeSlugJs(name);
     }
 
     /**

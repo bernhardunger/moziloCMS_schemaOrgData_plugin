@@ -53,7 +53,7 @@ final class PersonsRegistryServiceTest extends TestCase {
         $service = $this->service();
 
         $this->assertSame('max-mustermann', $service->sanitizeSlugCandidate('Max Mustermann'));
-        $this->assertSame('ab_c-1', $service->sanitizeSlugCandidate('A/b_c-1!'));
+        $this->assertSame('a-b_c-1', $service->sanitizeSlugCandidate('A/b_c-1!'));
     }
 
     function testSanitizeSlugCandidateTransliteriertUmlaute(): void {
@@ -64,7 +64,8 @@ final class PersonsRegistryServiceTest extends TestCase {
 
     // Belegt die Reihenfolge Transliteration vor Kleinschreibung: liefe sie
     // danach, bliebe aus "Ä" ein "Ae" stehen, dessen großes "A" der
-    // Zeichenfilter ersatzlos löschte ("ertzin" statt "aerztin").
+    // Zeichenfilter zu einem Bindestrich verkehrte ("erztin" statt
+    // "aerztin", da der Rand-Trim ihn anschließend abträgt).
     function testSanitizeSlugCandidateTransliteriertGrossumlautAmWortanfang(): void {
         $service = $this->service();
 
@@ -72,16 +73,91 @@ final class PersonsRegistryServiceTest extends TestCase {
         $this->assertSame('aerztin', $service->generateSlugSuggestion('Ärztin'));
     }
 
+    // Die Liste führt bewusst die Eingaben, an denen die beiden Wege früher
+    // auseinanderliefen (Unterstrich, Punkt, Randbindestriche, doppeltes
+    // Trennzeichen, geschütztes Leerzeichen). Sie wird nicht ohne Ersatz
+    // gekürzt: Solange sie nur divergenzfreie Eingaben führte, war der
+    // Kontrakt zwar getestet, aber genau dort, wo er ohnehin hielt.
+    // Das geschützte Leerzeichen steht als Escape-Sequenz, weil ein
+    // literales U+00A0 im Quelltext von einem Leerzeichen nicht zu
+    // unterscheiden wäre.
+    private const SLUG_FAELLE = [
+        'Max Mustermann'        => 'max-mustermann',
+        'Max_Mustermann'        => 'max_mustermann',
+        'Dr.Max'                => 'dr-max',
+        '-Max-'                 => 'max',
+        'Max--Mustermann'       => 'max-mustermann',
+        'A/b_c-1!'              => 'a-b_c-1',
+        "Max\u{00A0}Mustermann" => 'max-mustermann',
+        'Jürgen Müller-Schön'   => 'juergen-mueller-schoen',
+        'Straße Weiß'           => 'strasse-weiss',
+        'Müller'                => 'mueller',
+        'Ärztin'                => 'aerztin',
+        '  !A B?  '             => 'a-b',
+        'Иван Петров'           => '',
+        'Иван Max'              => 'max',
+        '-'                     => '',
+        '--'                    => '',
+        '_'                     => '',
+        '-_-'                   => '',
+        '   '                   => '',
+    ];
+
     function testBeideSlugWegeLiefernDenselbenWert(): void {
         $service = $this->service();
 
-        foreach(['Müller', 'Jürgen Müller-Schön', 'Straße Weiß', 'Max Mustermann'] as $input) {
+        foreach(array_keys(self::SLUG_FAELLE) as $input) {
             $this->assertSame(
                 $service->generateSlugSuggestion($input),
                 $service->sanitizeSlugCandidate($input),
                 'Abgeleiteter und getippter Weg müssen für "'.$input.'" denselben Slug ergeben'
             );
         }
+    }
+
+    function testBeideSlugWegeErfuellenDieZeichenregel(): void {
+        $service = $this->service();
+
+        foreach(self::SLUG_FAELLE as $input => $expected) {
+            $this->assertSame($expected, $service->generateSlugSuggestion($input), 'generateSlugSuggestion("'.$input.'")');
+            $this->assertSame($expected, $service->sanitizeSlugCandidate($input), 'sanitizeSlugCandidate("'.$input.'")');
+        }
+    }
+
+    function testSlugWegeErhaltenDenUnterstrichUndTrennenAmPunkt(): void {
+        $service = $this->service();
+
+        $this->assertSame('max_mustermann', $service->sanitizeSlugCandidate('Max_Mustermann'));
+        $this->assertSame('max_mustermann', $service->generateSlugSuggestion('Max_Mustermann'));
+        $this->assertSame('dr-max', $service->sanitizeSlugCandidate('Dr.Max'));
+        $this->assertSame('dr-max', $service->generateSlugSuggestion('Dr.Max'));
+    }
+
+    // Eine Folge unzulässiger Zeichen ergibt einen einzelnen Bindestrich,
+    // keine Bindestrichkette - "max--mustermann" wäre als @id-Fragment
+    // dauerhaft, da der Slug nach Erstanlage unveränderlich ist.
+    function testSlugWegeFassenTrennzeichenfolgenZuEinemBindestrichZusammen(): void {
+        $service = $this->service();
+
+        $this->assertSame('max-mustermann', $service->sanitizeSlugCandidate('Max--Mustermann'));
+        $this->assertSame('max-mustermann', $service->generateSlugSuggestion('Max--Mustermann'));
+    }
+
+    // Das geschützte Leerzeichen (U+00A0) ist PHP-seitig kein Leerraum,
+    // fällt aber in die Klasse der unzulässigen Zeichen und trennt deshalb
+    // wie ein gewöhnliches Leerzeichen, statt die Wörter zu verkleben.
+    function testSlugWegeBehandelnGeschuetztesLeerzeichenAlsTrenner(): void {
+        $service = $this->service();
+
+        $this->assertSame('max-mustermann', $service->sanitizeSlugCandidate("Max\u{00A0}Mustermann"));
+        $this->assertSame('max-mustermann', $service->generateSlugSuggestion("Max\u{00A0}Mustermann"));
+    }
+
+    function testSlugWegeLiefernBeiMischschriftNurDenLateinischenAnteil(): void {
+        $service = $this->service();
+
+        $this->assertSame('max', $service->sanitizeSlugCandidate('Иван Max'));
+        $this->assertSame('max', $service->generateSlugSuggestion('Иван Max'));
     }
 
     function testSanitizeSlugCandidateVerwirftReineTrennzeichenfolgen(): void {
@@ -93,12 +169,17 @@ final class PersonsRegistryServiceTest extends TestCase {
         $this->assertSame('', $service->sanitizeSlugCandidate('-_-'));
     }
 
-    // Die Regel verwirft nur das restlos Alphanumerik-freie, sie trimmt nicht:
-    // ein Rand-Trim ließe "-_-" durch und entfernte hier die Bindestriche.
-    function testSanitizeSlugCandidateBehaeltRandBindestricheBeiInhalt(): void {
+    // Randbindestriche entfallen, sonst erzeugte "-max-" dauerhaft das
+    // Fragment "#person--max-" - der Slug ist nach Erstanlage
+    // unveränderlich. Der Rand-Trim ersetzt die Alphanumerik-Prüfung nicht,
+    // sondern tritt neben sie: "-_-" ließe er durch, weil der Unterstrich
+    // zum erlaubten Zeichenvorrat gehört (siehe
+    // testSanitizeSlugCandidateVerwirftReineTrennzeichenfolgen()).
+    function testSanitizeSlugCandidateTrimmtRandBindestricheBeiInhalt(): void {
         $service = $this->service();
 
-        $this->assertSame('-max-', $service->sanitizeSlugCandidate('-max-'));
+        $this->assertSame('max', $service->sanitizeSlugCandidate('-max-'));
+        $this->assertSame('max', $service->generateSlugSuggestion('-max-'));
     }
 
     function testReinNichtLateinischerNameErgibtLeerenSlugUndWirdAbgelehnt(): void {
