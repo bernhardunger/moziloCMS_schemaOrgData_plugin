@@ -178,14 +178,13 @@ class SchemaOrgData_PersonsRegistryService {
     *
     * Bleibt kein einziges alphanumerisches Zeichen übrig, gilt die
     * Kennung als nicht angegeben und der Rückgabewert ist der
-    * Leerstring. Ohne diese Bedingung passierte eine reine
-    * Trennzeichenfolge ("-", "--", "_", "-_-") die Leer-Prüfung des
-    * Aufrufers: aus einem von Hand eingetragenen "Иван Петров"
-    * entstünde ein Slug ohne lateinisches Zeichen und damit dauerhaft
-    * ein leeres @id-Fragment, denn der Slug ist nach Erstanlage
-    * unveränderlich. Die Fehlermeldung bei leerer Kennung sagt zudem
-    * zu, dass eine Kennung lateinische Buchstaben oder Ziffern
-    * enthalten muss - eine Zusage, die der Code sonst nicht einhielte.
+    * Leerstring. Der Rand-Trim allein deckte das nicht ab: Er trägt nur
+    * Bindestriche ab, weshalb "_" und "-_-" als Slug bestehen blieben
+    * und dauerhaft das @id-Fragment "#person-_" ergäben - der Slug ist
+    * nach Erstanlage unveränderlich. Die Fehlermeldung bei leerer
+    * Kennung sagt zudem zu, dass eine Kennung lateinische Buchstaben
+    * oder Ziffern enthalten muss - eine Zusage, die der Code sonst
+    * nicht einhielte.
     *
     ***************************************************************/
     public function sanitizeSlugCandidate(string $value): string {

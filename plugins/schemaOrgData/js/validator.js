@@ -512,9 +512,10 @@
      * Die abschließende Alphanumerik-Prüfung tritt neben den Rand-Trim,
      * nicht an seine Stelle: Der Trim allein ließe "-_-" durch, weil
      * der Unterstrich zum erlaubten Zeichenvorrat gehört und der Trim
-     * nur Bindestriche abträgt. Ohne diese Prüfung schlüge der
-     * Live-Fill für "Иван Петров" ein Fragment ohne lateinisches
-     * Zeichen vor, das der Server ablehnt.
+     * nur Bindestriche abträgt. Ein solcher Slug erzeugte dauerhaft das
+     * @id-Fragment "#person-_"; die PHP-Gegenstelle prüft deshalb
+     * dasselbe, damit der Live-Vorschlag nicht etwas anderes anzeigt,
+     * als der Server speichert.
      *
      * @param {string} value
      * @returns {string}
