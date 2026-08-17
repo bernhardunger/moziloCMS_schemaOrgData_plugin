@@ -854,6 +854,20 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringContainsString('validator.schema.org', $html);
     }
 
+    /***************************************************************
+    *
+    * Neben dem Zweck-Hinweis steht ein zweiter Absatz, der die
+    * Sichtbarkeit benennt: Das Debug-Widget geht an alle Besucher,
+    * nicht nur an angemeldete Redakteure.
+    *
+    ***************************************************************/
+    function testRenderExcludedCatsFieldNenntOeffentlicheSichtbarkeitDesDebugWidgets(): void {
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderExcludedCatsField([], false, $lang, $this->scopeResolver());
+
+        $this->assertStringContainsString($lang->getLanguageHtml('hint_debug_output_public'), $html);
+    }
+
     // -----------------------------------------------------------
     // renderPlaceholderMissingNotice()
     // -----------------------------------------------------------
@@ -891,6 +905,49 @@ final class AdminPageRendererTest extends TestCase {
         $this->assertStringContainsString('schemaOrgData-notice--info', $html);
         $this->assertStringNotContainsString('schemaOrgData-placeholder-notice', $html);
         $this->assertStringContainsString('schemaOrgData', $html);
+    }
+
+    // -----------------------------------------------------------
+    // renderBaseUrlNotice()
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Ohne ermittelbaren Host bleibt die Basis-URL leer. Der Hinweis
+    * verschwindet dann nicht, sondern wechselt den Text - und darf
+    * kein leeres <code>-Element zurücklassen.
+    *
+    ***************************************************************/
+    function testRenderBaseUrlNoticeZeigtErsatztextOhneCodeElementBeiLeererUrl(): void {
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderBaseUrlNotice('', $lang);
+
+        $this->assertStringContainsString($lang->getLanguageHtml('notice_base_url_title'), $html);
+        $this->assertStringContainsString($lang->getLanguageHtml('notice_base_url_missing'), $html);
+        $this->assertStringNotContainsString('<code>', $html);
+    }
+
+    function testRenderBaseUrlNoticeZeigtUrlImCodeElementUndHostVariantenHinweis(): void {
+        $lang = $this->adminLang();
+        $html = $this->renderer()->renderBaseUrlNotice('https://www.example.org/', $lang);
+
+        $this->assertStringContainsString('<code>https://www.example.org/</code>', $html);
+        $this->assertStringContainsString($lang->getLanguageHtml('notice_base_url_hint'), $html);
+    }
+
+    /***************************************************************
+    *
+    * Der Host-Anteil der Basis-URL stammt aus $_SERVER['HTTP_HOST']
+    * und ist damit clientseitig bestimmbar - deshalb maskiert
+    * renderBaseUrlNotice() die URL selbst, statt sie als Parameter
+    * durch die Sprachdatei zu schicken.
+    *
+    ***************************************************************/
+    function testRenderBaseUrlNoticeMaskiertSonderzeichenImHost(): void {
+        $html = $this->renderer()->renderBaseUrlNotice('http://exa<mple.org/', $this->adminLang());
+
+        $this->assertStringNotContainsString('exa<mple', $html);
+        $this->assertStringContainsString('exa&lt;mple.org', $html);
     }
 
     // -----------------------------------------------------------

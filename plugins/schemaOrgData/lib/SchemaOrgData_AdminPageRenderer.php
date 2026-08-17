@@ -505,6 +505,52 @@ class SchemaOrgData_AdminPageRenderer {
 
     /***************************************************************
     *
+    * Rendert einen scope-unabhängigen Hinweis auf die Basis-URL, aus
+    * der die @id-Anker der JSON-LD-Ausgabe gebildet werden. Der
+    * Hinweis gehört nicht in renderInfoBlock(): jener läuft je
+    * Geltungsbereich, während alle drei Bereiche dieselbe Basis-URL
+    * teilen - der Hinweis erschiene sonst dreifach.
+    *
+    * Erwartet wird der Wert aus
+    * SchemaOrgData_UrlHelper::resolveFrontendBaseUrl(), nicht aus
+    * resolveBaseUrl(): letztere leitet den Pfad aus SCRIPT_NAME ab und
+    * trägt im Plugin-Admin ein abschließendes ADMIN_DIR_NAME-Segment,
+    * das die emittierte @id nie enthält.
+    *
+    * Host und Protokoll stammen aus dem Admin-Request. Wird das
+    * Frontend über eine andere Host-Variante erreicht, weichen die
+    * dort gebildeten @id-Werte ab - genau darauf weist der zweite
+    * Absatz hin, und deshalb nennt der Text die URL als "aus diesem
+    * Aufruf abgeleitet" statt als die wirksame.
+    *
+    * Die URL wird hier selbst maskiert und nicht als
+    * Sprachdatei-Parameter durchgereicht: Ihr Host-Anteil stammt aus
+    * $_SERVER['HTTP_HOST'] und ist damit clientseitig bestimmbar.
+    *
+    * @param string $frontendBaseUrl Ergebnis von resolveFrontendBaseUrl(),
+    *               Leerstring wenn kein Host ermittelbar ist
+    * @param Language $lang Admin-Sprachobjekt
+    * @return string HTML-Snippet, nie leer
+    *
+    ***************************************************************/
+    public function renderBaseUrlNotice(string $frontendBaseUrl, Language $lang): string {
+        $html = '<div class="schemaOrgData-notice schemaOrgData-notice--info">'
+            .'<p><strong>'.$lang->getLanguageHtml('notice_base_url_title').'</strong></p>';
+
+        if($frontendBaseUrl === '') {
+            return $html.'<p>'.$lang->getLanguageHtml('notice_base_url_missing').'</p>'
+                .'</div>'."\n";
+        }
+
+        return $html
+            .'<p>'.$lang->getLanguageHtml('notice_base_url_text')
+            .' <code>'.htmlspecialchars($frontendBaseUrl, ENT_QUOTES, CHARSET).'</code></p>'
+            .'<p>'.$lang->getLanguageHtml('notice_base_url_hint').'</p>'
+            .'</div>'."\n";
+    }
+
+    /***************************************************************
+    *
     * Rendert die Ausschlussliste für die globale Ausgabe (nur
     * Geltungsbereich "global"): eine Checkbox je vorhandener
     * Kategorie. Angehakte Kategorien erhalten keine globale
@@ -588,6 +634,7 @@ class SchemaOrgData_AdminPageRenderer {
             .'<input type="checkbox" id="schemaOrgData_global_debug_output" name="schemaOrgData[global][debug_output]" value="1"'.$checkedAttr.' /> '
             .$lang->getLanguageHtml('label_debug_output').'</label>'."\n";
         $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_debug_output').'</p>'."\n";
+        $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_debug_output_public').'</p>'."\n";
         $html .= '</fieldset>'."\n";
 
         return $html;

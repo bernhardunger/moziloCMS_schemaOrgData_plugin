@@ -613,6 +613,10 @@ class SchemaOrgData_AdminController {
         $placeholderStatus = $collisionDetector->detectPluginPlaceholderInTemplateAdmin($CMS_CONF, 'schemaOrgData');
         $html .= $adminPageRenderer->renderPlaceholderMissingNotice($placeholderStatus, 'schemaOrgData', $lang);
 
+        // Basis-URL-Hinweis: ebenfalls scope-unabhängig, denn die @id-Anker
+        // aller drei Geltungsbereiche entstehen aus derselben Basis-URL.
+        $html .= $adminPageRenderer->renderBaseUrlNotice($context->urlHelper->resolveFrontendBaseUrl(), $lang);
+
         // Template-Kollisionserkennung: im Admin-Kontext (IS_ADMIN) live prüfen.
         // Ein im Layout-Template eingebundener JSON-LD-Block ist layoutweit
         // und damit kein seiten-/kategoriespezifisches Signal - das Ergebnis

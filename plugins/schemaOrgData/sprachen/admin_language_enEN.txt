@@ -23,12 +23,18 @@ notice_placeholder_missing_title = Plugin placeholder is missing from the active
 notice_placeholder_missing_text = No {PARAM1} placeholder was found in the active layout template. Without this placeholder, the plugin outputs no JSON-LD on the frontend at all - regardless of how it is configured here. Please add the {PARAM1} placeholder at a suitable place in the layout template's &lt;head&gt; section.
 notice_placeholder_outside_head = The {PARAM1} placeholder was found in the active layout template, but it is placed after &lt;/head&gt;. This usually still works in practice, but placing it inside the &lt;head&gt; section is recommended.
 
+notice_base_url_title = Base URL of the @id anchors
+notice_base_url_text = Derived from this request, the JSON-LD output uses the following base URL for its @id anchors:
+notice_base_url_hint = If the frontend is reached through a different host variant (http/https, with/without www), the same nodes carry different @id values there. An .htaccess redirect to exactly one variant keeps them stable.
+notice_base_url_missing = No host can be determined from this request. If that also applies on the frontend, the plugin emits no @id anchors - the JSON-LD blocks then carry no node identity.
+
 label_excluded_cats = Exceptions (categories without global output)
 description_excluded_cats = The global configuration is not output on the categories checked here (and their pages), e.g. imprint, privacy policy, sitemap.
 label_excluded_cats_all = All categories
 
 label_debug_output = Debug mode (show JSON-LD as a popup on the frontend)
 hint_debug_output = Shows a small button on the frontend that displays the generated JSON-LD blocks for copying and manual comparison against validator.schema.org. Not intended for production use.
+hint_debug_output_public = The button is delivered to every visitor, not only to signed-in editors. It exposes nothing beyond what the page source already contains - even so, it belongs switched off in production.
 
 label_schema_type = Schema Type
 schema_type_none = – none –
