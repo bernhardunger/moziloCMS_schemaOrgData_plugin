@@ -28,6 +28,19 @@ class SchemaOrgData_ScopeResolver {
      */
     public const MANAGEMENT_KEYS = ['_meta', 'excluded_cats', 'debug_output', 'org_relations'];
 
+    /**
+     * Vorbelegung von jsonld_mode, solange im Admin keine Wahl getroffen
+     * wurde: Ein erkannter Fremdblock hat Vorrang, das Plugin schweigt.
+     * loadScopeMeta() und saveScopeMeta() legen den Wert auf getrennten
+     * Wegen an - als Rückgabe-Default und als Grundstock des gespeicherten
+     * _meta. Zwei Literale könnten auseinanderlaufen, ohne dass ein
+     * Aufrufer den Unterschied bemerkt; deshalb steht er hier an einer
+     * Stelle. Kein Wertevorrat der Modus-Auswahl — wer auf "keep" als
+     * Auswahlwert prüft, meint nicht die Vorbelegung und darf diese
+     * Konstante dafür nicht verwenden.
+     */
+    public const DEFAULT_JSONLD_MODE = 'keep';
+
     /***************************************************************
     *
     * Liefert den settings-Schlüssel für eine Geltungsebene.
@@ -261,7 +274,7 @@ class SchemaOrgData_ScopeResolver {
     ): array {
         $defaults = [
             'existing_jsonld' => false,
-            'jsonld_mode' => 'keep',
+            'jsonld_mode' => self::DEFAULT_JSONLD_MODE,
             'existing_jsonld_content' => '',
             'existing_jsonld_blocks' => [],
         ];
@@ -339,7 +352,7 @@ class SchemaOrgData_ScopeResolver {
         $existing['_meta'] = array_merge(
             $existing['_meta'] ?? [
                 'existing_jsonld' => false,
-                'jsonld_mode' => 'keep',
+                'jsonld_mode' => self::DEFAULT_JSONLD_MODE,
                 'existing_jsonld_content' => '',
                 'existing_jsonld_blocks' => [],
             ],

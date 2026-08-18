@@ -152,7 +152,7 @@ class SchemaOrgData_FrontendRenderer {
                 default  => $meta['existing_jsonld'],
             };
 
-            if($hasExistingJsonLd and ($meta['jsonld_mode'] ?? 'override') === 'keep') {
+            if($hasExistingJsonLd and $meta['jsonld_mode'] === 'keep') {
                 if($scope === 'global') {
                     $globalSuppressedByKeep = true;
                 }

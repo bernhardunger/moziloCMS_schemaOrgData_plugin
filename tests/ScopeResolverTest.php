@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase;
 *   - loadScopeConfig(): $settings wird als Parameter genutzt, kein
 *     Objektzustand
 *   - loadScopeMeta()/saveScopeMeta(): Defaults, Merge, Round-Trip
+*   - DEFAULT_JSONLD_MODE: Vorbelegung auf beiden Meta-Wegen
 *   - detectTypeCollision(): Kollisionen je Geltungsebene
 *   - stripManagementKeys(): Abzug der Verwaltungsschlüssel einer Ebene
 *
@@ -610,6 +611,74 @@ final class ScopeResolverTest extends TestCase {
         $this->assertSame(
             ['_meta', 'excluded_cats', 'debug_output', 'org_relations'],
             \SchemaOrgData_ScopeResolver::MANAGEMENT_KEYS
+        );
+    }
+
+    // DEFAULT_JSONLD_MODE -------------------------------------------------
+
+    /***************************************************************
+    *
+    * Änderungsdetektor auf die Vorbelegung: Ein anderer Wert wäre
+    * eine Verhaltensänderung an genau der Stelle, an der das Plugin
+    * entscheidet, ob es neben einem erkannten Fremdblock schweigt.
+    * Er soll diesen Test brechen statt still durchzulaufen.
+    *
+    ***************************************************************/
+    function testDefaultJsonLdModeIstKeep(): void {
+        $this->assertSame(
+            'keep',
+            \SchemaOrgData_ScopeResolver::DEFAULT_JSONLD_MODE
+        );
+    }
+
+    /***************************************************************
+    *
+    * loadScopeMeta() und saveScopeMeta() legen jsonld_mode auf
+    * getrennten Wegen an - einmal als Rückgabe-Default ohne
+    * gespeicherten Stand, einmal als Grundstock des geschriebenen
+    * _meta. Laufen die beiden auseinander, unterscheidet sich ein
+    * frisch geschriebener Geltungsbereich von einem ungeschriebenen,
+    * ohne dass ein Aufrufer davon erfährt.
+    *
+    ***************************************************************/
+    function testSaveScopeMetaLegtDieselbeVorbelegungAnWieLoadScopeMeta(): void {
+        $settings = new \InMemorySettings();
+        $resolver = $this->resolver();
+
+        $resolver->saveScopeMeta($settings, 'global', ['existing_jsonld' => true]);
+
+        $gespeichert = $settings->get('config_global');
+        $this->assertSame(
+            \SchemaOrgData_ScopeResolver::DEFAULT_JSONLD_MODE,
+            $gespeichert['_meta']['jsonld_mode']
+        );
+        $this->assertSame(
+            \SchemaOrgData_ScopeResolver::DEFAULT_JSONLD_MODE,
+            $resolver->loadScopeMeta($settings, 'category')['jsonld_mode']
+        );
+    }
+
+    /***************************************************************
+    *
+    * Fehlt jsonld_mode in einem gespeicherten _meta, liefert
+    * loadScopeMeta() die Vorbelegung über array_merge() nach.
+    * SchemaOrgData_FrontendRenderer::renderFrontend() verlässt sich
+    * darauf und liest den Schlüssel ohne eigene Absicherung.
+    *
+    ***************************************************************/
+    function testJsonLdModeFehltInGespeichertemMetaUndFaelltAufDieVorbelegung(): void {
+        $settings = new \InMemorySettings();
+        $resolver = $this->resolver();
+        $resolver->saveScopeMeta($settings, 'global', ['existing_jsonld' => true]);
+        $stored = $settings->get('config_global');
+        unset($stored['_meta']['jsonld_mode']);
+        $settings->set('config_global', $stored);
+
+        $meta = $resolver->loadScopeMeta($settings, 'global');
+
+        $this->assertSame(
+            \SchemaOrgData_ScopeResolver::DEFAULT_JSONLD_MODE,
+            $meta['jsonld_mode']
         );
     }
 
