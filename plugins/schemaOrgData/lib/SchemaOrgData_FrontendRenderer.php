@@ -19,6 +19,15 @@
 ***************************************************************/
 class SchemaOrgData_FrontendRenderer {
 
+    /**
+     * Bindung an die Verwaltungsschlüssel aus
+     * SchemaOrgData_ScopeResolver - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const KEY_EXCLUDED_CATS = SchemaOrgData_ScopeResolver::KEY_EXCLUDED_CATS;
+    private const KEY_DEBUG_OUTPUT  = SchemaOrgData_ScopeResolver::KEY_DEBUG_OUTPUT;
+    private const KEY_ORG_RELATIONS = SchemaOrgData_ScopeResolver::KEY_ORG_RELATIONS;
+
     /***************************************************************
     *
     * Rendert die JSON-LD-<script>-Blöcke für die aktuelle Frontend-
@@ -72,8 +81,8 @@ class SchemaOrgData_FrontendRenderer {
         // Ausschlussliste prüfen (nur global): die globale Ausgabe wird
         // unterdrückt, wenn die aktive Kategorie in excluded_cats steht
         // (siehe README.md, Abschnitt "Geltungsbereiche und Vererbung").
-        $excludedCats = !empty($scopeConfigs['global']['excluded_cats'])
-            ? explode(',', (string) $scopeConfigs['global']['excluded_cats'])
+        $excludedCats = !empty($scopeConfigs['global'][self::KEY_EXCLUDED_CATS])
+            ? explode(',', (string) $scopeConfigs['global'][self::KEY_EXCLUDED_CATS])
             : [];
 
         if($cat !== null and in_array($cat, $excludedCats, true)) {
@@ -83,13 +92,13 @@ class SchemaOrgData_FrontendRenderer {
         // Debug-Modus: Flag aus config_global lesen, bevor die Verwaltungsdaten
         // entfernt werden (debug_output ist kein Schema-Type, sondern ein
         // Meta-Schlüssel analog zu excluded_cats).
-        $debugOutput = !empty($scopeConfigs['global']['debug_output'] ?? false);
+        $debugOutput = !empty($scopeConfigs['global'][self::KEY_DEBUG_OUTPUT] ?? false);
 
         // Organisations-Relationen (org_relations, siehe SchemaOrgData_OrgRelationsService):
         // ebenfalls ein Meta-Schlüssel in config_global, unabhängig vom aktiven
         // globalen Schema-Type (übersteht dadurch einen Type-Wechsel innerhalb
         // der LocalBusiness-Familie bzw. zwischen Organization/NGO).
-        $orgRelations = is_array($scopeConfigs['global']['org_relations'] ?? null) ? $scopeConfigs['global']['org_relations'] : [];
+        $orgRelations = is_array($scopeConfigs['global'][self::KEY_ORG_RELATIONS] ?? null) ? $scopeConfigs['global'][self::KEY_ORG_RELATIONS] : [];
 
         // Verwaltungsdaten entfernen - übrig bleiben je Ebene nur noch die
         // Schema-Type-Konfigurationen. Welche Schlüssel dazu zählen, führt

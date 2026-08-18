@@ -21,12 +21,34 @@
 class SchemaOrgData_ScopeResolver {
 
     /**
+     * Die einzelnen Verwaltungsschlüssel einer Scope-Konfiguration. Sie
+     * stehen hier als Quelle; konsumierende Klassen binden sich über eine
+     * eigene private const daran, statt das Literal zu wiederholen.
+     */
+    public const KEY_META          = '_meta';
+    public const KEY_EXCLUDED_CATS = 'excluded_cats';
+    public const KEY_DEBUG_OUTPUT  = 'debug_output';
+    public const KEY_ORG_RELATIONS = 'org_relations';
+
+    /**
+     * Settings-Schlüssel der globalen Ebene. getScopeSettingsKey() bildet
+     * ihn aus dem Scope-Namen ab; wer ihn ohne diese Abbildung braucht,
+     * nimmt diese Konstante.
+     */
+    public const KEY_CONFIG_GLOBAL = 'config_global';
+
+    /**
      * Schlüssel einer Scope-Konfiguration, die keine Schema-Types sind,
      * sondern Verwaltungsdaten der Ebene. Sie werden vor jeder
      * Typ-Auflösung abgezogen (stripManagementKeys()). Ein neuer
      * Verwaltungsschlüssel wird ausschließlich hier ergänzt.
      */
-    public const MANAGEMENT_KEYS = ['_meta', 'excluded_cats', 'debug_output', 'org_relations'];
+    public const MANAGEMENT_KEYS = [
+        self::KEY_META,
+        self::KEY_EXCLUDED_CATS,
+        self::KEY_DEBUG_OUTPUT,
+        self::KEY_ORG_RELATIONS,
+    ];
 
     /**
      * Vorbelegung von jsonld_mode, solange im Admin keine Wahl getroffen
@@ -57,7 +79,7 @@ class SchemaOrgData_ScopeResolver {
         ?string $page = null
     ): ?string {
         return match($scope) {
-            'global'   => 'config_global',
+            'global'   => self::KEY_CONFIG_GLOBAL,
             'category' => $cat !== null
                 ? 'config_cat_' . $cat
                 : null,
@@ -283,7 +305,7 @@ class SchemaOrgData_ScopeResolver {
             return $defaults;
         }
         $data = $settings->get($key);
-        $meta = array_merge($defaults, is_array($data) ? ($data['_meta'] ?? []) : []);
+        $meta = array_merge($defaults, is_array($data) ? ($data[self::KEY_META] ?? []) : []);
 
         if ($meta['existing_jsonld_blocks'] === [] && $meta['existing_jsonld_content'] !== '') {
             json_decode($meta['existing_jsonld_content']);
@@ -349,8 +371,8 @@ class SchemaOrgData_ScopeResolver {
         if (!is_array($existing)) {
             $existing = [];
         }
-        $existing['_meta'] = array_merge(
-            $existing['_meta'] ?? [
+        $existing[self::KEY_META] = array_merge(
+            $existing[self::KEY_META] ?? [
                 'existing_jsonld' => false,
                 'jsonld_mode' => self::DEFAULT_JSONLD_MODE,
                 'existing_jsonld_content' => '',

@@ -20,6 +20,13 @@
 ***************************************************************/
 class SchemaOrgData_OrgRelationsService {
 
+    /**
+     * Bindung an die Verwaltungsschlüssel aus
+     * SchemaOrgData_ScopeResolver - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const KEY_ORG_RELATIONS = SchemaOrgData_ScopeResolver::KEY_ORG_RELATIONS;
+
     public const ROLE_FOUNDER  = 'founder';
     public const ROLE_EMPLOYEE = 'employee';
     public const ROLE_MEMBER   = 'member';
@@ -80,7 +87,7 @@ class SchemaOrgData_OrgRelationsService {
                 // und sähe damit aus wie die leere Anlege-Zeile - gesendet
                 // wurde aber etwas, das nicht übernommen werden konnte.
                 if($rawPerson !== null and !is_scalar($rawPerson)) {
-                    $notices[] = ['field' => 'org_relations', 'kind' => 'dropped'];
+                    $notices[] = ['field' => self::KEY_ORG_RELATIONS, 'kind' => 'dropped'];
                 }
                 continue;
             }

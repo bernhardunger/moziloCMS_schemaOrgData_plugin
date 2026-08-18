@@ -28,6 +28,15 @@
  ***************************************************************/
 class SchemaOrgData_AdminController {
 
+    /**
+     * Bindung an die Verwaltungsschlüssel aus
+     * SchemaOrgData_ScopeResolver - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const KEY_EXCLUDED_CATS = SchemaOrgData_ScopeResolver::KEY_EXCLUDED_CATS;
+    private const KEY_DEBUG_OUTPUT  = SchemaOrgData_ScopeResolver::KEY_DEBUG_OUTPUT;
+    private const KEY_ORG_RELATIONS = SchemaOrgData_ScopeResolver::KEY_ORG_RELATIONS;
+
     /***************************************************************
      *
      * Rendert den vollständigen Konfigurationsblock einer
@@ -282,8 +291,8 @@ class SchemaOrgData_AdminController {
             // Typ-Wechsel korrekt (de)aktiviert (last-value-wins-Schutz).
             if ($scope === 'global' and ($schema['ui:idFragment'] ?? '') === 'organization') {
                 $orgRelationsRaw = ($postScope !== null and $type === $selectedType)
-                    ? (is_array($postScope['org_relations'] ?? null) ? $postScope['org_relations'] : [])
-                    : (is_array($config['org_relations'] ?? null) ? $config['org_relations'] : []);
+                    ? (is_array($postScope[self::KEY_ORG_RELATIONS] ?? null) ? $postScope[self::KEY_ORG_RELATIONS] : [])
+                    : (is_array($config[self::KEY_ORG_RELATIONS] ?? null) ? $config[self::KEY_ORG_RELATIONS] : []);
 
                 $availablePersons = [];
                 foreach ($availableFragments as $fragment => $fragLabel) {
@@ -331,18 +340,18 @@ class SchemaOrgData_AdminController {
         if ($scope === 'global') {
             if ($postScope !== null) {
                 $excludedCats = [];
-                foreach ((array) ($postScope['excluded_cats'] ?? []) as $excludedCat) {
+                foreach ((array) ($postScope[self::KEY_EXCLUDED_CATS] ?? []) as $excludedCat) {
                     $excludedCat = $scopeResolver->sanitizeScopeIdentifier(trim((string) $excludedCat));
                     if ($excludedCat !== '') {
                         $excludedCats[] = $excludedCat;
                     }
                 }
-                $debugOutput = !empty($postScope['debug_output']);
+                $debugOutput = !empty($postScope[self::KEY_DEBUG_OUTPUT]);
             } else {
-                $excludedCats = !empty($config['excluded_cats'])
-                    ? array_map('trim', explode(',', (string) $config['excluded_cats']))
+                $excludedCats = !empty($config[self::KEY_EXCLUDED_CATS])
+                    ? array_map('trim', explode(',', (string) $config[self::KEY_EXCLUDED_CATS]))
                     : [];
-                $debugOutput = !empty($config['debug_output']);
+                $debugOutput = !empty($config[self::KEY_DEBUG_OUTPUT]);
             }
             $html .= $adminPageRenderer->renderExcludedCatsField($excludedCats, $debugOutput, $lang, $scopeResolver);
         }
