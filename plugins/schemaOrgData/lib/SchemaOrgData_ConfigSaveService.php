@@ -26,6 +26,16 @@
 ***************************************************************/
 class SchemaOrgData_ConfigSaveService {
 
+    /**
+     * Bindung an die Verwaltungsschlüssel aus
+     * SchemaOrgData_ScopeResolver - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const KEY_META          = SchemaOrgData_ScopeResolver::KEY_META;
+    private const KEY_EXCLUDED_CATS = SchemaOrgData_ScopeResolver::KEY_EXCLUDED_CATS;
+    private const KEY_DEBUG_OUTPUT  = SchemaOrgData_ScopeResolver::KEY_DEBUG_OUTPUT;
+    private const KEY_ORG_RELATIONS = SchemaOrgData_ScopeResolver::KEY_ORG_RELATIONS;
+
     /***************************************************************
     *
     * Ermittelt für eine Kategorie-/Seiten-Sektion, welche Feldwerte
@@ -547,12 +557,12 @@ class SchemaOrgData_ConfigSaveService {
         if (!is_array($existing)) {
             $existing = [];
         }
-        $config = ['_meta' => $existing['_meta'] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => '']];
+        $config = [self::KEY_META => $existing[self::KEY_META] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => '']];
 
         if($scope === 'global') {
-            $config['excluded_cats'] = $existing['excluded_cats'] ?? '';
-            $config['debug_output'] = !empty($existing['debug_output']);
-            $config['org_relations'] = is_array($existing['org_relations'] ?? null) ? $existing['org_relations'] : [];
+            $config[self::KEY_EXCLUDED_CATS] = $existing[self::KEY_EXCLUDED_CATS] ?? '';
+            $config[self::KEY_DEBUG_OUTPUT] = !empty($existing[self::KEY_DEBUG_OUTPUT]);
+            $config[self::KEY_ORG_RELATIONS] = is_array($existing[self::KEY_ORG_RELATIONS] ?? null) ? $existing[self::KEY_ORG_RELATIONS] : [];
         }
 
         $type = (string) ($postData['type'] ?? '');
@@ -630,9 +640,9 @@ class SchemaOrgData_ConfigSaveService {
         // Relation ein leeres Array sendet (unterscheidbar vom Fehlen des
         // Feldes selbst).
         $orgRelationsResult = null;
-        if($scope === 'global' and (array_key_exists('org_relations', $postData) or array_key_exists('org_relations_marker', $postData))) {
+        if($scope === 'global' and (array_key_exists(self::KEY_ORG_RELATIONS, $postData) or array_key_exists('org_relations_marker', $postData))) {
             $orgRelationsResult = $orgRelationsService->sanitizeAndValidate(
-                is_array($postData['org_relations'] ?? null) ? $postData['org_relations'] : [],
+                is_array($postData[self::KEY_ORG_RELATIONS] ?? null) ? $postData[self::KEY_ORG_RELATIONS] : [],
                 $settings, $personsRegistryService, $lang
             );
             $errors = array_merge($errors, $orgRelationsResult['errors']);
@@ -650,22 +660,22 @@ class SchemaOrgData_ConfigSaveService {
 
         if($scope === 'global') {
             $excludedCats = [];
-            foreach((array) ($postData['excluded_cats'] ?? []) as $excludedCat) {
+            foreach((array) ($postData[self::KEY_EXCLUDED_CATS] ?? []) as $excludedCat) {
                 $excludedCat = $scopeResolver->sanitizeScopeIdentifier(trim((string) $excludedCat));
                 if($excludedCat !== '') {
                     $excludedCats[] = $excludedCat;
                 }
             }
-            $config['excluded_cats'] = implode(',', $excludedCats);
-            $config['debug_output'] = !empty($postData['debug_output']);
+            $config[self::KEY_EXCLUDED_CATS] = implode(',', $excludedCats);
+            $config[self::KEY_DEBUG_OUTPUT] = !empty($postData[self::KEY_DEBUG_OUTPUT]);
             if($orgRelationsResult !== null) {
-                $config['org_relations'] = $orgRelationsResult['relations'];
+                $config[self::KEY_ORG_RELATIONS] = $orgRelationsResult['relations'];
             }
         }
 
         $jsonldMode = $_POST['schemaOrgData_jsonld_mode_'.$scope] ?? null;
         if(in_array($jsonldMode, ['keep', 'override'], true)) {
-            $config['_meta']['jsonld_mode'] = $jsonldMode;
+            $config[self::KEY_META]['jsonld_mode'] = $jsonldMode;
         }
 
         // 4. Speichern
@@ -755,7 +765,7 @@ class SchemaOrgData_ConfigSaveService {
     ): string {
         // Die Organisations-Relationen sind kein Schema-Property, sondern
         // ein eigenständiges Widget mit festem Sprachschlüssel.
-        $labelKey = ($field === 'org_relations') ? 'label_org_relations' : null;
+        $labelKey = ($field === self::KEY_ORG_RELATIONS) ? 'label_org_relations' : null;
 
         if($labelKey === null and $schema !== null) {
             $labelKey = $this->findLabelKey($field, $schema['properties'] ?? [], $schema, $schemaRepository);

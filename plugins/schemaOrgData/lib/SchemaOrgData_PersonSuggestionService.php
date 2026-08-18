@@ -22,6 +22,14 @@
 ***************************************************************/
 class SchemaOrgData_PersonSuggestionService {
 
+    /**
+     * Bindung an die Verwaltungsschlüssel aus
+     * SchemaOrgData_ScopeResolver - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const KEY_ORG_RELATIONS = SchemaOrgData_ScopeResolver::KEY_ORG_RELATIONS;
+    private const KEY_CONFIG_GLOBAL = SchemaOrgData_ScopeResolver::KEY_CONFIG_GLOBAL;
+
     /***************************************************************
     *
     * Sucht in der Type-Konfiguration eines global konfigurierten
@@ -196,7 +204,7 @@ class SchemaOrgData_PersonSuggestionService {
             $slug = $result['slug'];
         }
 
-        $config['org_relations'] = is_array($config['org_relations'] ?? null) ? $config['org_relations'] : [];
+        $config[self::KEY_ORG_RELATIONS] = is_array($config[self::KEY_ORG_RELATIONS] ?? null) ? $config[self::KEY_ORG_RELATIONS] : [];
 
         // Verlinken einer Person, die über eine frühere Übernahme bereits mit
         // derselben Rolle verlinkt ist, darf keinen doppelten org_relations-
@@ -205,14 +213,14 @@ class SchemaOrgData_PersonSuggestionService {
         // bestätigt). Die Property wird trotzdem entfernt, damit sie nicht im
         // Erweiterungsfeld verbleibt.
         $alreadyLinked = false;
-        foreach($config['org_relations'] as $existingRelation) {
+        foreach($config[self::KEY_ORG_RELATIONS] as $existingRelation) {
             if(($existingRelation['person'] ?? null) === $slug and ($existingRelation['role'] ?? null) === $property) {
                 $alreadyLinked = true;
                 break;
             }
         }
         if(!$alreadyLinked) {
-            $config['org_relations'][] = ['person' => $slug, 'role' => $property];
+            $config[self::KEY_ORG_RELATIONS][] = ['person' => $slug, 'role' => $property];
         }
         unset($config[$type][$property]);
 
@@ -221,7 +229,7 @@ class SchemaOrgData_PersonSuggestionService {
         // wirft keine Exception. Der catch-Zweig bleibt als Netz für
         // unerwartete Fehler daneben stehen.
         try {
-            if($settings->set('config_global', $config) === false) {
+            if($settings->set(self::KEY_CONFIG_GLOBAL, $config) === false) {
                 return ['success' => false, 'errors' => [$lang->getLanguageValue('error_config_write_failed')]];
             }
         } catch (\Throwable $e) {

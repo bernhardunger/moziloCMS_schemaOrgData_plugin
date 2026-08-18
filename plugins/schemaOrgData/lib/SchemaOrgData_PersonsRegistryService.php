@@ -26,12 +26,19 @@ class SchemaOrgData_PersonsRegistryService {
     /** Settings-Key der Personen-Registry (siehe README.md, Personen-Registry). */
     public const SETTINGS_KEY = 'persons_registry';
 
+    /**
+     * Bindung an den Verwaltungsschlüssel aus
+     * SchemaOrgData_ScopeResolver - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const KEY_ORG_RELATIONS = SchemaOrgData_ScopeResolver::KEY_ORG_RELATIONS;
+
     // Settings-Key des globalen Geltungsbereichs, gespiegelt aus
     // SchemaOrgData_ScopeResolver::getScopeSettingsKey('global') - nur für die
     // rein lesende Fundstellen-Prüfung in findReferences(). Bewusst keine
     // Aufnahme des ScopeResolver in die Signatur: die Registry ist orthogonal
     // zum Scope-Modell und soll es bleiben.
-    private const GLOBAL_CONFIG_KEY = 'config_global';
+    private const GLOBAL_CONFIG_KEY = SchemaOrgData_ScopeResolver::KEY_CONFIG_GLOBAL;
 
     public const STATUS_ACTIVE   = 'active';
     public const STATUS_INACTIVE = 'inactive';
@@ -553,14 +560,14 @@ class SchemaOrgData_PersonsRegistryService {
         }
 
         $config = $settings->get(self::GLOBAL_CONFIG_KEY);
-        if(!is_array($config) or !is_array($config['org_relations'] ?? null)) {
+        if(!is_array($config) or !is_array($config[self::KEY_ORG_RELATIONS] ?? null)) {
             return [];
         }
 
         $roles = SchemaOrgData_OrgRelationsService::roles();
         $labels = [];
 
-        foreach($config['org_relations'] as $relation) {
+        foreach($config[self::KEY_ORG_RELATIONS] as $relation) {
             if(!is_array($relation)) {
                 continue;
             }
