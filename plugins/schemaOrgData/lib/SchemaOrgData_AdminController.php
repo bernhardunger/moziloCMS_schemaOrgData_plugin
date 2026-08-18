@@ -37,6 +37,14 @@ class SchemaOrgData_AdminController {
     private const KEY_DEBUG_OUTPUT  = SchemaOrgData_ScopeResolver::KEY_DEBUG_OUTPUT;
     private const KEY_ORG_RELATIONS = SchemaOrgData_ScopeResolver::KEY_ORG_RELATIONS;
 
+    /**
+     * Bindung an die Geltungsebenen aus SchemaOrgData_ScopeResolver - das
+     * Literal steht dort an einer Stelle, hier nur der Verweis darauf.
+     */
+    private const SCOPE_GLOBAL   = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
+    private const SCOPE_CATEGORY = SchemaOrgData_ScopeResolver::SCOPE_CATEGORY;
+    private const SCOPE_PAGE     = SchemaOrgData_ScopeResolver::SCOPE_PAGE;
+
     /***************************************************************
      *
      * Rendert den vollständigen Konfigurationsblock einer
@@ -143,8 +151,8 @@ class SchemaOrgData_AdminController {
         // LocalBusiness-Familie: bei Kategorie/Seite nur den bei Global
         // aktiven Familien-Type anbieten.
         $familyFilterGlobalLabel = null;
-        if ($scope !== 'global') {
-            $globalConfig = $scopeResolver->loadScopeConfig($settings, 'global');
+        if ($scope !== self::SCOPE_GLOBAL) {
+            $globalConfig = $scopeResolver->loadScopeConfig($settings, self::SCOPE_GLOBAL);
             $globalActiveType = $schemaRepository->resolveActiveType($globalConfig, $pluginSelfDir);
             $globalSchema = $globalActiveType !== null
                 ? $schemaRepository->loadSchema($pluginSelfDir, $globalActiveType) : null;
@@ -189,8 +197,8 @@ class SchemaOrgData_AdminController {
         // doppelt kodieren und im Attributwert als rohe Entity-Syntax sichtbar
         // bleiben.
         $saveLabelAttr = $adminPageRenderer->buildSaveButtonLabel(
-            $scope === 'global' ? null : $cat,
-            $scope === 'page'   ? $page : null,
+            $scope === self::SCOPE_GLOBAL ? null : $cat,
+            $scope === self::SCOPE_PAGE   ? $page : null,
             $lang
         );
         $displayStyle = $active ? '' : ' style="display:none"';
@@ -289,7 +297,7 @@ class SchemaOrgData_AdminController {
             // innerhalb des .schemaOrgData-type-fields-Wrappers, damit
             // applyTypeFieldsState() (validator.js) die Felder bei
             // Typ-Wechsel korrekt (de)aktiviert (last-value-wins-Schutz).
-            if ($scope === 'global' and ($schema['ui:idFragment'] ?? '') === 'organization') {
+            if ($scope === self::SCOPE_GLOBAL and ($schema['ui:idFragment'] ?? '') === 'organization') {
                 $orgRelationsRaw = ($postScope !== null and $type === $selectedType)
                     ? (is_array($postScope[self::KEY_ORG_RELATIONS] ?? null) ? $postScope[self::KEY_ORG_RELATIONS] : [])
                     : (is_array($config[self::KEY_ORG_RELATIONS] ?? null) ? $config[self::KEY_ORG_RELATIONS] : []);
@@ -337,7 +345,7 @@ class SchemaOrgData_AdminController {
             $html .= '</div>' . "\n";
         }
 
-        if ($scope === 'global') {
+        if ($scope === self::SCOPE_GLOBAL) {
             if ($postScope !== null) {
                 $excludedCats = [];
                 foreach ((array) ($postScope[self::KEY_EXCLUDED_CATS] ?? []) as $excludedCat) {
@@ -646,7 +654,7 @@ class SchemaOrgData_AdminController {
         // Der Blocks-Vergleich greift zusätzlich bei reiner
         // Reihenfolge-Änderung, bei der Flag und implodierter Content
         // gleich blieben.
-        $metaGlobal = $scopeResolver->loadScopeMeta($settings, 'global');
+        $metaGlobal = $scopeResolver->loadScopeMeta($settings, self::SCOPE_GLOBAL);
         if (
             $metaGlobal['existing_jsonld'] !== $templateHasJsonLd
             || $metaGlobal['existing_jsonld_content'] !== $templateContent
@@ -660,7 +668,7 @@ class SchemaOrgData_AdminController {
             // Fehlschlag ist über das error_log in saveScopeMeta()
             // nachvollziehbar und wirkt sich nur darauf aus, dass der
             // Kollisionshinweis beim nächsten Aufruf erneut ermittelt wird.
-            $scopeResolver->saveScopeMeta($settings, 'global', [
+            $scopeResolver->saveScopeMeta($settings, self::SCOPE_GLOBAL, [
                 'existing_jsonld' => $templateHasJsonLd,
                 'existing_jsonld_content' => $templateContent,
                 'existing_jsonld_blocks' => $templateBlocks,
@@ -669,10 +677,14 @@ class SchemaOrgData_AdminController {
 
         // Global immer rendern (aktiv wenn keine Kategorie gewählt)
         $html .= $this->renderScopeSection(
-            'global',
+            self::SCOPE_GLOBAL,
             null,
             null,
             active: $selectedCat === null,
+            // idPrefix ist der Bezeichner der Admin-Sektion, nicht der
+            // Scope-Name: die Schwesteraufrufe bilden 'cat_x' und 'page_x_y'.
+            // Dass er global mit dem Scope-Namen zusammenfällt, ist der
+            // Rückfall $idPrefix ?? $scope weiter oben - deshalb Literal.
             idPrefix: 'global',
             saveFailed: $usePostData,
             importApplied: $importApplied,
@@ -696,7 +708,7 @@ class SchemaOrgData_AdminController {
             $safeCat   = $scopeResolver->sanitizeScopeIdentifier($cat);
             $catActive = ($safeCat === $selectedCat && $selectedPage === null);
             $html .= $this->renderScopeSection(
-                'category',
+                self::SCOPE_CATEGORY,
                 $cat,
                 null,
                 active: $catActive,
@@ -738,20 +750,20 @@ class SchemaOrgData_AdminController {
                     // jede Seite ein config_page_*-Schlüssel mit _meta-Block.
                     // Mit Guard entsteht er nur für Seiten, die tatsächlich
                     // einen Block tragen.
-                    $metaPage = $scopeResolver->loadScopeMeta($settings, 'page', $safeCat, $safePage);
+                    $metaPage = $scopeResolver->loadScopeMeta($settings, self::SCOPE_PAGE, $safeCat, $safePage);
                     if (
                         $metaPage['existing_jsonld'] !== $pageHasJsonLd
                         || $metaPage['existing_jsonld_content'] !== $pageJsonLdContent
                         || $metaPage['existing_jsonld_blocks'] !== $pageBlocks
                     ) {
-                        $scopeResolver->saveScopeMeta($settings, 'page', [
+                        $scopeResolver->saveScopeMeta($settings, self::SCOPE_PAGE, [
                             'existing_jsonld' => $pageHasJsonLd,
                             'existing_jsonld_content' => $pageJsonLdContent,
                             'existing_jsonld_blocks' => $pageBlocks,
                         ], $safeCat, $safePage);
                     }
                     $html .= $this->renderScopeSection(
-                        'page',
+                        self::SCOPE_PAGE,
                         $cat,
                         $page,
                         active: $pageActive,

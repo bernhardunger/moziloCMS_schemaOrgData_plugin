@@ -22,6 +22,12 @@
 ***************************************************************/
 class SchemaOrgData_IdReferenceService {
 
+    /**
+     * Bindung an die Geltungsebenen aus SchemaOrgData_ScopeResolver - das
+     * Literal steht dort an einer Stelle, hier nur der Verweis darauf.
+     */
+    private const SCOPE_GLOBAL = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
+
     /***************************************************************
     *
     * Liefert alle global konfigurierten Knoten mit ui:idFragment als
@@ -53,7 +59,7 @@ class SchemaOrgData_IdReferenceService {
         Language $adminLang,
         SchemaOrgData_PersonsRegistryService $personsRegistryService
     ): array {
-        $globalConfig = $scopeResolver->loadScopeConfig($settings, 'global');
+        $globalConfig = $scopeResolver->loadScopeConfig($settings, self::SCOPE_GLOBAL);
         $result = [];
 
         foreach($globalConfig as $type => $typeData) {
@@ -335,7 +341,7 @@ class SchemaOrgData_IdReferenceService {
             // Zielknoten fehlt (z. B. excluded_cats): Minimal-Stub erzwingen.
             // Aus der globalen Konfiguration den Type mit dem passenden
             // ui:idFragment laden und als Stub mit @type, @id und name einfügen.
-            $globalConfig = $scopeResolver->loadScopeConfig($settings, 'global');
+            $globalConfig = $scopeResolver->loadScopeConfig($settings, self::SCOPE_GLOBAL);
             $globalConfig = $scopeResolver->stripManagementKeys($globalConfig);
 
             foreach($globalConfig as $globalType => $globalData) {
@@ -356,10 +362,10 @@ class SchemaOrgData_IdReferenceService {
                     $stub['name'] = $nameValue;
                 }
 
-                if(!isset($scopeConfigs['global'])) {
-                    $scopeConfigs['global'] = [];
+                if(!isset($scopeConfigs[self::SCOPE_GLOBAL])) {
+                    $scopeConfigs[self::SCOPE_GLOBAL] = [];
                 }
-                $scopeConfigs['global'][$globalType] = $stub;
+                $scopeConfigs[self::SCOPE_GLOBAL][$globalType] = $stub;
                 break;
             }
         }
