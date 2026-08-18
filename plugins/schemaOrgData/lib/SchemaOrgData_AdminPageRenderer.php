@@ -16,6 +16,14 @@
 ***************************************************************/
 class SchemaOrgData_AdminPageRenderer {
 
+    /**
+     * Bindung an die Geltungsebenen aus SchemaOrgData_ScopeResolver - das
+     * Literal steht dort an einer Stelle, hier nur der Verweis darauf.
+     */
+    private const SCOPE_GLOBAL   = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
+    private const SCOPE_CATEGORY = SchemaOrgData_ScopeResolver::SCOPE_CATEGORY;
+    private const SCOPE_PAGE     = SchemaOrgData_ScopeResolver::SCOPE_PAGE;
+
     /***************************************************************
     *
     * Liefert das CSS für das Admin-Formular (Feedback-Farben,
@@ -143,10 +151,10 @@ class SchemaOrgData_AdminPageRenderer {
     ***************************************************************/
     public function renderInfoBlock(string $scope, Language $lang): string {
         $key = match($scope) {
-            'global'   => 'info_text_global',
-            'category' => 'info_text_category',
-            'page'     => 'info_text_page',
-            default    => '',
+            self::SCOPE_GLOBAL   => 'info_text_global',
+            self::SCOPE_CATEGORY => 'info_text_category',
+            self::SCOPE_PAGE     => 'info_text_page',
+            default              => '',
         };
 
         if($key === '') {
@@ -156,7 +164,7 @@ class SchemaOrgData_AdminPageRenderer {
         // Im Global-Scope zusätzlicher Hinweis, dass eine im Layout-Template
         // erkannte JSON-LD-Kollision ausschließlich hier angezeigt wird
         // (siehe renderAdminPage(), Template-Detection ist layoutweit).
-        $templateNotice = ($scope === 'global')
+        $templateNotice = ($scope === self::SCOPE_GLOBAL)
             ? '<p>'.$lang->getLanguageHtml('info_text_template_global').'</p>'
             : '';
 
@@ -187,10 +195,10 @@ class SchemaOrgData_AdminPageRenderer {
     ***************************************************************/
     public function buildScopeLabel(string $scope, ?string $cat, ?string $page, Language $lang): string {
         return match($scope) {
-            'global'   => $lang->getLanguageValue('scope_global'),
-            'category' => $lang->getLanguageValue('scope_category').' '.rawurldecode((string) $cat),
-            'page'     => $lang->getLanguageValue('scope_page').' '.rawurldecode((string) $page),
-            default    => $lang->getLanguageValue('scope_'.$scope),
+            self::SCOPE_GLOBAL   => $lang->getLanguageValue('scope_global'),
+            self::SCOPE_CATEGORY => $lang->getLanguageValue('scope_category').' '.rawurldecode((string) $cat),
+            self::SCOPE_PAGE     => $lang->getLanguageValue('scope_page').' '.rawurldecode((string) $page),
+            default              => $lang->getLanguageValue('scope_'.$scope),
         };
     }
 
@@ -343,9 +351,9 @@ class SchemaOrgData_AdminPageRenderer {
         // Bestände und verhindert, dass ein fehlender Schlüssel als roher
         // Schlüsselname in der Oberfläche erscheint.
         $titleKey = match($scope) {
-            'global' => 'notice_existing_jsonld_title_global',
-            'page'   => 'notice_existing_jsonld_title_page',
-            default  => 'notice_existing_jsonld_title',
+            self::SCOPE_GLOBAL => 'notice_existing_jsonld_title_global',
+            self::SCOPE_PAGE   => 'notice_existing_jsonld_title_page',
+            default            => 'notice_existing_jsonld_title',
         };
 
         $html  = '<div class="schemaOrgData-jsonld-notice">'."\n";

@@ -36,6 +36,14 @@ class SchemaOrgData_ConfigSaveService {
     private const KEY_DEBUG_OUTPUT  = SchemaOrgData_ScopeResolver::KEY_DEBUG_OUTPUT;
     private const KEY_ORG_RELATIONS = SchemaOrgData_ScopeResolver::KEY_ORG_RELATIONS;
 
+    /**
+     * Bindung an die Geltungsebenen aus SchemaOrgData_ScopeResolver - das
+     * Literal steht dort an einer Stelle, hier nur der Verweis darauf.
+     */
+    private const SCOPE_GLOBAL   = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
+    private const SCOPE_CATEGORY = SchemaOrgData_ScopeResolver::SCOPE_CATEGORY;
+    private const SCOPE_PAGE     = SchemaOrgData_ScopeResolver::SCOPE_PAGE;
+
     /***************************************************************
     *
     * Ermittelt für eine Kategorie-/Seiten-Sektion, welche Feldwerte
@@ -72,12 +80,12 @@ class SchemaOrgData_ConfigSaveService {
         SchemaOrgData_AdminPageRenderer $adminPageRenderer
     ): array {
         $higherScopes = match($scope) {
-            'category' => [
-                ['global', $scopeResolver->loadScopeConfig($settings, 'global'), null, null],
+            self::SCOPE_CATEGORY => [
+                [self::SCOPE_GLOBAL, $scopeResolver->loadScopeConfig($settings, self::SCOPE_GLOBAL), null, null],
             ],
-            'page' => [
-                ['global', $scopeResolver->loadScopeConfig($settings, 'global'), null, null],
-                ['category', $scopeResolver->loadScopeConfig($settings, 'category', $cat), $cat, null],
+            self::SCOPE_PAGE => [
+                [self::SCOPE_GLOBAL, $scopeResolver->loadScopeConfig($settings, self::SCOPE_GLOBAL), null, null],
+                [self::SCOPE_CATEGORY, $scopeResolver->loadScopeConfig($settings, self::SCOPE_CATEGORY, $cat), $cat, null],
             ],
             default => [],
         };
@@ -559,7 +567,7 @@ class SchemaOrgData_ConfigSaveService {
         }
         $config = [self::KEY_META => $existing[self::KEY_META] ?? ['existing_jsonld' => false, 'jsonld_mode' => 'keep', 'existing_jsonld_content' => '']];
 
-        if($scope === 'global') {
+        if($scope === self::SCOPE_GLOBAL) {
             $config[self::KEY_EXCLUDED_CATS] = $existing[self::KEY_EXCLUDED_CATS] ?? '';
             $config[self::KEY_DEBUG_OUTPUT] = !empty($existing[self::KEY_DEBUG_OUTPUT]);
             $config[self::KEY_ORG_RELATIONS] = is_array($existing[self::KEY_ORG_RELATIONS] ?? null) ? $existing[self::KEY_ORG_RELATIONS] : [];
@@ -580,8 +588,8 @@ class SchemaOrgData_ConfigSaveService {
             // Auswahl bereits clientseitig, siehe
             // SchemaOrgData_AdminController::renderScopeSection()).
             $familyMismatch = false;
-            if($schema !== null and $scope !== 'global' and isset($schema['ui:family'])) {
-                $globalConfig = $scopeResolver->loadScopeConfig($settings, 'global');
+            if($schema !== null and $scope !== self::SCOPE_GLOBAL and isset($schema['ui:family'])) {
+                $globalConfig = $scopeResolver->loadScopeConfig($settings, self::SCOPE_GLOBAL);
                 $globalActiveType = $schemaRepository->resolveActiveType($globalConfig, $pluginSelfDir);
                 $globalSchema = $globalActiveType !== null
                     ? $schemaRepository->loadSchema($pluginSelfDir, $globalActiveType) : null;
@@ -640,7 +648,7 @@ class SchemaOrgData_ConfigSaveService {
         // Relation ein leeres Array sendet (unterscheidbar vom Fehlen des
         // Feldes selbst).
         $orgRelationsResult = null;
-        if($scope === 'global' and (array_key_exists(self::KEY_ORG_RELATIONS, $postData) or array_key_exists('org_relations_marker', $postData))) {
+        if($scope === self::SCOPE_GLOBAL and (array_key_exists(self::KEY_ORG_RELATIONS, $postData) or array_key_exists('org_relations_marker', $postData))) {
             $orgRelationsResult = $orgRelationsService->sanitizeAndValidate(
                 is_array($postData[self::KEY_ORG_RELATIONS] ?? null) ? $postData[self::KEY_ORG_RELATIONS] : [],
                 $settings, $personsRegistryService, $lang
@@ -658,7 +666,7 @@ class SchemaOrgData_ConfigSaveService {
             return ['success' => false, 'errors' => $errors, 'notices' => []];
         }
 
-        if($scope === 'global') {
+        if($scope === self::SCOPE_GLOBAL) {
             $excludedCats = [];
             foreach((array) ($postData[self::KEY_EXCLUDED_CATS] ?? []) as $excludedCat) {
                 $excludedCat = $scopeResolver->sanitizeScopeIdentifier(trim((string) $excludedCat));

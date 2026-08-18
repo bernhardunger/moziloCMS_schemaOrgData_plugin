@@ -28,6 +28,14 @@ class SchemaOrgData_FrontendRenderer {
     private const KEY_DEBUG_OUTPUT  = SchemaOrgData_ScopeResolver::KEY_DEBUG_OUTPUT;
     private const KEY_ORG_RELATIONS = SchemaOrgData_ScopeResolver::KEY_ORG_RELATIONS;
 
+    /**
+     * Bindung an die Geltungsebenen aus SchemaOrgData_ScopeResolver - das
+     * Literal steht dort an einer Stelle, hier nur der Verweis darauf.
+     */
+    private const SCOPE_GLOBAL   = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
+    private const SCOPE_CATEGORY = SchemaOrgData_ScopeResolver::SCOPE_CATEGORY;
+    private const SCOPE_PAGE     = SchemaOrgData_ScopeResolver::SCOPE_PAGE;
+
     /***************************************************************
     *
     * Rendert die JSON-LD-<script>-Blöcke für die aktuelle Frontend-
@@ -69,36 +77,36 @@ class SchemaOrgData_FrontendRenderer {
         $page = (defined('PAGE_REQUEST') and PAGE_REQUEST) ? $context->scopeResolver->sanitizeScopeIdentifier((string) PAGE_REQUEST) : null;
 
         // Konfiguration je Geltungsebene laden (sofern vorhanden)
-        $scopeConfigs = ['global' => $context->scopeResolver->loadScopeConfig($context->settings, 'global')];
+        $scopeConfigs = [self::SCOPE_GLOBAL => $context->scopeResolver->loadScopeConfig($context->settings, self::SCOPE_GLOBAL)];
 
         if($cat !== null) {
-            $scopeConfigs['category'] = $context->scopeResolver->loadScopeConfig($context->settings, 'category', $cat);
+            $scopeConfigs[self::SCOPE_CATEGORY] = $context->scopeResolver->loadScopeConfig($context->settings, self::SCOPE_CATEGORY, $cat);
         }
         if($cat !== null and $page !== null) {
-            $scopeConfigs['page'] = $context->scopeResolver->loadScopeConfig($context->settings, 'page', $cat, $page);
+            $scopeConfigs[self::SCOPE_PAGE] = $context->scopeResolver->loadScopeConfig($context->settings, self::SCOPE_PAGE, $cat, $page);
         }
 
         // Ausschlussliste prüfen (nur global): die globale Ausgabe wird
         // unterdrückt, wenn die aktive Kategorie in excluded_cats steht
         // (siehe README.md, Abschnitt "Geltungsbereiche und Vererbung").
-        $excludedCats = !empty($scopeConfigs['global'][self::KEY_EXCLUDED_CATS])
-            ? explode(',', (string) $scopeConfigs['global'][self::KEY_EXCLUDED_CATS])
+        $excludedCats = !empty($scopeConfigs[self::SCOPE_GLOBAL][self::KEY_EXCLUDED_CATS])
+            ? explode(',', (string) $scopeConfigs[self::SCOPE_GLOBAL][self::KEY_EXCLUDED_CATS])
             : [];
 
         if($cat !== null and in_array($cat, $excludedCats, true)) {
-            unset($scopeConfigs['global']);
+            unset($scopeConfigs[self::SCOPE_GLOBAL]);
         }
 
         // Debug-Modus: Flag aus config_global lesen, bevor die Verwaltungsdaten
         // entfernt werden (debug_output ist kein Schema-Type, sondern ein
         // Meta-Schlüssel analog zu excluded_cats).
-        $debugOutput = !empty($scopeConfigs['global'][self::KEY_DEBUG_OUTPUT] ?? false);
+        $debugOutput = !empty($scopeConfigs[self::SCOPE_GLOBAL][self::KEY_DEBUG_OUTPUT] ?? false);
 
         // Organisations-Relationen (org_relations, siehe SchemaOrgData_OrgRelationsService):
         // ebenfalls ein Meta-Schlüssel in config_global, unabhängig vom aktiven
         // globalen Schema-Type (übersteht dadurch einen Type-Wechsel innerhalb
         // der LocalBusiness-Familie bzw. zwischen Organization/NGO).
-        $orgRelations = is_array($scopeConfigs['global'][self::KEY_ORG_RELATIONS] ?? null) ? $scopeConfigs['global'][self::KEY_ORG_RELATIONS] : [];
+        $orgRelations = is_array($scopeConfigs[self::SCOPE_GLOBAL][self::KEY_ORG_RELATIONS] ?? null) ? $scopeConfigs[self::SCOPE_GLOBAL][self::KEY_ORG_RELATIONS] : [];
 
         // Verwaltungsdaten entfernen - übrig bleiben je Ebene nur noch die
         // Schema-Type-Konfigurationen. Welche Schlüssel dazu zählen, führt
@@ -139,9 +147,9 @@ class SchemaOrgData_FrontendRenderer {
         $globalSuppressedByKeep = false;
         foreach($scopeConfigs as $scope => $config) {
             $scopeArgs = match($scope) {
-                'category' => [$cat],
-                'page'     => [$cat, $page],
-                default    => [],
+                self::SCOPE_CATEGORY => [$cat],
+                self::SCOPE_PAGE     => [$cat, $page],
+                default              => [],
             };
 
             $meta = $context->scopeResolver->loadScopeMeta($context->settings, $scope, ...$scopeArgs);
@@ -156,13 +164,13 @@ class SchemaOrgData_FrontendRenderer {
             // Absicherung für von Hand bearbeitete Bestände und ist über die
             // Modus-Auswahl abschaltbar.
             $hasExistingJsonLd = match($scope) {
-                'global' => $hasJsonLdInTemplate,
-                'page'   => $hasJsonLdInPageContent,
-                default  => $meta['existing_jsonld'],
+                self::SCOPE_GLOBAL => $hasJsonLdInTemplate,
+                self::SCOPE_PAGE   => $hasJsonLdInPageContent,
+                default            => $meta['existing_jsonld'],
             };
 
             if($hasExistingJsonLd and $meta['jsonld_mode'] === 'keep') {
-                if($scope === 'global') {
+                if($scope === self::SCOPE_GLOBAL) {
                     $globalSuppressedByKeep = true;
                 }
                 unset($scopeConfigs[$scope]);
@@ -199,7 +207,7 @@ class SchemaOrgData_FrontendRenderer {
         // unkritisch: eine Stub-Einfügung kann $orgNodePresent nur
         // nachträglich wahr machen.
         $orgNodePresent = false;
-        foreach(array_keys($scopeConfigs['global'] ?? []) as $type) {
+        foreach(array_keys($scopeConfigs[self::SCOPE_GLOBAL] ?? []) as $type) {
             $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
             if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === 'organization') {
                 $orgNodePresent = true;
@@ -244,7 +252,7 @@ class SchemaOrgData_FrontendRenderer {
                 // Kategorie-/Seiten-Type zufällig dasselbe ui:idFragment
                 // deklariert (sonst bekäme dieser Knoten fälschlich dieselben
                 // Referenzen wie der globale Organisations-Knoten).
-                if($orgRelationsGrouped !== [] and $scope === 'global') {
+                if($orgRelationsGrouped !== [] and $scope === self::SCOPE_GLOBAL) {
                     $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
                     if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === 'organization') {
                         $data = array_merge($data, $orgRelationsGrouped);
@@ -253,10 +261,14 @@ class SchemaOrgData_FrontendRenderer {
                 $nodeId = $context->jsonLdBuilder->resolveNodeId($context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, $type, $assignedFragments);
                 $output .= $context->jsonLdBuilder->buildJsonLdScript($context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, $type, $data, $nodeId, $suppressedIdTargets, $context->openingHoursHelper);
                 if($debugOutput) {
+                    // Zweigschlüssel sind Scope-Namen, der Ergebniswert ist
+                    // es nicht: default liefert den Block-Bezeichner der
+                    // globalen Ebene, dessen Geschwister 'cat_x' und
+                    // 'page_x_y' heißen. Deshalb bleibt dort das Literal.
                     $scopeKey = match($scope) {
-                        'category' => 'cat_'.($cat ?? ''),
-                        'page'     => 'page_'.($cat ?? '').'_'.($page ?? ''),
-                        default    => 'global',
+                        self::SCOPE_CATEGORY => 'cat_'.($cat ?? ''),
+                        self::SCOPE_PAGE     => 'page_'.($cat ?? '').'_'.($page ?? ''),
+                        default              => 'global',
                     };
                     $debugBlocks[] = ['scope' => $scopeKey, 'type' => $type, 'data' => $data, 'id' => $nodeId];
                 }

@@ -18,6 +18,15 @@
 ***************************************************************/
 class SchemaOrgData_AdminRequestHandler {
 
+    /**
+     * Bindung an die Geltungsebenen aus SchemaOrgData_ScopeResolver - das
+     * Literal steht dort an einer Stelle, hier nur der Verweis darauf.
+     */
+    private const SCOPE_GLOBAL   = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
+    private const SCOPE_CATEGORY = SchemaOrgData_ScopeResolver::SCOPE_CATEGORY;
+    private const SCOPE_PAGE     = SchemaOrgData_ScopeResolver::SCOPE_PAGE;
+    private const SCOPES         = SchemaOrgData_ScopeResolver::SCOPES;
+
     /***************************************************************
     *
     * Verarbeitet die $_POST-Daten des Admin-Formulars. Für jede
@@ -115,16 +124,16 @@ class SchemaOrgData_AdminRequestHandler {
         $isGlobalScope = ($catParam === '' && $pageParam === '');
 
         if($isGlobalScope) {
-            $globalData = (isset($scopes['global']) and is_array($scopes['global']))
-                ? $scopes['global'] : [];
+            $globalData = (isset($scopes[self::SCOPE_GLOBAL]) and is_array($scopes[self::SCOPE_GLOBAL]))
+                ? $scopes[self::SCOPE_GLOBAL] : [];
 
-            $result = $configSaveService->saveConfig('global', $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
+            $result = $configSaveService->saveConfig(self::SCOPE_GLOBAL, $globalData, $settings, $lang, $scopeResolver, $schemaRepository, $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer, $personsRegistryService, $orgRelationsService);
 
             $success = $success && $result['success'];
-            $processed[] = ['scope' => 'global', 'cat' => null, 'page' => null, 'result' => $result];
+            $processed[] = ['scope' => self::SCOPE_GLOBAL, 'catIdentifier' => null, 'pageIdentifier' => null, 'result' => $result];
         }
 
-        foreach(['category', 'page'] as $scope) {
+        foreach([self::SCOPE_CATEGORY, self::SCOPE_PAGE] as $scope) {
             // Klammerung zwingend: "=" bindet stärker als "and", ohne sie
             // würde nur das isset()-Ergebnis zugewiesen und ein manipulierter
             // POST mit skalarem Scope-Wert lief unten in einen TypeError von
@@ -139,10 +148,10 @@ class SchemaOrgData_AdminRequestHandler {
 
             $success = $success && $result['success'];
             $processed[] = [
-                'scope'  => $scope,
-                'cat'    => ($catParam !== '') ? $catParam : null,
-                'page'   => ($pageParam !== '') ? $pageParam : null,
-                'result' => $result,
+                'scope'          => $scope,
+                'catIdentifier'  => ($catParam !== '') ? $catParam : null,
+                'pageIdentifier' => ($pageParam !== '') ? $pageParam : null,
+                'result'         => $result,
             ];
         }
 
@@ -158,7 +167,7 @@ class SchemaOrgData_AdminRequestHandler {
 
         foreach($processed as $entry) {
             $label = $labelPerScope
-                ? $adminPageRenderer->buildScopeLabel($entry['scope'], $entry['cat'], $entry['page'], $lang)
+                ? $adminPageRenderer->buildScopeLabel($entry['scope'], $entry['catIdentifier'], $entry['pageIdentifier'], $lang)
                 : null;
 
             foreach($entry['result']['errors'] as $error) {
@@ -248,16 +257,16 @@ class SchemaOrgData_AdminRequestHandler {
         $rawScope = $parts[0];
         $rawIndex = $parts[1] ?? '0';
 
-        if(!in_array($rawScope, ['global', 'category', 'page'], true) or !ctype_digit($rawIndex)) {
+        if(!in_array($rawScope, self::SCOPES, true) or !ctype_digit($rawIndex)) {
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_json_invalid')], 'import' => true];
         }
         $blockIndex = (int) $rawIndex;
 
         // Scope-Identifier analog renderAdminPage(): für category/page aus
         // den ohnehin mitgesendeten Formularfeldern.
-        $cat  = ($rawScope !== 'global' and isset($_POST['schemaOrgData_cat']))
+        $cat  = ($rawScope !== self::SCOPE_GLOBAL and isset($_POST['schemaOrgData_cat']))
             ? ($scopeResolver->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_cat']) ?: null) : null;
-        $page = ($rawScope === 'page' and isset($_POST['schemaOrgData_page']))
+        $page = ($rawScope === self::SCOPE_PAGE and isset($_POST['schemaOrgData_page']))
             ? ($scopeResolver->sanitizeScopeIdentifier((string) $_POST['schemaOrgData_page']) ?: null) : null;
 
         $meta = $scopeResolver->loadScopeMeta($settings, $rawScope, $cat, $page);
@@ -380,7 +389,7 @@ class SchemaOrgData_AdminRequestHandler {
         SchemaOrgData_AdminPageRenderer $adminPageRenderer
     ): array {
         $fromImport = !empty($_POST['schemaOrgData_person_suggestion_from_import']);
-        $globalPostData = is_array($_POST['schemaOrgData']['global'] ?? null) ? $_POST['schemaOrgData']['global'] : null;
+        $globalPostData = is_array($_POST['schemaOrgData'][self::SCOPE_GLOBAL] ?? null) ? $_POST['schemaOrgData'][self::SCOPE_GLOBAL] : null;
 
         // Das implizite Speichern durchläuft denselben Bereinigungspfad wie
         // ein regulärer Submit - seine Hinweise gehören deshalb ins
@@ -389,7 +398,7 @@ class SchemaOrgData_AdminRequestHandler {
 
         if($fromImport and $globalPostData !== null) {
             $saveResult = $configSaveService->saveConfig(
-                'global', $globalPostData, $settings, $lang, $scopeResolver, $schemaRepository,
+                self::SCOPE_GLOBAL, $globalPostData, $settings, $lang, $scopeResolver, $schemaRepository,
                 $pluginSelfDir, $validator, $openingHoursHelper, $adminPageRenderer,
                 $personsRegistryService, $orgRelationsService
             );
@@ -399,7 +408,7 @@ class SchemaOrgData_AdminRequestHandler {
             $carriedNotices = $saveResult['notices'];
         }
 
-        $config = $scopeResolver->loadScopeConfig($settings, 'global');
+        $config = $scopeResolver->loadScopeConfig($settings, self::SCOPE_GLOBAL);
         $type = $schemaRepository->resolveActiveType($config, $pluginSelfDir);
         $schema = ($type !== null) ? $schemaRepository->loadSchema($pluginSelfDir, $type) : null;
 

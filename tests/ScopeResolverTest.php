@@ -614,6 +614,39 @@ final class ScopeResolverTest extends TestCase {
         );
     }
 
+    // Scope-Namen und SCOPES ------------------------------------------------
+
+    /***************************************************************
+    *
+    * Änderungsdetektor auf den Wortlaut der drei Geltungsebenen: Die
+    * Namen stehen in Settings-Schlüsseln, POST-Feldnamen und den
+    * ui:scopes-Angaben der Schema-Dateien, die alle nicht mitwandern
+    * würden. Das Fixture behält bewusst die Literale - nähme es die
+    * Konstanten, prüfte der Test nur noch sich selbst.
+    *
+    ***************************************************************/
+    function testScopeNamenTragenGenauDieDreiGeltungsebenen(): void {
+        $this->assertSame('global',   \SchemaOrgData_ScopeResolver::SCOPE_GLOBAL);
+        $this->assertSame('category', \SchemaOrgData_ScopeResolver::SCOPE_CATEGORY);
+        $this->assertSame('page',     \SchemaOrgData_ScopeResolver::SCOPE_PAGE);
+    }
+
+    /***************************************************************
+    *
+    * Änderungsdetektor auf Bestand und Reihenfolge von SCOPES: Die
+    * Reihenfolge ist die Vererbungsrichtung, an der
+    * resolveTypeInheritance() entscheidet, welche Ebene einen Type an
+    * sich zieht. Eine Vertauschung liefe ohne diesen Test fehlerfrei
+    * durch und änderte still das Ausgabeverhalten.
+    *
+    ***************************************************************/
+    function testScopesFuehrtDieDreiEbenenInVererbungsrichtung(): void {
+        $this->assertSame(
+            ['global', 'category', 'page'],
+            \SchemaOrgData_ScopeResolver::SCOPES
+        );
+    }
+
     // DEFAULT_JSONLD_MODE -------------------------------------------------
 
     /***************************************************************

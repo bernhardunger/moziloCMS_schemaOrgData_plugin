@@ -21,6 +21,34 @@
 class SchemaOrgData_ScopeResolver {
 
     /**
+     * Die drei Geltungsebenen. Sie sind das Vokabular, mit dem jede
+     * scope-führende Methode dieser Klasse aufgerufen wird, und stehen
+     * hier als Quelle; konsumierende Klassen binden sich über eine eigene
+     * private const daran, statt das Literal zu wiederholen.
+     *
+     * Nicht gemeint ist der gleichlautende Bezeichner der Admin-Sektionen
+     * und Debug-Blöcke ('global' | 'cat_x' | 'page_x_y'): Dort ist nur der
+     * erste Wert wortgleich, die beiden anderen sind es nicht — ein eigenes
+     * Vokabular, das diese Konstanten nicht verwendet.
+     */
+    public const SCOPE_GLOBAL   = 'global';
+    public const SCOPE_CATEGORY = 'category';
+    public const SCOPE_PAGE     = 'page';
+
+    /**
+     * Die Geltungsebenen in Vererbungsrichtung, von der allgemeinsten zur
+     * spezifischsten. Die Reihenfolge ist fachlich: resolveTypeInheritance()
+     * entscheidet an ihr, welche Ebene einen Type an sich zieht. Wer über
+     * alle Ebenen iteriert oder einen empfangenen Wert gegen den zulässigen
+     * Vorrat prüft, nimmt diese Liste.
+     */
+    public const SCOPES = [
+        self::SCOPE_GLOBAL,
+        self::SCOPE_CATEGORY,
+        self::SCOPE_PAGE,
+    ];
+
+    /**
      * Die einzelnen Verwaltungsschlüssel einer Scope-Konfiguration. Sie
      * stehen hier als Quelle; konsumierende Klassen binden sich über eine
      * eigene private const daran, statt das Literal zu wiederholen.
@@ -79,14 +107,14 @@ class SchemaOrgData_ScopeResolver {
         ?string $page = null
     ): ?string {
         return match($scope) {
-            'global'   => self::KEY_CONFIG_GLOBAL,
-            'category' => $cat !== null
+            self::SCOPE_GLOBAL   => self::KEY_CONFIG_GLOBAL,
+            self::SCOPE_CATEGORY => $cat !== null
                 ? 'config_cat_' . $cat
                 : null,
-            'page'     => ($cat !== null && $page !== null)
+            self::SCOPE_PAGE     => ($cat !== null && $page !== null)
                 ? 'config_page_' . $cat . '_' . $page
                 : null,
-            default    => null,
+            default              => null,
         };
     }
 
@@ -143,9 +171,9 @@ class SchemaOrgData_ScopeResolver {
         }
 
         return match($scope) {
-            'category' => [$cat, null],
-            'page'     => [$cat, $page],
-            default    => [null, null],
+            self::SCOPE_CATEGORY => [$cat, null],
+            self::SCOPE_PAGE     => [$cat, $page],
+            default              => [null, null],
         };
     }
 
@@ -191,7 +219,7 @@ class SchemaOrgData_ScopeResolver {
     ***************************************************************/
     public function resolveTypeInheritance(array $scopeConfigs): array {
         $typeScopes = [];
-        foreach(['global', 'category', 'page'] as $scope) {
+        foreach(self::SCOPES as $scope) {
             if(!isset($scopeConfigs[$scope])) {
                 continue;
             }
@@ -201,9 +229,9 @@ class SchemaOrgData_ScopeResolver {
         }
 
         $merged = $this->mergeConfigs(
-            $scopeConfigs['global'] ?? [],
-            $scopeConfigs['category'] ?? [],
-            $scopeConfigs['page'] ?? []
+            $scopeConfigs[self::SCOPE_GLOBAL] ?? [],
+            $scopeConfigs[self::SCOPE_CATEGORY] ?? [],
+            $scopeConfigs[self::SCOPE_PAGE] ?? []
         );
 
         foreach($scopeConfigs as $scope => $config) {
@@ -414,10 +442,10 @@ class SchemaOrgData_ScopeResolver {
     ***************************************************************/
     public function detectTypeCollision($settings, string $scope, ?string $cat, ?string $page, string $selectedType): array {
         $higherScopes = match($scope) {
-            'category' => ['global' => $this->loadScopeConfig($settings, 'global')],
-            'page'     => [
-                'global'   => $this->loadScopeConfig($settings, 'global'),
-                'category' => $this->loadScopeConfig($settings, 'category', $cat),
+            self::SCOPE_CATEGORY => [self::SCOPE_GLOBAL => $this->loadScopeConfig($settings, self::SCOPE_GLOBAL)],
+            self::SCOPE_PAGE     => [
+                self::SCOPE_GLOBAL   => $this->loadScopeConfig($settings, self::SCOPE_GLOBAL),
+                self::SCOPE_CATEGORY => $this->loadScopeConfig($settings, self::SCOPE_CATEGORY, $cat),
             ],
             default => [],
         };

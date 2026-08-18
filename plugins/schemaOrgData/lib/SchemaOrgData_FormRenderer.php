@@ -18,6 +18,12 @@
 ***************************************************************/
 class SchemaOrgData_FormRenderer {
 
+    /**
+     * Bindung an die Geltungsebenen aus SchemaOrgData_ScopeResolver - das
+     * Literal steht dort an einer Stelle, hier nur der Verweis darauf.
+     */
+    private const SCOPE_GLOBAL = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
+
     /***************************************************************
     *
     * Rendert das Feedback-Symbol (✅/⚠️/❌) zu einem
@@ -1387,7 +1393,7 @@ class SchemaOrgData_FormRenderer {
         // Organisations-Identity-Type. Beide Werte liegen hier bereits als
         // Parameter vor, deshalb bleibt der Aufrufer unberührt. Ändert sich die
         // Bedingung dort, gehört sie hier mitgeändert.
-        $personSuggestionContext = ($scope === 'global' and ($schema['ui:idFragment'] ?? '') === 'organization');
+        $personSuggestionContext = ($scope === self::SCOPE_GLOBAL and ($schema['ui:idFragment'] ?? '') === 'organization');
 
         $html .= $this->renderExtensionFieldWidget($scope, $type, $extensionJson, $idPrefix, $lang, $pluginSelfUrl, $personSuggestionContext);
 
