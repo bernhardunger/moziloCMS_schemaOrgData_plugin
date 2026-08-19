@@ -105,6 +105,39 @@ final class IdReferenceServiceTest extends TestCase {
     }
 
     // -----------------------------------------------------------
+    // Vokabular-Konstanten
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Änderungsdetektor auf den Wortlaut des `ui:idFragment`-Werts: Er
+    * steht in den Schema-Dateien unter `schemas/`, die bei einer
+    * Umbenennung in PHP nicht mitwandern würden. Das Fixture behält
+    * bewusst das Literal - nähme es die Konstante, prüfte der Test nur
+    * noch sich selbst.
+    *
+    ***************************************************************/
+    function testIdFragmentWertTraegtDenWortlautDerSchemaDateien(): void {
+        $this->assertSame('organization', \SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION);
+    }
+
+    /***************************************************************
+    *
+    * Änderungsdetektor auf das Vokabular der `ui:referenceTargets`-Angabe,
+    * das ebenfalls in den Schema-Dateien steht. Es ist vom
+    * `ui:idFragment`-Wert getrennt: `persons` hat dort kein Gegenstück,
+    * weil das Fragment einer Registry-Person slug-basiert entsteht. Die
+    * Wortgleichheit bei `organization` ist ein Zusammenfall, keine
+    * Identität - deshalb halten zwei Konstanten denselben Wert, und
+    * deshalb prüft dieser Test sie getrennt vom Test darüber.
+    *
+    ***************************************************************/
+    function testReferenceTargetVokabularTraegtDenWortlautDerSchemaDateien(): void {
+        $this->assertSame('organization', \SchemaOrgData_IdReferenceService::REFERENCE_TARGET_ORGANIZATION);
+        $this->assertSame('persons',      \SchemaOrgData_IdReferenceService::REFERENCE_TARGET_PERSONS);
+    }
+
+    // -----------------------------------------------------------
     // applyDanglingReferenceGuard()
     // -----------------------------------------------------------
 
