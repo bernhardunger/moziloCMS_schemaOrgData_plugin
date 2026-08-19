@@ -56,6 +56,16 @@ class SchemaOrgData_ConfigSaveService {
     private const WIDGET_FAQ_LIST                = SchemaOrgData_SchemaRepository::WIDGET_FAQ_LIST;
     private const WIDGET_GEO                     = SchemaOrgData_SchemaRepository::WIDGET_GEO;
     private const WIDGET_ID_REFERENCE_OR_LITERAL = SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE_OR_LITERAL;
+    /**
+     * Bindung an die ui:-Schluesselnamen aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const UI_WIDGET         = SchemaOrgData_SchemaRepository::UI_WIDGET;
+    private const UI_LABEL          = SchemaOrgData_SchemaRepository::UI_LABEL;
+    private const UI_LITERAL_FIELDS = SchemaOrgData_SchemaRepository::UI_LITERAL_FIELDS;
+    private const UI_FAMILY         = SchemaOrgData_SchemaRepository::UI_FAMILY;
+    private const UI_SCOPES         = SchemaOrgData_SchemaRepository::UI_SCOPES;
 
     /***************************************************************
     *
@@ -172,7 +182,7 @@ class SchemaOrgData_ConfigSaveService {
             }
 
             $fieldSchema = $schemaRepository->resolveSchemaRef($fieldSchema, $schema);
-            $widget = $fieldSchema['ui:widget'] ?? self::WIDGET_TEXT;
+            $widget = $fieldSchema[self::UI_WIDGET] ?? self::WIDGET_TEXT;
             $value = $formData[$name];
 
             if($widget === self::WIDGET_POSTAL_ADDRESS) {
@@ -291,7 +301,7 @@ class SchemaOrgData_ConfigSaveService {
                     }
                 } elseif($mode === 'literal') {
                     $literal = ['_mode' => 'literal'];
-                    foreach($fieldSchema['ui:literalFields'] ?? [] as $lf) {
+                    foreach($fieldSchema[self::UI_LITERAL_FIELDS] ?? [] as $lf) {
                         $lvRaw = (string) ($value[(string) $lf] ?? '');
                         $lv = trim(strip_tags($lvRaw));
                         if($lv !== trim($lvRaw)) {
@@ -601,19 +611,19 @@ class SchemaOrgData_ConfigSaveService {
             // Auswahl bereits clientseitig, siehe
             // SchemaOrgData_AdminController::renderScopeSection()).
             $familyMismatch = false;
-            if($schema !== null and $scope !== self::SCOPE_GLOBAL and isset($schema['ui:family'])) {
+            if($schema !== null and $scope !== self::SCOPE_GLOBAL and isset($schema[self::UI_FAMILY])) {
                 $globalConfig = $scopeResolver->loadScopeConfig($settings, self::SCOPE_GLOBAL);
                 $globalActiveType = $schemaRepository->resolveActiveType($globalConfig, $pluginSelfDir);
                 $globalSchema = $globalActiveType !== null
                     ? $schemaRepository->loadSchema($pluginSelfDir, $globalActiveType) : null;
-                $globalFamily = $globalSchema['ui:family'] ?? null;
+                $globalFamily = $globalSchema[self::UI_FAMILY] ?? null;
 
-                if($globalFamily !== null and $globalFamily === $schema['ui:family'] and $globalActiveType !== $type) {
+                if($globalFamily !== null and $globalFamily === $schema[self::UI_FAMILY] and $globalActiveType !== $type) {
                     $familyMismatch = true;
                 }
             }
 
-            if($schema === null or !in_array($scope, $schema['ui:scopes'] ?? [], true)) {
+            if($schema === null or !in_array($scope, $schema[self::UI_SCOPES] ?? [], true)) {
                 $errors[] = $lang->getLanguageValue('error_invalid_schema_type', $type);
             } elseif($familyMismatch) {
                 $errors[] = $lang->getLanguageValue('error_family_type_mismatch');
@@ -836,8 +846,8 @@ class SchemaOrgData_ConfigSaveService {
             $resolved[(string) $name] = $propSchema;
         }
 
-        if(isset($resolved[$field]['ui:label'])) {
-            return (string) $resolved[$field]['ui:label'];
+        if(isset($resolved[$field][self::UI_LABEL])) {
+            return (string) $resolved[$field][self::UI_LABEL];
         }
 
         foreach($resolved as $propSchema) {
