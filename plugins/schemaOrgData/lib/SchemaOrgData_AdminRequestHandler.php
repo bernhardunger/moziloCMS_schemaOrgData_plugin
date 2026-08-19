@@ -412,7 +412,7 @@ class SchemaOrgData_AdminRequestHandler {
         $type = $schemaRepository->resolveActiveType($config, $pluginSelfDir);
         $schema = ($type !== null) ? $schemaRepository->loadSchema($pluginSelfDir, $type) : null;
 
-        if($schema === null or ($schema['ui:idFragment'] ?? '') !== 'organization') {
+        if($schema === null or ($schema['ui:idFragment'] ?? '') !== SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_person_suggestion_outdated')], 'notices' => []];
         }
 

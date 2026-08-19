@@ -56,7 +56,7 @@ class SchemaOrgData_PersonSuggestionService {
 
         foreach(SchemaOrgData_OrgRelationsService::roles() as $property) {
             $literal = $typeConfig[$property] ?? null;
-            if(!is_array($literal) or ($literal['@type'] ?? '') !== 'Person') {
+            if(!is_array($literal) or ($literal['@type'] ?? '') !== SchemaOrgData_PersonsRegistryService::SCHEMA_TYPE_PERSON) {
                 continue;
             }
 
@@ -168,7 +168,7 @@ class SchemaOrgData_PersonSuggestionService {
         }
 
         $literal = $config[$type][$property] ?? null;
-        if(!is_array($literal) or ($literal['@type'] ?? '') !== 'Person') {
+        if(!is_array($literal) or ($literal['@type'] ?? '') !== SchemaOrgData_PersonsRegistryService::SCHEMA_TYPE_PERSON) {
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_person_suggestion_outdated')]];
         }
 

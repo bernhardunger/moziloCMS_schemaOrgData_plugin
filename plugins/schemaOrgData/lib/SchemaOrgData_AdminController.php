@@ -297,15 +297,15 @@ class SchemaOrgData_AdminController {
             // innerhalb des .schemaOrgData-type-fields-Wrappers, damit
             // applyTypeFieldsState() (validator.js) die Felder bei
             // Typ-Wechsel korrekt (de)aktiviert (last-value-wins-Schutz).
-            if ($scope === self::SCOPE_GLOBAL and ($schema['ui:idFragment'] ?? '') === 'organization') {
+            if ($scope === self::SCOPE_GLOBAL and ($schema['ui:idFragment'] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
                 $orgRelationsRaw = ($postScope !== null and $type === $selectedType)
                     ? (is_array($postScope[self::KEY_ORG_RELATIONS] ?? null) ? $postScope[self::KEY_ORG_RELATIONS] : [])
                     : (is_array($config[self::KEY_ORG_RELATIONS] ?? null) ? $config[self::KEY_ORG_RELATIONS] : []);
 
                 $availablePersons = [];
                 foreach ($availableFragments as $fragment => $fragLabel) {
-                    if (str_starts_with($fragment, 'person-')) {
-                        $availablePersons[substr($fragment, strlen('person-'))] = $fragLabel;
+                    if (SchemaOrgData_PersonsRegistryService::isPersonFragment($fragment)) {
+                        $availablePersons[SchemaOrgData_PersonsRegistryService::slugFromPersonFragment($fragment)] = $fragLabel;
                     }
                 }
 
@@ -499,7 +499,7 @@ class SchemaOrgData_AdminController {
 
         if ($personsSaveResult !== null and $personsSaveResult['success'] === false) {
             $personsRedisplayData = is_array($_POST['schemaOrgData_persons_data'] ?? null) ? $_POST['schemaOrgData_persons_data'] : [];
-            $personsActiveView = ($personsSaveResult['action'] === 'update' and $personsSaveResult['slug'] !== null)
+            $personsActiveView = ($personsSaveResult['action'] === SchemaOrgData_PersonsAdminRequestHandler::RESULT_UPDATE and $personsSaveResult['slug'] !== null)
                 ? $personsAdminRenderer->buildEditViewId($personsSaveResult['slug'])
                 : $personsAdminRenderer->newViewId();
         }
@@ -580,10 +580,10 @@ class SchemaOrgData_AdminController {
 
         if ($personsSaveResult !== null) {
             $personsSuccessKey = match ($personsSaveResult['action']) {
-                'create' => 'notice_person_created',
-                'update' => 'notice_person_updated',
-                'delete' => 'notice_person_deleted',
-                default  => 'notice_config_save_error',
+                SchemaOrgData_PersonsAdminRequestHandler::RESULT_CREATE => 'notice_person_created',
+                SchemaOrgData_PersonsAdminRequestHandler::RESULT_UPDATE => 'notice_person_updated',
+                SchemaOrgData_PersonsAdminRequestHandler::RESULT_DELETE => 'notice_person_deleted',
+                default                                                 => 'notice_config_save_error',
             };
             $html .= $adminPageRenderer->renderSaveResultNotice($personsSaveResult, $lang, $personsSuccessKey);
         }
