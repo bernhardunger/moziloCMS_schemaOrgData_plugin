@@ -300,7 +300,7 @@ class SchemaOrgData_AdminRequestHandler {
         $type = $rawType;
         $schema = ($type !== '') ? $schemaRepository->loadSchema($pluginSelfDir, $type) : null;
 
-        if($schema === null or !in_array($rawScope, $schema['ui:scopes'] ?? [], true)) {
+        if($schema === null or !in_array($rawScope, $schema[SchemaOrgData_SchemaRepository::UI_SCOPES] ?? [], true)) {
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_invalid_schema_type', $type)], 'import' => true];
         }
 
@@ -328,7 +328,7 @@ class SchemaOrgData_AdminRequestHandler {
             // Feld, nicht einen je verworfenem Eintrag (siehe README.md,
             // Abschnitt "Öffnungszeiten").
             if($dropped !== []) {
-                $fieldLabelKey = $fieldSchema['ui:label'] ?? '';
+                $fieldLabelKey = $fieldSchema[SchemaOrgData_SchemaRepository::UI_LABEL] ?? '';
                 $fieldLabel = ($fieldLabelKey !== '') ? $lang->getLanguageValue($fieldLabelKey) : 'openingHours';
                 $notices[] = $lang->getLanguageValue('notice_value_dropped', $fieldLabel);
             }
@@ -412,7 +412,7 @@ class SchemaOrgData_AdminRequestHandler {
         $type = $schemaRepository->resolveActiveType($config, $pluginSelfDir);
         $schema = ($type !== null) ? $schemaRepository->loadSchema($pluginSelfDir, $type) : null;
 
-        if($schema === null or ($schema['ui:idFragment'] ?? '') !== SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
+        if($schema === null or ($schema[SchemaOrgData_SchemaRepository::UI_ID_FRAGMENT] ?? '') !== SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
             return ['success' => false, 'errors' => [$lang->getLanguageValue('error_person_suggestion_outdated')], 'notices' => []];
         }
 

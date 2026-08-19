@@ -209,7 +209,7 @@ class SchemaOrgData_FrontendRenderer {
         $orgNodePresent = false;
         foreach(array_keys($scopeConfigs[self::SCOPE_GLOBAL] ?? []) as $type) {
             $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
-            if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
+            if(is_array($typeSchema) and ($typeSchema[SchemaOrgData_SchemaRepository::UI_ID_FRAGMENT] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
                 $orgNodePresent = true;
                 break;
             }
@@ -254,7 +254,7 @@ class SchemaOrgData_FrontendRenderer {
                 // Referenzen wie der globale Organisations-Knoten).
                 if($orgRelationsGrouped !== [] and $scope === self::SCOPE_GLOBAL) {
                     $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
-                    if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
+                    if(is_array($typeSchema) and ($typeSchema[SchemaOrgData_SchemaRepository::UI_ID_FRAGMENT] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
                         $data = array_merge($data, $orgRelationsGrouped);
                     }
                 }

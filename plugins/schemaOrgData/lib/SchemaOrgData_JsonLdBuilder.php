@@ -17,6 +17,17 @@
 *
 ***************************************************************/
 class SchemaOrgData_JsonLdBuilder {
+    /**
+     * Bindung an die ui:-Schluesselnamen aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const UI_WIDGET         = SchemaOrgData_SchemaRepository::UI_WIDGET;
+    private const UI_ID_FRAGMENT    = SchemaOrgData_SchemaRepository::UI_ID_FRAGMENT;
+    private const UI_ID_TARGET      = SchemaOrgData_SchemaRepository::UI_ID_TARGET;
+    private const UI_LITERAL_FIELDS = SchemaOrgData_SchemaRepository::UI_LITERAL_FIELDS;
+    private const UI_LITERAL_TYPE   = SchemaOrgData_SchemaRepository::UI_LITERAL_TYPE;
+    private const UI_EMIT_AS        = SchemaOrgData_SchemaRepository::UI_EMIT_AS;
 
     /***************************************************************
     *
@@ -85,7 +96,7 @@ class SchemaOrgData_JsonLdBuilder {
         array &$assignedFragments
     ): string {
         $schema = $schemaRepo->loadSchema($pluginSelfDir, $type);
-        $fragment = is_array($schema) ? trim((string) ($schema['ui:idFragment'] ?? '')) : '';
+        $fragment = is_array($schema) ? trim((string) ($schema[self::UI_ID_FRAGMENT] ?? '')) : '';
         if($fragment === '') {
             // Schema ohne ui:idFragment -> kein @id (unverändertes Verhalten).
             return '';
@@ -206,9 +217,9 @@ class SchemaOrgData_JsonLdBuilder {
             $baseUrl = $urlHelper->resolveBaseUrl();
             foreach($schema['properties'] ?? [] as $propName => $propSchema) {
                 $propSchema = $schemaRepo->resolveSchemaRef($propSchema, $schema);
-                $widget = $propSchema['ui:widget'] ?? '';
+                $widget = $propSchema[self::UI_WIDGET] ?? '';
                 if($widget === SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE) {
-                    $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
+                    $target = trim((string) ($propSchema[self::UI_ID_TARGET] ?? ''));
                     if($target !== '' and $baseUrl !== '' and !in_array($target, $suppressedIdTargets, true)) {
                         $data[$propName] = ['@id' => $baseUrl.'#'.$target];
                     }
@@ -231,7 +242,7 @@ class SchemaOrgData_JsonLdBuilder {
                         // Literal-Feld behandelt, damit die Ausgabe ohne erneutes
                         // Speichern erhalten bleibt.
                         if(trim($rawValue) !== '') {
-                            $literalFields = $propSchema['ui:literalFields'] ?? [];
+                            $literalFields = $propSchema[self::UI_LITERAL_FIELDS] ?? [];
                             $primaryField = (string) ($literalFields[0] ?? 'name');
                             $stored = ['_mode' => 'literal', $primaryField => trim($rawValue)];
                         }
@@ -262,7 +273,7 @@ class SchemaOrgData_JsonLdBuilder {
                             // als nicht-leer gilt.
                             $literal = $this->removeEmptyJsonLdProperties($literal);
                             if($literal !== []) {
-                                $literalType = trim((string) ($propSchema['ui:literalType'] ?? ''));
+                                $literalType = trim((string) ($propSchema[self::UI_LITERAL_TYPE] ?? ''));
                                 if($literalType !== '') {
                                     $literal = array_merge(['@type' => $literalType], $literal);
                                 }
@@ -274,7 +285,7 @@ class SchemaOrgData_JsonLdBuilder {
                             error_log('schemaOrgData: unbekannter _mode "'.$mode.'" bei Property "'.$propName.'" - Wert wird nicht ausgegeben');
                         }
                     }
-                } elseif($openingHoursHelper !== null and is_array($propSchema['ui:emitAs'] ?? null)) {
+                } elseif($openingHoursHelper !== null and is_array($propSchema[self::UI_EMIT_AS] ?? null)) {
                     // ui:emitAs lenkt eine flach eingegebene Property in einen
                     // typisierten Unterknoten um. Anlass: openingHours ist laut
                     // schema.org nur auf CivicStructure/LocalBusiness gültig,
@@ -284,7 +295,7 @@ class SchemaOrgData_JsonLdBuilder {
                     // Umlenkung geschieht ausschließlich hier zur Ausgabezeit
                     // und ist vollständig schema-getrieben (keine Type-Namen
                     // im PHP).
-                    $emitAs      = $propSchema['ui:emitAs'];
+                    $emitAs      = $propSchema[self::UI_EMIT_AS];
                     $targetProp  = trim((string) ($emitAs['property'] ?? ''));
                     $wrapperType = trim((string) ($emitAs['wrapperType'] ?? ''));
                     $asProp      = trim((string) ($emitAs['as'] ?? ''));

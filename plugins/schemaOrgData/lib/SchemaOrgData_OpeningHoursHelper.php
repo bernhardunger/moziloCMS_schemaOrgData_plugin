@@ -51,7 +51,7 @@ class SchemaOrgData_OpeningHoursHelper {
     *
     ***************************************************************/
     public static function resolveDays(array $fieldSchema): array {
-        $days = $fieldSchema['ui:days'] ?? null;
+        $days = $fieldSchema[SchemaOrgData_SchemaRepository::UI_DAYS] ?? null;
 
         return is_array($days) ? $days : self::DEFAULT_DAYS;
     }
