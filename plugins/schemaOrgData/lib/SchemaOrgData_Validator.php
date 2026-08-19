@@ -40,6 +40,14 @@ class SchemaOrgData_Validator {
     private const UI_ALLOW_LITERAL     = SchemaOrgData_SchemaRepository::UI_ALLOW_LITERAL;
     private const UI_LITERAL_FIELDS    = SchemaOrgData_SchemaRepository::UI_LITERAL_FIELDS;
     private const UI_REFERENCE_TARGETS = SchemaOrgData_SchemaRepository::UI_REFERENCE_TARGETS;
+    /**
+     * Muster der beiden Datumsformate. Beide stehen wortgleich in
+     * js/validator.js - ein Wächtertest hält die Fassungen gegeneinander.
+     * Die Zeitgruppen fangen ein, obwohl die reinen Prüfaufrufe sie nicht
+     * lesen: so trägt ein Muster je Format die Prüfung und die Zerlegung.
+     */
+    private const PATTERN_DATE_DE  = '/^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/';
+    private const PATTERN_DATE_ISO = '/^(\d{4})-(\d{2})-(\d{2})(?:T([01][0-9]|2[0-3]):([0-5][0-9]):[0-5][0-9](?:Z|[+-]\d{2}:\d{2}))?$/';
 
     /***************************************************************
     *
@@ -487,7 +495,7 @@ class SchemaOrgData_Validator {
             return ['status' => null, 'message' => null];
         }
 
-        if(preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:Z|[+-]\d{2}:\d{2}))?$/', $value, $m)
+        if(preg_match(self::PATTERN_DATE_ISO, $value, $m)
             and checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
             return ['status' => 'ok', 'message' => null];
         }
@@ -516,7 +524,7 @@ class SchemaOrgData_Validator {
             return ['status' => null, 'message' => null];
         }
 
-        if(preg_match('/^(\d{2})\.(\d{2})\.(\d{4})(?: (?:[01][0-9]|2[0-3]):[0-5][0-9])?$/', $value, $m)
+        if(preg_match(self::PATTERN_DATE_DE, $value, $m)
             and checkdate((int) $m[2], (int) $m[1], (int) $m[3])) {
             return ['status' => 'ok', 'message' => null];
         }
@@ -545,7 +553,7 @@ class SchemaOrgData_Validator {
     public function normalizeEventDateInput(string $value): string {
         $value = trim($value);
 
-        if(preg_match('/^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/', $value, $m)) {
+        if(preg_match(self::PATTERN_DATE_DE, $value, $m)) {
             $isoDate = $m[3] . '-' . $m[2] . '-' . $m[1];
 
             if(!isset($m[4])) {
@@ -578,7 +586,7 @@ class SchemaOrgData_Validator {
     public function formatEventDateForDisplay(string $isoValue): string {
         $isoValue = trim($isoValue);
 
-        if(preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:T([01][0-9]|2[0-3]):([0-5][0-9]):[0-5][0-9](?:Z|[+-]\d{2}:\d{2}))?$/', $isoValue, $m)) {
+        if(preg_match(self::PATTERN_DATE_ISO, $isoValue, $m)) {
             $germanDate = $m[3] . '.' . $m[2] . '.' . $m[1];
 
             if(!isset($m[4])) {

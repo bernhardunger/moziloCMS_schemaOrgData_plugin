@@ -22,6 +22,9 @@
     /** Gemeinsame AJV-Instanz (Draft-07), lazy initialisiert */
     var ajvInstance = null;
 
+    /** Nicht-ASCII-Zeichen. Ohne g-Flag und damit zustandslos teilbar. */
+    var NON_ASCII_PATTERN = /[^\x00-\x7F]/;
+
     /**
      * Prüft eine URL wie SchemaOrgData_Validator::validateUrl() (PHP):
      * FILTER_VALIDATE_URL-Kern (hier über "new URL()" nachgebildet) plus
@@ -39,7 +42,7 @@
             return false;
         }
 
-        if (!/^https?:\/\//i.test(value) || /[^\x00-\x7F]/.test(value)) {
+        if (!/^https?:\/\//i.test(value) || NON_ASCII_PATTERN.test(value)) {
             return false;
         }
 
@@ -80,7 +83,7 @@
         var local = value.slice(0, atIndex);
         var domain = value.slice(atIndex + 1);
 
-        if (/[^\x00-\x7F]/.test(local) || !EMAIL_LOCAL_PART_PATTERN.test(local)) {
+        if (NON_ASCII_PATTERN.test(local) || !EMAIL_LOCAL_PART_PATTERN.test(local)) {
             return false;
         }
 
@@ -111,7 +114,7 @@
             return false;
         }
 
-        var match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:Z|[+-]\d{2}:\d{2}))?$/);
+        var match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:T([01][0-9]|2[0-3]):([0-5][0-9]):[0-5][0-9](?:Z|[+-]\d{2}:\d{2}))?$/);
         if (!match) {
             return false;
         }
