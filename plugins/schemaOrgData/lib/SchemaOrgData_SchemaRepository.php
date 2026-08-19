@@ -13,6 +13,26 @@
 ***************************************************************/
 class SchemaOrgData_SchemaRepository {
 
+    /**
+     * Wertevorrat der Schema-Property "ui:widget". Die Namen stehen in den
+     * Schema-Dateien unter schemas/ und steuern von dort den Dispatch in
+     * Formular, Validierung, Speicherpfad und JSON-LD-Ausgabe; sie gehören
+     * damit zum Schema-Format, nicht zu einem seiner Leser.
+     *
+     * WIDGET_TEXT ist zugleich der Rückfallwert: ein Feld ohne "ui:widget"
+     * wird als Textfeld gerendert.
+     */
+    public const WIDGET_TEXT                    = 'text';
+    public const WIDGET_TEXTAREA                = 'textarea';
+    public const WIDGET_SELECT                  = 'select';
+    public const WIDGET_POSTAL_ADDRESS          = 'postal_address';
+    public const WIDGET_OPENING_HOURS           = 'opening_hours';
+    public const WIDGET_GEO                     = 'geo';
+    public const WIDGET_PLACE                   = 'place';
+    public const WIDGET_FAQ_LIST                = 'faq_list';
+    public const WIDGET_ID_REFERENCE            = 'id_reference';
+    public const WIDGET_ID_REFERENCE_OR_LITERAL = 'id_reference_or_literal';
+
     /** Cache für loadSchema(), Key: "{pluginSelfDir}|{type}". Siehe Backlog-Eintrag Caching. */
     private array $schemaCache = [];
 

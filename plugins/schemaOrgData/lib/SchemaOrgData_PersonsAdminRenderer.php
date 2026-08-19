@@ -34,6 +34,15 @@ class SchemaOrgData_PersonsAdminRenderer {
     private const LIST_VIEW_ID = 'schemaOrgData_persons_view_list';
     private const NEW_VIEW_ID  = 'schemaOrgData_persons_view_new';
 
+    /**
+     * Bindung an das data-validate-Vokabular aus
+     * SchemaOrgData_FormRenderer - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const ATTR_VALIDATE        = SchemaOrgData_FormRenderer::ATTR_VALIDATE;
+    private const VALIDATE_PERSON_SLUG = SchemaOrgData_FormRenderer::VALIDATE_PERSON_SLUG;
+    private const VALIDATE_SORT_ORDER  = SchemaOrgData_FormRenderer::VALIDATE_SORT_ORDER;
+
     /***************************************************************
     *
     * Rendert den vollständigen Personen-Container: Liste, "Neue
@@ -242,7 +251,7 @@ class SchemaOrgData_PersonsAdminRenderer {
             $html .= '</ul></div>'."\n";
         }
 
-        $nameExtraAttrs = $isEdit ? [] : ['data-validate' => 'person_slug', 'data-pair' => $slugFieldId];
+        $nameExtraAttrs = $isEdit ? [] : [self::ATTR_VALIDATE => self::VALIDATE_PERSON_SLUG, 'data-pair' => $slugFieldId];
         $html .= $this->renderTextRow($idPrefix, 'name', 'label_person_name', (string) ($data['name'] ?? ''), true, $lang, $formRenderer, $nameExtraAttrs);
 
         if($isEdit) {
@@ -255,7 +264,7 @@ class SchemaOrgData_PersonsAdminRenderer {
             $slugPlaceholder = $registryService->generateSlugSuggestion((string) ($data['name'] ?? ''));
             $html .= '<div class="c-content schemaOrgData-field-row">'
                 .'<div class="mo-in-li-l"><label for="'.$slugFieldId.'">'.$lang->getLanguageHtml('label_person_slug').'</label></div>'
-                .'<div class="mo-in-li-r">'.$formRenderer->renderTextWidget($slugFieldId, 'schemaOrgData_persons_data[slug]', ['ui:placeholder' => $slugPlaceholder], $slugValue, ['data-validate' => 'person_slug', 'data-pair' => $nameFieldId]).'</div>'
+                .'<div class="mo-in-li-r">'.$formRenderer->renderTextWidget($slugFieldId, 'schemaOrgData_persons_data[slug]', ['ui:placeholder' => $slugPlaceholder], $slugValue, [self::ATTR_VALIDATE => self::VALIDATE_PERSON_SLUG, 'data-pair' => $nameFieldId]).'</div>'
                 .'</div>'."\n";
             $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_person_slug').'</p>'."\n";
         }
@@ -276,7 +285,7 @@ class SchemaOrgData_PersonsAdminRenderer {
 
         $html .= $this->renderStatusRow($idPrefix, (string) ($data['status'] ?? SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE), $lang, $formRenderer);
         $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_sort_order').'</p>'."\n";
-        $html .= $this->renderTextRow($idPrefix, 'sortOrder', 'label_sort_order', (string) ($data['sortOrder'] ?? SchemaOrgData_PersonsRegistryService::DEFAULT_SORT_ORDER), false, $lang, $formRenderer, ['data-validate' => 'sort_order']);
+        $html .= $this->renderTextRow($idPrefix, 'sortOrder', 'label_sort_order', (string) ($data['sortOrder'] ?? SchemaOrgData_PersonsRegistryService::DEFAULT_SORT_ORDER), false, $lang, $formRenderer, [self::ATTR_VALIDATE => self::VALIDATE_SORT_ORDER]);
 
         $submitValue = $isEdit ? SchemaOrgData_PersonsAdminRequestHandler::PREFIX_UPDATE.htmlspecialchars((string) $slug, ENT_QUOTES, CHARSET) : SchemaOrgData_PersonsAdminRequestHandler::ACTION_CREATE;
         $html .= '<div class="schemaOrgData-persons-form-actions">'."\n";

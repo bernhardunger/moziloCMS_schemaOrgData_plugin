@@ -45,6 +45,14 @@ class SchemaOrgData_AdminController {
     private const SCOPE_CATEGORY = SchemaOrgData_ScopeResolver::SCOPE_CATEGORY;
     private const SCOPE_PAGE     = SchemaOrgData_ScopeResolver::SCOPE_PAGE;
 
+    /**
+     * Bindung an das Widget-Vokabular aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const WIDGET_OPENING_HOURS = SchemaOrgData_SchemaRepository::WIDGET_OPENING_HOURS;
+    private const WIDGET_GEO           = SchemaOrgData_SchemaRepository::WIDGET_GEO;
+
     /***************************************************************
      *
      * Rendert den vollständigen Konfigurationsblock einer
@@ -257,7 +265,7 @@ class SchemaOrgData_AdminController {
                 foreach ($schema['properties'] ?? [] as $propName => $propSchema) {
                     $propSchema = $schemaRepository->resolveSchemaRef($propSchema, $schema);
                     $rawWidget = $propSchema['ui:widget'] ?? '';
-                    if (($rawWidget === 'opening_hours' or $rawWidget === 'geo') and is_array($postData[$propName] ?? null)) {
+                    if (($rawWidget === self::WIDGET_OPENING_HOURS or $rawWidget === self::WIDGET_GEO) and is_array($postData[$propName] ?? null)) {
                         $data[$propName] = $postData[$propName];
                     }
                 }
