@@ -52,6 +52,16 @@ class SchemaOrgData_AdminController {
      */
     private const WIDGET_OPENING_HOURS = SchemaOrgData_SchemaRepository::WIDGET_OPENING_HOURS;
     private const WIDGET_GEO           = SchemaOrgData_SchemaRepository::WIDGET_GEO;
+    /**
+     * Bindung an die ui:-Schluesselnamen aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const UI_WIDGET      = SchemaOrgData_SchemaRepository::UI_WIDGET;
+    private const UI_ID_FRAGMENT = SchemaOrgData_SchemaRepository::UI_ID_FRAGMENT;
+    private const UI_FAMILY      = SchemaOrgData_SchemaRepository::UI_FAMILY;
+    private const UI_SCOPES      = SchemaOrgData_SchemaRepository::UI_SCOPES;
+    private const UI_TYPE_LABEL  = SchemaOrgData_SchemaRepository::UI_TYPE_LABEL;
 
     /***************************************************************
      *
@@ -151,7 +161,7 @@ class SchemaOrgData_AdminController {
         $availableTypes = [];
         foreach ($schemaRepository->getAvailableSchemaTypes($pluginSelfDir) as $type) {
             $schema = $schemaRepository->loadSchema($pluginSelfDir, $type);
-            if ($schema !== null and in_array($scope, $schema['ui:scopes'] ?? [], true)) {
+            if ($schema !== null and in_array($scope, $schema[self::UI_SCOPES] ?? [], true)) {
                 $availableTypes[$type] = $schema;
             }
         }
@@ -164,14 +174,14 @@ class SchemaOrgData_AdminController {
             $globalActiveType = $schemaRepository->resolveActiveType($globalConfig, $pluginSelfDir);
             $globalSchema = $globalActiveType !== null
                 ? $schemaRepository->loadSchema($pluginSelfDir, $globalActiveType) : null;
-            $globalFamily = $globalSchema['ui:family'] ?? null;
+            $globalFamily = $globalSchema[self::UI_FAMILY] ?? null;
 
             if ($globalFamily !== null) {
                 foreach ($availableTypes as $type => $schema) {
-                    $family = $schema['ui:family'] ?? null;
+                    $family = $schema[self::UI_FAMILY] ?? null;
                     if ($family === $globalFamily and $type !== $globalActiveType) {
                         unset($availableTypes[$type]);
-                        $familyFilterGlobalLabel = $lang->getLanguageHtml($globalSchema['ui:typeLabel'] ?? $globalActiveType);
+                        $familyFilterGlobalLabel = $lang->getLanguageHtml($globalSchema[self::UI_TYPE_LABEL] ?? $globalActiveType);
                     }
                 }
             }
@@ -264,7 +274,7 @@ class SchemaOrgData_AdminController {
                 // angefassten Feldes beim Re-Display verloren.
                 foreach ($schema['properties'] ?? [] as $propName => $propSchema) {
                     $propSchema = $schemaRepository->resolveSchemaRef($propSchema, $schema);
-                    $rawWidget = $propSchema['ui:widget'] ?? '';
+                    $rawWidget = $propSchema[self::UI_WIDGET] ?? '';
                     if (($rawWidget === self::WIDGET_OPENING_HOURS or $rawWidget === self::WIDGET_GEO) and is_array($postData[$propName] ?? null)) {
                         $data[$propName] = $postData[$propName];
                     }
@@ -305,7 +315,7 @@ class SchemaOrgData_AdminController {
             // innerhalb des .schemaOrgData-type-fields-Wrappers, damit
             // applyTypeFieldsState() (validator.js) die Felder bei
             // Typ-Wechsel korrekt (de)aktiviert (last-value-wins-Schutz).
-            if ($scope === self::SCOPE_GLOBAL and ($schema['ui:idFragment'] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
+            if ($scope === self::SCOPE_GLOBAL and ($schema[self::UI_ID_FRAGMENT] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
                 $orgRelationsRaw = ($postScope !== null and $type === $selectedType)
                     ? (is_array($postScope[self::KEY_ORG_RELATIONS] ?? null) ? $postScope[self::KEY_ORG_RELATIONS] : [])
                     : (is_array($config[self::KEY_ORG_RELATIONS] ?? null) ? $config[self::KEY_ORG_RELATIONS] : []);

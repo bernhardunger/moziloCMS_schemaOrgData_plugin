@@ -42,6 +42,14 @@ class SchemaOrgData_PersonsAdminRenderer {
     private const ATTR_VALIDATE        = SchemaOrgData_FormRenderer::ATTR_VALIDATE;
     private const VALIDATE_PERSON_SLUG = SchemaOrgData_FormRenderer::VALIDATE_PERSON_SLUG;
     private const VALIDATE_SORT_ORDER  = SchemaOrgData_FormRenderer::VALIDATE_SORT_ORDER;
+    /**
+     * Bindung an die ui:-Schluesselnamen aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const UI_REQUIRED    = SchemaOrgData_SchemaRepository::UI_REQUIRED;
+    private const UI_PLACEHOLDER = SchemaOrgData_SchemaRepository::UI_PLACEHOLDER;
+    private const UI_ENUM_LABELS = SchemaOrgData_SchemaRepository::UI_ENUM_LABELS;
 
     /***************************************************************
     *
@@ -264,7 +272,7 @@ class SchemaOrgData_PersonsAdminRenderer {
             $slugPlaceholder = $registryService->generateSlugSuggestion((string) ($data['name'] ?? ''));
             $html .= '<div class="c-content schemaOrgData-field-row">'
                 .'<div class="mo-in-li-l"><label for="'.$slugFieldId.'">'.$lang->getLanguageHtml('label_person_slug').'</label></div>'
-                .'<div class="mo-in-li-r">'.$formRenderer->renderTextWidget($slugFieldId, 'schemaOrgData_persons_data[slug]', ['ui:placeholder' => $slugPlaceholder], $slugValue, [self::ATTR_VALIDATE => self::VALIDATE_PERSON_SLUG, 'data-pair' => $nameFieldId]).'</div>'
+                .'<div class="mo-in-li-r">'.$formRenderer->renderTextWidget($slugFieldId, 'schemaOrgData_persons_data[slug]', [self::UI_PLACEHOLDER => $slugPlaceholder], $slugValue, [self::ATTR_VALIDATE => self::VALIDATE_PERSON_SLUG, 'data-pair' => $nameFieldId]).'</div>'
                 .'</div>'."\n";
             $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_person_slug').'</p>'."\n";
         }
@@ -349,7 +357,7 @@ class SchemaOrgData_PersonsAdminRenderer {
 
         return '<div class="c-content schemaOrgData-field-row">'
             .'<div class="mo-in-li-l"><label for="'.$fieldId.'">'.$lang->getLanguageHtml('label_person_image').'</label></div>'
-            .'<div class="mo-in-li-r">'.$formRenderer->renderTextWidget($fieldId, $fieldName, ['ui:placeholder' => 'persons/max-mustermann.jpg'], $value, []).$feedback.'</div>'
+            .'<div class="mo-in-li-r">'.$formRenderer->renderTextWidget($fieldId, $fieldName, [self::UI_PLACEHOLDER => 'persons/max-mustermann.jpg'], $value, []).$feedback.'</div>'
             .'</div>'."\n";
     }
 
@@ -359,8 +367,8 @@ class SchemaOrgData_PersonsAdminRenderer {
         $fieldName = 'schemaOrgData_persons_data[status]';
         $fieldSchema = [
             'enum' => [SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE, SchemaOrgData_PersonsRegistryService::STATUS_INACTIVE],
-            'ui:required' => true,
-            'ui:enumLabels' => [
+            self::UI_REQUIRED => true,
+            self::UI_ENUM_LABELS => [
                 'current' => [
                     SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE   => $lang->getLanguageValue('label_person_status_active'),
                     SchemaOrgData_PersonsRegistryService::STATUS_INACTIVE => $lang->getLanguageValue('label_person_status_inactive'),

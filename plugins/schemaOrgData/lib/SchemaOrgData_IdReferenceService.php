@@ -27,6 +27,17 @@ class SchemaOrgData_IdReferenceService {
      * Literal steht dort an einer Stelle, hier nur der Verweis darauf.
      */
     private const SCOPE_GLOBAL = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
+    /**
+     * Bindung an die ui:-Schluesselnamen aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const UI_WIDGET            = SchemaOrgData_SchemaRepository::UI_WIDGET;
+    private const UI_REQUIRED          = SchemaOrgData_SchemaRepository::UI_REQUIRED;
+    private const UI_ID_FRAGMENT       = SchemaOrgData_SchemaRepository::UI_ID_FRAGMENT;
+    private const UI_ID_TARGET         = SchemaOrgData_SchemaRepository::UI_ID_TARGET;
+    private const UI_REFERENCE_TARGETS = SchemaOrgData_SchemaRepository::UI_REFERENCE_TARGETS;
+    private const UI_TYPE_LABEL        = SchemaOrgData_SchemaRepository::UI_TYPE_LABEL;
 
     /**
      * Zwei getrennte Vokabulare, die bei organization wortgleich
@@ -93,11 +104,11 @@ class SchemaOrgData_IdReferenceService {
             if(!is_array($schema)) {
                 continue;
             }
-            $fragment = trim((string) ($schema['ui:idFragment'] ?? ''));
+            $fragment = trim((string) ($schema[self::UI_ID_FRAGMENT] ?? ''));
             if($fragment === '') {
                 continue;
             }
-            $typeLabelKey = $schema['ui:typeLabel'] ?? $type;
+            $typeLabelKey = $schema[self::UI_TYPE_LABEL] ?? $type;
             $typeLabel = $adminLang->getLanguageValue($typeLabelKey);
             $name = trim((string) ($typeData['name'] ?? ''));
             $result[$fragment] = $name !== '' ? $typeLabel.' — '.$name : $typeLabel;
@@ -169,7 +180,7 @@ class SchemaOrgData_IdReferenceService {
     *
     ***************************************************************/
     public static function filterFragmentsByReferenceTargets(array $availableFragments, array $fieldSchema): array {
-        $referenceTargets = $fieldSchema['ui:referenceTargets'] ?? null;
+        $referenceTargets = $fieldSchema[self::UI_REFERENCE_TARGETS] ?? null;
         if(!is_array($referenceTargets)) {
             return $availableFragments;
         }
@@ -282,10 +293,10 @@ class SchemaOrgData_IdReferenceService {
                 }
                 foreach($schema['properties'] ?? [] as $propName => $propSchema) {
                     $propSchema = $schemaRepo->resolveSchemaRef($propSchema, $schema);
-                    $widget = $propSchema['ui:widget'] ?? '';
-                    $required = ($propSchema['ui:required'] ?? false) === true;
+                    $widget = $propSchema[self::UI_WIDGET] ?? '';
+                    $required = ($propSchema[self::UI_REQUIRED] ?? false) === true;
                     if($widget === SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE) {
-                        $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
+                        $target = trim((string) ($propSchema[self::UI_ID_TARGET] ?? ''));
                         if($target !== '') {
                             $activeTargets[] = $target;
                             if($required) {
@@ -328,7 +339,7 @@ class SchemaOrgData_IdReferenceService {
                 if(!is_array($schema)) {
                     continue;
                 }
-                $fragment = trim((string) ($schema['ui:idFragment'] ?? ''));
+                $fragment = trim((string) ($schema[self::UI_ID_FRAGMENT] ?? ''));
                 if($fragment !== '') {
                     $presentFragments[] = $fragment;
                 }
@@ -372,7 +383,7 @@ class SchemaOrgData_IdReferenceService {
                 if(!is_array($schema)) {
                     continue;
                 }
-                if(trim((string) ($schema['ui:idFragment'] ?? '')) !== $target) {
+                if(trim((string) ($schema[self::UI_ID_FRAGMENT] ?? '')) !== $target) {
                     continue;
                 }
 

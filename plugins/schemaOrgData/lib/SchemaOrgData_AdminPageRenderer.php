@@ -768,7 +768,7 @@ class SchemaOrgData_AdminPageRenderer {
 
         foreach($availableTypes as $type => $schema) {
             $selected = ($selectedType === $type) ? ' selected="selected"' : '';
-            $typeLabel = $lang->getLanguageHtml($schema['ui:typeLabel'] ?? $type);
+            $typeLabel = $lang->getLanguageHtml($schema[SchemaOrgData_SchemaRepository::UI_TYPE_LABEL] ?? $type);
             $html .= '<option value="'.htmlspecialchars($type, ENT_QUOTES, CHARSET).'"'.$selected.'>'.$typeLabel.'</option>';
         }
 
