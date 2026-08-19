@@ -209,7 +209,7 @@ class SchemaOrgData_FrontendRenderer {
         $orgNodePresent = false;
         foreach(array_keys($scopeConfigs[self::SCOPE_GLOBAL] ?? []) as $type) {
             $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
-            if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === 'organization') {
+            if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
                 $orgNodePresent = true;
                 break;
             }
@@ -254,7 +254,7 @@ class SchemaOrgData_FrontendRenderer {
                 // Referenzen wie der globale Organisations-Knoten).
                 if($orgRelationsGrouped !== [] and $scope === self::SCOPE_GLOBAL) {
                     $typeSchema = $context->schemaRepository->loadSchema($context->pluginSelfDir, $type);
-                    if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === 'organization') {
+                    if(is_array($typeSchema) and ($typeSchema['ui:idFragment'] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION) {
                         $data = array_merge($data, $orgRelationsGrouped);
                     }
                 }
@@ -301,11 +301,11 @@ class SchemaOrgData_FrontendRenderer {
 
             $nodeId = $context->jsonLdBuilder->resolvePersonNodeId($context->urlHelper, $slug, $assignedFragments);
             $output .= $context->jsonLdBuilder->buildJsonLdScript(
-                $context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, 'Person', $personData, $nodeId, $suppressedIdTargets,
+                $context->schemaRepository, $context->urlHelper, $context->pluginSelfDir, SchemaOrgData_PersonsRegistryService::SCHEMA_TYPE_PERSON, $personData, $nodeId, $suppressedIdTargets,
                 $context->openingHoursHelper
             );
             if($debugOutput) {
-                $debugBlocks[] = ['scope' => 'person_'.$slug, 'type' => 'Person', 'data' => $personData, 'id' => $nodeId];
+                $debugBlocks[] = ['scope' => 'person_'.$slug, 'type' => SchemaOrgData_PersonsRegistryService::SCHEMA_TYPE_PERSON, 'data' => $personData, 'id' => $nodeId];
             }
         }
 

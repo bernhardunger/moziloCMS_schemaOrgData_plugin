@@ -1393,7 +1393,7 @@ class SchemaOrgData_FormRenderer {
         // Organisations-Identity-Type. Beide Werte liegen hier bereits als
         // Parameter vor, deshalb bleibt der Aufrufer unberührt. Ändert sich die
         // Bedingung dort, gehört sie hier mitgeändert.
-        $personSuggestionContext = ($scope === self::SCOPE_GLOBAL and ($schema['ui:idFragment'] ?? '') === 'organization');
+        $personSuggestionContext = ($scope === self::SCOPE_GLOBAL and ($schema['ui:idFragment'] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION);
 
         $html .= $this->renderExtensionFieldWidget($scope, $type, $extensionJson, $idPrefix, $lang, $pluginSelfUrl, $personSuggestionContext);
 

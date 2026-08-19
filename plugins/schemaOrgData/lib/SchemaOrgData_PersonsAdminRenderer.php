@@ -65,8 +65,8 @@ class SchemaOrgData_PersonsAdminRenderer {
     ): string {
         $registry = $registryService->loadRegistry($settings);
         uasort($registry, static function(array $a, array $b): int {
-            $sortA = (int) ($a['sortOrder'] ?? 100);
-            $sortB = (int) ($b['sortOrder'] ?? 100);
+            $sortA = (int) ($a['sortOrder'] ?? SchemaOrgData_PersonsRegistryService::DEFAULT_SORT_ORDER);
+            $sortB = (int) ($b['sortOrder'] ?? SchemaOrgData_PersonsRegistryService::DEFAULT_SORT_ORDER);
             return $sortA <=> $sortB ?: strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
         });
 
@@ -181,11 +181,11 @@ class SchemaOrgData_PersonsAdminRenderer {
                     .'<td>'.htmlspecialchars($displayName, ENT_QUOTES, CHARSET).'</td>'
                     .'<td>'.htmlspecialchars((string) ($person['jobTitle'] ?? ''), ENT_QUOTES, CHARSET).'</td>'
                     .'<td>'.$statusLabel.'</td>'
-                    .'<td>'.htmlspecialchars((string) ($person['sortOrder'] ?? 100), ENT_QUOTES, CHARSET).'</td>'
+                    .'<td>'.htmlspecialchars((string) ($person['sortOrder'] ?? SchemaOrgData_PersonsRegistryService::DEFAULT_SORT_ORDER), ENT_QUOTES, CHARSET).'</td>'
                     .'<td>'
                     .'<button type="button" class="mo-btn" data-action="persons-show" data-persons-target="'.$editViewId.'">'
                     .$lang->getLanguageHtml('button_edit_person').'</button> '
-                    .'<button type="submit" name="schemaOrgData_persons_action" value="delete:'.$slugAttr.'" class="mo-btn"'
+                    .'<button type="submit" name="schemaOrgData_persons_action" value="'.SchemaOrgData_PersonsAdminRequestHandler::PREFIX_DELETE.$slugAttr.'" class="mo-btn"'
                     .' data-action="confirm" data-confirm="'.$confirmText.'">'
                     .$lang->getLanguageHtml('button_delete_person').'</button>'
                     .'</td>'
@@ -276,9 +276,9 @@ class SchemaOrgData_PersonsAdminRenderer {
 
         $html .= $this->renderStatusRow($idPrefix, (string) ($data['status'] ?? SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE), $lang, $formRenderer);
         $html .= '<p class="schemaOrgData-hint">'.$lang->getLanguageHtml('hint_sort_order').'</p>'."\n";
-        $html .= $this->renderTextRow($idPrefix, 'sortOrder', 'label_sort_order', (string) ($data['sortOrder'] ?? '100'), false, $lang, $formRenderer, ['data-validate' => 'sort_order']);
+        $html .= $this->renderTextRow($idPrefix, 'sortOrder', 'label_sort_order', (string) ($data['sortOrder'] ?? SchemaOrgData_PersonsRegistryService::DEFAULT_SORT_ORDER), false, $lang, $formRenderer, ['data-validate' => 'sort_order']);
 
-        $submitValue = $isEdit ? 'update:'.htmlspecialchars((string) $slug, ENT_QUOTES, CHARSET) : 'create';
+        $submitValue = $isEdit ? SchemaOrgData_PersonsAdminRequestHandler::PREFIX_UPDATE.htmlspecialchars((string) $slug, ENT_QUOTES, CHARSET) : SchemaOrgData_PersonsAdminRequestHandler::ACTION_CREATE;
         $html .= '<div class="schemaOrgData-persons-form-actions">'."\n";
         $html .= '<button type="submit" name="schemaOrgData_persons_action" value="'.$submitValue.'" class="mo-btn mo-btn--primary">'
             .$lang->getLanguageHtml($isEdit ? 'button_save_person' : 'button_create_person').'</button> '."\n";

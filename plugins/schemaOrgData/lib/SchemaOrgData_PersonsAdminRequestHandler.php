@@ -21,6 +21,30 @@
 ***************************************************************/
 class SchemaOrgData_PersonsAdminRequestHandler {
 
+    /**
+     * Zwei getrennte Vokabulare rund um die Personen-Aktion.
+     *
+     * Wire-Protokoll - die Werte, die der Submit-Button
+     * schemaOrgData_persons_action liefert: ACTION_CREATE ist ein
+     * vollständiger Wert, PREFIX_UPDATE und PREFIX_DELETE sind
+     * Präfixe, denen der Slug der betroffenen Person folgt.
+     *
+     * Ergebnis-Vokabular - der Wert des Schlüssels action im
+     * Rückgabearray von handlePersonsPostRequest(), konsumiert von
+     * SchemaOrgData_AdminController. Dass ACTION_CREATE und
+     * RESULT_CREATE denselben Wert tragen, ist Entwurf und keine
+     * Abhängigkeit: der Wire-Wert des Anlegens braucht keinen Slug,
+     * also fällt er mit dem Ergebniswert zusammen - beim Aktualisieren
+     * und Löschen tut er es nicht.
+     */
+    public const ACTION_CREATE = 'create';
+    public const PREFIX_UPDATE = 'update:';
+    public const PREFIX_DELETE = 'delete:';
+
+    public const RESULT_CREATE = 'create';
+    public const RESULT_UPDATE = 'update';
+    public const RESULT_DELETE = 'delete';
+
     /***************************************************************
     *
     * Verarbeitet die $_POST-Daten des Personen-Formulars.
@@ -43,21 +67,21 @@ class SchemaOrgData_PersonsAdminRequestHandler {
         $raw = (string) $_POST['schemaOrgData_persons_action'];
         $rawData = is_array($_POST['schemaOrgData_persons_data'] ?? null) ? $_POST['schemaOrgData_persons_data'] : [];
 
-        if($raw === 'create') {
+        if($raw === self::ACTION_CREATE) {
             $result = $registryService->createPerson($settings, $rawData, $lang, $validator);
-            return ['success' => $result['success'], 'errors' => $result['errors'], 'persons' => true, 'action' => 'create', 'slug' => $result['slug']];
+            return ['success' => $result['success'], 'errors' => $result['errors'], 'persons' => true, 'action' => self::RESULT_CREATE, 'slug' => $result['slug']];
         }
 
-        if(str_starts_with($raw, 'update:')) {
-            $slug = substr($raw, strlen('update:'));
+        if(str_starts_with($raw, self::PREFIX_UPDATE)) {
+            $slug = substr($raw, strlen(self::PREFIX_UPDATE));
             $result = $registryService->updatePerson($settings, $slug, $rawData, $lang, $validator);
-            return ['success' => $result['success'], 'errors' => $result['errors'], 'persons' => true, 'action' => 'update', 'slug' => $slug];
+            return ['success' => $result['success'], 'errors' => $result['errors'], 'persons' => true, 'action' => self::RESULT_UPDATE, 'slug' => $slug];
         }
 
-        if(str_starts_with($raw, 'delete:')) {
-            $slug = substr($raw, strlen('delete:'));
+        if(str_starts_with($raw, self::PREFIX_DELETE)) {
+            $slug = substr($raw, strlen(self::PREFIX_DELETE));
             $result = $registryService->deletePerson($settings, $slug, $lang);
-            return ['success' => $result['success'], 'errors' => $result['errors'], 'persons' => true, 'action' => 'delete', 'slug' => $slug];
+            return ['success' => $result['success'], 'errors' => $result['errors'], 'persons' => true, 'action' => self::RESULT_DELETE, 'slug' => $slug];
         }
 
         return ['success' => false, 'errors' => [$lang->getLanguageValue('error_person_invalid_action')], 'persons' => true, 'action' => null, 'slug' => null];

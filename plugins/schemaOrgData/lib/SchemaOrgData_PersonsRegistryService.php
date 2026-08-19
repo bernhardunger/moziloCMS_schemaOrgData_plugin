@@ -40,11 +40,30 @@ class SchemaOrgData_PersonsRegistryService {
     // zum Scope-Modell und soll es bleiben.
     private const GLOBAL_CONFIG_KEY = SchemaOrgData_ScopeResolver::KEY_CONFIG_GLOBAL;
 
-    public const STATUS_ACTIVE   = 'active';
-    public const STATUS_INACTIVE = 'inactive';
+    public const STATUS_ACTIVE      = 'active';
+    public const STATUS_INACTIVE    = 'inactive';
+
+    /**
+     * Identität des Registry-Personen-Knotens: SCHEMA_TYPE_PERSON ist der
+     * schema.org-Type, unter dem eine Registry-Person ausgegeben wird,
+     * PREFIX_PERSON das Präfix ihres @id-Fragments (aufgebaut in
+     * buildFragment(), zurückgelesen in isPersonFragment() und
+     * slugFromPersonFragment()). Beide Werte haben eine Gegenstelle in
+     * js/validator.js, die nicht an diese Konstanten gebunden ist - eine
+     * Änderung hier verlangt den Abgleich dort.
+     */
+    public const SCHEMA_TYPE_PERSON = 'Person';
+    public const PREFIX_PERSON      = 'person-';
 
     private const STATUSES = [self::STATUS_ACTIVE, self::STATUS_INACTIVE];
-    private const DEFAULT_SORT_ORDER = 100;
+
+    /**
+     * Vorbelegung von sortOrder für Personen ohne eigenen Wert.
+     * Öffentlich, weil SchemaOrgData_IdReferenceService und
+     * SchemaOrgData_PersonsAdminRenderer dieselbe Vorbelegung für ihre
+     * Sortierung bzw. Formularanzeige brauchen.
+     */
+    public const DEFAULT_SORT_ORDER = 100;
 
     /***************************************************************
     *
@@ -503,7 +522,36 @@ class SchemaOrgData_PersonsRegistryService {
     *
     ***************************************************************/
     public static function buildFragment(string $slug): string {
-        return 'person-'.$slug;
+        return self::PREFIX_PERSON.$slug;
+    }
+
+    /***************************************************************
+    *
+    * Prüft, ob ein @id-Fragment auf eine Registry-Person zeigt -
+    * Gegenrichtung zu buildFragment(), Erkennung allein über
+    * PREFIX_PERSON. Gekapselt, damit das Präfix-Idiom nicht in
+    * SchemaOrgData_IdReferenceService und SchemaOrgData_AdminController
+    * wiederholt wird.
+    *
+    ***************************************************************/
+    public static function isPersonFragment(string $fragment): bool {
+        return str_starts_with($fragment, self::PREFIX_PERSON);
+    }
+
+    /***************************************************************
+    *
+    * Schneidet PREFIX_PERSON von einem Personen-Fragment ab und liefert
+    * den Slug - die zweite Gegenrichtung zu buildFragment(), gekapselt
+    * für dieselben beiden Aufrufer wie isPersonFragment().
+    *
+    * Wacht bewusst nicht: Vorbedingung ist eine vorausgegangene positive
+    * isPersonFragment()-Prüfung. Ein Guard oder Rückfallwert für
+    * fremde Fragmente wäre gegenüber der reinen Kapselung eine
+    * Verhaltensänderung.
+    *
+    ***************************************************************/
+    public static function slugFromPersonFragment(string $fragment): string {
+        return substr($fragment, strlen(self::PREFIX_PERSON));
     }
 
     /***************************************************************

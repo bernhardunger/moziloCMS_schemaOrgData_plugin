@@ -28,6 +28,29 @@ class SchemaOrgData_IdReferenceService {
      */
     private const SCOPE_GLOBAL = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
 
+    /**
+     * Zwei getrennte Vokabulare, die bei organization wortgleich
+     * zusammenfallen - deshalb zwei Konstanten mit demselben Wert, beide
+     * literal definiert und keine von der anderen abgeleitet.
+     *
+     * IDFRAGMENT_ORGANIZATION ist ein ui:idFragment-Wert der
+     * Schema-Dateien und dort das einzige vorkommende Fragment
+     * (sieben Schemas).
+     *
+     * REFERENCE_TARGET_* ist das Vokabular der
+     * ui:referenceTargets-Angabe und hat zwei Elemente.
+     * REFERENCE_TARGET_PERSONS besitzt kein ui:idFragment-Gegenstück:
+     * das Fragment einer Registry-Person wird slug-basiert gebaut
+     * (SchemaOrgData_PersonsRegistryService::buildFragment()). Genau
+     * daran zeigt sich, dass die Vokabulare getrennt sind - die
+     * Wortgleichheit bei organization ist ein Zusammenfall, keine
+     * Identität.
+     */
+    public const IDFRAGMENT_ORGANIZATION = 'organization';
+
+    public const REFERENCE_TARGET_ORGANIZATION = 'organization';
+    public const REFERENCE_TARGET_PERSONS      = 'persons';
+
     /***************************************************************
     *
     * Liefert alle global konfigurierten Knoten mit ui:idFragment als
@@ -86,7 +109,7 @@ class SchemaOrgData_IdReferenceService {
                 and ($person['status'] ?? '') === SchemaOrgData_PersonsRegistryService::STATUS_ACTIVE
         );
         uasort($activePersons, function(array $a, array $b): int {
-            $sortCmp = ((int) ($a['sortOrder'] ?? 100)) <=> ((int) ($b['sortOrder'] ?? 100));
+            $sortCmp = ((int) ($a['sortOrder'] ?? SchemaOrgData_PersonsRegistryService::DEFAULT_SORT_ORDER)) <=> ((int) ($b['sortOrder'] ?? SchemaOrgData_PersonsRegistryService::DEFAULT_SORT_ORDER));
             return $sortCmp !== 0 ? $sortCmp : strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
         });
 
@@ -121,11 +144,11 @@ class SchemaOrgData_IdReferenceService {
         if($referenceTargets === null) {
             return true;
         }
-        if($fragment === 'organization') {
-            return in_array('organization', $referenceTargets, true);
+        if($fragment === self::IDFRAGMENT_ORGANIZATION) {
+            return in_array(self::REFERENCE_TARGET_ORGANIZATION, $referenceTargets, true);
         }
-        if(str_starts_with($fragment, 'person-')) {
-            return in_array('persons', $referenceTargets, true);
+        if(SchemaOrgData_PersonsRegistryService::isPersonFragment($fragment)) {
+            return in_array(self::REFERENCE_TARGET_PERSONS, $referenceTargets, true);
         }
         return true;
     }
@@ -313,11 +336,11 @@ class SchemaOrgData_IdReferenceService {
         }
 
         foreach(array_unique($activeTargets) as $target) {
-            if(str_starts_with($target, 'person-')) {
+            if(SchemaOrgData_PersonsRegistryService::isPersonFragment($target)) {
                 // Registry-Personen sind nicht Teil von $scopeConfigs -
                 // Präsenz wird stattdessen gegen die Registry geprüft
                 // (siehe Docblock oben).
-                $slug = substr($target, strlen('person-'));
+                $slug = SchemaOrgData_PersonsRegistryService::slugFromPersonFragment($target);
                 if($personsRegistryService->slugExists($settings, $slug)) {
                     $activePersonSlugs[] = $slug;
                 } else {
@@ -375,7 +398,7 @@ class SchemaOrgData_IdReferenceService {
         // stets echte Nichtexistenz bedeutet (gelöschte Registry-Person),
         // nie eine keep-Modus-Entscheidung.
         foreach($requiredReferenceBindings as $binding) {
-            if(str_starts_with($binding['target'], 'person-') and in_array($binding['target'], $suppressedIdTargets, true)) {
+            if(SchemaOrgData_PersonsRegistryService::isPersonFragment($binding['target']) and in_array($binding['target'], $suppressedIdTargets, true)) {
                 unset($scopeConfigs[$binding['scope']][$binding['type']]);
             }
         }
