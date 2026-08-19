@@ -29,6 +29,17 @@ class SchemaOrgData_Validator {
     private const WIDGET_FAQ_LIST                = SchemaOrgData_SchemaRepository::WIDGET_FAQ_LIST;
     private const WIDGET_ID_REFERENCE            = SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE;
     private const WIDGET_ID_REFERENCE_OR_LITERAL = SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE_OR_LITERAL;
+    /**
+     * Bindung an die ui:-Schluesselnamen aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const UI_WIDGET            = SchemaOrgData_SchemaRepository::UI_WIDGET;
+    private const UI_LABEL             = SchemaOrgData_SchemaRepository::UI_LABEL;
+    private const UI_REQUIRED          = SchemaOrgData_SchemaRepository::UI_REQUIRED;
+    private const UI_ALLOW_LITERAL     = SchemaOrgData_SchemaRepository::UI_ALLOW_LITERAL;
+    private const UI_LITERAL_FIELDS    = SchemaOrgData_SchemaRepository::UI_LITERAL_FIELDS;
+    private const UI_REFERENCE_TARGETS = SchemaOrgData_SchemaRepository::UI_REFERENCE_TARGETS;
 
     /***************************************************************
     *
@@ -58,7 +69,7 @@ class SchemaOrgData_Validator {
             // id_reference wird zur Build-Zeit automatisch emittiert,
             // id_reference_or_literal verwaltet eigene Pflichtprüfung in validateFormData().
             $propSchema = $schemaRepository->resolveSchemaRef($schema['properties'][$requiredProperty] ?? [], $schema);
-            $widget = $propSchema['ui:widget'] ?? '';
+            $widget = $propSchema[self::UI_WIDGET] ?? '';
             if($widget === self::WIDGET_ID_REFERENCE or $widget === self::WIDGET_ID_REFERENCE_OR_LITERAL) {
                 continue;
             }
@@ -108,9 +119,9 @@ class SchemaOrgData_Validator {
 
         foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
             $fieldSchema = $schemaRepository->resolveSchemaRef($fieldSchema, $schema);
-            $widget = $fieldSchema['ui:widget'] ?? self::WIDGET_TEXT;
-            $required = (bool) ($fieldSchema['ui:required'] ?? false);
-            $label = $lang->getLanguageValue($fieldSchema['ui:label'] ?? $name);
+            $widget = $fieldSchema[self::UI_WIDGET] ?? self::WIDGET_TEXT;
+            $required = (bool) ($fieldSchema[self::UI_REQUIRED] ?? false);
+            $label = $lang->getLanguageValue($fieldSchema[self::UI_LABEL] ?? $name);
             $value = $formData[$name] ?? null;
 
             if($widget === self::WIDGET_POSTAL_ADDRESS) {
@@ -205,11 +216,11 @@ class SchemaOrgData_Validator {
                 // stillschweigend auf den erlaubten Zustand umgedeutet - unabhängig
                 // von $required, da sonst ein optionales Feld die Einschränkung
                 // umgehen könnte.
-                if($mode === 'literal' and !($fieldSchema['ui:allowLiteral'] ?? true)) {
+                if($mode === 'literal' and !($fieldSchema[self::UI_ALLOW_LITERAL] ?? true)) {
                     $errors[] = $lang->getLanguageValue('error_id_reflit_restricted', $label);
                 } elseif($mode === 'reference') {
                     $fragment = trim((string) ($stored['_fragment'] ?? ''));
-                    $referenceTargets = $fieldSchema['ui:referenceTargets'] ?? null;
+                    $referenceTargets = $fieldSchema[self::UI_REFERENCE_TARGETS] ?? null;
                     if($fragment !== '' and is_array($referenceTargets)
                         and !SchemaOrgData_IdReferenceService::isFragmentAllowedForReferenceTargets($fragment, $referenceTargets)) {
                         $errors[] = $lang->getLanguageValue('error_id_reflit_restricted', $label);
@@ -224,7 +235,7 @@ class SchemaOrgData_Validator {
                         }
                     } elseif($mode === 'literal') {
                         $hasValue = false;
-                        foreach($fieldSchema['ui:literalFields'] ?? [] as $lf) {
+                        foreach($fieldSchema[self::UI_LITERAL_FIELDS] ?? [] as $lf) {
                             if(trim((string) ($stored[(string) $lf] ?? '')) !== '') {
                                 $hasValue = true;
                                 break;
@@ -759,7 +770,7 @@ class SchemaOrgData_Validator {
         }
 
         foreach($subProperties as $subName => $subSchema) {
-            $subRequired = (bool) ($subSchema['ui:required'] ?? false);
+            $subRequired = (bool) ($subSchema[self::UI_REQUIRED] ?? false);
             $subValue = trim((string) ($address[$subName] ?? ''));
 
             if($subRequired and $subValue === '') {
@@ -767,7 +778,7 @@ class SchemaOrgData_Validator {
                 // Ebene ein nicht-leerer Wert für dieses Sub-Feld geerbt wird.
                 $inheritedSubValue = trim((string) ($inheritableAddress[$subName] ?? ''));
                 if($inheritedSubValue === '') {
-                    $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
+                    $subLabel = $lang->getLanguageValue($subSchema[self::UI_LABEL] ?? $subName);
                     $errors[] = $lang->getLanguageValue('error_required_field', $subLabel);
                 }
             }
@@ -776,7 +787,7 @@ class SchemaOrgData_Validator {
             // validateFormData() - siehe README.md, Abschnitt "Formularvalidierung".
             $subEnum = $subSchema['enum'] ?? null;
             if($subValue !== '' and is_array($subEnum) and !in_array($subValue, $subEnum, true)) {
-                $subLabel = $lang->getLanguageValue($subSchema['ui:label'] ?? $subName);
+                $subLabel = $lang->getLanguageValue($subSchema[self::UI_LABEL] ?? $subName);
                 $errors[] = $lang->getLanguageValue('error_invalid_format', $subLabel);
             }
         }

@@ -33,6 +33,38 @@ class SchemaOrgData_SchemaRepository {
     public const WIDGET_ID_REFERENCE            = 'id_reference';
     public const WIDGET_ID_REFERENCE_OR_LITERAL = 'id_reference_or_literal';
 
+    /**
+     * Schluesselnamen der ui:-Properties eines Schema-Dokuments. Sie
+     * benennen die Formularmetadaten eines Feldes (Widget, Label, Pflicht,
+     * Platzhalter, Aufzaehlungslabels, Literalmodus, Wochentage) sowie drei
+     * Angaben auf der Wurzelebene eines Types: ui:typeLabel, ui:scopes und
+     * ui:family.
+     *
+     * Nicht aufgenommen sind "ui:options" und "ui:literalFieldLabels": beide
+     * werden im PHP gelesen, kommen aber in keiner Schema-Datei vor. Sie
+     * bleiben bis zu einer Entscheidung ueber ihren Verbleib Literale an
+     * ihren Fundstellen.
+     */
+    public const UI_ALLOW_LITERAL              = 'ui:allowLiteral';
+    public const UI_DAY_LABEL_KEYS             = 'ui:dayLabelKeys';
+    public const UI_DAYS                       = 'ui:days';
+    public const UI_EMIT_AS                    = 'ui:emitAs';
+    public const UI_ENUM_LABELS                = 'ui:enumLabels';
+    public const UI_FAMILY                     = 'ui:family';
+    public const UI_ID_FRAGMENT                = 'ui:idFragment';
+    public const UI_ID_TARGET                  = 'ui:idTarget';
+    public const UI_LABEL                      = 'ui:label';
+    public const UI_LITERAL_FIELD_PLACEHOLDERS = 'ui:literalFieldPlaceholders';
+    public const UI_LITERAL_FIELDS             = 'ui:literalFields';
+    public const UI_LITERAL_TYPE               = 'ui:literalType';
+    public const UI_PLACEHOLDER                = 'ui:placeholder';
+    public const UI_PLACEHOLDER_KEY            = 'ui:placeholderKey';
+    public const UI_REFERENCE_TARGETS          = 'ui:referenceTargets';
+    public const UI_REQUIRED                   = 'ui:required';
+    public const UI_SCOPES                     = 'ui:scopes';
+    public const UI_TYPE_LABEL                 = 'ui:typeLabel';
+    public const UI_WIDGET                     = 'ui:widget';
+
     /** Cache für loadSchema(), Key: "{pluginSelfDir}|{type}". Siehe Backlog-Eintrag Caching. */
     private array $schemaCache = [];
 

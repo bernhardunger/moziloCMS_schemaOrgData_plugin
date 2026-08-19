@@ -73,6 +73,23 @@ class SchemaOrgData_FormRenderer {
     private const WIDGET_FAQ_LIST                = SchemaOrgData_SchemaRepository::WIDGET_FAQ_LIST;
     private const WIDGET_ID_REFERENCE            = SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE;
     private const WIDGET_ID_REFERENCE_OR_LITERAL = SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE_OR_LITERAL;
+    /**
+     * Bindung an die ui:-Schluesselnamen aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const UI_WIDGET                     = SchemaOrgData_SchemaRepository::UI_WIDGET;
+    private const UI_LABEL                      = SchemaOrgData_SchemaRepository::UI_LABEL;
+    private const UI_REQUIRED                   = SchemaOrgData_SchemaRepository::UI_REQUIRED;
+    private const UI_PLACEHOLDER                = SchemaOrgData_SchemaRepository::UI_PLACEHOLDER;
+    private const UI_PLACEHOLDER_KEY            = SchemaOrgData_SchemaRepository::UI_PLACEHOLDER_KEY;
+    private const UI_ENUM_LABELS                = SchemaOrgData_SchemaRepository::UI_ENUM_LABELS;
+    private const UI_ALLOW_LITERAL              = SchemaOrgData_SchemaRepository::UI_ALLOW_LITERAL;
+    private const UI_LITERAL_FIELDS             = SchemaOrgData_SchemaRepository::UI_LITERAL_FIELDS;
+    private const UI_LITERAL_FIELD_PLACEHOLDERS = SchemaOrgData_SchemaRepository::UI_LITERAL_FIELD_PLACEHOLDERS;
+    private const UI_ID_FRAGMENT                = SchemaOrgData_SchemaRepository::UI_ID_FRAGMENT;
+    private const UI_ID_TARGET                  = SchemaOrgData_SchemaRepository::UI_ID_TARGET;
+    private const UI_DAY_LABEL_KEYS             = SchemaOrgData_SchemaRepository::UI_DAY_LABEL_KEYS;
 
     /***************************************************************
     *
@@ -164,7 +181,7 @@ class SchemaOrgData_FormRenderer {
     ***************************************************************/
     public function renderTextWidget(string $id, string $name, array $fieldSchema, mixed $value, array $extraAttrs): string {
         $valueAttr = htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, CHARSET);
-        $placeholder = htmlspecialchars((string) ($fieldSchema['ui:placeholder'] ?? ''), ENT_QUOTES, CHARSET);
+        $placeholder = htmlspecialchars((string) ($fieldSchema[self::UI_PLACEHOLDER] ?? ''), ENT_QUOTES, CHARSET);
 
         $attrs = '';
         foreach($extraAttrs as $attrName => $attrValue) {
@@ -182,7 +199,7 @@ class SchemaOrgData_FormRenderer {
     ***************************************************************/
     public function renderTextareaWidget(string $id, string $name, array $fieldSchema, mixed $value): string {
         $valueText = htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, CHARSET);
-        $placeholder = htmlspecialchars((string) ($fieldSchema['ui:placeholder'] ?? ''), ENT_QUOTES, CHARSET);
+        $placeholder = htmlspecialchars((string) ($fieldSchema[self::UI_PLACEHOLDER] ?? ''), ENT_QUOTES, CHARSET);
 
         return '<textarea id="'.$id.'" name="'.$name.'" class="mo-input-text schemaOrgData-wide-textarea" rows="4" placeholder="'.$placeholder.'">'
             .$valueText.'</textarea>';
@@ -209,14 +226,14 @@ class SchemaOrgData_FormRenderer {
                 $options[(string) $option] = (string) $option;
             }
         } elseif(isset($fieldSchema['enum']) and is_array($fieldSchema['enum'])) {
-            $enumLabels = $fieldSchema['ui:enumLabels'][$pluginLang] ?? [];
+            $enumLabels = $fieldSchema[self::UI_ENUM_LABELS][$pluginLang] ?? [];
             foreach($fieldSchema['enum'] as $enumValue) {
                 $options[(string) $enumValue] = (string) ($enumLabels[$enumValue] ?? $enumValue);
             }
         }
 
         $current = ($value !== null and $value !== '') ? (string) $value : (string) ($fieldSchema['default'] ?? '');
-        $required = (bool) ($fieldSchema['ui:required'] ?? false);
+        $required = (bool) ($fieldSchema[self::UI_REQUIRED] ?? false);
 
         $html = '<div class="mo-select-div flex"><select id="'.$id.'" name="'.$name.'" class="mo-select flex-100">';
 
@@ -284,7 +301,7 @@ class SchemaOrgData_FormRenderer {
         // nicht mehr redisplayt, da diese Feldkonfiguration den Modus gar
         // nicht mehr anbietet (Umschalter/Literal-Felder/POST-Feld entfallen
         // komplett statt nur versteckt zu werden).
-        $allowLiteral = (bool) ($fieldSchema['ui:allowLiteral'] ?? true);
+        $allowLiteral = (bool) ($fieldSchema[self::UI_ALLOW_LITERAL] ?? true);
         $storedMode = $allowLiteral ? (string) ($value['_mode'] ?? 'reference') : 'reference';
         $storedFragment = (string) ($value['_fragment'] ?? '');
         $refChecked = $storedMode !== 'literal' ? ' checked="checked"' : '';
@@ -357,9 +374,9 @@ class SchemaOrgData_FormRenderer {
                 .'</label>'."\n";
 
             $html .= '<div class="schemaOrgData-idrl-section schemaOrgData-idrl-literal"'.$litHidden.'>'."\n";
-            $literalFields       = $fieldSchema['ui:literalFields']       ?? [];
+            $literalFields       = $fieldSchema[self::UI_LITERAL_FIELDS]       ?? [];
             $literalFieldLabels  = $fieldSchema['ui:literalFieldLabels']  ?? [];
-            $literalFieldPlaceholders = $fieldSchema['ui:literalFieldPlaceholders'] ?? [];
+            $literalFieldPlaceholders = $fieldSchema[self::UI_LITERAL_FIELD_PLACEHOLDERS] ?? [];
             foreach($literalFields as $lf) {
                 $lfId    = 'schemaOrgData_'.$idPrefix.'_'.$name.'_lf_'.$lf;
                 $lfName  = $fieldNameBase.'['.$lf.']';
@@ -504,8 +521,8 @@ class SchemaOrgData_FormRenderer {
             : 'schemaOrgData['.$scope.'][data]['.$name.']';
         $fieldName = $fieldNameBase.'['.$subName.']';
         $subValue = $value[$subName] ?? ($subSchema['default'] ?? null);
-        $required = (bool) ($subSchema['ui:required'] ?? false);
-        $label = $lang->getLanguageHtml($subSchema['ui:label'] ?? $subName);
+        $required = (bool) ($subSchema[self::UI_REQUIRED] ?? false);
+        $label = $lang->getLanguageHtml($subSchema[self::UI_LABEL] ?? $subName);
         $badge = $this->renderRequiredBadge($required, $lang);
 
         // Placeholder + "ü"-Badge für ein leeres Sub-Feld, dessen Wert von
@@ -514,8 +531,8 @@ class SchemaOrgData_FormRenderer {
         $isEmpty = !isset($value[$subName]) or $value[$subName] === '';
         $inheritedSubValue = $inheritedValue[$subName] ?? null;
         if($isEmpty and is_scalar($inheritedSubValue) and (string) $inheritedSubValue !== '') {
-            if(($subSchema['ui:widget'] ?? self::WIDGET_TEXT) !== self::WIDGET_SELECT) {
-                $subSchema['ui:placeholder'] = (string) $inheritedSubValue;
+            if(($subSchema[self::UI_WIDGET] ?? self::WIDGET_TEXT) !== self::WIDGET_SELECT) {
+                $subSchema[self::UI_PLACEHOLDER] = (string) $inheritedSubValue;
             }
             $badge .= $this->renderInheritedBadge($inheritedLabel, $lang);
         }
@@ -527,7 +544,7 @@ class SchemaOrgData_FormRenderer {
         // runAddressRequiredValidation()).
         $groupId = 'schemaOrgData_'.$idPrefix.'_'.$idSegment;
 
-        if(($subSchema['ui:widget'] ?? self::WIDGET_TEXT) === self::WIDGET_SELECT) {
+        if(($subSchema[self::UI_WIDGET] ?? self::WIDGET_TEXT) === self::WIDGET_SELECT) {
             $widgetHtml = $this->renderSelectWidget($fieldId, $fieldName, $subSchema, $subValue, $lang, $pluginLang);
         } else {
             $extraAttrs = [];
@@ -545,7 +562,7 @@ class SchemaOrgData_FormRenderer {
                 // Adresse (bzw. ein leeres place-Widget) bleibt sonst
                 // fälschlich als "Ort fehlt" markiert.
                 $extraAttrs[self::ATTR_VALIDATE] = $forceRequired ? self::VALIDATE_REQUIRED : self::VALIDATE_ADDRESS_REQUIRED;
-                $extraAttrs['data-required-message'] = $lang->getLanguageValue('error_required_field', $lang->getLanguageValue($subSchema['ui:label'] ?? $subName));
+                $extraAttrs['data-required-message'] = $lang->getLanguageValue('error_required_field', $lang->getLanguageValue($subSchema[self::UI_LABEL] ?? $subName));
             }
             $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $subSchema, $subValue, $extraAttrs);
         }
@@ -654,11 +671,11 @@ class SchemaOrgData_FormRenderer {
         $inheritedLat = $inheritedValue['latitude'] ?? null;
         $inheritedLon = $inheritedValue['longitude'] ?? null;
         if($latString === '' and is_scalar($inheritedLat) and (string) $inheritedLat !== '') {
-            $latSchema['ui:placeholder'] = (string) $inheritedLat;
+            $latSchema[self::UI_PLACEHOLDER] = (string) $inheritedLat;
             $latBadge = $this->renderInheritedBadge($inheritedLabel, $lang);
         }
         if($lonString === '' and is_scalar($inheritedLon) and (string) $inheritedLon !== '') {
-            $lonSchema['ui:placeholder'] = (string) $inheritedLon;
+            $lonSchema[self::UI_PLACEHOLDER] = (string) $inheritedLon;
             $lonBadge = $this->renderInheritedBadge($inheritedLabel, $lang);
         }
 
@@ -676,8 +693,8 @@ class SchemaOrgData_FormRenderer {
             $this->resolveGeoFieldFeedback($lonString, $latString, false, $validator, $lang), $lonId.'_feedback'
         );
 
-        $latLabel = $lang->getLanguageHtml($latSchema['ui:label'] ?? 'latitude');
-        $lonLabel = $lang->getLanguageHtml($lonSchema['ui:label'] ?? 'longitude');
+        $latLabel = $lang->getLanguageHtml($latSchema[self::UI_LABEL] ?? 'latitude');
+        $lonLabel = $lang->getLanguageHtml($lonSchema[self::UI_LABEL] ?? 'longitude');
 
         return '<div class="c-content schemaOrgData-field-row">'
             .'<div class="mo-in-li-l"></div>'
@@ -768,7 +785,7 @@ class SchemaOrgData_FormRenderer {
             $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_name';
             $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.'][name]';
             $nameValue = $value['name'] ?? null;
-            $label = $lang->getLanguageHtml($nameSchema['ui:label'] ?? 'label_name');
+            $label = $lang->getLanguageHtml($nameSchema[self::UI_LABEL] ?? 'label_name');
             $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $nameSchema, $nameValue, ['data-address-group' => $addressGroupId]);
             $html .= '<div class="c-content schemaOrgData-field-row">'
                 .'<div class="mo-in-li-l"><label for="'.$fieldId.'">'.$label.'</label></div>'
@@ -807,7 +824,7 @@ class SchemaOrgData_FormRenderer {
     public function renderOpeningHoursWidget(string $scope, string $name, array $fieldSchema, array $value, ?string $idPrefix, Language $lang, Language $weekdayLang, SchemaOrgData_OpeningHoursHelper $openingHoursHelper, SchemaOrgData_Validator $validator): string {
         $idPrefix = $idPrefix ?? $scope;
         $days = SchemaOrgData_OpeningHoursHelper::resolveDays($fieldSchema);
-        $dayLabelKeys = $fieldSchema['ui:dayLabelKeys'] ?? [];
+        $dayLabelKeys = $fieldSchema[self::UI_DAY_LABEL_KEYS] ?? [];
 
         // $value liegt entweder als openingHours-Array in schema.org-Notation
         // vor (gespeicherte Konfiguration / sanitizePostData) oder als rohe
@@ -840,16 +857,16 @@ class SchemaOrgData_FormRenderer {
             $from2 = trim((string) ($perDay[$day]['from2'] ?? ''));
             $to2   = trim((string) ($perDay[$day]['to2']   ?? ''));
 
-            $fromInput = $this->renderTextWidget($fromId, $fromName, ['ui:placeholder' => '09:00'], $from, [
+            $fromInput = $this->renderTextWidget($fromId, $fromName, [self::UI_PLACEHOLDER => '09:00'], $from, [
                 self::ATTR_VALIDATE => self::VALIDATE_OPENING_HOURS, 'data-pair' => $toId, 'maxlength' => '5',
             ]);
-            $toInput = $this->renderTextWidget($toId, $toName, ['ui:placeholder' => '18:00'], $to, [
+            $toInput = $this->renderTextWidget($toId, $toName, [self::UI_PLACEHOLDER => '18:00'], $to, [
                 self::ATTR_VALIDATE => self::VALIDATE_OPENING_HOURS, 'data-pair' => $fromId, 'maxlength' => '5',
             ]);
-            $from2Input = $this->renderTextWidget($from2Id, $from2Name, ['ui:placeholder' => '13:00'], $from2, [
+            $from2Input = $this->renderTextWidget($from2Id, $from2Name, [self::UI_PLACEHOLDER => '13:00'], $from2, [
                 self::ATTR_VALIDATE => self::VALIDATE_OPENING_HOURS, 'data-pair' => $to2Id, 'maxlength' => '5',
             ]);
-            $to2Input = $this->renderTextWidget($to2Id, $to2Name, ['ui:placeholder' => '18:00'], $to2, [
+            $to2Input = $this->renderTextWidget($to2Id, $to2Name, [self::UI_PLACEHOLDER => '18:00'], $to2, [
                 self::ATTR_VALIDATE => self::VALIDATE_OPENING_HOURS, 'data-pair' => $from2Id, 'maxlength' => '5',
             ]);
 
@@ -922,9 +939,9 @@ class SchemaOrgData_FormRenderer {
             $question = $entry['name'] ?? '';
             $answer = $entry['acceptedAnswer']['text'] ?? '';
 
-            $questionLabel = $lang->getLanguageHtml($questionSchema['ui:label'] ?? 'label_faq_question');
-            $answerLabel = $lang->getLanguageHtml($answerSchema['ui:label'] ?? 'label_faq_answer');
-            $badge = $this->renderRequiredBadge((bool) ($questionSchema['ui:required'] ?? false), $lang);
+            $questionLabel = $lang->getLanguageHtml($questionSchema[self::UI_LABEL] ?? 'label_faq_question');
+            $answerLabel = $lang->getLanguageHtml($answerSchema[self::UI_LABEL] ?? 'label_faq_answer');
+            $badge = $this->renderRequiredBadge((bool) ($questionSchema[self::UI_REQUIRED] ?? false), $lang);
 
             $html .= '<div class="schemaOrgData-faq-entry">'."\n";
             $html .= '<div class="c-content schemaOrgData-field-row">'
@@ -1119,7 +1136,7 @@ class SchemaOrgData_FormRenderer {
     public function buildValidationAttrs(string $scope, string $name, array $fieldSchema, array $rootSchema, ?string $idPrefix, Language $lang): array {
         $idPrefix = $idPrefix ?? $scope;
         $format = $fieldSchema['format'] ?? null;
-        $required = (bool) ($fieldSchema['ui:required'] ?? false);
+        $required = (bool) ($fieldSchema[self::UI_REQUIRED] ?? false);
 
         if($format === 'uri') {
             $attrs = [self::ATTR_VALIDATE => self::VALIDATE_URL];
@@ -1160,7 +1177,7 @@ class SchemaOrgData_FormRenderer {
         }
 
         if($required) {
-            $label = $lang->getLanguageValue($fieldSchema['ui:label'] ?? $name);
+            $label = $lang->getLanguageValue($fieldSchema[self::UI_LABEL] ?? $name);
             $attrs['data-required-message'] = $lang->getLanguageValue('error_required_field', $label);
         }
 
@@ -1237,9 +1254,9 @@ class SchemaOrgData_FormRenderer {
     public function renderField(string $scope, string $name, array $fieldSchema, mixed $value, array $rootSchema, array $allData, ?string $idPrefix, mixed $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_SchemaRepository $schemaRepository, SchemaOrgData_UrlHelper $urlHelper, string $pluginLang, SchemaOrgData_OpeningHoursHelper $openingHoursHelper, SchemaOrgData_Validator $validator, Language $weekdayLang, array $availableFragments): string {
         $idPrefix = $idPrefix ?? $scope;
         $fieldSchema = $schemaRepository->resolveSchemaRef($fieldSchema, $rootSchema);
-        $widget = $fieldSchema['ui:widget'] ?? self::WIDGET_TEXT;
-        $label = $lang->getLanguageHtml($fieldSchema['ui:label'] ?? $name);
-        $required = (bool) ($fieldSchema['ui:required'] ?? false);
+        $widget = $fieldSchema[self::UI_WIDGET] ?? self::WIDGET_TEXT;
+        $label = $lang->getLanguageHtml($fieldSchema[self::UI_LABEL] ?? $name);
+        $required = (bool) ($fieldSchema[self::UI_REQUIRED] ?? false);
         $badge = $this->renderRequiredBadge($required, $lang);
         $fieldId = 'schemaOrgData_'.$idPrefix.'_'.$name;
 
@@ -1259,7 +1276,7 @@ class SchemaOrgData_FormRenderer {
         // im Formular genügt eine schreibgeschützte Info-Anzeige mit der
         // aufgelösten Ziel-URI.
         if($widget === self::WIDGET_ID_REFERENCE) {
-            $target = trim((string) ($fieldSchema['ui:idTarget'] ?? ''));
+            $target = trim((string) ($fieldSchema[self::UI_ID_TARGET] ?? ''));
             // Admin-Anzeige: ohne "admin/"-Segment, damit die angezeigte
             // URI mit der tatsächlichen Frontend-Emission übereinstimmt
             // (siehe SchemaOrgData_UrlHelper::resolveFrontendBaseUrl()).
@@ -1282,7 +1299,7 @@ class SchemaOrgData_FormRenderer {
             // verändern - erst ein erneutes Speichern schreibt das reguläre
             // {_mode, ...}-Format.
             if(is_string($value) and $value !== '') {
-                $literalFields = $fieldSchema['ui:literalFields'] ?? [];
+                $literalFields = $fieldSchema[self::UI_LITERAL_FIELDS] ?? [];
                 $primaryField = (string) ($literalFields[0] ?? 'name');
                 $value = ['_mode' => 'literal', $primaryField => $value];
             }
@@ -1339,8 +1356,8 @@ class SchemaOrgData_FormRenderer {
         // Language-Objekt entgegen. Die Zuweisung steht bewusst vor der
         // Vererbungsanzeige, deren Platzhalter den Formathinweis
         // überschreiben soll, nicht umgekehrt.
-        if(isset($fieldSchema['ui:placeholderKey'])) {
-            $fieldSchema['ui:placeholder'] = $lang->getLanguageValue((string) $fieldSchema['ui:placeholderKey']);
+        if(isset($fieldSchema[self::UI_PLACEHOLDER_KEY])) {
+            $fieldSchema[self::UI_PLACEHOLDER] = $lang->getLanguageValue((string) $fieldSchema[self::UI_PLACEHOLDER_KEY]);
         }
 
         // Placeholder + "ü"-Badge für ein leeres Feld, dessen Wert von einer
@@ -1352,7 +1369,7 @@ class SchemaOrgData_FormRenderer {
                 if(($fieldSchema['format'] ?? null) === 'date-time') {
                     $placeholderValue = $validator->formatEventDateForDisplay($placeholderValue);
                 }
-                $fieldSchema['ui:placeholder'] = $placeholderValue;
+                $fieldSchema[self::UI_PLACEHOLDER] = $placeholderValue;
             }
             $badge .= $this->renderInheritedBadge($inheritedLabel, $lang);
         }
@@ -1421,7 +1438,7 @@ class SchemaOrgData_FormRenderer {
 
         $hasRequiredField = false;
         foreach($schema['properties'] ?? [] as $fieldSchema) {
-            if(!empty($fieldSchema['ui:required'])) {
+            if(!empty($fieldSchema[self::UI_REQUIRED])) {
                 $hasRequiredField = true;
                 break;
             }
@@ -1443,7 +1460,7 @@ class SchemaOrgData_FormRenderer {
         // Organisations-Identity-Type. Beide Werte liegen hier bereits als
         // Parameter vor, deshalb bleibt der Aufrufer unberührt. Ändert sich die
         // Bedingung dort, gehört sie hier mitgeändert.
-        $personSuggestionContext = ($scope === self::SCOPE_GLOBAL and ($schema['ui:idFragment'] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION);
+        $personSuggestionContext = ($scope === self::SCOPE_GLOBAL and ($schema[self::UI_ID_FRAGMENT] ?? '') === SchemaOrgData_IdReferenceService::IDFRAGMENT_ORGANIZATION);
 
         $html .= $this->renderExtensionFieldWidget($scope, $type, $extensionJson, $idPrefix, $lang, $pluginSelfUrl, $personSuggestionContext);
 
