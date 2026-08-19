@@ -207,12 +207,12 @@ class SchemaOrgData_JsonLdBuilder {
             foreach($schema['properties'] ?? [] as $propName => $propSchema) {
                 $propSchema = $schemaRepo->resolveSchemaRef($propSchema, $schema);
                 $widget = $propSchema['ui:widget'] ?? '';
-                if($widget === 'id_reference') {
+                if($widget === SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE) {
                     $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
                     if($target !== '' and $baseUrl !== '' and !in_array($target, $suppressedIdTargets, true)) {
                         $data[$propName] = ['@id' => $baseUrl.'#'.$target];
                     }
-                } elseif($widget === 'id_reference_or_literal') {
+                } elseif($widget === SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE_OR_LITERAL) {
                     // Gespeicherten Wert (Array mit _mode + _fragment oder Literal-Felder)
                     // in das fertige JSON-LD-Objekt umwandeln.
                     $rawValue = $data[$propName] ?? null;

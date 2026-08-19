@@ -44,6 +44,19 @@ class SchemaOrgData_ConfigSaveService {
     private const SCOPE_CATEGORY = SchemaOrgData_ScopeResolver::SCOPE_CATEGORY;
     private const SCOPE_PAGE     = SchemaOrgData_ScopeResolver::SCOPE_PAGE;
 
+    /**
+     * Bindung an das Widget-Vokabular aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const WIDGET_TEXT                    = SchemaOrgData_SchemaRepository::WIDGET_TEXT;
+    private const WIDGET_POSTAL_ADDRESS          = SchemaOrgData_SchemaRepository::WIDGET_POSTAL_ADDRESS;
+    private const WIDGET_PLACE                   = SchemaOrgData_SchemaRepository::WIDGET_PLACE;
+    private const WIDGET_OPENING_HOURS           = SchemaOrgData_SchemaRepository::WIDGET_OPENING_HOURS;
+    private const WIDGET_FAQ_LIST                = SchemaOrgData_SchemaRepository::WIDGET_FAQ_LIST;
+    private const WIDGET_GEO                     = SchemaOrgData_SchemaRepository::WIDGET_GEO;
+    private const WIDGET_ID_REFERENCE_OR_LITERAL = SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE_OR_LITERAL;
+
     /***************************************************************
     *
     * Ermittelt für eine Kategorie-/Seiten-Sektion, welche Feldwerte
@@ -159,10 +172,10 @@ class SchemaOrgData_ConfigSaveService {
             }
 
             $fieldSchema = $schemaRepository->resolveSchemaRef($fieldSchema, $schema);
-            $widget = $fieldSchema['ui:widget'] ?? 'text';
+            $widget = $fieldSchema['ui:widget'] ?? self::WIDGET_TEXT;
             $value = $formData[$name];
 
-            if($widget === 'postal_address') {
+            if($widget === self::WIDGET_POSTAL_ADDRESS) {
                 $address = $this->sanitizeAddressData(is_array($value) ? $value : [], $fieldSchema, $validator, $notices);
                 if($address !== []) {
                     $result[$name] = $address;
@@ -170,7 +183,7 @@ class SchemaOrgData_ConfigSaveService {
                 continue;
             }
 
-            if($widget === 'place') {
+            if($widget === self::WIDGET_PLACE) {
                 // Wiederverwendung von sanitizeAddressData() für die
                 // verschachtelte Adresse - keine eigene Bereinigungslogik.
                 $place = is_array($value) ? $value : [];
@@ -200,7 +213,7 @@ class SchemaOrgData_ConfigSaveService {
                 continue;
             }
 
-            if($widget === 'opening_hours') {
+            if($widget === self::WIDGET_OPENING_HOURS) {
                 $days = SchemaOrgData_OpeningHoursHelper::resolveDays($fieldSchema);
                 $perDay = is_array($value) ? $value : [];
                 $primary = $openingHoursHelper->buildOpeningHoursArray($perDay, $days);
@@ -212,7 +225,7 @@ class SchemaOrgData_ConfigSaveService {
                 continue;
             }
 
-            if($widget === 'faq_list') {
+            if($widget === self::WIDGET_FAQ_LIST) {
                 $entries = [];
                 foreach((is_array($value) ? $value : []) as $entry) {
                     $questionRaw = (string) ($entry['name'] ?? '');
@@ -242,7 +255,7 @@ class SchemaOrgData_ConfigSaveService {
                 continue;
             }
 
-            if($widget === 'geo') {
+            if($widget === self::WIDGET_GEO) {
                 // Paar-Pflicht ("beides oder nichts") wurde bereits in
                 // validateFormData() geprüft - sind wir hier, sind beide
                 // Werte gefüllt oder beide leer. Numerische Umwandlung
@@ -262,7 +275,7 @@ class SchemaOrgData_ConfigSaveService {
                 continue;
             }
 
-            if($widget === 'id_reference_or_literal') {
+            if($widget === self::WIDGET_ID_REFERENCE_OR_LITERAL) {
                 if(!is_array($value)) {
                     continue;
                 }

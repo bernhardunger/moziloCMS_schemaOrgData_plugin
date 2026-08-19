@@ -284,7 +284,7 @@ class SchemaOrgData_IdReferenceService {
                     $propSchema = $schemaRepo->resolveSchemaRef($propSchema, $schema);
                     $widget = $propSchema['ui:widget'] ?? '';
                     $required = ($propSchema['ui:required'] ?? false) === true;
-                    if($widget === 'id_reference') {
+                    if($widget === SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE) {
                         $target = trim((string) ($propSchema['ui:idTarget'] ?? ''));
                         if($target !== '') {
                             $activeTargets[] = $target;
@@ -292,7 +292,7 @@ class SchemaOrgData_IdReferenceService {
                                 $requiredReferenceBindings[] = ['scope' => $scope, 'type' => $type, 'target' => $target];
                             }
                         }
-                    } elseif($widget === 'id_reference_or_literal') {
+                    } elseif($widget === SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE_OR_LITERAL) {
                         // Nur Referenz-Modus erzeugt eine @id-Abhängigkeit.
                         $stored = is_array($typeData[$propName] ?? null) ? $typeData[$propName] : null;
                         if($stored !== null and ($stored['_mode'] ?? '') === 'reference') {

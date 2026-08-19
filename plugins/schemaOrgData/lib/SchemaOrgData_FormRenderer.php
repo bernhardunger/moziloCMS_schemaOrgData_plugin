@@ -24,6 +24,56 @@ class SchemaOrgData_FormRenderer {
      */
     private const SCOPE_GLOBAL = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
 
+    /**
+     * Name des HTML-Attributs, über das die Live-Validierung angesteuert
+     * wird, und sein Wertevorrat. Der Renderer schreibt diese Werte in die
+     * Ausgabe, js/validator.js liest sie zurück; sie stammen nicht aus den
+     * Schema-Dateien. Ein unbekannter Wert läuft dort in den default-Zweig
+     * und bleibt folgenlos - ein Tippfehler schaltet die Live-Prüfung eines
+     * Feldes also still ab, statt aufzufallen.
+     *
+     * Öffentlich, weil SchemaOrgData_PersonsAdminRenderer dieselben Attribute
+     * emittiert und der Wertevorrat die PHP-Seite eines Sprachgrenzen-
+     * Kontrakts ist.
+     *
+     * VALIDATE_GEO und VALIDATE_OPENING_HOURS sind wortgleich mit
+     * SchemaOrgData_SchemaRepository::WIDGET_GEO bzw. WIDGET_OPENING_HOURS,
+     * gehören aber einem anderen Vokabular an: dort ein Widget-Name aus dem
+     * Schema, hier ein Attributwert für das JavaScript. Dasselbe gilt für
+     * VALIDATE_REQUIRED, VALIDATE_EMAIL und VALIDATE_DATE_TIME gegenüber dem
+     * JSON-Schema-Schlüsselwort "required" und den format-Werten. Alle sind
+     * deshalb literal definiert und keine von einer anderen abgeleitet.
+     */
+    public const ATTR_VALIDATE = 'data-validate';
+
+    public const VALIDATE_URL              = 'url';
+    public const VALIDATE_EMAIL            = 'email';
+    public const VALIDATE_DATE_TIME        = 'date-time';
+    public const VALIDATE_TELEPHONE        = 'telephone';
+    public const VALIDATE_POSTAL_CODE      = 'postal_code';
+    public const VALIDATE_REQUIRED         = 'required';
+    public const VALIDATE_ADDRESS_REQUIRED = 'address_required';
+    public const VALIDATE_OPENING_HOURS    = 'opening_hours';
+    public const VALIDATE_GEO              = 'geo';
+    public const VALIDATE_PERSON_SLUG      = 'person_slug';
+    public const VALIDATE_SORT_ORDER       = 'sort_order';
+
+    /**
+     * Bindung an das Widget-Vokabular aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const WIDGET_TEXT                    = SchemaOrgData_SchemaRepository::WIDGET_TEXT;
+    private const WIDGET_TEXTAREA                = SchemaOrgData_SchemaRepository::WIDGET_TEXTAREA;
+    private const WIDGET_SELECT                  = SchemaOrgData_SchemaRepository::WIDGET_SELECT;
+    private const WIDGET_POSTAL_ADDRESS          = SchemaOrgData_SchemaRepository::WIDGET_POSTAL_ADDRESS;
+    private const WIDGET_OPENING_HOURS           = SchemaOrgData_SchemaRepository::WIDGET_OPENING_HOURS;
+    private const WIDGET_GEO                     = SchemaOrgData_SchemaRepository::WIDGET_GEO;
+    private const WIDGET_PLACE                   = SchemaOrgData_SchemaRepository::WIDGET_PLACE;
+    private const WIDGET_FAQ_LIST                = SchemaOrgData_SchemaRepository::WIDGET_FAQ_LIST;
+    private const WIDGET_ID_REFERENCE            = SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE;
+    private const WIDGET_ID_REFERENCE_OR_LITERAL = SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE_OR_LITERAL;
+
     /***************************************************************
     *
     * Rendert das Feedback-Symbol (✅/⚠️/❌) zu einem
@@ -464,7 +514,7 @@ class SchemaOrgData_FormRenderer {
         $isEmpty = !isset($value[$subName]) or $value[$subName] === '';
         $inheritedSubValue = $inheritedValue[$subName] ?? null;
         if($isEmpty and is_scalar($inheritedSubValue) and (string) $inheritedSubValue !== '') {
-            if(($subSchema['ui:widget'] ?? 'text') !== 'select') {
+            if(($subSchema['ui:widget'] ?? self::WIDGET_TEXT) !== self::WIDGET_SELECT) {
                 $subSchema['ui:placeholder'] = (string) $inheritedSubValue;
             }
             $badge .= $this->renderInheritedBadge($inheritedLabel, $lang);
@@ -477,7 +527,7 @@ class SchemaOrgData_FormRenderer {
         // runAddressRequiredValidation()).
         $groupId = 'schemaOrgData_'.$idPrefix.'_'.$idSegment;
 
-        if(($subSchema['ui:widget'] ?? 'text') === 'select') {
+        if(($subSchema['ui:widget'] ?? self::WIDGET_TEXT) === self::WIDGET_SELECT) {
             $widgetHtml = $this->renderSelectWidget($fieldId, $fieldName, $subSchema, $subValue, $lang, $pluginLang);
         } else {
             $extraAttrs = [];
@@ -485,7 +535,7 @@ class SchemaOrgData_FormRenderer {
                 $extraAttrs['data-address-group'] = $groupId;
             }
             if($subName === 'postalCode') {
-                $extraAttrs['data-validate'] = 'postal_code';
+                $extraAttrs[self::ATTR_VALIDATE] = self::VALIDATE_POSTAL_CODE;
                 $extraAttrs['data-country-field'] = $countryFieldId;
             } elseif($required) {
                 // Ohne $forceRequired hängt die Pflicht dieses Feldes davon ab,
@@ -494,7 +544,7 @@ class SchemaOrgData_FormRenderer {
                 // eine komplett leere, nicht als Ganzes ui:required markierte
                 // Adresse (bzw. ein leeres place-Widget) bleibt sonst
                 // fälschlich als "Ort fehlt" markiert.
-                $extraAttrs['data-validate'] = $forceRequired ? 'required' : 'address_required';
+                $extraAttrs[self::ATTR_VALIDATE] = $forceRequired ? self::VALIDATE_REQUIRED : self::VALIDATE_ADDRESS_REQUIRED;
                 $extraAttrs['data-required-message'] = $lang->getLanguageValue('error_required_field', $lang->getLanguageValue($subSchema['ui:label'] ?? $subName));
             }
             $widgetHtml = $this->renderTextWidget($fieldId, $fieldName, $subSchema, $subValue, $extraAttrs);
@@ -613,10 +663,10 @@ class SchemaOrgData_FormRenderer {
         }
 
         $latInput = $this->renderTextWidget($latId, $latName, $latSchema, $latValue, [
-            'data-validate' => 'geo', 'data-pair' => $lonId,
+            self::ATTR_VALIDATE => self::VALIDATE_GEO, 'data-pair' => $lonId,
         ]);
         $lonInput = $this->renderTextWidget($lonId, $lonName, $lonSchema, $lonValue, [
-            'data-validate' => 'geo', 'data-pair' => $latId,
+            self::ATTR_VALIDATE => self::VALIDATE_GEO, 'data-pair' => $latId,
         ]);
 
         $latFeedback = $this->renderValidationFeedback(
@@ -791,16 +841,16 @@ class SchemaOrgData_FormRenderer {
             $to2   = trim((string) ($perDay[$day]['to2']   ?? ''));
 
             $fromInput = $this->renderTextWidget($fromId, $fromName, ['ui:placeholder' => '09:00'], $from, [
-                'data-validate' => 'opening_hours', 'data-pair' => $toId, 'maxlength' => '5',
+                self::ATTR_VALIDATE => self::VALIDATE_OPENING_HOURS, 'data-pair' => $toId, 'maxlength' => '5',
             ]);
             $toInput = $this->renderTextWidget($toId, $toName, ['ui:placeholder' => '18:00'], $to, [
-                'data-validate' => 'opening_hours', 'data-pair' => $fromId, 'maxlength' => '5',
+                self::ATTR_VALIDATE => self::VALIDATE_OPENING_HOURS, 'data-pair' => $fromId, 'maxlength' => '5',
             ]);
             $from2Input = $this->renderTextWidget($from2Id, $from2Name, ['ui:placeholder' => '13:00'], $from2, [
-                'data-validate' => 'opening_hours', 'data-pair' => $to2Id, 'maxlength' => '5',
+                self::ATTR_VALIDATE => self::VALIDATE_OPENING_HOURS, 'data-pair' => $to2Id, 'maxlength' => '5',
             ]);
             $to2Input = $this->renderTextWidget($to2Id, $to2Name, ['ui:placeholder' => '18:00'], $to2, [
-                'data-validate' => 'opening_hours', 'data-pair' => $from2Id, 'maxlength' => '5',
+                self::ATTR_VALIDATE => self::VALIDATE_OPENING_HOURS, 'data-pair' => $from2Id, 'maxlength' => '5',
             ]);
 
             $feedback = $this->renderValidationFeedback($validator->validateOpeningHoursTime($from, $to, $lang), $fromId.'_feedback');
@@ -1072,11 +1122,11 @@ class SchemaOrgData_FormRenderer {
         $required = (bool) ($fieldSchema['ui:required'] ?? false);
 
         if($format === 'uri') {
-            $attrs = ['data-validate' => 'url'];
+            $attrs = [self::ATTR_VALIDATE => self::VALIDATE_URL];
         } elseif($format === 'email') {
-            $attrs = ['data-validate' => 'email'];
+            $attrs = [self::ATTR_VALIDATE => self::VALIDATE_EMAIL];
         } elseif($format === 'date-time') {
-            $attrs = ['data-validate' => 'date-time'];
+            $attrs = [self::ATTR_VALIDATE => self::VALIDATE_DATE_TIME];
             // Nur das jeweils spätere Feld eines bekannten Datumsbereichs
             // (Event endDate, JobPosting validThrough) erhält die
             // Gegenstück-Referenz auf das frühere Feld - der Bereichsfehler
@@ -1096,7 +1146,7 @@ class SchemaOrgData_FormRenderer {
                 $attrs['data-check-past'] = '1';
             }
         } elseif($name === 'telephone') {
-            $attrs = ['data-validate' => 'telephone'];
+            $attrs = [self::ATTR_VALIDATE => self::VALIDATE_TELEPHONE];
             // Nur setzen, wenn das Schema tatsächlich ein address-Property
             // hat (Person/Organization haben keins - das Attribut zeigte
             // dort zuvor auf ein nie gerendertes Element).
@@ -1104,7 +1154,7 @@ class SchemaOrgData_FormRenderer {
                 $attrs['data-country-field'] = 'schemaOrgData_'.$idPrefix.'_address_addressCountry';
             }
         } elseif($required) {
-            $attrs = ['data-validate' => 'required'];
+            $attrs = [self::ATTR_VALIDATE => self::VALIDATE_REQUIRED];
         } else {
             $attrs = [];
         }
@@ -1187,7 +1237,7 @@ class SchemaOrgData_FormRenderer {
     public function renderField(string $scope, string $name, array $fieldSchema, mixed $value, array $rootSchema, array $allData, ?string $idPrefix, mixed $inheritedValue, ?string $inheritedLabel, Language $lang, SchemaOrgData_SchemaRepository $schemaRepository, SchemaOrgData_UrlHelper $urlHelper, string $pluginLang, SchemaOrgData_OpeningHoursHelper $openingHoursHelper, SchemaOrgData_Validator $validator, Language $weekdayLang, array $availableFragments): string {
         $idPrefix = $idPrefix ?? $scope;
         $fieldSchema = $schemaRepository->resolveSchemaRef($fieldSchema, $rootSchema);
-        $widget = $fieldSchema['ui:widget'] ?? 'text';
+        $widget = $fieldSchema['ui:widget'] ?? self::WIDGET_TEXT;
         $label = $lang->getLanguageHtml($fieldSchema['ui:label'] ?? $name);
         $required = (bool) ($fieldSchema['ui:required'] ?? false);
         $badge = $this->renderRequiredBadge($required, $lang);
@@ -1208,7 +1258,7 @@ class SchemaOrgData_FormRenderer {
         // Der Wert wird zur Build-Zeit in buildJsonLdScript() emittiert;
         // im Formular genügt eine schreibgeschützte Info-Anzeige mit der
         // aufgelösten Ziel-URI.
-        if($widget === 'id_reference') {
+        if($widget === self::WIDGET_ID_REFERENCE) {
             $target = trim((string) ($fieldSchema['ui:idTarget'] ?? ''));
             // Admin-Anzeige: ohne "admin/"-Segment, damit die angezeigte
             // URI mit der tatsächlichen Frontend-Emission übereinstimmt
@@ -1224,7 +1274,7 @@ class SchemaOrgData_FormRenderer {
                 .'</div>'."\n";
         }
 
-        if($widget === 'id_reference_or_literal') {
+        if($widget === self::WIDGET_ID_REFERENCE_OR_LITERAL) {
             // Lesekompatibilität für Freitext-Bestandsdaten (z. B. Article.author
             // vor der Umstellung auf dieses Widget): ein gespeicherter reiner
             // String wird beim Redisplay transparent als Literal-Wert im ersten
@@ -1245,7 +1295,7 @@ class SchemaOrgData_FormRenderer {
                 .'</fieldset>'."\n";
         }
 
-        if($widget === 'place') {
+        if($widget === self::WIDGET_PLACE) {
             // Das ui:required-Flag des gesamten Widgets (z. B. JobPosting.jobLocation)
             // wird als $forceRequired durchgereicht - nur dann bleibt die
             // Live-Pflichtmeldung für "Ort" unconditional (siehe renderPlaceWidget()).
@@ -1256,22 +1306,22 @@ class SchemaOrgData_FormRenderer {
                 .'</fieldset>'."\n";
         }
 
-        if(in_array($widget, ['postal_address', 'opening_hours', 'faq_list', 'geo'], true)) {
+        if(in_array($widget, [self::WIDGET_POSTAL_ADDRESS, self::WIDGET_OPENING_HOURS, self::WIDGET_FAQ_LIST, self::WIDGET_GEO], true)) {
             $inner = match($widget) {
-                'postal_address' => $this->renderPostalAddressWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, is_array($inheritedValue) ? $inheritedValue : null, $inheritedLabel, $lang, $validator, $pluginLang),
-                'opening_hours'  => $this->renderOpeningHoursWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, $lang, $weekdayLang, $openingHoursHelper, $validator),
-                'faq_list'       => $this->renderFaqListWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, $lang),
-                'geo'            => $this->renderGeoWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, is_array($inheritedValue) ? $inheritedValue : null, $inheritedLabel, $lang, $validator),
+                self::WIDGET_POSTAL_ADDRESS => $this->renderPostalAddressWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, is_array($inheritedValue) ? $inheritedValue : null, $inheritedLabel, $lang, $validator, $pluginLang),
+                self::WIDGET_OPENING_HOURS  => $this->renderOpeningHoursWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, $lang, $weekdayLang, $openingHoursHelper, $validator),
+                self::WIDGET_FAQ_LIST       => $this->renderFaqListWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, $lang),
+                self::WIDGET_GEO            => $this->renderGeoWidget($scope, $name, $fieldSchema, is_array($value) ? $value : [], $idPrefix, is_array($inheritedValue) ? $inheritedValue : null, $inheritedLabel, $lang, $validator),
                 default          => '',
             };
 
-            if($widget === 'postal_address') {
+            if($widget === self::WIDGET_POSTAL_ADDRESS) {
                 $inner = '<p class="schemaOrgData-hint">'
                     .$lang->getLanguageHtml('hint_address_conditional_required')
                     .'</p>'."\n".$inner;
             }
 
-            if($widget === 'geo') {
+            if($widget === self::WIDGET_GEO) {
                 $inner = '<p class="schemaOrgData-hint">'
                     .$lang->getLanguageHtml('hint_geo_conditional_required')
                     .'</p>'."\n".$inner;
@@ -1297,7 +1347,7 @@ class SchemaOrgData_FormRenderer {
         // übergeordneten Ebene geerbt würde (siehe Task 1,
         // resolveInheritableFields()) - das Feld selbst bleibt leer.
         if($isEmpty and is_scalar($inheritedValue) and (string) $inheritedValue !== '') {
-            if($widget !== 'select') {
+            if($widget !== self::WIDGET_SELECT) {
                 $placeholderValue = (string) $inheritedValue;
                 if(($fieldSchema['format'] ?? null) === 'date-time') {
                     $placeholderValue = $validator->formatEventDateForDisplay($placeholderValue);
@@ -1310,8 +1360,8 @@ class SchemaOrgData_FormRenderer {
         $fieldName = 'schemaOrgData['.$scope.'][data]['.$name.']';
 
         $widgetHtml = match($widget) {
-            'select'   => $this->renderSelectWidget($fieldId, $fieldName, $fieldSchema, $value, $lang, $pluginLang),
-            'textarea' => $this->renderTextareaWidget($fieldId, $fieldName, $fieldSchema, $value),
+            self::WIDGET_SELECT   => $this->renderSelectWidget($fieldId, $fieldName, $fieldSchema, $value, $lang, $pluginLang),
+            self::WIDGET_TEXTAREA => $this->renderTextareaWidget($fieldId, $fieldName, $fieldSchema, $value),
             default    => $this->renderTextWidget($fieldId, $fieldName, $fieldSchema, $value, $this->buildValidationAttrs($scope, $name, $fieldSchema, $rootSchema, $idPrefix, $lang)),
         };
 

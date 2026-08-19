@@ -16,6 +16,20 @@
 ***************************************************************/
 class SchemaOrgData_Validator {
 
+    /**
+     * Bindung an das Widget-Vokabular aus
+     * SchemaOrgData_SchemaRepository - das Literal steht dort an einer Stelle,
+     * hier nur der Verweis darauf.
+     */
+    private const WIDGET_TEXT                    = SchemaOrgData_SchemaRepository::WIDGET_TEXT;
+    private const WIDGET_POSTAL_ADDRESS          = SchemaOrgData_SchemaRepository::WIDGET_POSTAL_ADDRESS;
+    private const WIDGET_PLACE                   = SchemaOrgData_SchemaRepository::WIDGET_PLACE;
+    private const WIDGET_OPENING_HOURS           = SchemaOrgData_SchemaRepository::WIDGET_OPENING_HOURS;
+    private const WIDGET_GEO                     = SchemaOrgData_SchemaRepository::WIDGET_GEO;
+    private const WIDGET_FAQ_LIST                = SchemaOrgData_SchemaRepository::WIDGET_FAQ_LIST;
+    private const WIDGET_ID_REFERENCE            = SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE;
+    private const WIDGET_ID_REFERENCE_OR_LITERAL = SchemaOrgData_SchemaRepository::WIDGET_ID_REFERENCE_OR_LITERAL;
+
     /***************************************************************
     *
     * Validiert Formulardaten serverseitig gegen ein JSON-Schema.
@@ -45,7 +59,7 @@ class SchemaOrgData_Validator {
             // id_reference_or_literal verwaltet eigene Pflichtprüfung in validateFormData().
             $propSchema = $schemaRepository->resolveSchemaRef($schema['properties'][$requiredProperty] ?? [], $schema);
             $widget = $propSchema['ui:widget'] ?? '';
-            if($widget === 'id_reference' or $widget === 'id_reference_or_literal') {
+            if($widget === self::WIDGET_ID_REFERENCE or $widget === self::WIDGET_ID_REFERENCE_OR_LITERAL) {
                 continue;
             }
 
@@ -94,12 +108,12 @@ class SchemaOrgData_Validator {
 
         foreach($schema['properties'] ?? [] as $name => $fieldSchema) {
             $fieldSchema = $schemaRepository->resolveSchemaRef($fieldSchema, $schema);
-            $widget = $fieldSchema['ui:widget'] ?? 'text';
+            $widget = $fieldSchema['ui:widget'] ?? self::WIDGET_TEXT;
             $required = (bool) ($fieldSchema['ui:required'] ?? false);
             $label = $lang->getLanguageValue($fieldSchema['ui:label'] ?? $name);
             $value = $formData[$name] ?? null;
 
-            if($widget === 'postal_address') {
+            if($widget === self::WIDGET_POSTAL_ADDRESS) {
                 $inheritableAddress = is_array($inheritableData[$name] ?? null) ? $inheritableData[$name] : [];
                 $errors = array_merge($errors, $this->validatePostalAddressData(
                     is_array($value) ? $value : [], $fieldSchema, $inheritableAddress, $lang
@@ -107,7 +121,7 @@ class SchemaOrgData_Validator {
                 continue;
             }
 
-            if($widget === 'place') {
+            if($widget === self::WIDGET_PLACE) {
                 // Wiederverwendung von validatePostalAddressData() für die
                 // verschachtelte Adresse - keine eigene Validierungslogik.
                 $properties = $fieldSchema['properties'] ?? [];
@@ -130,7 +144,7 @@ class SchemaOrgData_Validator {
                 continue;
             }
 
-            if($widget === 'opening_hours') {
+            if($widget === self::WIDGET_OPENING_HOURS) {
                 $days = SchemaOrgData_OpeningHoursHelper::resolveDays($fieldSchema);
                 $perDay = is_array($value) ? $value : [];
                 foreach($days as $day) {
@@ -157,12 +171,12 @@ class SchemaOrgData_Validator {
                 continue;
             }
 
-            if($widget === 'geo') {
+            if($widget === self::WIDGET_GEO) {
                 $errors = array_merge($errors, $this->validateGeoPair(is_array($value) ? $value : [], $lang));
                 continue;
             }
 
-            if($widget === 'faq_list') {
+            if($widget === self::WIDGET_FAQ_LIST) {
                 if($required and !$this->hasFaqEntry(is_array($value) ? $value : [])) {
                     // Pflichtfeld-Fehler entfällt, wenn von einer übergeordneten
                     // Ebene ein nicht-leeres FAQ-Array geerbt wird.
@@ -174,14 +188,14 @@ class SchemaOrgData_Validator {
                 continue;
             }
 
-            if($widget === 'id_reference') {
+            if($widget === self::WIDGET_ID_REFERENCE) {
                 // Wird zur Build-Zeit automatisch emittiert (buildJsonLdScript()) -
                 // schreibgeschützte Info-Anzeige ohne POST-Wert per Design
                 // (siehe renderField()), analog zum Skip in validateAgainstSchema().
                 continue;
             }
 
-            if($widget === 'id_reference_or_literal') {
+            if($widget === self::WIDGET_ID_REFERENCE_OR_LITERAL) {
                 $stored = is_array($value) ? $value : [];
                 $mode = (string) ($stored['_mode'] ?? 'reference');
 
