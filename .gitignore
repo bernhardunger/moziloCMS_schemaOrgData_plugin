@@ -17,3 +17,7 @@ plugins/schemaOrgData.zip
 # analog zu CLAUDE.md/doc-dev-local/TODO.md bewusst nicht getrackt:
 tests/RCLaufRueckmeldung_accountingserviceusecase.xlsx
 
+# Statische Analyse: lokale Config, Baseline und Caches
+phpstan.local.neon
+phpstan-baseline.neon
+.deptrac.cache
