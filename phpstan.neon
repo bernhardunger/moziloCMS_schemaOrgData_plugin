@@ -1,12 +1,34 @@
 parameters:
-    level: 0
+    level: 5
     phpVersion:
         min: 80100
         max: 80499
     paths:
         - plugins/schemaOrgData
+        - tests
     bootstrapFiles:
         - phpstan-bootstrap.php
     dynamicConstantNames:
         - CAT_REQUEST
         - PAGE_REQUEST
+    ignoreErrors:
+        # Der Kern setzt PLUGINADMIN nur im Admin-Kontext. phpstan-bootstrap.php
+        # definiert die Konstante bewusst nicht, damit die defined()-Zweige
+        # offen bleiben; der Preis ist diese eine Meldung.
+        -
+            message: '#^Constant PLUGINADMIN not found\.$#'
+            path: plugins/schemaOrgData/lib/SchemaOrgData_AdminController.php
+            count: 1
+        # $rangeStart wird per Referenz in eine Closure gebunden und erst in der
+        # Schleife darunter belegt. PHPStan nimmt den Typ am Ort der
+        # Closure-Definition und hält die Null-Prüfung deshalb für immer wahr.
+        # Wäre sie es, lieferte buildOpeningHoursArray() stets ein leeres
+        # Array — OpeningHoursValidatorTest widerlegt das.
+        -
+            message: '#^Strict comparison using === between null and null will always evaluate to true\.$#'
+            path: plugins/schemaOrgData/lib/SchemaOrgData_OpeningHoursHelper.php
+            count: 1
+        -
+            message: '#^Unreachable statement - code above always terminates\.$#'
+            path: plugins/schemaOrgData/lib/SchemaOrgData_OpeningHoursHelper.php
+            count: 1
