@@ -55,6 +55,18 @@ class SchemaOrgData_PersonsRegistryService {
     public const SCHEMA_TYPE_PERSON = 'Person';
     public const PREFIX_PERSON      = 'person-';
 
+    /**
+     * Bindung an SchemaOrgData_Validator - das Literal steht dort an einer
+     * Stelle, hier nur der Verweis darauf.
+     */
+    private const SHARED_PATTERN_URL_SCHEME = SchemaOrgData_Validator::SHARED_PATTERN_URL_SCHEME;
+
+    /**
+     * Muster der Sortiernummer. Steht wortgleich in js/validator.js und
+     * wird von dort aus bewacht.
+     */
+    private const SHARED_PATTERN_SORT_ORDER = '/^-?[0-9]+$/';
+
     private const STATUSES = [self::STATUS_ACTIVE, self::STATUS_INACTIVE];
 
     /**
@@ -272,7 +284,7 @@ class SchemaOrgData_PersonsRegistryService {
         ];
 
         $imageRaw = trim(strip_tags($this->scalarFieldValue($raw['image'] ?? null)));
-        $result['image'] = (preg_match('#^https?://#i', $imageRaw) === 1)
+        $result['image'] = (preg_match(self::SHARED_PATTERN_URL_SCHEME, $imageRaw) === 1)
             ? $imageRaw
             : $this->sanitizeRelativeMediaPath($imageRaw);
 
@@ -298,7 +310,7 @@ class SchemaOrgData_PersonsRegistryService {
         $result['status'] = in_array($status, self::STATUSES, true) ? $status : self::STATUS_ACTIVE;
 
         $sortOrderRaw = trim($this->scalarFieldValue($raw['sortOrder'] ?? null));
-        $result['sortOrder'] = ($sortOrderRaw !== '' and preg_match('/^-?[0-9]+$/', $sortOrderRaw) === 1)
+        $result['sortOrder'] = ($sortOrderRaw !== '' and preg_match(self::SHARED_PATTERN_SORT_ORDER, $sortOrderRaw) === 1)
             ? (int) $sortOrderRaw
             : self::DEFAULT_SORT_ORDER;
 
@@ -352,7 +364,7 @@ class SchemaOrgData_PersonsRegistryService {
         }
 
         $image = (string) ($sanitized['image'] ?? '');
-        if($image !== '' and preg_match('#^https?://#i', $image) === 1) {
+        if($image !== '' and preg_match(self::SHARED_PATTERN_URL_SCHEME, $image) === 1) {
             $result = $validator->validateUrl($image, $lang);
             if($result['status'] === 'error') {
                 $errors[] = $result['message'];
@@ -376,7 +388,7 @@ class SchemaOrgData_PersonsRegistryService {
     *
     ***************************************************************/
     public function checkImageAvailability(string $image, Language $lang, SchemaOrgData_Validator $validator, SchemaOrgData_UrlHelper $urlHelper): array {
-        if($image === '' or preg_match('#^https?://#i', $image) === 1) {
+        if($image === '' or preg_match(self::SHARED_PATTERN_URL_SCHEME, $image) === 1) {
             return ['status' => null, 'message' => null];
         }
 
@@ -568,7 +580,7 @@ class SchemaOrgData_PersonsRegistryService {
     *
     ***************************************************************/
     public function resolveAbsoluteImageUrl(string $image, SchemaOrgData_UrlHelper $urlHelper): string {
-        if($image === '' or preg_match('#^https?://#i', $image) === 1) {
+        if($image === '' or preg_match(self::SHARED_PATTERN_URL_SCHEME, $image) === 1) {
             return $image;
         }
 

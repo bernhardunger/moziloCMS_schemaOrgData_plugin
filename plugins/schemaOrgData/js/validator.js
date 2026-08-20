@@ -26,6 +26,21 @@
     var NON_ASCII_PATTERN = /[^\x00-\x7F]/;
 
     /**
+     * Deutsches Datumsformat, optional mit Uhrzeit. Wortgleich zu
+     * SchemaOrgData_Validator::SHARED_PATTERN_DATE_DE (PHP); ein Waechtertest
+     * haelt beide Fassungen gegeneinander. Ohne g-Flag und damit
+     * zustandslos zwischen den Aufrufern teilbar.
+     */
+    var DATE_DE_PATTERN = /^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/;
+
+    /**
+     * Zeitformat "HH:MM". Wortgleich zu
+     * SchemaOrgData_Validator::SHARED_PATTERN_TIME (PHP), ebenfalls bewacht.
+     * Ohne g-Flag und damit zustandslos teilbar.
+     */
+    var TIME_PATTERN = /^[0-9]{2}:[0-9]{2}$/;
+
+    /**
      * Prüft eine URL wie SchemaOrgData_Validator::validateUrl() (PHP):
      * FILTER_VALIDATE_URL-Kern (hier über "new URL()" nachgebildet) plus
      * "^https?://"-Vorfilter. Zusätzlich werden Nicht-ASCII-Zeichen
@@ -672,7 +687,7 @@
             return { status: null, message: null };
         }
 
-        var deMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/);
+        var deMatch = trimmed.match(DATE_DE_PATTERN);
         if (deMatch && isValidCalendarDate(parseInt(deMatch[3], 10), parseInt(deMatch[2], 10), parseInt(deMatch[1], 10))) {
             return { status: 'ok', message: null };
         }
@@ -697,7 +712,7 @@
     function parseEventDateValue(value) {
         var trimmed = (value || '').trim();
 
-        var deMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/);
+        var deMatch = trimmed.match(DATE_DE_PATTERN);
         if (deMatch) {
             var day = parseInt(deMatch[1], 10);
             var month = parseInt(deMatch[2], 10) - 1;
@@ -843,7 +858,7 @@
      * @returns {boolean}
      */
     function isValidTimeFormat(value) {
-        return /^[0-9]{2}:[0-9]{2}$/.test((value || '').trim());
+        return TIME_PATTERN.test((value || '').trim());
     }
 
     /**
@@ -866,9 +881,7 @@
             return { status: 'error', message: getMessages().openingHoursIncomplete || null };
         }
 
-        var pattern = /^[0-9]{2}:[0-9]{2}$/;
-
-        if (!pattern.test(from) || !pattern.test(to)) {
+        if (!TIME_PATTERN.test(from) || !TIME_PATTERN.test(to)) {
             return { status: 'error', message: getMessages().openingHoursFormat || null };
         }
 

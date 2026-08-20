@@ -271,6 +271,28 @@ final class PhpJsParityTest extends TestCase {
         return $werte;
     }
 
+    /**
+     * Zerlegt ein PHP-Muster in seinen Rumpf, ohne Delimiter und Flags.
+     *
+     * Verglichen wird nur der Rumpf. Die Flags bleiben bewusst draussen:
+     * JavaScript braucht `g`, wo `preg_replace()` ohnehin global ersetzt,
+     * und ein Vergleich meldete dort eine Abweichung, die keine ist. Der
+     * Preis ist benannt statt verschwiegen - eine Flag-Drift, etwa ein
+     * verlorenes `i` am URL-Schema, faengt dieser Waechter nicht.
+     */
+    private function regexRumpf(string $muster): string {
+        $delimiter = $muster[0];
+        $ende = strrpos($muster, $delimiter);
+
+        $this->assertGreaterThan(
+            0,
+            $ende,
+            'Muster ohne schliessenden Delimiter: '.$muster
+        );
+
+        return substr($muster, 1, $ende - 1);
+    }
+
     // -----------------------------------------------------------
     // ID des Debug-Datenblocks
     // -----------------------------------------------------------
@@ -480,5 +502,67 @@ final class PhpJsParityTest extends TestCase {
             'Schlüssel ohne Verbraucher in '.self::PHP_ADMIN_CONTROLLER.': '
                 .implode(', ', $ohneVerbraucher)
         );
+    }
+
+    // -----------------------------------------------------------
+    // Validierungsmuster
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Mengenwaechter ueber die Validierungsmuster, die PHP und
+    * JavaScript wortgleich fuehren muessen. Beide Seiten pruefen
+    * denselben Wert, keine kennt die andere: Bleibt eine bei einer
+    * Anforderungsaenderung zurueck, meldet die Client-Pruefung gruen,
+    * waehrend der Server ablehnt - oder umgekehrt. Der Nutzer sieht ein
+    * Formular, das sich selbst widerspricht.
+    *
+    * Das Praefix SHARED_PATTERN_ ist die Zusage, dass eine Gegenstelle
+    * existiert; der Waechter sammelt genau darueber und deckt damit auch
+    * jede kuenftige Konstante ab, ohne dass ihn jemand nachzieht. Nach
+    * Wert entdoppelt, weil eine Klasse die Konstante einer anderen binden
+    * darf.
+    *
+    * Geprueft wird das Vorkommen des Rumpfes, nicht seine Bindung an
+    * eine bestimmte Stelle: Sechs der Muster stehen inline und haben
+    * keine Deklaration, an der sich ankern liesse. Wer den Rumpf in eine
+    * unbenutzte Variable verschoebe und der bewachten Stelle einen
+    * anderen Wert gaebe, kaeme durch. Eine gewoehnliche Drift - jemand
+    * aendert das Muster - entfernt den alten Rumpf und faellt auf.
+    *
+    * Gefordert ist **genau ein** Vorkommen je Rumpf, nicht mindestens
+    * eines. Damit haelt der Waechter zugleich die seitengleiche
+    * Doppelung fern: Eine zweite Kopie in derselben Datei wuerde sonst
+    * neben der bewachten stehen und unbemerkt driften.
+    *
+    ***************************************************************/
+    function testValidierungsmusterStehenInBeidenSprachenGleich(): void {
+        $datei = self::JS_VALIDATOR;
+        $code  = $this->nurCode($this->jsQuelle($datei));
+
+        $muster = array_unique(array_merge(
+            $this->konstantenMitPraefix('SchemaOrgData_Validator', 'SHARED_PATTERN_'),
+            $this->konstantenMitPraefix(
+                'SchemaOrgData_PersonsRegistryService',
+                'SHARED_PATTERN_'
+            )
+        ));
+        sort($muster);
+
+        $this->assertNotEmpty(
+            $muster,
+            'Keine SHARED_PATTERN_-Konstante gefunden - Praefix umbenannt?'
+        );
+
+        foreach($muster as $phpMuster) {
+            $rumpf = $this->regexRumpf($phpMuster);
+            $this->assertSame(
+                1,
+                substr_count($code, $rumpf),
+                'PHP-Muster '.$phpMuster.' (Rumpf: '.$rumpf.') steht '
+                    .substr_count($code, $rumpf).'-mal im Code von '.$datei
+                    .', erwartet genau einmal'
+            );
+        }
     }
 }
