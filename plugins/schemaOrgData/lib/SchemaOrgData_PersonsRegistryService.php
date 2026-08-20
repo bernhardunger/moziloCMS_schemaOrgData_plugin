@@ -358,7 +358,7 @@ class SchemaOrgData_PersonsRegistryService {
         $url = (string) ($sanitized['url'] ?? '');
         if($url !== '') {
             $result = $validator->validateUrl($url, $lang);
-            if($result['status'] === 'error') {
+            if($result['status'] === SchemaOrgData_Validator::SHARED_STATUS_ERROR) {
                 $errors[] = $result['message'];
             }
         }
@@ -366,7 +366,7 @@ class SchemaOrgData_PersonsRegistryService {
         $image = (string) ($sanitized['image'] ?? '');
         if($image !== '' and preg_match(self::SHARED_PATTERN_URL_SCHEME, $image) === 1) {
             $result = $validator->validateUrl($image, $lang);
-            if($result['status'] === 'error') {
+            if($result['status'] === SchemaOrgData_Validator::SHARED_STATUS_ERROR) {
                 $errors[] = $result['message'];
             }
         }

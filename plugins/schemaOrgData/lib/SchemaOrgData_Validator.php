@@ -71,6 +71,22 @@ class SchemaOrgData_Validator {
     public  const SHARED_PATTERN_URL_SCHEME  = '#^https?://#i';
     private const SHARED_PATTERN_TIME        = '/^[0-9]{2}:[0-9]{2}$/';
 
+    /**
+     * Statuswerte einer Feldpruefung. Sie reisen als Wert in
+     * ['status'] und landen ungeprueft in einem CSS-Klassennamen
+     * (SchemaOrgData_FormRenderer::SHARED_CLASS_FEEDBACK); ein Vertipper
+     * erzeugt eine Klasse ohne Regel, die Meldung erscheint in
+     * Standardfarbe statt rot - sichtbar nur im Browser.
+     *
+     * js/validator.js fuehrt dieselben drei Werte und einen vierten,
+     * 'info', den nur die AJV-Meldung dort erzeugt. Er ist deshalb kein
+     * geteilter Wert und steht nicht unter diesem Praefix; der Waechter
+     * kennt ihn als Ausnahme.
+     */
+    public const SHARED_STATUS_OK      = 'ok';
+    public const SHARED_STATUS_WARNING = 'warning';
+    public const SHARED_STATUS_ERROR   = 'error';
+
     /***************************************************************
     *
     * Validiert Formulardaten serverseitig gegen ein JSON-Schema.
@@ -195,12 +211,12 @@ class SchemaOrgData_Validator {
                     $to2   = (string) ($perDay[$day]['to2']   ?? '');
 
                     $result = $this->validateOpeningHoursTime($from, $to, $lang);
-                    if($result['status'] === 'error') {
+                    if($result['status'] === self::SHARED_STATUS_ERROR) {
                         $errors[] = $result['message'];
                     }
 
                     $result2 = $this->validateOpeningHoursTime($from2, $to2, $lang);
-                    if($result2['status'] === 'error') {
+                    if($result2['status'] === self::SHARED_STATUS_ERROR) {
                         $errors[] = $result2['message'];
                     }
 
@@ -309,11 +325,11 @@ class SchemaOrgData_Validator {
                 $format === 'date-time' => $this->validateEventDateInput($stringValue, $lang),
                 $name === 'telephone'   => $this->validateTelephone($stringValue, (string) ($formData['address']['addressCountry'] ?? 'DE'), $lang),
                 is_array($enum) and !in_array($stringValue, $enum, true)
-                    => ['status' => 'error', 'message' => $lang->getLanguageValue('error_invalid_format', $label)],
+                    => ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_invalid_format', $label)],
                 default                 => ['status' => null, 'message' => null],
             };
 
-            if($result['status'] === 'error') {
+            if($result['status'] === self::SHARED_STATUS_ERROR) {
                 $errors[] = $result['message'];
             }
         }
@@ -357,8 +373,8 @@ class SchemaOrgData_Validator {
         $endValue = trim((string) ($formData[$endField] ?? ''));
 
         if($startValue === '' or $endValue === ''
-            or $this->validateEventDateInput($startValue, $lang)['status'] === 'error'
-            or $this->validateEventDateInput($endValue, $lang)['status'] === 'error') {
+            or $this->validateEventDateInput($startValue, $lang)['status'] === self::SHARED_STATUS_ERROR
+            or $this->validateEventDateInput($endValue, $lang)['status'] === self::SHARED_STATUS_ERROR) {
             return null;
         }
 
@@ -384,10 +400,10 @@ class SchemaOrgData_Validator {
         }
 
         if(preg_match(self::SHARED_PATTERN_POSTAL_CODE, $value)) {
-            return ['status' => 'ok', 'message' => null];
+            return ['status' => self::SHARED_STATUS_OK, 'message' => null];
         }
 
-        return ['status' => 'error', 'message' => $lang->getLanguageValue('error_postal_code_format')];
+        return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_postal_code_format')];
     }
 
     /***************************************************************
@@ -409,10 +425,10 @@ class SchemaOrgData_Validator {
         $normalized = preg_replace(self::SHARED_PATTERN_PHONE_STRIP, '', $value);
 
         if(preg_match(self::SHARED_PATTERN_PHONE, $normalized)) {
-            return ['status' => 'ok', 'message' => null];
+            return ['status' => self::SHARED_STATUS_OK, 'message' => null];
         }
 
-        return ['status' => 'error', 'message' => $lang->getLanguageValue('error_telephone_format')];
+        return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_telephone_format')];
     }
 
     /***************************************************************
@@ -434,14 +450,14 @@ class SchemaOrgData_Validator {
         // konkretes Schema - "htto://..." oder "htxxxs://..." würden sonst
         // fälschlich als gültig durchgehen.
         if(filter_var($value, FILTER_VALIDATE_URL) === false or !preg_match(self::SHARED_PATTERN_URL_SCHEME, $value)) {
-            return ['status' => 'error', 'message' => $lang->getLanguageValue('error_url_invalid')];
+            return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_url_invalid')];
         }
 
         if(str_starts_with($value, 'http://')) {
-            return ['status' => 'warning', 'message' => $lang->getLanguageValue('warning_url_http')];
+            return ['status' => self::SHARED_STATUS_WARNING, 'message' => $lang->getLanguageValue('warning_url_http')];
         }
 
-        return ['status' => 'ok', 'message' => null];
+        return ['status' => self::SHARED_STATUS_OK, 'message' => null];
     }
 
     /***************************************************************
@@ -458,10 +474,10 @@ class SchemaOrgData_Validator {
         }
 
         if(filter_var($value, FILTER_VALIDATE_EMAIL) !== false) {
-            return ['status' => 'ok', 'message' => null];
+            return ['status' => self::SHARED_STATUS_OK, 'message' => null];
         }
 
-        return ['status' => 'error', 'message' => $lang->getLanguageValue('error_email_invalid')];
+        return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_email_invalid')];
     }
 
     /***************************************************************
@@ -484,18 +500,18 @@ class SchemaOrgData_Validator {
         }
 
         if(($from === '') !== ($to === '')) {
-            return ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_incomplete')];
+            return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_opening_hours_incomplete')];
         }
 
         if(!preg_match(self::SHARED_PATTERN_TIME, $from) or !preg_match(self::SHARED_PATTERN_TIME, $to)) {
-            return ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_format')];
+            return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_opening_hours_format')];
         }
 
         if($from >= $to) {
-            return ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_order')];
+            return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_opening_hours_order')];
         }
 
-        return ['status' => 'ok', 'message' => null];
+        return ['status' => self::SHARED_STATUS_OK, 'message' => null];
     }
 
     /***************************************************************
@@ -519,10 +535,10 @@ class SchemaOrgData_Validator {
 
         if(preg_match(self::SHARED_PATTERN_DATE_ISO, $value, $m)
             and checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
-            return ['status' => 'ok', 'message' => null];
+            return ['status' => self::SHARED_STATUS_OK, 'message' => null];
         }
 
-        return ['status' => 'error', 'message' => $lang->getLanguageValue('error_date_invalid')];
+        return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_date_invalid')];
     }
 
     /***************************************************************
@@ -548,10 +564,10 @@ class SchemaOrgData_Validator {
 
         if(preg_match(self::SHARED_PATTERN_DATE_DE, $value, $m)
             and checkdate((int) $m[2], (int) $m[1], (int) $m[3])) {
-            return ['status' => 'ok', 'message' => null];
+            return ['status' => self::SHARED_STATUS_OK, 'message' => null];
         }
 
-        return ['status' => 'error', 'message' => $lang->getLanguageValue('error_date_invalid')];
+        return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_date_invalid')];
     }
 
     /***************************************************************
@@ -641,10 +657,10 @@ class SchemaOrgData_Validator {
         }
 
         if(!is_numeric($value) or (float) $value < $min or (float) $value > $max) {
-            return ['status' => 'error', 'message' => $lang->getLanguageValue($errorKey)];
+            return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue($errorKey)];
         }
 
-        return ['status' => 'ok', 'message' => null];
+        return ['status' => self::SHARED_STATUS_OK, 'message' => null];
     }
 
     /** Validiert geo.latitude (-90 .. 90), siehe validateGeoCoordinate(). */
@@ -690,12 +706,12 @@ class SchemaOrgData_Validator {
         }
 
         $latResult = $this->validateGeoLatitude($latValue, $lang);
-        if($latResult['status'] === 'error') {
+        if($latResult['status'] === self::SHARED_STATUS_ERROR) {
             $errors[] = $latResult['message'];
         }
 
         $lonResult = $this->validateGeoLongitude($lonValue, $lang);
-        if($lonResult['status'] === 'error') {
+        if($lonResult['status'] === self::SHARED_STATUS_ERROR) {
             $errors[] = $lonResult['message'];
         }
 
@@ -724,14 +740,14 @@ class SchemaOrgData_Validator {
 
         if(isset($geo['latitude'])) {
             $result = $this->validateGeoLatitude((string) $geo['latitude'], $lang);
-            if($result['status'] === 'error') {
+            if($result['status'] === self::SHARED_STATUS_ERROR) {
                 $errors[] = $result['message'];
             }
         }
 
         if(isset($geo['longitude'])) {
             $result = $this->validateGeoLongitude((string) $geo['longitude'], $lang);
-            if($result['status'] === 'error') {
+            if($result['status'] === self::SHARED_STATUS_ERROR) {
                 $errors[] = $result['message'];
             }
         }
@@ -826,7 +842,7 @@ class SchemaOrgData_Validator {
         if($postalCode !== '') {
             $countryCode = (string) ($address['addressCountry'] ?? 'DE');
             $result = $this->validatePostalCode($postalCode, $countryCode, $lang);
-            if($result['status'] === 'error') {
+            if($result['status'] === self::SHARED_STATUS_ERROR) {
                 $errors[] = $result['message'];
             }
         }
@@ -853,7 +869,7 @@ class SchemaOrgData_Validator {
 
         foreach($urls as $url) {
             $result = $this->validateUrl((string) $url, $lang);
-            if($result['status'] === 'error') {
+            if($result['status'] === self::SHARED_STATUS_ERROR) {
                 $errors[] = $result['message'];
             }
         }
@@ -886,10 +902,10 @@ class SchemaOrgData_Validator {
         $fullPath = rtrim($mediaBaseDir, '/').'/'.$sanitizedRelativePath;
 
         if(is_file($fullPath)) {
-            return ['status' => 'ok', 'message' => null];
+            return ['status' => self::SHARED_STATUS_OK, 'message' => null];
         }
 
-        return ['status' => 'warning', 'message' => $lang->getLanguageValue('warning_person_image_not_found')];
+        return ['status' => self::SHARED_STATUS_WARNING, 'message' => $lang->getLanguageValue('warning_person_image_not_found')];
     }
 
     /***************************************************************

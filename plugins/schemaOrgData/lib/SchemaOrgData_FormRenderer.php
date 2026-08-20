@@ -25,6 +25,23 @@ class SchemaOrgData_FormRenderer {
     private const SCOPE_GLOBAL = SchemaOrgData_ScopeResolver::SCOPE_GLOBAL;
 
     /**
+     * Bindung an SchemaOrgData_Validator - die Literale stehen dort an
+     * einer Stelle, hier nur der Verweis darauf.
+     */
+    private const SHARED_STATUS_OK      = SchemaOrgData_Validator::SHARED_STATUS_OK;
+    private const SHARED_STATUS_WARNING = SchemaOrgData_Validator::SHARED_STATUS_WARNING;
+    private const SHARED_STATUS_ERROR   = SchemaOrgData_Validator::SHARED_STATUS_ERROR;
+
+    /**
+     * Klassenstamm der Feld-Rueckmeldung. Der Statuswert wird direkt
+     * angehaengt; js/validator.js baut denselben Namen und die
+     * CSS-Regeln in SchemaOrgData_AdminPageRenderer::getAdminCss()
+     * setzen darauf auf. Ein Waechter haelt beide Sprachen zusammen und
+     * prueft, dass jeder Statuswert eine CSS-Regel hat.
+     */
+    public const SHARED_CLASS_FEEDBACK = 'schemaOrgData-feedback schemaOrgData-feedback--';
+
+    /**
      * Name des HTML-Attributs, über das die Live-Validierung angesteuert
      * wird, und sein Wertevorrat. Der Renderer schreibt diese Werte in die
      * Ausgabe, js/validator.js liest sie zurück; sie stammen nicht aus den
@@ -105,7 +122,11 @@ class SchemaOrgData_FormRenderer {
     *
     ***************************************************************/
     public function renderValidationFeedback(array $result, ?string $feedbackId): string {
-        $icons = ['ok' => '&#9989;', 'warning' => '&#9888;&#65039;', 'error' => '&#10060;'];
+        $icons = [
+            self::SHARED_STATUS_OK      => '&#9989;',
+            self::SHARED_STATUS_WARNING => '&#9888;&#65039;',
+            self::SHARED_STATUS_ERROR   => '&#10060;',
+        ];
 
         if($result['status'] === null or !isset($icons[$result['status']])) {
             return '';
@@ -119,7 +140,8 @@ class SchemaOrgData_FormRenderer {
             ? ' id="'.htmlspecialchars($feedbackId, ENT_QUOTES, CHARSET).'"'
             : '';
 
-        return '<span'.$idAttr.' class="schemaOrgData-feedback schemaOrgData-feedback--'.$result['status'].'">'
+        return '<span'.$idAttr.' class="'.self::SHARED_CLASS_FEEDBACK
+            .$result['status'].'">'
             .$icons[$result['status']].$message.'</span>';
     }
 
@@ -734,7 +756,7 @@ class SchemaOrgData_FormRenderer {
         }
 
         if($ownValue === '') {
-            return ['status' => 'error', 'message' => $lang->getLanguageValue('error_geo_incomplete')];
+            return ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_geo_incomplete')];
         }
 
         return $isLatitude ? $validator->validateGeoLatitude($ownValue, $lang) : $validator->validateGeoLongitude($ownValue, $lang);
@@ -879,8 +901,8 @@ class SchemaOrgData_FormRenderer {
             // in js/validator.js). Der ursprüngliche Vergleich auf
             // status === null war unerreichbar, da diese Methode bei nicht-leeren
             // $from2/$to2-Werten nie null zurückliefert.
-            if($feedback2Result['status'] !== 'error' && $from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
-                $feedback2Result = ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_overlap')];
+            if($feedback2Result['status'] !== self::SHARED_STATUS_ERROR && $from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
+                $feedback2Result = ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_opening_hours_overlap')];
             }
             $feedback2 = $this->renderValidationFeedback($feedback2Result, $from2Id.'_feedback');
 
