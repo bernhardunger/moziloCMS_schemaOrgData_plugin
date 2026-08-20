@@ -41,6 +41,13 @@
     var TIME_PATTERN = /^[0-9]{2}:[0-9]{2}$/;
 
     /**
+     * Klassenstamm der Feld-Rueckmeldung. Wortgleich zu
+     * SchemaOrgData_FormRenderer::SHARED_CLASS_FEEDBACK (PHP), von
+     * einem Waechtertest dagegen gehalten.
+     */
+    var FEEDBACK_CLASS = 'schemaOrgData-feedback schemaOrgData-feedback--';
+
+    /**
      * Prüft eine URL wie SchemaOrgData_Validator::validateUrl() (PHP):
      * FILTER_VALIDATE_URL-Kern (hier über "new URL()" nachgebildet) plus
      * "^https?://"-Vorfilter. Zusätzlich werden Nicht-ASCII-Zeichen
@@ -1043,7 +1050,7 @@
 
         var icons = { ok: '✅', warning: '⚠️', error: '❌' };
         feedback.textContent = (icons[result.status] || '') + (result.message ? ' ' + result.message : '');
-        feedback.className = 'schemaOrgData-feedback schemaOrgData-feedback--' + result.status;
+        feedback.className = FEEDBACK_CLASS + result.status;
     }
 
     /**
@@ -1802,7 +1809,7 @@
         // AJV-Fehlermeldungen können Nutzereingaben enthalten (DOM-XSS-Schutz).
         function appendFeedbackSpan(status, text) {
             var span = document.createElement('span');
-            span.className = 'schemaOrgData-feedback schemaOrgData-feedback--' + status;
+            span.className = FEEDBACK_CLASS + status;
             span.textContent = text;
             feedback.appendChild(span);
         }

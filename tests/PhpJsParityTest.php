@@ -40,6 +40,7 @@ final class PhpJsParityTest extends TestCase {
     private const JS_VALIDATOR = 'js/validator.js';
     private const JS_DEBUG_WIDGET = 'js/debug-widget.js';
     private const PHP_ADMIN_CONTROLLER = 'lib/SchemaOrgData_AdminController.php';
+    private const PHP_ADMIN_PAGE_RENDERER = 'lib/SchemaOrgData_AdminPageRenderer.php';
 
     /**
      * Liest eine Quelldatei des Plugins als Text.
@@ -117,6 +118,21 @@ final class PhpJsParityTest extends TestCase {
         );
 
         return $matches[1][0];
+    }
+
+    /**
+     * Sammelt die Zuweisungen `var NAME = '...';` einer JS-Quelle.
+     *
+     * @return array<string, string> Bezeichner => Wert
+     */
+    private function jsZuweisungen(string $js): array {
+        preg_match_all(
+            '#var\s+([A-Z][A-Z0-9_]*)\s*=\s*\'([^\']*)\'\s*;#',
+            $this->nurCode($js),
+            $matches
+        );
+
+        return array_combine($matches[1], $matches[2]);
     }
 
     /**
@@ -564,5 +580,104 @@ final class PhpJsParityTest extends TestCase {
                     .', erwartet genau einmal'
             );
         }
+    }
+
+    // -----------------------------------------------------------
+    // Statuswerte und Klassenstamm der Feld-Rueckmeldung
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Mengenwaechter ueber die Statuswerte einer Feldpruefung. Sie
+    * landen ungeprueft in einem CSS-Klassennamen: Wer in PHP oder JS
+    * einen Wert vertippt, erzeugt eine Klasse ohne Regel, und die
+    * Meldung erscheint in Standardfarbe statt rot - sichtbar nur im
+    * Browser, von keinem Fachtest erfasst.
+    *
+    * `info` ist die dokumentierte Ausnahme: Diesen vierten Wert erzeugt
+    * ausschliesslich die AJV-Meldung in `js/validator.js`. PHP kann ihn
+    * nicht ausgeben, weil `renderValidationFeedback()` fuer jeden Wert
+    * ausserhalb seiner Icon-Liste Leerstring liefert. Er ist deshalb
+    * kein geteilter Wert und traegt kein SHARED_-Praefix.
+    *
+    ***************************************************************/
+    function testFeedbackStatuswerteDeckenSichMitDerJsSeite(): void {
+        $datei = self::JS_VALIDATOR;
+        $code  = $this->nurCode($this->jsQuelle($datei));
+
+        $php = $this->konstantenMitPraefix(
+            'SchemaOrgData_Validator',
+            'SHARED_STATUS_'
+        );
+        $this->assertSame(
+            ['error', 'ok', 'warning'],
+            $php,
+            'Erwartet: genau drei geteilte Statuswerte in PHP'
+        );
+
+        preg_match_all('#status:\s*\'(\w+)\'#', $code, $matches);
+        $js = array_values(array_unique($matches[1]));
+        sort($js);
+
+        $this->assertSame(
+            $php,
+            $js,
+            'PHP (SchemaOrgData_Validator::SHARED_STATUS_*): '.implode(', ', $php)
+                .' | JS ('.$datei.', erzeugte status-Werte): '.implode(', ', $js)
+        );
+
+        // Der vierte JS-Wert reist nicht ueber die Grenze, muss aber eine
+        // CSS-Regel haben wie die drei geteilten - sonst erschiene die
+        // AJV-Meldung farblos.
+        $css = $this->pluginQuelle(self::PHP_ADMIN_PAGE_RENDERER);
+        foreach(array_merge($php, ['info']) as $status) {
+            $this->assertStringContainsString(
+                'schemaOrgData-feedback--'.$status,
+                $css,
+                'Statuswert "'.$status.'" ohne CSS-Regel in '
+                    .self::PHP_ADMIN_PAGE_RENDERER
+            );
+        }
+    }
+
+    /***************************************************************
+    *
+    * Wertwaechter ueber den Klassenstamm, an den beide Seiten den
+    * Statuswert anhaengen. Er stand bis zu diesem Schritt zweimal im
+    * Code von `js/validator.js`; die Zuweisung ist die
+    * Zusammenfuehrung, dieser Waechter haelt sie fest.
+    *
+    ***************************************************************/
+    function testFeedbackKlassenstammStehtInBeidenSprachenGleich(): void {
+        $datei = self::JS_VALIDATOR;
+        $js    = $this->jsQuelle($datei);
+        $zuweisungen = $this->jsZuweisungen($js);
+
+        $this->assertArrayHasKey(
+            'FEEDBACK_CLASS',
+            $zuweisungen,
+            'Erwartet: eine Zuweisung var FEEDBACK_CLASS in '.$datei
+        );
+        $this->assertSame(
+            \SchemaOrgData_FormRenderer::SHARED_CLASS_FEEDBACK,
+            $zuweisungen['FEEDBACK_CLASS'],
+            'PHP (SchemaOrgData_FormRenderer::SHARED_CLASS_FEEDBACK): "'
+                .\SchemaOrgData_FormRenderer::SHARED_CLASS_FEEDBACK
+                .'" gegen JS ('.$datei.', var FEEDBACK_CLASS): "'
+                .$zuweisungen['FEEDBACK_CLASS'].'"'
+        );
+
+        // Genau einmal, nicht mindestens einmal: Die Zuweisung IST die
+        // G5-Zusammenfuehrung. Eine wieder eingeschmuggelte zweite Kopie
+        // stuende neben der bewachten und driftete unbemerkt.
+        $this->assertSame(
+            1,
+            substr_count(
+                $this->nurCode($js),
+                \SchemaOrgData_FormRenderer::SHARED_CLASS_FEEDBACK
+            ),
+            'Der Klassenstamm steht mehr als einmal im Code von '.$datei
+                .' - die Zusammenfuehrung ist rueckgaengig gemacht.'
+        );
     }
 }
