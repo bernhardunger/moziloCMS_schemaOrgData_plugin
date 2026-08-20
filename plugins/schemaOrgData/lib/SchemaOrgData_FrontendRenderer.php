@@ -36,6 +36,21 @@ class SchemaOrgData_FrontendRenderer {
     private const SCOPE_CATEGORY = SchemaOrgData_ScopeResolver::SCOPE_CATEGORY;
     private const SCOPE_PAGE     = SchemaOrgData_ScopeResolver::SCOPE_PAGE;
 
+    /**
+     * ID des JSON-Datenblocks, über den die Debug-Nutzlast das Widget
+     * erreicht. Diese Konstante ist die Quelle des Werts;
+     * js/debug-widget.js hält ihn als eigenes Literal
+     * `var DATA_ELEMENT_ID` und wird in tests/PhpJsParityTest.php dagegen
+     * gehalten. Transportiert wird der Wert nicht - ein zur Laufzeit
+     * konstanter Wert gehört in keinen Laufzeitkanal.
+     *
+     * Der abweichende Name auf der JS-Seite ist gewollt: Hier entstehen
+     * auch die echten JSON-LD-Blöcke, `DATA_ELEMENT_ID` allein wäre in
+     * dieser Klasse mehrdeutig. Öffentlich ausschließlich, damit der
+     * Wächter sie liest.
+     */
+    public const DEBUG_DATA_ELEMENT_ID = 'schemaOrgData-debug-data';
+
     /***************************************************************
     *
     * Rendert die JSON-LD-<script>-Blöcke für die aktuelle Frontend-
@@ -335,7 +350,7 @@ class SchemaOrgData_FrontendRenderer {
     *
     * Der erste Block trägt die Vorschau-Daten (Scope, Type,
     * formatiertes JSON je Block) als <script type="application/json">
-    * mit der ID "schemaOrgData-debug-data"; der Browser führt ihn nicht
+    * mit der ID aus DEBUG_DATA_ELEMENT_ID; der Browser führt ihn nicht
     * aus. Der zweite bindet js/debug-widget.js per src ein, mit
     * filemtime()-Cache-Buster wie die Admin-Assets. Trigger-Button,
     * Dialog und alle Kindelemente entstehen dort erst zur Laufzeit per
@@ -458,7 +473,7 @@ class SchemaOrgData_FrontendRenderer {
 
         $cacheBuster = $urlHelper->resolveAssetCacheBuster($pluginSelfDir, 'js/debug-widget.js');
 
-        $html  = '<script type="application/json" id="schemaOrgData-debug-data">'."\n";
+        $html  = '<script type="application/json" id="'.self::DEBUG_DATA_ELEMENT_ID.'">'."\n";
         $html .= $json."\n";
         $html .= '</script>'."\n";
         $html .= '<script src="'.$pluginSelfUrl.'js/debug-widget.js?v='.$cacheBuster.'"></script>'."\n";
