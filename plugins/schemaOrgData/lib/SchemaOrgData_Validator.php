@@ -46,8 +46,30 @@ class SchemaOrgData_Validator {
      * Die Zeitgruppen fangen ein, obwohl die reinen Prüfaufrufe sie nicht
      * lesen: so trägt ein Muster je Format die Prüfung und die Zerlegung.
      */
-    private const PATTERN_DATE_DE  = '/^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/';
-    private const PATTERN_DATE_ISO = '/^(\d{4})-(\d{2})-(\d{2})(?:T([01][0-9]|2[0-3]):([0-5][0-9]):[0-5][0-9](?:Z|[+-]\d{2}:\d{2}))?$/';
+    private const SHARED_PATTERN_DATE_DE  = '/^(\d{2})\.(\d{2})\.(\d{4})(?: ([01][0-9]|2[0-3]):([0-5][0-9]))?$/';
+    private const SHARED_PATTERN_DATE_ISO = '/^(\d{4})-(\d{2})-(\d{2})(?:T([01][0-9]|2[0-3]):([0-5][0-9]):[0-5][0-9](?:Z|[+-]\d{2}:\d{2}))?$/';
+
+    /**
+     * Muster der uebrigen Formatpruefungen. Alle stehen wortgleich in
+     * js/validator.js - ein Waechtertest haelt die Fassungen gegeneinander
+     * und laesst je Rumpf genau ein Vorkommen dort zu, damit keine zweite
+     * Kopie entsteht, die er nicht sieht.
+     *
+     * Das Praefix SHARED_PATTERN_ ist dabei die Zusage: Wer eine Konstante so
+     * benennt, sagt zu, dass es eine wortgleiche Gegenstelle in
+     * js/validator.js gibt. Ein Muster ohne JS-Seite gehoert anders
+     * benannt - der Waechter sammelt ueber genau dieses Praefix.
+     *
+     * SHARED_PATTERN_URL_SCHEME ist als einzige oeffentlich, weil
+     * SchemaOrgData_PersonsRegistryService sie bindet; die uebrigen kennt
+     * nur diese Klasse. Der Waechter liest sie per Reflection und braucht
+     * dafuer keine Sichtbarkeit.
+     */
+    private const SHARED_PATTERN_POSTAL_CODE = '/^[0-9]{5}$/';
+    private const SHARED_PATTERN_PHONE_STRIP = '/[^0-9+]/';
+    private const SHARED_PATTERN_PHONE       = '/^(\+|00)[1-9][0-9]{6,14}$/';
+    public  const SHARED_PATTERN_URL_SCHEME  = '#^https?://#i';
+    private const SHARED_PATTERN_TIME        = '/^[0-9]{2}:[0-9]{2}$/';
 
     /***************************************************************
     *
@@ -361,7 +383,7 @@ class SchemaOrgData_Validator {
             return ['status' => null, 'message' => null];
         }
 
-        if(preg_match('/^[0-9]{5}$/', $value)) {
+        if(preg_match(self::SHARED_PATTERN_POSTAL_CODE, $value)) {
             return ['status' => 'ok', 'message' => null];
         }
 
@@ -372,7 +394,7 @@ class SchemaOrgData_Validator {
     *
     * Validiert eine Telefonnummer (E.164, alle Länder). Die
     * Eingabe wird zunächst normalisiert
-    * (preg_replace('/[^0-9+]/', '', $input)) und dann gegen ein
+    * (preg_replace() gegen SHARED_PATTERN_PHONE_STRIP) und dann gegen ein
     * vereinfachtes E.164-Format geprüft.
     *
     * @param Language $lang für die Fehlermeldung
@@ -384,9 +406,9 @@ class SchemaOrgData_Validator {
             return ['status' => null, 'message' => null];
         }
 
-        $normalized = preg_replace('/[^0-9+]/', '', $value);
+        $normalized = preg_replace(self::SHARED_PATTERN_PHONE_STRIP, '', $value);
 
-        if(preg_match('/^(\+|00)[1-9][0-9]{6,14}$/', $normalized)) {
+        if(preg_match(self::SHARED_PATTERN_PHONE, $normalized)) {
             return ['status' => 'ok', 'message' => null];
         }
 
@@ -411,7 +433,7 @@ class SchemaOrgData_Validator {
         // FILTER_VALIDATE_URL prüft nur allgemeine URI-Syntax, kein
         // konkretes Schema - "htto://..." oder "htxxxs://..." würden sonst
         // fälschlich als gültig durchgehen.
-        if(filter_var($value, FILTER_VALIDATE_URL) === false or !preg_match('#^https?://#i', $value)) {
+        if(filter_var($value, FILTER_VALIDATE_URL) === false or !preg_match(self::SHARED_PATTERN_URL_SCHEME, $value)) {
             return ['status' => 'error', 'message' => $lang->getLanguageValue('error_url_invalid')];
         }
 
@@ -465,7 +487,7 @@ class SchemaOrgData_Validator {
             return ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_incomplete')];
         }
 
-        if(!preg_match('/^[0-9]{2}:[0-9]{2}$/', $from) or !preg_match('/^[0-9]{2}:[0-9]{2}$/', $to)) {
+        if(!preg_match(self::SHARED_PATTERN_TIME, $from) or !preg_match(self::SHARED_PATTERN_TIME, $to)) {
             return ['status' => 'error', 'message' => $lang->getLanguageValue('error_opening_hours_format')];
         }
 
@@ -495,7 +517,7 @@ class SchemaOrgData_Validator {
             return ['status' => null, 'message' => null];
         }
 
-        if(preg_match(self::PATTERN_DATE_ISO, $value, $m)
+        if(preg_match(self::SHARED_PATTERN_DATE_ISO, $value, $m)
             and checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
             return ['status' => 'ok', 'message' => null];
         }
@@ -524,7 +546,7 @@ class SchemaOrgData_Validator {
             return ['status' => null, 'message' => null];
         }
 
-        if(preg_match(self::PATTERN_DATE_DE, $value, $m)
+        if(preg_match(self::SHARED_PATTERN_DATE_DE, $value, $m)
             and checkdate((int) $m[2], (int) $m[1], (int) $m[3])) {
             return ['status' => 'ok', 'message' => null];
         }
@@ -553,7 +575,7 @@ class SchemaOrgData_Validator {
     public function normalizeEventDateInput(string $value): string {
         $value = trim($value);
 
-        if(preg_match(self::PATTERN_DATE_DE, $value, $m)) {
+        if(preg_match(self::SHARED_PATTERN_DATE_DE, $value, $m)) {
             $isoDate = $m[3] . '-' . $m[2] . '-' . $m[1];
 
             if(!isset($m[4])) {
@@ -586,7 +608,7 @@ class SchemaOrgData_Validator {
     public function formatEventDateForDisplay(string $isoValue): string {
         $isoValue = trim($isoValue);
 
-        if(preg_match(self::PATTERN_DATE_ISO, $isoValue, $m)) {
+        if(preg_match(self::SHARED_PATTERN_DATE_ISO, $isoValue, $m)) {
             $germanDate = $m[3] . '.' . $m[2] . '.' . $m[1];
 
             if(!isset($m[4])) {
