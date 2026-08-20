@@ -41,6 +41,8 @@ class SchemaOrgData_PersonsAdminRenderer {
      */
     private const ATTR_VALIDATE        = SchemaOrgData_FormRenderer::ATTR_VALIDATE;
     private const VALIDATE_PERSON_SLUG = SchemaOrgData_FormRenderer::VALIDATE_PERSON_SLUG;
+    private const SHARED_ID_SUFFIX_FEEDBACK  =
+        SchemaOrgData_FormRenderer::SHARED_ID_SUFFIX_FEEDBACK;
     private const VALIDATE_SORT_ORDER  = SchemaOrgData_FormRenderer::VALIDATE_SORT_ORDER;
     /**
      * Bindung an die ui:-Schluesselnamen aus
@@ -352,7 +354,7 @@ class SchemaOrgData_PersonsAdminRenderer {
         $fieldId = 'schemaOrgData_persons_'.$idPrefix.'_image';
         $fieldName = 'schemaOrgData_persons_data[image]';
         $feedback = ($value !== '')
-            ? $formRenderer->renderValidationFeedback($registryService->checkImageAvailability($value, $lang, $validator, $urlHelper), $fieldId.'_feedback')
+            ? $formRenderer->renderValidationFeedback($registryService->checkImageAvailability($value, $lang, $validator, $urlHelper), $fieldId.self::SHARED_ID_SUFFIX_FEEDBACK)
             : '';
 
         return '<div class="c-content schemaOrgData-field-row">'

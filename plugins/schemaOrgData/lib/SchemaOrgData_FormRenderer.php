@@ -42,6 +42,31 @@ class SchemaOrgData_FormRenderer {
     public const SHARED_CLASS_FEEDBACK = 'schemaOrgData-feedback schemaOrgData-feedback--';
 
     /**
+     * Suffix der Element-ID einer Feld-Rueckmeldung: Die ID des
+     * Rueckmeldungs-Elements ist die Feld-ID plus dieses Suffix.
+     * js/validator.js bildet dieselbe Ableitung an vierzehn Stellen;
+     * tests/PhpJsParityTest.php haelt beide Seiten gegeneinander und
+     * laesst dort kein zweites angehaengtes Suffix zu.
+     *
+     * Oeffentlich, weil SchemaOrgData_PersonsAdminRenderer sie bindet.
+     */
+    public const SHARED_ID_SUFFIX_FEEDBACK = '_feedback';
+
+    /**
+     * Suffixe der Zeitfenster im Oeffnungszeiten-Widget. js/validator.js
+     * leitet aus ihnen eine Rolle ab, teils per regulaerem Ausdruck ueber
+     * die fertige Element-ID - deshalb queren sie die Sprachgrenze,
+     * obwohl sie nur Namensbestandteile sind.
+     *
+     * '_to2' steht hier bewusst nicht: JavaScript baut diese ID nirgends,
+     * es springt vom zweiten Von-Feld auf das erste Bis-Feld zurueck. Ohne
+     * Gegenstelle traegt ein Wert kein SHARED_-Praefix.
+     */
+    private const SHARED_ID_SLOT_FROM  = '_from';
+    private const SHARED_ID_SLOT_TO    = '_to';
+    private const SHARED_ID_SLOT_FROM2 = '_from2';
+
+    /**
      * Name des HTML-Attributs, über das die Live-Validierung angesteuert
      * wird, und sein Wertevorrat. Der Renderer schreibt diese Werte in die
      * Ausgabe, js/validator.js liest sie zurück; sie stammen nicht aus den
@@ -592,7 +617,7 @@ class SchemaOrgData_FormRenderer {
         $feedback = '';
         if($subName === 'postalCode' and $subValue !== null and $subValue !== '') {
             $countryCode = (string) ($value['addressCountry'] ?? 'DE');
-            $feedback = $this->renderValidationFeedback($validator->validatePostalCode((string) $subValue, $countryCode, $lang), $fieldId.'_feedback');
+            $feedback = $this->renderValidationFeedback($validator->validatePostalCode((string) $subValue, $countryCode, $lang), $fieldId.self::SHARED_ID_SUFFIX_FEEDBACK);
         }
 
         return ['fieldId' => $fieldId, 'label' => $label, 'badge' => $badge, 'widget' => $widgetHtml, 'feedback' => $feedback];
@@ -709,10 +734,10 @@ class SchemaOrgData_FormRenderer {
         ]);
 
         $latFeedback = $this->renderValidationFeedback(
-            $this->resolveGeoFieldFeedback($latString, $lonString, true, $validator, $lang), $latId.'_feedback'
+            $this->resolveGeoFieldFeedback($latString, $lonString, true, $validator, $lang), $latId.self::SHARED_ID_SUFFIX_FEEDBACK
         );
         $lonFeedback = $this->renderValidationFeedback(
-            $this->resolveGeoFieldFeedback($lonString, $latString, false, $validator, $lang), $lonId.'_feedback'
+            $this->resolveGeoFieldFeedback($lonString, $latString, false, $validator, $lang), $lonId.self::SHARED_ID_SUFFIX_FEEDBACK
         );
 
         $latLabel = $lang->getLanguageHtml($latSchema[self::UI_LABEL] ?? 'latitude');
@@ -866,9 +891,9 @@ class SchemaOrgData_FormRenderer {
 
         foreach($days as $day) {
             $dayLabel = isset($dayLabelKeys[$day]) ? $weekdayLang->getLanguageHtml($dayLabelKeys[$day]) : htmlspecialchars($day, ENT_QUOTES, CHARSET);
-            $fromId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_from';
-            $toId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_to';
-            $from2Id = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_from2';
+            $fromId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.self::SHARED_ID_SLOT_FROM;
+            $toId = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.self::SHARED_ID_SLOT_TO;
+            $from2Id = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.self::SHARED_ID_SLOT_FROM2;
             $to2Id = 'schemaOrgData_'.$idPrefix.'_'.$name.'_'.$day.'_to2';
             $fromName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][from]';
             $toName = 'schemaOrgData['.$scope.'][data]['.$name.']['.$day.'][to]';
@@ -892,7 +917,7 @@ class SchemaOrgData_FormRenderer {
                 self::ATTR_VALIDATE => self::VALIDATE_OPENING_HOURS, 'data-pair' => $from2Id, 'maxlength' => '5',
             ]);
 
-            $feedback = $this->renderValidationFeedback($validator->validateOpeningHoursTime($from, $to, $lang), $fromId.'_feedback');
+            $feedback = $this->renderValidationFeedback($validator->validateOpeningHoursTime($from, $to, $lang), $fromId.self::SHARED_ID_SUFFIX_FEEDBACK);
 
             $feedback2Result = $validator->validateOpeningHoursTime($from2, $to2, $lang);
             // Eigener Format-/Reihenfolgefehler der Pause hat Vorrang: nur wenn
@@ -904,7 +929,7 @@ class SchemaOrgData_FormRenderer {
             if($feedback2Result['status'] !== self::SHARED_STATUS_ERROR && $from2 !== '' && $to2 !== '' && $to !== '' && $from2 < $to) {
                 $feedback2Result = ['status' => self::SHARED_STATUS_ERROR, 'message' => $lang->getLanguageValue('error_opening_hours_overlap')];
             }
-            $feedback2 = $this->renderValidationFeedback($feedback2Result, $from2Id.'_feedback');
+            $feedback2 = $this->renderValidationFeedback($feedback2Result, $from2Id.self::SHARED_ID_SUFFIX_FEEDBACK);
 
             $html .= '<tr><td>'.$dayLabel.'</td>'
                 .'<td>'
@@ -1405,7 +1430,7 @@ class SchemaOrgData_FormRenderer {
         };
 
         $feedback = ($value !== null and $value !== '' and is_scalar($value))
-            ? $this->renderFieldFeedback($name, $fieldSchema, (string) $value, $allData, $fieldId.'_feedback', $validator, $lang)
+            ? $this->renderFieldFeedback($name, $fieldSchema, (string) $value, $allData, $fieldId.self::SHARED_ID_SUFFIX_FEEDBACK, $validator, $lang)
             : '';
 
         return '<div class="c-content schemaOrgData-field-row">'

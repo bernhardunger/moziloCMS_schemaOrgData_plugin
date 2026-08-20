@@ -582,6 +582,25 @@ final class PhpJsParityTest extends TestCase {
         }
     }
 
+    /**
+     * Liest eine einzelne Klassenkonstante ueber Reflection.
+     *
+     * Auch private Konstanten sind so lesbar. Das ist Absicht: Ob ein
+     * Wert oeffentlich ist, entscheidet, wer ihn im Produktivcode bindet -
+     * nicht, wer ihn hier prueft.
+     */
+    private function konstante(string $klasse, string $name): string {
+        $konstanten = (new \ReflectionClass($klasse))->getConstants();
+
+        $this->assertArrayHasKey(
+            $name,
+            $konstanten,
+            $klasse.' hat keine Konstante '.$name
+        );
+
+        return (string) $konstanten[$name];
+    }
+
     // -----------------------------------------------------------
     // Statuswerte und Klassenstamm der Feld-Rueckmeldung
     // -----------------------------------------------------------
@@ -678,6 +697,94 @@ final class PhpJsParityTest extends TestCase {
             ),
             'Der Klassenstamm steht mehr als einmal im Code von '.$datei
                 .' - die Zusammenfuehrung ist rueckgaengig gemacht.'
+        );
+    }
+
+    // -----------------------------------------------------------
+    // Suffixe der Element-IDs
+    // -----------------------------------------------------------
+
+    /***************************************************************
+    *
+    * Mengenwaechter ueber die Suffixe, die JavaScript an eine
+    * Element-ID anhaengt. PHP baut die ID des Rueckmeldungs-Elements
+    * als Feld-ID plus Suffix, JavaScript bildet dieselbe Ableitung -
+    * laufen sie auseinander, sucht der Browser ein Element, das es
+    * nicht gibt, und die Rueckmeldung bleibt aus. Kein Fehler, nur
+    * Stille.
+    *
+    * Geprueft wird die ganze Menge, nicht nur der eine Wert: Ein
+    * zweites angehaengtes Suffix ohne PHP-Gegenstelle faellt damit auf,
+    * bevor es sich einbuergert.
+    *
+    ***************************************************************/
+    function testAngehaengteIdSuffixeDeckenSichMitDerPhpSeite(): void {
+        $datei = self::JS_VALIDATOR;
+        $code  = $this->nurCode($this->jsQuelle($datei));
+
+        $php = $this->konstantenMitPraefix(
+            'SchemaOrgData_FormRenderer',
+            'SHARED_ID_SUFFIX_'
+        );
+
+        preg_match_all('#\\+\\s*\'(_[a-z0-9]+)\'#', $code, $matches);
+        $js = array_values(array_unique($matches[1]));
+        sort($js);
+
+        $this->assertSame(
+            $php,
+            $js,
+            'PHP (SchemaOrgData_FormRenderer::SHARED_ID_SUFFIX_*): '
+                .implode(', ', $php).' | JS ('.$datei
+                .', an eine ID angehaengte Suffixe): '.implode(', ', $js)
+        );
+    }
+
+    /***************************************************************
+    *
+    * Waechter ueber die Suffixe der Zeitfenster im
+    * Oeffnungszeiten-Widget. JavaScript liest aus der fertigen
+    * Element-ID zurueck, welches Feld zu welchem gehoert - teils als
+    * Literal, teils als regulaerer Ausdruck ueber das Ende der ID.
+    *
+    * Die Alternation wird aus den PHP-Konstanten zusammengesetzt statt
+    * auf Teilketten geprueft: '_from' steht in der Quelldatei nur
+    * innerhalb von '_from2', ein Enthaltensein-Test liefe deshalb auch
+    * dann gruen, wenn PHP das erste Von-Feld umbenannt haette.
+    *
+    ***************************************************************/
+    function testZeitfensterSuffixeStehenInBeidenSprachenGleich(): void {
+        $datei = self::JS_VALIDATOR;
+        $code  = $this->nurCode($this->jsQuelle($datei));
+
+        $von   = $this->konstante('SchemaOrgData_FormRenderer', 'SHARED_ID_SLOT_FROM');
+        $bis   = $this->konstante('SchemaOrgData_FormRenderer', 'SHARED_ID_SLOT_TO');
+        $von2  = $this->konstante('SchemaOrgData_FormRenderer', 'SHARED_ID_SLOT_FROM2');
+
+        // Rueckwaerts vom zweiten Von-Feld auf das erste Bis-Feld.
+        $this->assertStringContainsString(
+            $von2.'$',
+            $code,
+            'Erwartet: ein Muster auf "'.$von2.'" am ID-Ende in '.$datei
+        );
+        $this->assertStringContainsString(
+            '\''.$bis.'\'',
+            $code,
+            'Erwartet: das Literal "'.$bis.'" in '.$datei
+        );
+
+        // Vorwaerts vom ersten Zeitfenster auf das zweite Von-Feld.
+        $alternation = '_('.ltrim($von, '_').'|'.ltrim($bis, '_').')$';
+        $this->assertStringContainsString(
+            $alternation,
+            $code,
+            'Erwartet: die Alternation "'.$alternation.'" in '.$datei
+                .' - sie verbindet beide Zeitfenster'
+        );
+        $this->assertStringContainsString(
+            '\''.$von2.'\'',
+            $code,
+            'Erwartet: das Literal "'.$von2.'" in '.$datei
         );
     }
 }
